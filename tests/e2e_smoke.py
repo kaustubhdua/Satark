@@ -51,20 +51,17 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a FIRSTLIGHT workspace with keyboard input.
-
-    Streamlit's React-ARIA option popover can detach during a rerun before a
-    Playwright pointer click completes. Keyboard navigation avoids that flaky
-    DOM race while keeping the test on the real user interaction path.
-    """
+    """Select a FIRSTLIGHT workspace by its accessible option label."""
+    options = [
+        "Incident",
+        "Evidence Integrity",
+        "Investigation",
+        "Response Center",
+        "Audit Trail",
+    ]
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
-    # Reset to the first option before moving so this remains deterministic
-    # even if Streamlit preserves a previous selectbox value across reruns.
-    workspace.press("Home")
-    for _ in range(steps_down):
-        workspace.press("ArrowDown")
-    workspace.press("Enter")
+    page.get_by_role("option", name=options[steps_down], exact=True).click()
 
 
 
