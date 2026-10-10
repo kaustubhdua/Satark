@@ -1,4 +1,4 @@
-"""Focused, multi-layer SATARK home with a flagship FIRSTLIGHT spotlight."""
+"""SATARK home workspace."""
 import streamlit as st
 from ui.demo import get_demo_result
 
@@ -16,7 +16,7 @@ def render_home():
         '<div class="ih-micro-note"><span class="ih-check">✓</span> Evidence-led · Explainable · Human-reviewed</div>'
         '</div>'
         '<aside class="ih-console satark-spotlight-card" aria-label="Illustrative investigation signal preview">'
-        '<div class="ih-console-top"><div class="ih-console-brand"><span class="ih-console-mark">S</span><div><b>SATARK</b><small>THREAT INTELLIGENCE</small></div></div><span class="ih-demo-chip">SAMPLE</span></div>'
+        '<div class="ih-console-top"><div class="ih-console-brand"><span class="ih-console-mark">S</span><div><b>SATARK</b><small>THREAT INTELLIGENCE</small></div></div><span class="ih-demo-chip">EXAMPLE</span></div>'
         '<div class="spotlight-orb" aria-hidden="true"><span class="spotlight-orb-core"></span><span class="spotlight-orb-ring spotlight-orb-ring-a"></span><span class="spotlight-orb-ring spotlight-orb-ring-b"></span><span class="spotlight-orb-sweep"></span></div>'
         '<div class="spotlight-status"><span class="spotlight-status-dot"></span><span>OBSERVABLE SIGNALS</span><span class="spotlight-status-right">ILLUSTRATIVE</span></div>'
         '<div class="spotlight-signal"><span class="spotlight-signal-index">01</span><div><b>Urgency language</b><small>Pressure to act before verifying</small></div><span class="spotlight-signal-tag">REVIEW</span></div>'
@@ -29,11 +29,11 @@ def render_home():
 
     st.markdown(
         '<section class="ih-focus satark-firstlight-spotlight">'
-        '<div class="ih-focus-index">FLAGSHIP WORKSPACE <span>01 / 03</span></div>'
+        '<div class="ih-focus-index">INCIDENT WORKSPACE</div>'
         '<div class="ih-focus-main"><div class="ih-focus-title">FIRSTLIGHT <span>Incident Command</span></div>'
         '<p>Reconstruct an incident, verify evidence integrity, trace findings to records and review proposed response actions — without performing real-world changes.</p>'
         '<div class="spotlight-feature-row"><span>◈ Evidence integrity</span><span>↗ Investigation timeline</span><span>✓ Auditable decisions</span></div></div>'
-        '<div class="ih-focus-aside"><span class="ih-status-pill"><span></span> SYNTHETIC DEMO</span><div>Start with a guided case.<br>Explore each stage when you need it.</div></div>'
+        '<div class="ih-focus-aside"><span class="ih-status-pill"><span></span> TRAINING CASE</span><div>Start with a guided case.<br>Explore each stage when you need it.</div></div>'
         '</section>',
         unsafe_allow_html=True,
     )
@@ -50,7 +50,7 @@ def render_home():
                 st.session_state.demo_mode = False
                 st.rerun()
         with col_tertiary:
-            if st.button("Open guided sample report", width="stretch", key="demo_result"):
+            if st.button("View example report", width="stretch", key="demo_result"):
                 st.session_state.result = get_demo_result()
                 st.session_state.mode = "Text"
                 st.session_state.demo_mode = True
@@ -74,7 +74,7 @@ def render_home():
     st.markdown(
         '<section class="ih-bottom-row">'
         '<div class="ih-bottom-note"><span class="ih-bottom-icon">↗</span><div><b>Pick up where you left off</b><p>Session history keeps completed reports available while this session is active.</p></div></div>'
-        '<div class="ih-bottom-note"><span class="ih-bottom-icon">◎</span><div><b>Learn at your own pace</b><p>Explore the guided sample first, then move into a real analysis when ready.</p></div></div>'
+        '<div class="ih-bottom-note"><span class="ih-bottom-icon">◎</span><div><b>Learn at your own pace</b><p>Review an example assessment before starting your own analysis.</p></div></div>'
         '</section>'
         '<section class="ih-trust"><div class="ih-trust-mark">i</div><div><div class="ih-trust-title">Designed for informed triage — not automatic truth.</div>'
         '<p>Risk scores are heuristic summaries; model confidence is not a calibrated probability. A missing signal does not prove content is safe. Avoid submitting passwords, OTPs, private keys or unnecessary personal data.</p></div><span class="ih-trust-label">USE WITH JUDGMENT</span></section>'
