@@ -18,7 +18,7 @@ def render_home():
         '<aside class="ih-console satark-spotlight-card" aria-label="Illustrative investigation signal preview">'
         '<div class="ih-console-top"><div class="ih-console-brand"><span class="ih-console-mark">S</span><div><b>SATARK</b><small>THREAT INTELLIGENCE</small></div></div><span class="ih-demo-chip">EXAMPLE</span></div>'
         '<div class="spotlight-orb" aria-hidden="true"><span class="spotlight-orb-core"></span><span class="spotlight-orb-ring spotlight-orb-ring-a"></span><span class="spotlight-orb-ring spotlight-orb-ring-b"></span><span class="spotlight-orb-sweep"></span></div>'
-        '<div class="spotlight-status"><span class="spotlight-status-dot"></span><span>OBSERVABLE SIGNALS</span><span class="spotlight-status-right">ILLUSTRATIVE</span></div>'
+        '<div class="spotlight-status"><span class="spotlight-status-dot"></span><span>OBSERVABLE SIGNALS</span><span class="spotlight-status-right">EXAMPLE VIEW</span></div>'
         '<div class="spotlight-signal"><span class="spotlight-signal-index">01</span><div><b>Urgency language</b><small>Pressure to act before verifying</small></div><span class="spotlight-signal-tag">REVIEW</span></div>'
         '<div class="spotlight-signal"><span class="spotlight-signal-index">02</span><div><b>Account action requested</b><small>Destination should be checked independently</small></div><span class="spotlight-signal-tag">CHECK</span></div>'
         '<div class="spotlight-footnote">Signals are observations — not proof of fraud.</div>'
