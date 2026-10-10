@@ -51,9 +51,15 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a FIRSTLIGHT workspace using keyboard input to avoid flaky popover clicks."""
+    """Select a FIRSTLIGHT workspace from a known baseline.
+
+    The same Streamlit session can preserve the previous selectbox choice across
+    reruns. Resetting to the first option makes this helper deterministic even
+    when the current selection is not Incident.
+    """
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
+    workspace.press("Home")
     for _ in range(steps_down):
         workspace.press("ArrowDown")
     workspace.press("Enter")
@@ -133,10 +139,12 @@ def main():
 
                 # Approval remains explicitly simulated; verify the action log
                 # and audit trail after one approval.
-                choose_workspace(page, 1)
+                # Workspace selection always starts at Incident (index 0), so
+                # use absolute option indexes rather than offsets from the old state.
+                choose_workspace(page, 3)  # Response Center
                 page.get_by_role("button", name="Approve & simulate").first.click()
                 page.get_by_text("Response action log").wait_for(timeout=30_000)
-                choose_workspace(page, 1)
+                choose_workspace(page, 4)  # Audit Trail
                 page.get_by_text("Hash-chained audit trail").wait_for(timeout=30_000)
                 page.get_by_text("Audit chain verifies against its first entry.").wait_for(timeout=30_000)
                 page.locator('[data-testid="stSidebar"] button').filter(has_text="Overview").click()
