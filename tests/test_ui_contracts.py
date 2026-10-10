@@ -66,7 +66,8 @@ class UIContractTests(unittest.TestCase):
 
     def test_home_prioritizes_the_core_product_without_vanity_metrics(self):
         self.assertIn("Pause the panic.", HOME)
-        self.assertIn("guided sample report", HOME)
+        self.assertIn("View example report", HOME)
+        self.assertNotIn("guided sample report", HOME)
         self.assertIn("OBSERVABLE SIGNALS", HOME)
         self.assertNotIn("home-stats", HOME)
 
