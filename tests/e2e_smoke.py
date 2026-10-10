@@ -51,17 +51,24 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a FIRSTLIGHT workspace by its accessible option label."""
+    """Use the real selectbox keyboard path and verify the selected workspace."""
     options = [
-        "Incident",
-        "Evidence Integrity",
-        "Investigation",
-        "Response Center",
-        "Audit Trail",
+        ("Incident", "Incident workspace"),
+        ("Evidence Integrity", "Evidence integrity"),
+        ("Investigation", "Coordinated investigation"),
+        ("Response Center", "Response center"),
+        ("Audit Trail", "Hash-chained audit trail"),
     ]
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
-    page.get_by_role("option", name=options[steps_down], exact=True).click()
+    # Streamlit's React-ARIA popover can rerender/detach options during a
+    # pointer click. Keyboard selection is a supported user interaction and
+    # avoids clicking a transient option node.
+    workspace.press("Home")
+    for _ in range(steps_down):
+        workspace.press("ArrowDown")
+    workspace.press("Enter")
+    page.get_by_text(options[steps_down][1], exact=False).wait_for(timeout=30_000)
 
 
 
@@ -154,7 +161,7 @@ def main():
 
                 # The offline sample must open without a provider key and expose
                 # the evidence ledger plus the deterministic coverage check.
-                page.get_by_role("button",name="Open guided sample report").click()
+                page.get_by_role("button", name="View example report").click()
                 page.get_by_text("Investigation workflow").wait_for(timeout=30_000)
                 page.get_by_text("Evidence ledger").wait_for(timeout=30_000)
                 page.get_by_text("INDEPENDENT COVERAGE CHECK").wait_for(timeout=30_000)
