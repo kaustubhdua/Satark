@@ -126,8 +126,8 @@ def main():
                 page.locator(".st-key-home-actions").get_by_role(
                     "button", name="Open FIRSTLIGHT →"
                 ).last.click()
-                page.get_by_role("button", name="Load / reset synthetic incident").click()
-                page.get_by_text("Synthetic case loaded").wait_for(timeout=30_000)
+                page.get_by_role("button", name="Open / reset training case").click()
+                page.get_by_text("Training case loaded").wait_for(timeout=30_000)
                 choose_workspace(page, 2)
                 page.get_by_text("Coordinated investigation", exact=True).wait_for(timeout=30_000)
                 page.get_by_role("button", name="Run investigation workflow").click()
@@ -140,7 +140,7 @@ def main():
                 firstlight_json = Path(firstlight_download.value.path()).read_text(encoding="utf-8")
                 assert '"case_id": "FL-DEMO-2026-001"' in firstlight_json
                 assert '"audit_chain_valid": true' in firstlight_json
-                assert "Synthetic demonstration only" in firstlight_json
+                assert "Training case only" in firstlight_json
 
                 # Approval remains explicitly simulated; verify the action log
                 # and audit trail after one approval.
