@@ -56,29 +56,29 @@ def render_firstlight() -> None:
     st.markdown(
         '<div class="workspace-eyebrow">SATARK / FIRSTLIGHT INCIDENT COMMAND</div>'
         '<h1 style="margin-bottom:.2rem">Every second matters. Every piece of evidence counts.</h1>'
-        '<p style="color:var(--text-secondary,#94a3b8);max-width:850px">Preserve artifacts, correlate suspicious activity, inspect evidence integrity and review simulated response actions. The sample case is fictional; optional JSON/CSV imports are parsed locally and remain session-only.</p>',
+        '<p style="color:var(--text-secondary,#94a3b8);max-width:850px">Preserve artifacts, correlate suspicious activity, inspect evidence integrity and review proposed response actions. The built-in training case is fictional; optional JSON/CSV imports are parsed locally and remain in this session.</p>',
         unsafe_allow_html=True,
     )
     left, right = st.columns([1.2, 1], gap="large")
     with left:
         st.markdown("### Incident workspace")
-        st.write("Open the repeatable account-compromise scenario to explore the full investigation workflow.")
-        if st.button("Load / reset synthetic incident", type="primary", use_container_width=True, key="fl_seed_demo"):
+        st.write("Open the account-compromise training case to review the investigation workflow.")
+        if st.button("Open / reset training case", type="primary", use_container_width=True, key="fl_seed_demo"):
             _seed_demo()
             st.rerun()
     with right:
         st.markdown("### Workflow status")
         if st.session_state.firstlight_case:
-            st.success("Synthetic case loaded")
+            st.success("Training case loaded")
             st.caption(f"Case ID · {st.session_state.firstlight_case['case_id']}")
         else:
-            st.info("No incident loaded. Start with the synthetic sample.")
+            st.info("No case loaded. Open the training case to begin.")
         st.caption("No real endpoint collection, network blocking or account changes are performed.")
 
     with st.container(border=True):
         st.markdown("### Import event evidence")
         st.write("Import a JSON event array or CSV with timestamp, source, kind and summary columns. Files are parsed locally; imported text is treated as untrusted data and is not sent to an AI provider.")
-        st.caption("Limits: 5 MiB per artifact, 10,000 records, 4,096 characters per text field. This demo keeps imported data in the current Streamlit session only.")
+        st.caption("Limits: 5 MiB per artifact, 10,000 records, 4,096 characters per text field. Imported data remains in the current session only.")
         upload = st.file_uploader("Choose event file", type=["json", "csv"], key="fl_event_upload")
         if upload is not None and st.button("Validate and analyze import", type="primary", key="fl_import_run"):
             st.session_state.firstlight_import_result = None
@@ -176,7 +176,7 @@ def render_firstlight() -> None:
     case = st.session_state.firstlight_case
     if not case:
         with st.container(border=True):
-            st.markdown("#### What this workspace demonstrates")
+            st.markdown("#### Investigation workflow")
             st.markdown("- Evidence records are hashed independently of AI.")
             st.markdown("- Findings link to evidence IDs and label uncertainty.")
             st.markdown("- A hash mismatch is flagged as possible tampering.")
@@ -229,17 +229,17 @@ def render_firstlight() -> None:
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Tamper with selected record", key="fl_tamper", use_container_width=True):
-                item["record"]["summary"] = item["record"].get("summary", "") + " [TAMPERED IN DEMO]"
+                item["record"]["summary"] = item["record"].get("summary", "") + " [INTEGRITY CHALLENGE]"
                 st.session_state.firstlight_audit = append_audit(
                     st.session_state.firstlight_audit, "integrity_mismatch_injected",
-                    "demo_operator", {"evidence_id": selected_id, "purpose": "controlled integrity challenge"}
+                    "session_operator", {"evidence_id": selected_id, "purpose": "controlled integrity challenge"}
                 )
                 st.rerun()
         with col2:
             if st.button("Restore from original synthetic fixture", key="fl_restore", use_container_width=True):
                 _seed_demo()
                 st.rerun()
-        st.caption("Restoring reloads the original fictional fixture and resets the demonstration's action log.")
+        st.caption("Restoring reloads the original training case and clears the current response-action log.")
 
     if active_workspace == "Investigation":
         st.markdown("### Coordinated investigation")
@@ -272,7 +272,7 @@ def render_firstlight() -> None:
                 "audit_chain_valid": verify_audit_chain(st.session_state.firstlight_audit),
                 "audit": st.session_state.firstlight_audit,
                 "response_log": st.session_state.firstlight_action_log,
-                "notice": "Synthetic demonstration only; not a forensic certification or live response system.",
+                "notice": "Training case only; this workflow does not perform live response or provide forensic certification.",
             }
             st.download_button(
                 "Export FIRSTLIGHT incident report (JSON)",
@@ -295,7 +295,7 @@ def render_firstlight() -> None:
                     st.markdown(f"**{proposal['action_id']} · {proposal['title']}**")
                     st.write(proposal["impact"])
                     st.caption(f"Risk: {proposal['risk']} · Status: {proposal['status']}")
-                    approver = st.text_input("Approver / reviewer", value="Demo analyst", key=f"fl_approver_{proposal['action_id']}")
+                    approver = st.text_input("Approver / reviewer", value="Incident reviewer", key=f"fl_approver_{proposal['action_id']}")
                     approve_col, reject_col = st.columns(2)
                     with approve_col:
                         if st.button("Approve & simulate", key=f"fl_approve_{proposal['action_id']}", type="primary", use_container_width=True):
@@ -324,4 +324,4 @@ def render_firstlight() -> None:
         else:
             st.error("Audit chain verification failed. The chain may have been altered.")
         st.dataframe(st.session_state.firstlight_audit, use_container_width=True, hide_index=True)
-        st.caption("This in-process demo demonstrates tamper-evident chaining, not durable or externally anchored storage. Production deployment requires protected persistence and access controls.")
+        st.caption("The audit chain is session-scoped and is not independently anchored or durable. Sensitive operational use requires protected persistence and access controls.")
