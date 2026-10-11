@@ -1,4 +1,111 @@
 'use client';
-import {useState} from 'react';
-const API_URL=(process.env.NEXT_PUBLIC_API_URL||'').replace(/\/$/,'');
-export default function Home(){const [input,setInput]=useState('');const [busy,setBusy]=useState(false);const [notice,setNotice]=useState('');const [error,setError]=useState('');async function check(){setError('');setNotice('');if(!input.trim()){setError('Add a URL or suspicious message to begin.');return}if(!API_URL){setError('Backend is not configured yet. Set NEXT_PUBLIC_API_URL in Vercel project settings.');return}setBusy(true);try{const r=await fetch(API_URL,{headers:{Accept:'application/json'}});if(!r.ok)throw Error();setNotice('Backend is reachable. Live analysis remains disabled until the verified analysis endpoint is connected.')}catch{setError('Could not reach the backend. Check its URL, availability and CORS settings.')}finally{setBusy(false)}}return <main className="shell"><header className="topbar"><a className="brand" href="#"><span className="brand-mark">S</span><span>SATARK<span style={{color:'var(--lime)'}}>.</span></span></a><div className="status">● SECURITY WORKSPACE / PREVIEW</div></header><div className="container"><section className="hero"><div><div className="eyebrow">✳ DIGITAL THREAT INVESTIGATION</div><h1>Pause the panic.<br/><span>Find the signal.</span></h1><p className="lead">A calmer, evidence-first workspace for investigating suspicious digital content. Understand what was detected, why it matters, and what remains uncertain.</p><div className="actions"><a className="btn btn-primary" href="#investigate">Start an investigation ↗</a><a className="btn btn-secondary" href="#firstlight">Explore FIRSTLIGHT →</a></div></div><div className="signal-card"><div className="card-head"><span>INVESTIGATION SNAPSHOT</span><span className="pill">SAMPLE DATA</span></div><div className="score-row"><div className="score">4/5</div><div className="score-meta"><strong>Evidence signals reviewed</strong><span>Illustrative training case · not a live scan</span></div></div><div className="evidence-list">{[['↗','Source context','Review origin and destination'],['⌁','Evidence integrity','Keep findings tied to evidence'],['◷','Event timeline','Put observations in context']].map(x=><div className="evidence" key={x[1]}><div className="evidence-icon">{x[0]}</div><div className="evidence-copy"><strong>{x[1]}</strong><small>{x[2]}</small></div><span className="check">READY</span></div>)}</div></div></section><section><div className="section-title"><div><div className="eyebrow">YOUR WORKSPACE</div><h2>Investigate with context.</h2></div><p>Clear workflows. Evidence before conclusions.</p></div><div className="workspace-grid"><article className="workspace-card"><div className="workspace-icon">⌕</div><h3>Investigate content</h3><p>Start with a suspicious URL or message and move through a structured review.</p><a className="text-link" href="#investigate">Open investigation →</a></article><article className="workspace-card" id="firstlight"><div className="workspace-icon">✳</div><h3>FIRSTLIGHT case lab</h3><p>Explore a guided synthetic case, evidence integrity, timelines and response decisions.</p><a className="text-link" href="https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/" target="_blank" rel="noreferrer">Open interactive FIRSTLIGHT ↗</a></article><article className="workspace-card"><div className="workspace-icon">▤</div><h3>Evidence & reports</h3><p>Keep observations, confidence and evidence gaps distinguishable in your review.</p><button className="text-link" onClick={()=>setNotice('Reports will be enabled after the verified investigation API and export schema are connected.')}>View report workflow →</button></article></div></section><section className="investigation" id="investigate"><aside className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{color:'#dce6f4'}}>Preview notice:</strong> This frontend does not claim to have scanned content until the verified backend workflow is connected.</p></aside><div className="form-panel"><h3>New investigation</h3><label htmlFor="content">Suspicious URL or message</label><textarea id="content" value={input} onChange={e=>setInput(e.target.value)} placeholder="Paste a suspicious URL or message here…" maxLength={12000}/><div className="form-bottom"><span className="hint">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy} onClick={check}>{busy?'Checking…':'Check connection →'}</button></div>{error&&<div className="result" role="alert" style={{borderColor:'#f8717150',color:'#fecaca'}}>{error}</div>}{notice&&<div className="result" role="status">{notice}</div>}</div></section></div><footer className="footer"><span>SATARK · Evidence-backed digital security</span><span>Preview build · Sample indicators are illustrative</span></footer></main>}
+
+import { useState } from 'react';
+
+type Analysis = {
+  threat_category: string;
+  risk_score: number;
+  summary: string;
+  key_indicators: string[];
+  recommendations: string[];
+  limitations: string[];
+  deterministic_signals: string[];
+  model: string;
+  notice: string;
+};
+
+export default function Home() {
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<Analysis | null>(null);
+
+  async function analyze() {
+    setError('');
+    setResult(null);
+    if (!input.trim()) {
+      setError('Add a URL or suspicious message to begin.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ input: input.trim() })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Analysis failed. Please retry.');
+      setResult(data as Analysis);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not complete analysis.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <a className="brand" href="/"><span className="brand-mark">S</span><span>SATARK<span style={{ color: 'var(--lime)' }}>.</span></span></a>
+        <nav className="nav-links" aria-label="Main navigation">
+          <a href="/investigate">Investigate</a><a href="/firstlight">FIRSTLIGHT</a><a href="/reports">Reports</a><a href="/learn">Learn</a>
+        </nav>
+        <div className="status">● SECURITY WORKSPACE</div>
+      </header>
+
+      <div className="container">
+        <section className="hero">
+          <div>
+            <div className="eyebrow">✳ DIGITAL THREAT INVESTIGATION</div>
+            <h1>Pause the panic.<br /><span>Find the signal.</span></h1>
+            <p className="lead">A calmer, evidence-first workspace for investigating suspicious digital content. Understand what was detected, why it matters, and what remains uncertain.</p>
+            <div className="actions"><a className="btn btn-primary" href="#investigate">Start an investigation ↗</a><a className="btn btn-secondary" href="/firstlight">Open FIRSTLIGHT →</a></div>
+          </div>
+          <div className="signal-card">
+            <div className="card-head"><span>INVESTIGATION SNAPSHOT</span><span className="pill">SAMPLE DATA</span></div>
+            <div className="score-row"><div className="score">4/5</div><div className="score-meta"><strong>Evidence signals reviewed</strong><span>Illustrative training case · not a live scan</span></div></div>
+            <div className="evidence-list">
+              {[
+                ['↗', 'Source context', 'Review origin and destination'],
+                ['⌁', 'Evidence integrity', 'Keep findings tied to evidence'],
+                ['◷', 'Event timeline', 'Put observations in context']
+              ].map(item => <div className="evidence" key={item[1]}><div className="evidence-icon">{item[0]}</div><div className="evidence-copy"><strong>{item[1]}</strong><small>{item[2]}</small></div><span className="check">READY</span></div>)}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="section-title"><div><div className="eyebrow">YOUR WORKSPACE</div><h2>Investigate with context.</h2></div><p>Clear workflows. Evidence before conclusions.</p></div>
+          <div className="workspace-grid">
+            <article className="workspace-card"><div className="workspace-icon">⌕</div><h3>Investigate content</h3><p>Analyze a suspicious URL or message with AI-assisted triage and deterministic signals.</p><a className="text-link" href="/investigate">Open investigation →</a></article>
+            <article className="workspace-card"><div className="workspace-icon">✳</div><h3>FIRSTLIGHT case lab</h3><p>Explore a guided synthetic case, evidence integrity, timelines and response decisions.</p><a className="text-link" href="/firstlight">Open case lab →</a></article>
+            <article className="workspace-card"><div className="workspace-icon">▤</div><h3>Evidence & reports</h3><p>Review analysis results and export a report from your current session.</p><a className="text-link" href="/reports">Open reports →</a></article>
+            <article className="workspace-card"><div className="workspace-icon">◎</div><h3>Security learning</h3><p>Practice identifying social engineering signals with safe, educational examples.</p><a className="text-link" href="/learn">Open learning hub →</a></article>
+          </div>
+        </section>
+
+        <section className="investigation" id="investigate">
+          <aside className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{ color: '#dce6f4' }}>Important:</strong> AI output is an assessment, not proof. The app does not visit submitted URLs or execute files.</p></aside>
+          <div className="form-panel">
+            <h3>New investigation</h3>
+            <label htmlFor="content">Suspicious URL or message</label>
+            <textarea id="content" value={input} onChange={event => setInput(event.target.value)} placeholder="Paste a suspicious URL or message here…" maxLength={12000} />
+            <div className="form-bottom"><span className="hint">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
+            {error && <div className="result error" role="alert">{error}</div>}
+            {result && <div className="analysis-result" role="status">
+              <div className="result-top"><span className="pill">{result.threat_category}</span><strong>Risk signal: {result.risk_score}/100</strong></div>
+              <p>{result.summary}</p>
+              {result.deterministic_signals.length > 0 && <><h4>Deterministic signals</h4><ul>{result.deterministic_signals.map(signal => <li key={signal}>{signal}</li>)}</ul></>}
+              <h4>AI-identified indicators</h4><ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              <h4>Recommended next steps</h4><ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              {result.limitations.length > 0 && <><h4>Limitations</h4><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+              <small>{result.notice} · Model: {result.model}</small>
+            </div>}
+          </div>
+        </section>
+      </div>
+      <footer className="footer"><span>SATARK · Evidence-backed digital security</span><span>AI-assisted triage · Human review required</span></footer>
+    </main>
+  );
+}
