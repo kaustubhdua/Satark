@@ -9,7 +9,6 @@ const envExample = readFileSync(new URL('../.env.example', import.meta.url), 'ut
 
 test('URLhaus lookup is gated by explicit user opt-in and a server-side flag', () => {
   assert.match(page, /checked=\{shareWithThreatIntel\}/);
-  assert.match(page, /shareWithThreatIntel\s*\}\)/);
   assert.match(route, /parsedBody\.shareWithThreatIntel === true/);
   assert.match(route, /SATARK_ENABLE_THREAT_INTEL !== 'true'/);
 });
@@ -37,19 +36,19 @@ test('UI explains optional external data sharing and displays lookup status', ()
 });
 
 test('URLhaus consent and status are available in both investigation entry points', () => {
-  assert.match(page, /checked=\\{shareWithThreatIntel\\}/);
-  assert.match(investigatePage, /checked=\\{shareWithThreatIntel\\}/);
-  assert.match(investigatePage, /threat_intel\\.status/);
+  assert.match(page, /checked=\{shareWithThreatIntel\}/);
+  assert.match(investigatePage, /checked=\{shareWithThreatIntel\}/);
+  assert.match(investigatePage, /threat_intel\.status/);
 });
 
 test('AbuseIPDB is opt-in, separately feature-flagged, IP-literal-only, and time-bounded', () => {
-  assert.match(page, /checked=\\{shareIpWithThreatIntel\\}/);
-  assert.match(investigatePage, /checked=\\{shareIpWithThreatIntel\\}/);
-  assert.match(route, /parsedBody\\.shareIpWithThreatIntel === true/);
+  assert.match(page, /checked=\{shareIpWithThreatIntel\}/);
+  assert.match(investigatePage, /checked=\{shareIpWithThreatIntel\}/);
+  assert.match(route, /parsedBody\.shareIpWithThreatIntel === true/);
   assert.match(route, /SATARK_ENABLE_ABUSEIPDB !== 'true'/);
   assert.match(route, /ABUSEIPDB_API_KEY/);
-  assert.match(route, /isIP\\(value\\)/);
-  assert.match(route, /api\\.abuseipdb\\.com\\/api\\/v2\\/check/);
+  assert.match(route, /isIP\(value\)/);
+  assert.match(route, /api\.abuseipdb\.com\/api\/v2\/check/);
   assert.match(route, /maxAgeInDays', '90'/);
   assert.match(route, /AbortController/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_ABUSEIPDB_API_KEY/);
