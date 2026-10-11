@@ -43,5 +43,46 @@ jobs:
       - name: FIRSTLIGHT CSV regression tests
         run: npm test
 
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: Install browser smoke-test tooling
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
       - name: Production build
         run: npm run build
+
+      - name: Start production server
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/satark-web.log 2>&1 &
+          echo $! > /tmp/satark-web.pid
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/satark-web.log
+          exit 1
+
+      - name: Test desktop/mobile routes and API validation
+        env:
+          SATARK_WEB_URL: http://127.0.0.1:3000
+          SATARK_WEB_ARTIFACTS: artifacts/web
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node tests/browser-smoke.mjs
+
+      - name: Upload frontend browser artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: satark-web-browser-smoke
+          path: |
+            web/artifacts/web/
+            /tmp/satark-web.log
+          if-no-files-found: warn
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/satark-web.pid ]; then kill $(cat /tmp/satark-web.pid) || true; fi
