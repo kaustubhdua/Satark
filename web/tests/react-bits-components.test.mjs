@@ -10,7 +10,7 @@ test('all five visual components are exported and styled', () => {
     assert.match(source, new RegExp('export function ' + name + '\\b'), name + ' export exists');
   }
   assert.match(source, /prefers-reduced-motion/);
-  assert.match(styles, /@media\\(prefers-reduced-motion:reduce\\)/);
+  assert.ok(styles.includes('@media(prefers-reduced-motion:reduce)'));
 });
 
 test('components expose expected interaction and accessibility hooks', () => {
