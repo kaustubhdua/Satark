@@ -1,6 +1,7 @@
 'use client';
 
 import SiteHeader from './site-header';
+import { Radar, SplitFlapText } from '../components/react-bits';
 
 import { useState } from 'react';
 
@@ -84,10 +85,12 @@ export default function Home() {
           <div>
             <div className="eyebrow">✳ DIGITAL THREAT INVESTIGATION</div>
             <h1>Pause the panic.<br /><span>Find the signal.</span></h1>
+            <div className="hero-signal" aria-label="Security workspace status"><SplitFlapText words={['EVIDENCE FIRST', 'SIGNAL DETECTED', 'VERIFY THEN ACT']} fontSize={24} padTo={15} tileColor="#111827" textColor="#c9f36b" gap={3} cycleDelay={3200} /></div>
             <p className="lead">A calmer, evidence-first workspace for investigating suspicious digital content. Understand what was detected, why it matters, and what remains uncertain.</p>
             <div className="actions"><a className="btn btn-primary" href="#investigate">Start an investigation ↗</a><a className="btn btn-secondary" href="/firstlight">Open FIRSTLIGHT →</a></div>
           </div>
           <div className="signal-card">
+            <div className="radar-preview"><Radar color="#c9f36b" mode="sweep" speed={0.8} trail={0.3} scale={0.86} ringCount={5} spokeCount={12} targets={5} clutter={0.3} mouseInteraction={false} grain={0.01} /></div>
             <div className="card-head"><span>INVESTIGATION SNAPSHOT</span><span className="pill">SAMPLE DATA</span></div>
             <div className="score-row"><div className="score">3</div><div className="score-meta"><strong>Signal groups in this sample</strong><span>Illustrative training case · not a live scan</span></div></div>
             <div className="evidence-list">
