@@ -42,11 +42,14 @@ function parseCsv(text: string) {
   if (quoted) throw new Error('CSV contains an unclosed quoted field.');
   if (field.length || row.length) { row.push(field); if (row.some(cell => cell.trim() !== '')) rows.push(row); }
   if (rows.length < 2) throw new Error('CSV needs a header and at least one event row.');
-  const headers = rows[0].map(x => x.trim().toLowerCase());
+  const headers = rows[0].map((x, i) => (i === 0 ? x.replace(/^\\uFEFF/, '') : x).trim().toLowerCase());
+  if (headers.some(header => !header)) throw new Error('CSV headers cannot be empty.');
+  if (new Set(headers).size !== headers.length) throw new Error('CSV contains duplicate column headers.');
   if (!headers.some(h => ['id','timestamp','time','source','kind','summary','message','description','evidence_id'].includes(h))) {
     throw new Error('CSV header must include event fields such as timestamp, source, kind, or summary.');
   }
   const records = rows.slice(1);
+  if (records.some(record => record.length > headers.length)) throw new Error('CSV has rows with more columns than its header.');
   if (records.length > 10000) throw new Error('Import exceeds 10,000 event records.');
   return records.map((cols, index) => {
     const row: Record<string,string> = {};
@@ -93,6 +96,7 @@ export default function FirstlightPage() {
     if (file.size > 5 * 1024 * 1024) { setNotice('File exceeds the 5 MiB import limit.'); return; }
     try {
       const text = await file.text();
+      if (new TextEncoder().encode(text).byteLength > 5 * 1024 * 1024) throw new Error('File exceeds the 5 MiB import limit.');
       let rows: any[];
       if (file.name.toLowerCase().endsWith('.json')) {
         const parsed = JSON.parse(text);
