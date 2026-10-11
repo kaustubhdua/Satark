@@ -120,7 +120,7 @@ async function inspectViewport(viewport, label) {
       await fileInput.setInputFiles({
         name: 'training-events.csv',
         mimeType: 'text/csv',
-        buffer: Buffer.from('id,timestamp,source,kind,summary\\nQA-CSV-001,2026-10-11T10:05:00Z,QA test,message,Unexpected login notice\\n'),
+        buffer: Buffer.from('id,timestamp,source,kind,summary\nQA-CSV-001,2026-10-11T10:05:00Z,QA test,message,Unexpected login notice\n'),
       });
       await page.getByRole('status').filter({ hasText: /Imported and hashed locally/i }).waitFor();
       await page.getByText('QA-CSV-001').waitFor();
