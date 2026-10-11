@@ -1,5 +1,6 @@
-import SiteHeader from '../site-header';
 'use client';
+
+import SiteHeader from './site-header';
 
 import { useState } from 'react';
 
