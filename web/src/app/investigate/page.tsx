@@ -1,6 +1,7 @@
 'use client';
 
 import SiteHeader from '../site-header';
+import { LatticeLoader, ThoughtLine } from '../../components/react-bits';
 import { useState } from 'react';
 
 type Analysis = {
@@ -96,6 +97,7 @@ export default function InvestigatePage() {
               {busy ? 'Analyzing…' : 'Analyze content →'}
             </button>
           </div>
+          {busy && <div className="analysis-progress" aria-label="Analysis in progress"><LatticeLoader status="working" label="Analyzing" pattern="orbit" grid={3} color="#c9f36b" showTimer /><ThoughtLine label="Reviewing submitted content" doneLabel="Analysis complete" steps={["Validating input", "Checking deterministic signals", "Requesting AI-assisted triage"]} working={busy} color="#c9f36b" fontSize={13} shimmer /></div>}
           {error && <div className="result error" role="alert">{error}</div>}
           {result && <section className="analysis-result" aria-live="polite" aria-labelledby="analysis-result-title">
             <div className="result-top">
