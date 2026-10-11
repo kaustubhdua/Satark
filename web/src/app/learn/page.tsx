@@ -1,6 +1,7 @@
 'use client';
 
 import SiteHeader from '../site-header';
+import { CodeSlots } from '../../components/react-bits';
 import { useState } from 'react';
 
 const questions = [
@@ -12,6 +13,7 @@ const questions = [
 export default function LearnPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
+  const [demoCodeStatus, setDemoCodeStatus] = useState<'idle' | 'success'>('idle');
   const answeredCount = Object.keys(answers).length;
   const correctCount = questions.filter((question, index) => answers[index] === question.correct).length;
 
@@ -56,6 +58,14 @@ export default function LearnPage() {
           <button className="btn btn-primary" type="button" onClick={() => setChecked(true)} disabled={answeredCount === 0}>Check answers</button>
           <button className="btn btn-secondary" type="button" onClick={() => { setAnswers({}); setChecked(false); }}>Reset quiz</button>
         </div>
+        <section className="form-panel code-demo" aria-labelledby="code-demo-title">
+          <div className="eyebrow">INTERACTION SANDBOX</div>
+          <h2 id="code-demo-title">Try the animated code entry.</h2>
+          <p>This is a visual component demo only. It does not verify identity, send a code, or protect an account.</p>
+          <CodeSlots key={demoCodeStatus} length={6} status={demoCodeStatus} onChange={() => setDemoCodeStatus('idle')} onComplete={() => setDemoCodeStatus('success')} accentColor="#c9f36b" inkColor="#c9f36b" slotColor="#171e2a" digitColor="#11170a" dangerColor="#ff7474" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
+          <div className="hint" aria-live="polite">{demoCodeStatus === 'success' ? 'Demo interaction complete — reset to try it again.' : 'Enter any six digits to preview the success state.'}</div>
+          {demoCodeStatus === 'success' && <button className="btn btn-secondary" type="button" onClick={() => setDemoCodeStatus('idle')}>Reset code demo</button>}
+        </section>
       </div>
     </main>
   );
