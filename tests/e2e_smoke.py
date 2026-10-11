@@ -1,5 +1,6 @@
 """Browser smoke and layout regression checks for the local Streamlit app."""
 from pathlib import Path
+import re
 from io import BytesIO
 import os
 from playwright.sync_api import sync_playwright
@@ -68,7 +69,7 @@ def choose_workspace(page, steps_down):
     for _ in range(steps_down):
         workspace.press("ArrowDown")
     workspace.press("Enter")
-    page.get_by_text(options[steps_down][1], exact=False).wait_for(timeout=30_000)
+    page.get_by_text(re.compile(re.escape(options[steps_down][1]), re.IGNORECASE), exact=False).wait_for(timeout=30_000)
 
 
 
