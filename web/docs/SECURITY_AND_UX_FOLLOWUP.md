@@ -11,7 +11,7 @@ This branch adds an explicitly opt-in URLhaus reputation lookup to the Next.js a
 Never prefix these variables with `NEXT_PUBLIC_`. Do not commit their values.
 
 ## Data sharing
-Groq receives submitted text for AI triage. URLhaus receives only the first extracted HTTP(S) URL and only when the user checks the opt-in control and the server feature flag is enabled. Do not submit credentials, private URLs, authentication tokens, or other secrets. A provider no-match is inconclusive, not safe.
+Groq receives submitted text for AI triage. URLhaus receives the first extracted HTTP(S) URL, including its path and query string, only when the user checks the opt-in control and the server feature flag is enabled. Users should not submit private or signed URLs for external lookup. Do not submit credentials, private URLs, authentication tokens, or other secrets. A provider no-match is inconclusive, not safe.
 
 ## Limitations and release gates
 - This is a reputation lookup, not a malware sandbox or complete threat-intelligence verdict.
