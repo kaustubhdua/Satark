@@ -49,7 +49,7 @@ test('AbuseIPDB is opt-in, separately feature-flagged, IP-literal-only, and time
   assert.match(route, /ABUSEIPDB_API_KEY/);
   assert.match(route, /isIP\(candidate\)/);
   assert.match(route, /api\.abuseipdb\.com\/api\/v2\/check/);
-  assert.match(route, /maxAgeInDays: '90'/);
+  assert.match(route, /searchParams\.set\('maxAgeInDays', '90'\)/);
   assert.match(route, /AbortController/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_ABUSEIPDB_API_KEY/);
   assert.match(envExample, /SATARK_ENABLE_ABUSEIPDB=false/);
