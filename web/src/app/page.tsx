@@ -1,3 +1,4 @@
+import SiteHeader from '../site-header';
 'use client';
 
 import { useState } from 'react';
@@ -75,15 +76,9 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <header className="topbar">
-        <a className="brand" href="/"><span className="brand-mark">S</span><span>SATARK<span style={{ color: 'var(--lime)' }}>.</span></span></a>
-        <nav className="nav-links" aria-label="Main navigation">
-          <a href="/investigate">Investigate</a><a href="/firstlight">FIRSTLIGHT</a><a href="/reports">Reports</a><a href="/learn">Learn</a>
-        </nav>
-        <div className="status">● SECURITY WORKSPACE</div>
-      </header>
+      <SiteHeader status />
 
-      <div className="container">
+      <div className="container" id="main-content" tabIndex={-1}>
         <section className="hero">
           <div>
             <div className="eyebrow">✳ DIGITAL THREAT INVESTIGATION</div>
