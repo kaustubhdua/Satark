@@ -15,7 +15,7 @@ type Analysis = {
   deterministic_signals: string[];
   model: string;
   notice: string;
-  threat_intel?: ThreatIntel;
+  threat_intel?: ThreatIntel;\n  ip_threat_intel?: ThreatIntel;
 };
 
 export default function InvestigatePage() {
@@ -23,7 +23,7 @@ export default function InvestigatePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | null>(null);
-  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);
+  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);\n  const [shareIpWithThreatIntel, setShareIpWithThreatIntel] = useState(false);
 
   async function run() {
     const trimmed = input.trim();
@@ -39,7 +39,7 @@ export default function InvestigatePage() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ input: trimmed, shareWithThreatIntel }),
+        body: JSON.stringify({ input: trimmed, shareWithThreatIntel, shareIpWithThreatIntel }),
       });
       const data: unknown = (response.headers.get('content-type') || '').includes('application/json')
         ? await response.json()
@@ -70,7 +70,7 @@ export default function InvestigatePage() {
         !Array.isArray(candidate.deterministic_signals) ||
         typeof candidate.model !== 'string' ||
         typeof candidate.notice !== 'string' ||
-        (candidate.threat_intel !== undefined && (!candidate.threat_intel || typeof candidate.threat_intel !== 'object' || typeof candidate.threat_intel.status !== 'string' || typeof candidate.threat_intel.detail !== 'string'))
+        (candidate.threat_intel !== undefined && (!candidate.threat_intel || typeof candidate.threat_intel !== 'object' || typeof candidate.threat_intel.status !== 'string' || typeof candidate.threat_intel.detail !== 'string')) ||\n        (candidate.ip_threat_intel !== undefined && (!candidate.ip_threat_intel || typeof candidate.ip_threat_intel !== 'object' || typeof candidate.ip_threat_intel.status !== 'string' || typeof candidate.ip_threat_intel.detail !== 'string'))
       ) {
         throw new Error('The analysis service returned an incomplete result. Please retry.');
       }
@@ -96,6 +96,7 @@ export default function InvestigatePage() {
           <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }}
             maxLength={12000} placeholder="Paste a suspicious URL or message here…" aria-describedby="content-hint" />
           <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. If enabled on the server, the full extracted URL—including path and query string—is shared with this external service. Do not submit private or signed URLs. This is optional.</label>
+          <label className="intel-consent"><input type="checkbox" checked={shareIpWithThreatIntel} onChange={event => setShareIpWithThreatIntel(event.target.checked)} /> Also check a literal IP address against AbuseIPDB. If enabled on the server, the extracted IP address is shared with this external service. Domains and arbitrary text are not queried. This is optional.</label>
           <div className="form-bottom">
             <span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span>
             <button className="btn btn-primary" onClick={run} disabled={busy || !input.trim()}>
@@ -117,6 +118,7 @@ export default function InvestigatePage() {
             <ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
             {result.limitations.length > 0 && <><h3>Limitations</h3><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
             {result.threat_intel && <div className="threat-intel-result"><h3>URL reputation · {result.threat_intel.source}</h3><p><strong>{result.threat_intel.status.replaceAll('_', ' ')}</strong> — {result.threat_intel.detail}</p>{result.threat_intel.reference && <a href={result.threat_intel.reference} target="_blank" rel="noreferrer">Open URLhaus reference ↗</a>}</div>}
+            {result.ip_threat_intel && <div className="threat-intel-result"><h3>IP reputation · {result.ip_threat_intel.source}</h3><p><strong>{result.ip_threat_intel.status.replaceAll('_', ' ')}</strong> — {result.ip_threat_intel.detail}</p>{result.ip_threat_intel.reference && <a href={result.ip_threat_intel.reference} target="_blank" rel="noreferrer">Open AbuseIPDB reference ↗</a>}</div>}
             <p className="hint">{result.notice} · Model: {result.model}</p>
           </section>}
         </section>
