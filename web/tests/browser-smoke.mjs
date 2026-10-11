@@ -25,8 +25,15 @@ async function inspectViewport(viewport, label) {
     const response = await page.goto(baseURL + route.path, { waitUntil: 'networkidle' });
     assert.ok(response && response.status() < 400, `${label}: ${route.path} returned ${response?.status()}`);
     await page.locator('body').waitFor();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
+      `${label}: skip link should be the first keyboard focus target on ${route.path}`);
     const bodyText = await page.locator('body').innerText();
     assert.match(bodyText, route.heading, `${label}: expected route content missing at ${route.path}`);
+    if (route.path !== '/') {
+      assert.equal(await page.locator('.nav-links a[aria-current="page"]').count(), 1,
+        `${label}: exactly one current navigation link expected at ${route.path}`);
+    }
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       document: document.documentElement.scrollWidth,
@@ -34,6 +41,46 @@ async function inspectViewport(viewport, label) {
     }));
     assert.ok(dimensions.document <= dimensions.viewport + 1,
       `${label}: horizontal overflow at ${route.path}: ${JSON.stringify(dimensions)}`);
+    if (route.path === '/') {
+      const start = page.getByRole('link', { name: /start an investigation/i });
+      await start.click();
+      await page.waitForURL(/#investigate$/);
+      assert.equal(await page.getByRole('button', { name: /analyze with satark/i }).isDisabled(), true,
+        'homepage analysis should stay disabled until content is entered');
+    }
+    if (route.path === '/investigate') {
+      const analyzeButton = page.getByRole('button', { name: /analyze content/i });
+      assert.equal(await analyzeButton.isDisabled(), true, 'investigation should be disabled for empty input');
+      const input = page.getByLabel('Suspicious URL or message');
+      await input.fill('Synthetic training example: urgent password verification at example.invalid');
+      assert.equal(await analyzeButton.isDisabled(), false, 'investigation should enable for non-empty input');
+      assert.match(await page.locator('#content-hint').innerText(), /\d+ \/ 12,000 characters/);
+      await input.fill('');
+      assert.equal(await analyzeButton.isDisabled(), true, 'investigation should disable again when cleared');
+    }
+    if (route.path === '/reports') {
+      const notes = page.getByLabel('Review notes');
+      const exportButton = page.getByRole('button', { name: /export notes/i });
+      assert.equal(await exportButton.isDisabled(), true, 'export should be disabled for empty notes');
+      await notes.fill('Synthetic review note: verify sender through official channel.');
+      assert.equal(await exportButton.isDisabled(), false, 'export should enable after notes are entered');
+      const downloadPromise = page.waitForEvent('download');
+      await exportButton.click();
+      const download = await downloadPromise;
+      assert.equal(download.suggestedFilename(), 'satark-review-notes.txt');
+      await page.getByRole('status').filter({ hasText: /download manager/i }).waitFor();
+      await page.getByRole('button', { name: /clear notes/i }).click();
+      assert.equal(await notes.inputValue(), '');
+      assert.equal(await exportButton.isDisabled(), true);
+    }
+    if (route.path === '/learn') {
+      for (const name of ['q0', 'q1', 'q2']) await page.locator(`input[name="${name}"]`).nth(name === 'q0' ? 1 : name === 'q1' ? 2 : 1).check();
+      await page.getByRole('button', { name: /check answers/i }).click();
+      await page.getByRole('heading', { name: '3 / 3 correct' }).waitFor();
+      await page.getByRole('button', { name: /reset quiz/i }).click();
+      assert.equal(await page.locator('input[type="radio"]:checked').count(), 0);
+      assert.equal(await page.getByRole('button', { name: /check answers/i }).isDisabled(), true);
+    }
     if (route.path === '/firstlight') {
       await page.screenshot({ path: path.join(artifactDir, `firstlight-${label}.png`), fullPage: true });
       const launch = page.getByRole('button', { name: /launch training case/i });
