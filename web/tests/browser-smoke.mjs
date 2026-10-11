@@ -60,7 +60,7 @@ async function inspectViewport(viewport, label) {
     }
     if (route.path === '/reports') {
       const notes = page.getByLabel('Review notes');
-      const exportButton = page.getByRole('button', { name: /export notes/i });
+      const exportButton = page.getByRole('button', { name: /export notes \(\.txt\)/i });
       assert.equal(await exportButton.isDisabled(), true, 'export should be disabled for empty notes');
       await notes.fill('Synthetic review note: verify sender through official channel.');
       assert.equal(await exportButton.isDisabled(), false, 'export should enable after notes are entered');
