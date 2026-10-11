@@ -89,7 +89,7 @@ export default function Home() {
           </div>
           <div className="signal-card">
             <div className="card-head"><span>INVESTIGATION SNAPSHOT</span><span className="pill">SAMPLE DATA</span></div>
-            <div className="score-row"><div className="score">4/5</div><div className="score-meta"><strong>Evidence signals reviewed</strong><span>Illustrative training case · not a live scan</span></div></div>
+            <div className="score-row"><div className="score">3</div><div className="score-meta"><strong>Signal groups in this sample</strong><span>Illustrative training case · not a live scan</span></div></div>
             <div className="evidence-list">
               {[
                 ['↗', 'Source context', 'Review origin and destination'],
@@ -132,8 +132,8 @@ export default function Home() {
           <div className="form-panel">
             <h3>New investigation</h3>
             <label htmlFor="content">Suspicious URL or message</label>
-            <textarea id="content" value={input} onChange={event => setInput(event.target.value)} placeholder="Paste a suspicious URL or message here…" maxLength={12000} aria-describedby="content-hint" />
-            <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
+            <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }} placeholder="Paste a suspicious URL or message here…" maxLength={12000} aria-describedby="content-hint" />
+            <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy || !input.trim()} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
             {error && <div className="result error" role="alert">{error}</div>}
             {result && <div className="analysis-result" role="status">
               <div className="result-top"><span className="pill">{result.threat_category}</span><strong>Risk signal: {result.risk_score}/100</strong></div>
