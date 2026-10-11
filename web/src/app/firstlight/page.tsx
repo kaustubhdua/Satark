@@ -84,7 +84,7 @@ export default function FirstlightPage() {
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
   }
   async function tamper(item: Evidence) {
-    const next = evidence.map(e => e.id===item.id ? {...e,summary:e.summary+' [SIMULATED TAMPER]',tampered:!e.tampered} : e);
+    const next = evidence.map(e => e.id===item.id ? {...e,summary:e.tampered ? e.summary.replace(' [SIMULATED TAMPER]','') : e.summary+' [SIMULATED TAMPER]',tampered:!e.tampered} : e);
     setEvidence(next); log('TAMPER_SIMULATED',item.id+' modified for training; original digest remains to demonstrate integrity mismatch.');
   }
   function responseAction(action: string, decision: 'Approved'|'Rejected') {
