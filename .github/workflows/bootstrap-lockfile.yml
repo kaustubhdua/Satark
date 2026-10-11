@@ -1,0 +1,46 @@
+name: Bootstrap frontend lockfile (temporary)
+
+on:
+  push:
+    branches:
+      - hardening/satark-release-gates-2026-10
+    paths:
+      - "web/package.json"
+      - ".github/workflows/bootstrap-lockfile.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve and write npm lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "Lockfile already exists."
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit generated lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            if git diff --cached --quiet; then
+              echo "Lockfile is already current."
+              exit 0
+            fi
+            git commit -m "Add reproducible frontend dependency lockfile"
+            git push
+          fi
