@@ -46,7 +46,7 @@ export default function ReportsPage() {
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
         </section>
-        <div className="notice-panel"><strong>Report boundary</strong><p>This exports only the notes you enter here, not a certified forensic report. Verify evidence independently and record the limits of your review. Your notes remain in this browser session and are not uploaded by this page.</p></div>
+        <div className="notice-panel"><strong>Report boundary</strong><p>This exports only the notes you enter here, not a certified forensic report. Verify evidence independently and record the limits of your review. Notes are held in page memory and are not uploaded; export them before leaving.</p></div>
       </div>
     </main>
   );
