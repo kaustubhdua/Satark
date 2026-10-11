@@ -111,7 +111,7 @@ export default function Home() {
           <div className="workspace-grid">
             <article className="workspace-card"><div className="workspace-icon">⌕</div><h3>Investigate content</h3><p>Analyze a suspicious URL or message with AI-assisted triage and deterministic signals.</p><a className="text-link" href="/investigate">Open investigation →</a></article>
             <article className="workspace-card"><div className="workspace-icon">✳</div><h3>FIRSTLIGHT case lab</h3><p>Explore a guided synthetic case, evidence integrity, timelines and response decisions.</p><a className="text-link" href="/firstlight">Open case lab →</a></article>
-            <article className="workspace-card"><div className="workspace-icon">▤</div><h3>Evidence & reports</h3><p>Review analysis results and export a report from your current session.</p><a className="text-link" href="/reports">Open reports →</a></article>
+            <article className="workspace-card"><div className="workspace-icon">▤</div><h3>Evidence & reports</h3><p>Draft and export your own investigation review notes.</p><a className="text-link" href="/reports">Open reports →</a></article>
             <article className="workspace-card"><div className="workspace-icon">◎</div><h3>Security learning</h3><p>Practice identifying social engineering signals with safe, educational examples.</p><a className="text-link" href="/learn">Open learning hub →</a></article>
           </div>
         </section>
