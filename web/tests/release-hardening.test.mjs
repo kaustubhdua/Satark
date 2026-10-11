@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
+const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
+const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
+const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
+
+test('baseline security headers are configured', () => {
+  for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy']) {
+    assert.match(config, new RegExp(header));
+  }
+});
+
+test('independent reputation lookups execute concurrently', () => {
+  assert.match(analyze, /Promise\.all\(\[/);
+  assert.match(analyze, /checkUrlhaus\(input, shareWithThreatIntel\)/);
+  assert.match(analyze, /checkAbuseIpDb\(input, shareIpWithThreatIntel\)/);
+});
+
+test('reports exports only user-authored notes in TXT and versioned JSON', () => {
+  assert.match(reports, /satark-review-notes\.txt/);
+  assert.match(reports, /satark-review-notes\.json/);
+  assert.match(reports, /schema_version: 1/);
+  assert.match(reports, /No analysis results or provider evidence are automatically included/);
+});
+
+test('FIRSTLIGHT explicitly marks response actions as simulation only', () => {
+  assert.match(firstlight, /SYNTHETIC/);
+  assert.match(firstlight, /no real system action executed/);
+  assert.match(firstlight, /does not inspect the endpoint or file/);
+});
