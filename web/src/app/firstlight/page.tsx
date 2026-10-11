@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { parseCsv } from '../../lib/firstlight-import.mjs';
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean };
 type Audit = { time: string; action: string; detail: string };
@@ -16,43 +17,6 @@ async function digest(text: string) {
   const bytes = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(hash)).map(x => x.toString(16).padStart(2, '0')).join('');
-}
-function parseCsv(text: string) {
-  // RFC-4180-style parser: quoted fields may contain commas, quotes, and newlines.
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted) {
-      if (char === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else quoted = false;
-      } else field += char;
-    } else if (char === '"' && field.length === 0) quoted = true;
-    else if (char === ',') { row.push(field); field = ''; }
-    else if (char === '\n' || char === '\r') {
-      if (char === '\r' && text[i + 1] === '\n') i++;
-      row.push(field); field = '';
-      if (row.some(cell => cell.trim() !== '')) rows.push(row);
-      row = [];
-    } else field += char;
-  }
-  if (quoted) throw new Error('CSV contains an unclosed quoted field.');
-  if (field.length || row.length) { row.push(field); if (row.some(cell => cell.trim() !== '')) rows.push(row); }
-  if (rows.length < 2) throw new Error('CSV needs a header and at least one event row.');
-  const headers = rows[0].map(x => x.trim().toLowerCase());
-  if (!headers.some(h => ['id','timestamp','time','source','kind','summary','message','description','evidence_id'].includes(h))) {
-    throw new Error('CSV header must include event fields such as timestamp, source, kind, or summary.');
-  }
-  const records = rows.slice(1);
-  if (records.length > 10000) throw new Error('Import exceeds 10,000 event records.');
-  return records.map((cols, index) => {
-    const row: Record<string,string> = {};
-    headers.forEach((header, i) => row[header] = (cols[i] || '').trim());
-    return { id: row.id || 'IMP-' + String(index + 1).padStart(3, '0'), time: row.timestamp || row.time || new Date().toISOString(), source: row.source || 'Imported source', kind: row.kind || 'observation', summary: row.summary || row.message || row.description || 'Imported event' };
-  });
 }
 export default function FirstlightPage() {
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -93,6 +57,7 @@ export default function FirstlightPage() {
     if (file.size > 5 * 1024 * 1024) { setNotice('File exceeds the 5 MiB import limit.'); return; }
     try {
       const text = await file.text();
+      if (new TextEncoder().encode(text).byteLength > 5 * 1024 * 1024) throw new Error('File exceeds the 5 MiB import limit.');
       let rows: any[];
       if (file.name.toLowerCase().endsWith('.json')) {
         const parsed = JSON.parse(text);
