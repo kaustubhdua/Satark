@@ -2,7 +2,24 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+// Best-effort per-instance throttle; add platform-level quotas for production.
+const requestCounts = new Map<string, { start: number; count: number }>();
+function isRateLimited(request: Request) {
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const now = Date.now();
+  const entry = requestCounts.get(forwarded);
+  if (!entry || now - entry.start >= 60000) {
+    requestCounts.set(forwarded, { start: now, count: 1 });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > 8;
+}
+
 export async function POST(request: Request) {
+  if (isRateLimited(request)) {
+    return NextResponse.json({ error: 'Too many requests. Wait a minute and retry.' }, { status: 429 });
+  }
   let input: unknown;
   try {
     const body = await request.json();
