@@ -62,7 +62,7 @@ function extractFirstHttpUrl(input: string): string | null {
 
 function extractFirstIp(input: string): string | null {
   // Match address-shaped tokens only; isIP performs the actual IPv4/IPv6 validation.
-  const candidates = input.match(/(?:[0-9]{1,3}\\.){3}[0-9]{1,3}|[0-9a-fA-F:]{2,39}/g) || [];
+  const candidates = input.match(/(?:[0-9]{1,3}[.]){3}[0-9]{1,3}|[0-9a-fA-F:]{2,39}/g) || [];
   for (const candidate of candidates) {
     if (isIP(candidate)) return candidate;
   }
