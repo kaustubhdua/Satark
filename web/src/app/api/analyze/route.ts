@@ -61,10 +61,10 @@ function extractFirstHttpUrl(input: string): string | null {
 }
 
 function extractFirstIp(input: string): string | null {
-  const candidates = input.match(/(?:^|[^a-zA-Z0-9:])(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:$|[^a-zA-Z0-9.])|(?:^|[^a-zA-Z0-9])(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:$|[^a-zA-Z0-9])/g) || [];
+  // Match address-shaped tokens only; isIP performs the actual IPv4/IPv6 validation.
+  const candidates = input.match(/(?:[0-9]{1,3}\\.){3}[0-9]{1,3}|[0-9a-fA-F:]{2,39}/g) || [];
   for (const candidate of candidates) {
-    const value = candidate.trim().replace(/^[^0-9a-fA-F]+|[^0-9a-fA-F:.]+$/g, '');
-    if (isIP(value)) return value;
+    if (isIP(candidate)) return candidate;
   }
   return null;
 }
