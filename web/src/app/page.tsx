@@ -140,6 +140,7 @@ export default function Home() {
             <label htmlFor="content">Suspicious URL or message</label>
             <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }} placeholder="Paste a suspicious URL or message here…" maxLength={12000} aria-describedby="content-hint" />
              <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. The full extracted URL, including its path and query string, is shared with that external reputation service; do not submit private or signed URLs. This is optional and may be disabled by the server.</label>
+            <label className="intel-consent"><input type="checkbox" checked={shareIpWithThreatIntel} onChange={event => setShareIpWithThreatIntel(event.target.checked)} /> Also check a literal IP address against AbuseIPDB. The extracted IP is shared with that external service if enabled on the server; domains and arbitrary text are not queried. This is optional.</label>
             <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy || !input.trim()} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
             {error && <div className="result error" role="alert">{error}</div>}
             {result && <div className="analysis-result" role="status">
@@ -150,6 +151,7 @@ export default function Home() {
               <h4>Recommended next steps</h4><ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
               {result.limitations.length > 0 && <><h4>Limitations</h4><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
                {result.threat_intel && <div className="threat-intel-result"><h4>URL reputation · {result.threat_intel.source}</h4><p><strong>{result.threat_intel.status.replaceAll("_", " ")}</strong> — {result.threat_intel.detail}</p>{result.threat_intel.reference && <a href={result.threat_intel.reference} target="_blank" rel="noreferrer">Open URLhaus reference ↗</a>}</div>}
+              {result.ip_threat_intel && <div className="threat-intel-result"><h4>IP reputation · {result.ip_threat_intel.source}</h4><p><strong>{result.ip_threat_intel.status.replaceAll("_", " ")}</strong> — {result.ip_threat_intel.detail}</p>{result.ip_threat_intel.reference && <a href={result.ip_threat_intel.reference} target="_blank" rel="noreferrer">Open AbuseIPDB reference ↗</a>}</div>}
               <small>{result.notice} · Model: {result.model}</small>
             </div>}
           </div>
