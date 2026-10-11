@@ -15,6 +15,7 @@ type Analysis = {
   deterministic_signals: string[];
   model: string;
   notice: string;
+  threat_intel?: { status: string; source: string; detail: string; reference?: string };
 };
 
 export default function Home() {
@@ -22,6 +23,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | null>(null);
+  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);
 
   async function analyze() {
     setError('');
@@ -35,7 +37,7 @@ export default function Home() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ input: input.trim() })
+        body: JSON.stringify({ input: input.trim(), shareWithThreatIntel })
       });
       const contentType = response.headers.get('content-type') || '';
       const data: unknown = contentType.includes('application/json')
@@ -64,7 +66,8 @@ export default function Home() {
         !Array.isArray(candidate.limitations) ||
         !Array.isArray(candidate.deterministic_signals) ||
         typeof candidate.model !== 'string' ||
-        typeof candidate.notice !== 'string'
+        typeof candidate.notice !== 'string' ||
+        (candidate.threat_intel !== undefined && (!candidate.threat_intel || typeof candidate.threat_intel !== 'object' || typeof candidate.threat_intel.status !== 'string' || typeof candidate.threat_intel.detail !== 'string'))
       ) {
         throw new Error('The analysis service returned an incomplete result. Please retry.');
       }
@@ -136,6 +139,7 @@ export default function Home() {
             <h3>New investigation</h3>
             <label htmlFor="content">Suspicious URL or message</label>
             <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }} placeholder="Paste a suspicious URL or message here…" maxLength={12000} aria-describedby="content-hint" />
+             <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. Only the URL is shared with that external reputation service; this is optional and may be disabled by the server.</label>
             <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy || !input.trim()} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
             {error && <div className="result error" role="alert">{error}</div>}
             {result && <div className="analysis-result" role="status">
@@ -145,6 +149,7 @@ export default function Home() {
               <h4>AI-identified indicators</h4><ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
               <h4>Recommended next steps</h4><ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
               {result.limitations.length > 0 && <><h4>Limitations</h4><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+               {result.threat_intel && <div className="threat-intel-result"><h4>URL reputation · {result.threat_intel.source}</h4><p><strong>{result.threat_intel.status.replaceAll("_", " ")}</strong> — {result.threat_intel.detail}</p>{result.threat_intel.reference && <a href={result.threat_intel.reference} target="_blank" rel="noreferrer">Open URLhaus reference ↗</a>}</div>}
               <small>{result.notice} · Model: {result.model}</small>
             </div>}
           </div>
