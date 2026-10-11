@@ -87,7 +87,7 @@ async function inspectViewport(viewport, label) {
       await launch.waitFor();
       await launch.click();
       await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
-      await page.getByText(/5 synthetic records hashed with SHA-256/i).waitFor();
+      assert.equal(await page.locator('.evidence-table tbody tr').count(), 5, 'training case should load five evidence records');
 
       const tamper = page.getByRole('button', { name: /simulate tamper/i }).first();
       await tamper.click();
