@@ -85,6 +85,23 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="tools-section">
+          <div className="section-title"><div><div className="eyebrow">SATARK TOOLKIT</div><h2>One workspace. Different kinds of evidence.</h2></div><p>Choose a focused workflow. Tools that are not yet ported into Next.js open the existing full SATARK application.</p></div>
+          <div className="tool-grid">
+            {[
+              ['01','Text & message triage','Spot pressure tactics, impersonation cues and risky requests.','/investigate','OPEN ANALYSIS'],
+              ['02','URL review','Review a URL as text without automatically visiting it.','/investigate','OPEN ANALYSIS'],
+              ['03','Image & deepfake review','Image authenticity and visual-content analysis in the full app.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['04','QR-code investigation','Inspect suspicious QR content using the existing scanner.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['05','PDF & document review','Review document content with the full SATARK scanner.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['06','Video & media signals','Explore available video and media workflows in the full app.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['07','History & reports','Review the full app’s session history and export options.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['08','Academy & scam challenge','Practice recognition and awareness workflows.','/learn','OPEN LEARNING']
+            ].map(([number,title,description,href,action]) => <article className="tool-card" key={number}><div className="tool-card-top"><span>{number}</span><span className="tool-arrow">↗</span></div><h3>{title}</h3><p>{description}</p><a className="text-link" href={href} target={href.startsWith('http')?'_blank':undefined} rel={href.startsWith('http')?'noreferrer':undefined}>{action} →</a></article>)}
+          </div>
+          <div className="tool-boundary"><span>i</span><p><strong>Feature availability:</strong> text/URL triage and the interactive FIRSTLIGHT training workflow run in this Next.js workspace. The image, QR, PDF, video, and extended history tools still run in the existing Streamlit application; they are linked here rather than falsely presented as native Next.js features.</p></div>
+        </section>
+
         <section className="investigation" id="investigate">
           <aside className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{ color: '#dce6f4' }}>Important:</strong> AI output is an assessment, not proof. The app does not visit submitted URLs or execute files.</p></aside>
           <div className="form-panel">
