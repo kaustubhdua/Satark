@@ -30,6 +30,6 @@ test('URL reputation lookup is time-bounded and server secret is not public-pref
 });
 
 test('UI explains optional external data sharing and displays lookup status', () => {
-  assert.match(page, /Only the URL is shared with that external reputation service/);
+  assert.match(page, /full extracted URL/);
   assert.match(page, /threat_intel\.status/);
 });
