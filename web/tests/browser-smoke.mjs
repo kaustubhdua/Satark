@@ -84,17 +84,53 @@ async function inspectViewport(viewport, label) {
     if (route.path === '/firstlight') {
       await page.screenshot({ path: path.join(artifactDir, `firstlight-${label}.png`), fullPage: true });
       const launch = page.getByRole('button', { name: /launch training case/i });
-      if (await launch.count()) {
-        await launch.click();
-        await page.getByText(/synthetic records hashed|evidence ledger|artifacts & integrity/i).first().waitFor();
-        await page.getByRole('button', { name: /findings & gaps/i }).click();
-        await page.getByRole('heading', { name: /findings & evidence gaps/i }).waitFor();
-        await page.getByRole('button', { name: /timeline/i }).click();
-        await page.getByRole('heading', { name: /put observations in context/i }).waitFor();
-        await page.getByRole('button', { name: /response review/i }).click();
-        await page.getByRole('button', { name: /approve/i }).first().click();
-        await page.getByText(/recorded decisions/i).waitFor();
-      }
+      await launch.waitFor();
+      await launch.click();
+      await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
+      await page.getByText(/5 synthetic records hashed with SHA-256/i).waitFor();
+
+      const tamper = page.getByRole('button', { name: /simulate tamper/i }).first();
+      await tamper.click();
+      await page.getByText('MISMATCH').first().waitFor();
+      await page.getByRole('button', { name: /restore demo/i }).first().click();
+      await page.getByText('HASHED').first().waitFor();
+
+      await page.getByRole('button', { name: /findings & gaps/i }).click();
+      await page.getByRole('heading', { name: /findings & evidence gaps/i }).waitFor();
+      await page.getByRole('button', { name: /timeline/i }).click();
+      await page.getByRole('heading', { name: /put observations in context/i }).waitFor();
+      await page.getByRole('button', { name: /response review/i }).click();
+      await page.getByRole('button', { name: /approve/i }).first().click();
+      await page.getByRole('button', { name: /reject/i }).nth(1).click();
+      await page.getByText(/recorded decisions/i).waitFor();
+      await page.getByRole('button', { name: /audit trail/i }).click();
+      await page.getByRole('heading', { name: /decision trail/i }).waitFor();
+      await page.getByText(/SIMULATED_RESPONSE_APPROVED/i).waitFor();
+      await page.getByText(/SIMULATED_RESPONSE_REJECTED/i).waitFor();
+
+      const fileInput = page.locator('input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'training-events.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify([{ id: 'QA-001', timestamp: '2026-10-11T10:00:00Z', source: 'QA test', kind: 'message', summary: 'Urgent account verification request' }])),
+      });
+      await page.getByRole('status').filter({ hasText: /Imported and hashed locally/i }).waitFor();
+      await page.getByText('QA-001').waitFor();
+
+      await fileInput.setInputFiles({
+        name: 'training-events.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('id,timestamp,source,kind,summary\\nQA-CSV-001,2026-10-11T10:05:00Z,QA test,message,Unexpected login notice\\n'),
+      });
+      await page.getByRole('status').filter({ hasText: /Imported and hashed locally/i }).waitFor();
+      await page.getByText('QA-CSV-001').waitFor();
+
+      await fileInput.setInputFiles({
+        name: 'invalid-events.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify([{ timestamp: 'not-a-date', summary: 'Invalid timestamp case' }])),
+      });
+      await page.getByRole('status').filter({ hasText: /Invalid timestamp in event 1/i }).waitFor();
     }
   }
   await page.close();
