@@ -59,15 +59,26 @@ export async function POST(request: Request) {
     return error('Request body is too large.', 413);
   }
 
-  let bodyText: string;
+  let bodyText = '';
   try {
-    // Read text before JSON parsing so the body can be size-checked first.
-    bodyText = await request.text();
+    // Stream the body and stop reading as soon as the byte budget is exceeded.
+    if (!request.body) return error('Send a valid JSON request.', 400);
+    const reader = request.body.getReader();
+    const decoder = new TextDecoder();
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return error('Request body is too large.', 413);
+      }
+      bodyText += decoder.decode(value, { stream: true });
+    }
+    bodyText += decoder.decode();
   } catch {
     return error('Send a valid JSON request.', 400);
-  }
-  if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
-    return error('Request body is too large.', 413);
   }
 
   let input: unknown;
