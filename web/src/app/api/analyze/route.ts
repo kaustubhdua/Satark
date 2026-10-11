@@ -12,9 +12,7 @@ const requestCounts = new Map<string, { start: number; count: number }>();
 // This is a best-effort per-instance guard, not a distributed rate limiter.
 // Configure a shared/platform-level limit before exposing the endpoint to broad traffic.
 function isRateLimited(request: Request) {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',').map(value => value.trim()).filter(Boolean) ?? [];
-  // Prefer the platform-appended final entry over caller-supplied leading entries.
-  const client = forwarded.at(-1) || 'unknown';
+  const client = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const now = Date.now();
 
   if (requestCounts.size >= MAX_TRACKED_CLIENTS) {
