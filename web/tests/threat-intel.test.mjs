@@ -47,7 +47,7 @@ test('AbuseIPDB is opt-in, separately feature-flagged, IP-literal-only, and time
   assert.match(route, /parsedBody\.shareIpWithThreatIntel === true/);
   assert.match(route, /SATARK_ENABLE_ABUSEIPDB !== 'true'/);
   assert.match(route, /ABUSEIPDB_API_KEY/);
-  assert.match(route, /isIP\(value\)/);
+  assert.match(route, /isIP\\(candidate\\)/);
   assert.match(route, /api\.abuseipdb\.com\/api\/v2\/check/);
   assert.match(route, /maxAgeInDays: '90'/);
   assert.match(route, /AbortController/);
