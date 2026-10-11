@@ -280,8 +280,11 @@ export async function POST(request: Request) {
       ['URL present', /https?:\/\/|www\./i],
     ];
 
-    const threatIntel = await checkUrlhaus(input, shareWithThreatIntel);
-    const ipThreatIntel = await checkAbuseIpDb(input, shareIpWithThreatIntel);
+    // Independent providers run concurrently; each enforces its own five-second timeout.
+    const [threatIntel, ipThreatIntel] = await Promise.all([
+      checkUrlhaus(input, shareWithThreatIntel),
+      checkAbuseIpDb(input, shareIpWithThreatIntel),
+    ]);
 
     return NextResponse.json({
       threat_category: category,
