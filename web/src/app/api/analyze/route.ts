@@ -207,10 +207,12 @@ export async function POST(request: Request) {
     return error('Input must be 12,000 characters or fewer.', 413);
   }
 
-  let shareWithThreatIntel = false;\n  let shareIpWithThreatIntel = false;
+  let shareWithThreatIntel = false;
+  let shareIpWithThreatIntel = false;
   try {
     const parsedBody = JSON.parse(bodyText) as Record<string, unknown>;
-    shareWithThreatIntel = parsedBody.shareWithThreatIntel === true;\n    shareIpWithThreatIntel = parsedBody.shareIpWithThreatIntel === true;
+    shareWithThreatIntel = parsedBody.shareWithThreatIntel === true;
+    shareIpWithThreatIntel = parsedBody.shareIpWithThreatIntel === true;
   } catch {
     // Fail closed: external reputation sharing stays disabled.
   }
@@ -278,7 +280,8 @@ export async function POST(request: Request) {
       ['URL present', /https?:\/\/|www\./i],
     ];
 
-    const threatIntel = await checkUrlhaus(input, shareWithThreatIntel);\n    const ipThreatIntel = await checkAbuseIpDb(input, shareIpWithThreatIntel);
+    const threatIntel = await checkUrlhaus(input, shareWithThreatIntel);
+    const ipThreatIntel = await checkAbuseIpDb(input, shareIpWithThreatIntel);
 
     return NextResponse.json({
       threat_category: category,
@@ -291,7 +294,8 @@ export async function POST(request: Request) {
       limitations: stringList(result.limitations),
       deterministic_signals: rules.filter(([, pattern]) => pattern.test(input)).map(([label]) => label),
       model: 'openai/gpt-oss-120b',
-      threat_intel: threatIntel,\n      ip_threat_intel: ipThreatIntel,
+      threat_intel: threatIntel,
+      ip_threat_intel: ipThreatIntel,
       notice: 'AI-assisted triage only. SATARK does not open URLs or execute files. If opted in and enabled by the server, the extracted URL is sent to URLhaus and/or the extracted IP literal is sent to AbuseIPDB for reputation lookup.',
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
