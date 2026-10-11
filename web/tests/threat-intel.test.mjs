@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const route = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
-const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');\nconst investigatePage = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');\nconst envExample = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
+const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
+const investigatePage = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
+const envExample = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
 
 test('URLhaus lookup is gated by explicit user opt-in and a server-side flag', () => {
   assert.match(page, /checked=\{shareWithThreatIntel\}/);
