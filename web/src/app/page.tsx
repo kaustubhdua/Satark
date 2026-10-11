@@ -15,7 +15,7 @@ type Analysis = {
   deterministic_signals: string[];
   model: string;
   notice: string;
-  threat_intel?: { status: string; source: string; detail: string; reference?: string };
+  threat_intel?: { status: string; source: string; detail: string; reference?: string };\n  ip_threat_intel?: { status: string; source: string; detail: string; reference?: string };
 };
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | null>(null);
-  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);
+  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);\n  const [shareIpWithThreatIntel, setShareIpWithThreatIntel] = useState(false);
 
   async function analyze() {
     setError('');
@@ -37,7 +37,7 @@ export default function Home() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ input: input.trim(), shareWithThreatIntel })
+        body: JSON.stringify({ input: input.trim(), shareWithThreatIntel, shareIpWithThreatIntel })
       });
       const contentType = response.headers.get('content-type') || '';
       const data: unknown = contentType.includes('application/json')
@@ -67,7 +67,7 @@ export default function Home() {
         !Array.isArray(candidate.deterministic_signals) ||
         typeof candidate.model !== 'string' ||
         typeof candidate.notice !== 'string' ||
-        (candidate.threat_intel !== undefined && (!candidate.threat_intel || typeof candidate.threat_intel !== 'object' || typeof candidate.threat_intel.status !== 'string' || typeof candidate.threat_intel.detail !== 'string'))
+        (candidate.threat_intel !== undefined && (!candidate.threat_intel || typeof candidate.threat_intel !== 'object' || typeof candidate.threat_intel.status !== 'string' || typeof candidate.threat_intel.detail !== 'string')) ||\n        (candidate.ip_threat_intel !== undefined && (!candidate.ip_threat_intel || typeof candidate.ip_threat_intel !== 'object' || typeof candidate.ip_threat_intel.status !== 'string' || typeof candidate.ip_threat_intel.detail !== 'string'))
       ) {
         throw new Error('The analysis service returned an incomplete result. Please retry.');
       }
