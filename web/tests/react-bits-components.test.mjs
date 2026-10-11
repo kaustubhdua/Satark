@@ -7,7 +7,7 @@ const styles = await readFile(new URL('../src/components/react-bits.css', import
 
 test('all five visual components are exported and styled', () => {
   for (const name of ['SplitFlapText', 'LatticeLoader', 'ThoughtLine', 'Radar', 'CodeSlots']) {
-    assert.match(source, new RegExp('export function ' + name + '\\\\b'), name + ' export exists');
+    assert.match(source, new RegExp('export function ' + name + '\\b'), name + ' export exists');
   }
   assert.match(source, /prefers-reduced-motion/);
   assert.match(styles, /@media\\(prefers-reduced-motion:reduce\\)/);
