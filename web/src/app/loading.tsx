@@ -1,0 +1,3 @@
+export default function Loading() {
+  return <main className="loading-screen" role="status" aria-live="polite"><div className="loading-grid" aria-hidden="true"/><div className="loader-mark">S<span>.</span></div><div className="loader-eyebrow">SATARK SENTINEL / SECURE WORKSPACE</div><h1>Preparing your workspace<span>…</span></h1><p>Loading investigation tools and evidence context.</p><div className="loader-track"><span/></div><div className="loader-foot">EVIDENCE FIRST · HUMAN REVIEW ALWAYS</div></main>;
+}
