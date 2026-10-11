@@ -1,0 +1,13 @@
+'use client';
+
+import { useState } from 'react';
+const questions = [
+ {q:'A message says your account will be blocked in 10 minutes unless you log in through its link. What is the safest next step?',options:['Click quickly before it expires','Open the official app/site independently and check for alerts','Reply with your OTP to verify identity'],correct:1,why:'Urgency and an unsolicited link are warning signs. Verify through a trusted channel you open independently.'},
+ {q:'A message claims you won a prize but must pay a processing fee first. What should you do?',options:['Pay a small fee to test it','Share bank details so the prize can be sent','Treat it as suspicious and verify the claim independently'],correct:2,why:'Advance-fee prize claims are a common scam pattern. Do not send money or sensitive details to claim an unsolicited prize.'},
+ {q:'An AI scanner labels a message “low risk”. Does that prove it is safe?',options:['Yes, the model checked everything','No. Review evidence and verify the sender independently','Only if the message has a logo'],correct:1,why:'AI outputs can be wrong and may lack context. A risk label is a triage signal, not proof.'}
+];
+export default function LearnPage() {
+ const [answers,setAnswers] = useState<Record<number,number>>({});
+ const [checked,setChecked] = useState(false);
+ return <main className="shell"><header className="topbar"><a className="brand" href="/"><span className="brand-mark">S</span>SATARK<span style={{color:'var(--lime)'}}>.</span></a><nav className="nav-links"><a href="/investigate">Investigate</a><a href="/firstlight">FIRSTLIGHT</a><a href="/reports">Reports</a><a href="/learn">Learn</a></nav></header><div className="container subpage"><div className="eyebrow">SECURITY AWARENESS / PRACTICE</div><h1>Pause. Verify. Then act.</h1><p className="lead">Practice spotting common social-engineering patterns. This short quiz is educational and does not certify a message as safe or malicious.</p>{questions.map((q,i)=><section className="form-panel quiz-card" key={q.q}><h3>{i+1}. {q.q}</h3>{q.options.map((option,j)=><label className="quiz-option" key={option}><input type="radio" name={'q'+i} checked={answers[i]===j} onChange={()=>{setAnswers({...answers,[i]:j});setChecked(false)}}/>{option}</label>)}{checked&&<div className="notice-panel"><strong>{answers[i]===q.correct?'Correct':'Review this answer'}</strong><p>{q.why}</p></div>}</section>)}<button className="btn btn-primary" onClick={()=>setChecked(true)} disabled={Object.keys(answers).length!==questions.length}>Check answers →</button>{checked&&<p className="lead">Score: {questions.filter((q,i)=>answers[i]===q.correct).length} / {questions.length}</p>}</div></main>;
+}
