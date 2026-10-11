@@ -7,20 +7,37 @@ export default function ReportsPage() {
   const [report, setReport] = useState('');
   const [exported, setExported] = useState(false);
 
-  function download() {
-    const notes = report.trim();
-    if (!notes) return;
-    const blob = new Blob([notes + '\n'], { type: 'text/plain;charset=utf-8' });
+  function saveFile(filename: string, content: string, type: string) {
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = 'satark-review-notes.txt';
+    anchor.download = filename;
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     setExported(true);
+  }
+
+  function download() {
+    const notes = report.trim();
+    if (!notes) return;
+    saveFile('satark-review-notes.txt', notes + '\n', 'text/plain;charset=utf-8');
+  }
+
+  function downloadJson() {
+    const notes = report.trim();
+    if (!notes) return;
+    const exportedAt = new Date().toISOString();
+    saveFile('satark-review-notes.json', JSON.stringify({
+      schema_version: 1,
+      exported_at: exportedAt,
+      report_type: 'user-authored-review-notes',
+      notes,
+      limitations: ['These are user-authored notes only.', 'No analysis results or provider evidence are automatically included.', 'This export is not a certified forensic report.'],
+    }, null, 2) + '\n', 'application/json;charset=utf-8');
   }
 
   return (
@@ -42,6 +59,7 @@ export default function ReportsPage() {
             <div className="button-row">
               <button className="btn btn-secondary" type="button" disabled={!report} onClick={() => { setReport(''); setExported(false); }}>Clear notes</button>
               <button className="btn btn-primary" type="button" disabled={!report.trim()} onClick={download}>Export notes (.txt) ↓</button>
+              <button className="btn btn-secondary" type="button" disabled={!report.trim()} onClick={downloadJson}>Export notes (.json) ↓</button>
             </div>
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
