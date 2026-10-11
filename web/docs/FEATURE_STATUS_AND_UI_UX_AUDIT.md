@@ -1,3 +1,28 @@
+# SATARK release hardening follow-up
+
+Audit date: 2026-10-11. This section separates code/CI evidence from real deployment and provider verification.
+
+## P0 / P1 / P2 execution status
+
+- P0 release gate: PR #41 was merged after Web CI, root CI, and CodeQL all reported success for its final PR head. This verifies the CI checks on that head; it does not prove the merged deployment is live or that external API credentials work.
+- P0 live provider verification: not completed in this environment. No provider credentials were read or exposed. Run authorized staging tests for Groq, URLhaus and AbuseIPDB; keep URLhaus/AbuseIPDB feature flags disabled until their tests pass.
+- P1 API boundary: request body/input bounds and per-instance throttling exist. A per-instance map is not a distributed abuse control. Add a Vercel/platform-level rate limit or shared store before high-traffic public exposure. Baseline security response headers are being added in the follow-up branch; verify actual headers against a deployed build.
+- P1 response latency: independent URLhaus and AbuseIPDB calls now run concurrently, each with a five-second timeout, instead of serially. This reduces worst-case additive waiting but does not guarantee provider availability.
+- P1 accessibility: CI browser smoke checks are not a full WCAG audit. Keyboard, screen-reader, contrast, zoom, reduced-motion and mobile visual review still need a human pass; add axe-based automated coverage.
+- P2 reports: report export now supports plain-text notes and a versioned JSON envelope. It still exports only what the user typed; it does not automatically bundle analysis findings, evidence, external lookups or a verified chain of custody.
+- P2 history: no durable authenticated investigation history is established in this app. Current state is session/page memory unless a feature explicitly says otherwise.
+- P2 integrations: the FIRSTLIGHT training workflow remains synthetic; Microsoft live-response adapters in PR #40 are not implied to be enabled or production-verified by merging PR #41. Streamlit-linked media tools remain separate handoffs and must be tested in their own deployment.
+
+## Feature truth labels
+
+Use these definitions in the UI and release notes:
+- **Live**: a real external provider or deployed service was called successfully in a controlled test, with timestamped evidence.
+- **Implemented, not live-verified**: code exists but valid deployment credentials or a successful end-to-end call have not been demonstrated.
+- **Synthetic/simulated**: data or actions are generated locally for training; no real account, endpoint or provider is changed.
+- **Local-only**: browser memory or downloads; no server persistence.
+- **Handoff**: navigation to a separate app; it is not native functionality in this Next.js app.
+- **Unavailable/disabled**: configuration or provider state prevents the feature from running.
+
 # SATARK feature status and UI/UX review
 
 Audit date: 2026-10-11
