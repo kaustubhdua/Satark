@@ -60,7 +60,7 @@ async function inspectViewport(viewport, label) {
     }
     if (route.path === '/reports') {
       const notes = page.getByLabel('Review notes');
-      const exportButton = page.getByRole('button', { name: /export notes \(\.txt\)/i });
+      const exportButton = page.getByRole('button', { name: /export notes/i });
       assert.equal(await exportButton.isDisabled(), true, 'export should be disabled for empty notes');
       await notes.fill('Synthetic review note: verify sender through official channel.');
       assert.equal(await exportButton.isDisabled(), false, 'export should enable after notes are entered');
@@ -80,6 +80,13 @@ async function inspectViewport(viewport, label) {
       await page.getByRole('button', { name: /reset quiz/i }).click();
       assert.equal(await page.locator('input[type="radio"]:checked').count(), 0);
       assert.equal(await page.getByRole('button', { name: /check answers/i }).isDisabled(), true);
+      const demoInput = page.getByRole('textbox', { name: /demo code entry/i });
+      await demoInput.fill('123456');
+      await page.getByText(/demo interaction complete/i).waitFor();
+      await page.getByRole('button', { name: /reset code demo/i }).click();
+      assert.equal(await demoInput.inputValue(), '', 'reset should clear the code demo input');
+      await demoInput.fill('654321');
+      await page.getByText(/demo interaction complete/i).waitFor();
     }
     if (route.path === '/firstlight') {
       await page.screenshot({ path: path.join(artifactDir, `firstlight-${label}.png`), fullPage: true });

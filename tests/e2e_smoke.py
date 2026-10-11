@@ -52,24 +52,29 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Use the real selectbox keyboard path and verify the selected workspace."""
-    options = [
-        ("Incident", "Incident workspace"),
-        ("Evidence Integrity", "Evidence integrity"),
-        ("Investigation", "Coordinated investigation"),
-        ("Response Center", "Response center"),
-        ("Audit Trail", "Hash-chained audit trail"),
-    ]
-    workspace = page.get_by_role("combobox", name="Investigation workspace")
-    workspace.click()
-    # Streamlit's React-ARIA popover can rerender/detach options during a
-    # pointer click. Keyboard selection is a supported user interaction and
-    # avoids clicking a transient option node.
-    workspace.press("Home")
+    """Choose a workspace through the combobox keyboard contract, tolerating Streamlit reruns."""
+    options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
+    active_markers = {
+        0: "Collection priority",
+        1: "Evidence Integrity Challenge",
+        2: "Coordinated investigation",
+        3: "Response action log",
+        4: "Hash-chained audit trail",
+    }
+    page.get_by_role("combobox", name="Investigation workspace").wait_for(
+        state="visible", timeout=10_000
+    )
+    page.get_by_role("combobox", name="Investigation workspace").click()
+    # Streamlit may replace its React-ARIA popup on reruns. Reacquire the
+    # combobox for every keypress instead of interacting with a transient option.
+    page.get_by_role("combobox", name="Investigation workspace").press("Home")
     for _ in range(steps_down):
-        workspace.press("ArrowDown")
-    workspace.press("Enter")
-    page.get_by_text(re.compile(re.escape(options[steps_down][1]), re.IGNORECASE), exact=False).wait_for(timeout=30_000)
+        page.get_by_role("combobox", name="Investigation workspace").press("ArrowDown")
+    page.get_by_role("combobox", name="Investigation workspace").press("Enter")
+    page.get_by_role("combobox", name="Investigation workspace").get_by_text(
+        options[steps_down], exact=True
+    ).wait_for(timeout=10_000)
+    page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
 
 
 

@@ -14,6 +14,7 @@ export default function LearnPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
   const [demoCodeStatus, setDemoCodeStatus] = useState<'idle' | 'success'>('idle');
+  const [demoCode, setDemoCode] = useState('');
   const answeredCount = Object.keys(answers).length;
   const correctCount = questions.filter((question, index) => answers[index] === question.correct).length;
 
@@ -62,9 +63,9 @@ export default function LearnPage() {
           <div className="eyebrow">INTERACTION SANDBOX</div>
           <h2 id="code-demo-title">Try the animated code entry.</h2>
           <p>This is a visual component demo only. It does not verify identity, send a code, or protect an account.</p>
-          <CodeSlots length={6} status={demoCodeStatus} onChange={() => setDemoCodeStatus('idle')} onComplete={() => setDemoCodeStatus('success')} accentColor="#c9f36b" inkColor="#c9f36b" slotColor="#171e2a" digitColor="#11170a" dangerColor="#ff7474" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
+          <CodeSlots length={6} value={demoCode} status={demoCodeStatus} onChange={(code) => { setDemoCode(code); setDemoCodeStatus('idle'); }} onComplete={() => setDemoCodeStatus('success')} accentColor="#c9f36b" inkColor="#c9f36b" slotColor="#171e2a" digitColor="#11170a" dangerColor="#ff7474" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
           <div className="hint" aria-live="polite">{demoCodeStatus === 'success' ? 'Demo interaction complete — reset to try it again.' : 'Enter any six digits to preview the success state.'}</div>
-          {demoCodeStatus === 'success' && <button className="btn btn-secondary" type="button" onClick={() => setDemoCodeStatus('idle')}>Reset code demo</button>}
+          {demoCodeStatus === 'success' && <button className="btn btn-secondary" type="button" onClick={() => { setDemoCode(''); setDemoCodeStatus('idle'); }}>Reset code demo</button>}
         </section>
       </div>
     </main>

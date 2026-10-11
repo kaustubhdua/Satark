@@ -6,3 +6,6 @@
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:640px){.split-flap-text{--sf-font:clamp(18px,5vw,30px)!important;gap:3px!important}.split-flap-tile{flex-basis:.78em}.code-slots-row{gap:clamp(3px,var(--cs-gap),8px)}.code-slot{flex-basis:clamp(30px,var(--cs-size),44px);width:clamp(30px,var(--cs-size),44px)}}
 @media(prefers-reduced-motion:reduce){.split-flap-text[data-flipping] .split-flap-tile,.lattice-cell,.thought-glyph,.thought-line[data-working] .thought-title,.thought-step>span i,.code-slot-caret{animation:none!important}.split-flap-tile,.code-slot-fill,.thought-trace{transition:none!important}}
+
+.code-slot[data-filled]{animation:code-pop var(--cs-bounce,.24s) cubic-bezier(.2,1.4,.4,1) both}.code-slot[data-filled] .code-slot-fill{transform:scale(1)}@keyframes code-pop{from{transform:translateY(var(--cs-rise,8px)) scale(.96)}to{transform:translateY(0) scale(1)}}.code-slots-row:focus-within .code-slot[data-active]{outline:2px solid var(--cs-ink);outline-offset:2px}.code-slots-row input:focus-visible{outline:none}
+@media(prefers-reduced-motion:reduce){.code-slot[data-filled]{animation:none!important}}
