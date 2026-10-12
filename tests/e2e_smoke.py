@@ -126,7 +126,14 @@ def main():
                     ("Overview", "Pause the panic."),
                 ):
                     page.locator('[data-testid="stSidebar"] button').filter(has_text=label).click()
-                    page.get_by_text(marker).wait_for(timeout=30_000)
+                    if label == "Overview":
+                        # The editorial hero uses an HTML <br> and a nested span,
+                        # so the full phrase is not one text node for get_by_text().
+                        hero_title = page.locator(".satark-home-hero h1")
+                        hero_title.wait_for(timeout=30_000)
+                        assert "Pause the panic." in hero_title.inner_text()
+                    else:
+                        page.get_by_text(marker).wait_for(timeout=30_000)
 
                 # FIRSTLIGHT is the flagship workspace; exercise its main
                 # synthetic-only investigation path without provider credentials.
