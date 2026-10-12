@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 
 const baseURL = process.env.SATARK_WEB_URL || 'http://127.0.0.1:3000';
@@ -150,20 +151,25 @@ async function inspectViewport(viewport, label) {
       await page.getByText(/SIMULATED_RESPONSE_REJECTED/i).waitFor();
 
       const fileInput = page.locator('input[type="file"]');
+      const jsonBuffer = Buffer.from(JSON.stringify([{ id: 'QA-001', timestamp: '2026-10-11T10:00:00Z', source: 'QA test', kind: 'message', summary: 'Urgent account verification request' }]));
+      const originalFileHash = createHash('sha256').update(jsonBuffer).digest('hex');
       await fileInput.setInputFiles({
         name: 'training-events.json',
         mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify([{ id: 'QA-001', timestamp: '2026-10-11T10:00:00Z', source: 'QA test', kind: 'message', summary: 'Urgent account verification request' }])),
+        buffer: jsonBuffer,
       });
-      await page.getByRole('status').filter({ hasText: /Imported and hashed locally/i }).waitFor();
+      await page.getByRole('status').filter({ hasText: /Imported locally/i }).waitFor();
       await page.getByText('QA-001').waitFor();
+      await page.getByRole('button', { name: /audit trail/i }).click();
+      await page.getByText(originalFileHash, { exact: false }).waitFor();
+      await page.getByText(/no external anchor or custody log/i).waitFor();
 
       await fileInput.setInputFiles({
         name: 'training-events.csv',
         mimeType: 'text/csv',
         buffer: Buffer.from('id,timestamp,source,kind,summary\nQA-CSV-001,2026-10-11T10:05:00Z,QA test,message,Unexpected login notice\n'),
       });
-      await page.getByRole('status').filter({ hasText: /Imported and hashed locally/i }).waitFor();
+      await page.getByRole('status').filter({ hasText: /Imported locally/i }).waitFor();
       await page.getByText('QA-CSV-001').waitFor();
 
       await fileInput.setInputFiles({
