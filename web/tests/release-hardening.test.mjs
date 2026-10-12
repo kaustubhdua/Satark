@@ -69,3 +69,12 @@ test('analysis API rejects unsupported media types before parsing bodies', () =>
   assert.match(analyze, /Content-Type must be application\/json/);
   assert.match(analyze, /return error\('Content-Type must be application\/json\.', 415\)/);
 });
+
+test('URLhaus consent is opt-in and query strings/fragments are stripped before sharing', () => {
+  assert.match(analyze, /parsed\.search = '';/);
+  assert.match(analyze, /parsed\.hash = '';/);
+  assert.match(analyze, /Never forward them to an external reputation provider/);
+  const investigate = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
+  assert.match(investigate, /query strings and fragments are removed first/);
+  assert.match(investigate, /Paths can still contain private identifiers/);
+});
