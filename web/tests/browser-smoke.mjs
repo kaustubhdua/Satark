@@ -46,7 +46,7 @@ async function inspectViewport(viewport, label) {
         .filter(element => {
           const style = getComputedStyle(element);
           if (style.display === 'none' || style.visibility === 'hidden' || element.getClientRects().length === 0) return false;
-          const labelledBy = (element.getAttribute('aria-labelledby') || '').split(/\\s+/)
+          const labelledBy = (element.getAttribute('aria-labelledby') || '').split(/\s+/)
             .map(id => document.getElementById(id)?.innerText || '').join(' ').trim();
           const nativeLabel = element.labels ? [...element.labels].map(label => label.innerText).join(' ').trim() : '';
           const text = (element.innerText || element.textContent || '').trim();
