@@ -24,6 +24,13 @@ async function inspectViewport(viewport, label) {
   for (const route of routes) {
     const response = await page.goto(baseURL + route.path, { waitUntil: 'networkidle' });
     assert.ok(response && response.status() < 400, `${label}: ${route.path} returned ${response?.status()}`);
+    const responseHeaders = await response.allHeaders();
+    assert.match(responseHeaders['content-security-policy'] || '', /object-src 'none'/,
+      `${label}: CSP must deny object embeds on ${route.path}`);
+    assert.match(responseHeaders['content-security-policy'] || '', /frame-ancestors 'none'/,
+      `${label}: CSP must prevent framing on ${route.path}`);
+    assert.match(responseHeaders['strict-transport-security'] || '', /max-age=31536000/,
+      `${label}: HSTS must be present on ${route.path}`);
     await page.locator('body').waitFor();
 
     // Catch structural accessibility regressions on every route and viewport.
