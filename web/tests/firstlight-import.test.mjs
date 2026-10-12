@@ -28,7 +28,7 @@ test('rejects empty and duplicate headers', () => {
 
 test('rejects duplicate evidence IDs in CSV imports', () => {
   assert.throws(
-    () => parseCsv('id,timestamp,summary\\nEV-1,2026-10-10T10:00:00Z,First\\nEV-1,2026-10-10T10:01:00Z,Second'),
+    () => parseCsv('id,timestamp,summary\nEV-1,2026-10-10T10:00:00Z,First\nEV-1,2026-10-10T10:01:00Z,Second'),
     /duplicate evidence IDs/i
   );
 });
