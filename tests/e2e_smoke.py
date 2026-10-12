@@ -58,7 +58,7 @@ def choose_workspace(page, steps_down):
         0: "Collection priority",
         1: "Evidence Integrity Challenge",
         2: "Coordinated investigation",
-        3: "Response action log",
+        3: "Human approval gate",
         4: "Hash-chained audit trail",
     }
     page.get_by_role("combobox", name="Investigation workspace").wait_for(
