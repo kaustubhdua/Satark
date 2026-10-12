@@ -1,0 +1,76 @@
+name: Production smoke check
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Public production URL to verify"
+        required: false
+        type: string
+        default: "https://satark-qzym.vercel.app"
+  schedule:
+    - cron: "30 3 * * *"
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: satark-production-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SATARK_PRODUCTION_URL: ${{ inputs.base_url || 'https://satark-qzym.vercel.app' }}
+    steps:
+      - name: Check public production routes and security headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${SATARK_PRODUCTION_URL%/}"
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          trap 'rm -f "$body" "$headers"' EXIT
+
+          check_route() {
+            local route="$1"
+            local marker="$2"
+            local status
+            status="$(curl --silent --show-error --location --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            if [[ "$status" != "200" ]]; then
+              echo "::error::Production route $route returned HTTP $status (expected 200)."
+              exit 1
+            fi
+            if ! grep -Eiq "$marker" "$body"; then
+              echo "::error::Production route $route did not contain its expected content marker."
+              exit 1
+            fi
+            for header in content-security-policy strict-transport-security x-content-type-options x-frame-options referrer-policy; do
+              if ! grep -Eiq "^$header:" "$headers"; then
+                echo "::error::Production route $route is missing security header $header."
+                exit 1
+              fi
+            done
+            echo "PASS $route: HTTP 200, expected content and baseline security headers."
+          }
+
+          check_route "/" "Pause the panic|SATARK|SENTINEL"
+          check_route "/investigate" "Investigate|analysis|suspicious"
+          check_route "/firstlight" "FIRSTLIGHT"
+          check_route "/reports" "Reports|Review notes"
+          check_route "/learn" "Learn|safety"
+
+          api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
+          if [[ "$api_status" != "405" ]]; then
+            echo "::error::GET /api/analyze returned HTTP $api_status (expected 405)."
+            exit 1
+          fi
+          if ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
+            echo "::error::GET /api/analyze must set Cache-Control: no-store."
+            exit 1
+          fi
+          echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
