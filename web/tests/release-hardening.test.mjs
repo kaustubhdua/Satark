@@ -106,3 +106,31 @@ test('URLhaus provider references cannot create off-site or unsafe links', async
     assert.equal(safeUrlhausReference(value), undefined, `unsafe provider reference rejected: ${String(value)}`);
   }
 });
+
+
+import { readJsonWithinLimit } from '../src/lib/bounded-json.mjs';
+
+test('provider JSON responses are parsed within a strict byte budget', async () => {
+  const response = new Response(JSON.stringify({ choices: [{ message: { content: '{"risk_score":25}' } }] }));
+  assert.deepEqual(await readJsonWithinLimit(response, 1024), {
+    choices: [{ message: { content: '{"risk_score":25}' } }],
+  });
+  await assert.rejects(
+    readJsonWithinLimit(new Response('x'.repeat(1025)), 1024),
+    /Provider response exceeded the allowed size/,
+  );
+  await assert.rejects(
+    readJsonWithinLimit(new Response('{"partial":'), 1024),
+    SyntaxError,
+  );
+  await assert.rejects(
+    readJsonWithinLimit(new Response('{}'), 0),
+    RangeError,
+  );
+});
+
+test('analysis route uses the bounded provider response reader', () => {
+  assert.match(analyze, /MAX_PROVIDER_RESPONSE_BYTES = 64 \* 1024/);
+  assert.match(analyze, /readJsonWithinLimit\(upstream, MAX_PROVIDER_RESPONSE_BYTES\)/);
+  assert.doesNotMatch(analyze, /await upstream\.json\(\)/);
+});
