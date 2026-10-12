@@ -11,7 +11,7 @@ test('parses ordinary CSV rows and normalizes headers', () => {
 });
 
 test('supports BOM, quoted commas, escaped quotes, and multiline fields', () => {
-  const rows = parseCsv('\uFEFFid,source,summary\n1,mail,"hello, ""world""\nand next line"');
+  const rows = parseCsv('\uFEFFid,timestamp,source,summary\n1,2026-10-10T10:00:00Z,mail,"hello, ""world""\nand next line"');
   assert.equal(rows[0].id, '1');
   assert.equal(rows[0].summary, 'hello, "world"\nand next line');
 });
