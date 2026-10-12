@@ -16,9 +16,26 @@ Audit date: 2026-10-11. This section separates code/CI evidence from real deploy
 
 ## Deployment verification runbook (required before public launch)
 
-### 1. Configure the hosting edge limit
+### 1. Configure the Vercel edge rate limit (required before public launch)
 
-The in-process map in `web/src/app/api/analyze/route.ts` is only a best-effort fallback. It resets on cold starts, is not shared across instances, and must not be treated as the public abuse-control boundary. Configure a platform/edge rule for `POST /api/analyze` (per-IP and burst limit) in the hosting dashboard or use a shared atomic rate-limit store. Confirm the hosting platform overwrites the `x-real-ip` header; do not trust arbitrary client-supplied forwarding headers. If this cannot be confirmed, do not expose the endpoint broadly.
+The in-process map in `web/src/app/api/analyze/route.ts` is only a best-effort fallback. It resets on cold starts and is not shared across instances. The automated test verifies that this fallback rejects the ninth request per minute in one process; it does **not** prove a distributed production limit.
+
+In the Vercel dashboard, open project **satark-qzym** → **Firewall** → **Configure** → **New Rule**, then create and publish this custom rule:
+
+| Setting | Value |
+|---|---|
+| Name | SATARK Analyze API Rate Limit |
+| Conditions (all must match) | Request Path equals `/api/analyze`; Method equals `POST` |
+| Action | Rate Limit |
+| Strategy | Fixed Window |
+| Time window | 60 seconds |
+| Request limit | 8 |
+| Counting key | IP |
+| Exceeded action | Deny / HTTP 429 |
+
+After publishing, send nine requests from one controlled test client within a minute and verify that the edge returns 429 for excess requests and the rule appears in Firewall traffic analytics. Vercel's edge counter is per-region, so it is a shared edge control but not a mathematically exact global counter across all regions. Keep the in-process guard as defense in depth.
+
+Confirm the platform overwrites `x-real-ip`; do not trust caller-controlled forwarding headers. If the rule cannot be published and verified, do not expose the endpoint broadly. Never put provider keys in `NEXT_PUBLIC_*` variables.
 
 ### 2. Verify environment without exposing secrets
 
