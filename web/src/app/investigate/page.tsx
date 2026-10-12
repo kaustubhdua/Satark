@@ -94,7 +94,7 @@ export default function InvestigatePage() {
         <p className="lead">Submit a suspicious message or URL as text. SATARK combines AI-assisted triage with basic deterministic signals. It will not visit the URL or execute files.</p>
         <section className="form-panel" aria-labelledby="investigation-title">
           <h2 id="investigation-title">New investigation</h2>
-          <p className="field-note">Use content you are permitted to analyze. Never include passwords, OTPs, private keys, or other secrets.</p>
+          <p className="field-note">When you submit, the full text is sent to Groq for AI-assisted triage. Use only content you are permitted to share; never include passwords, OTPs, private keys, or other secrets. URLhaus and AbuseIPDB are separate optional lookups and receive only the extracted URL or public IP when you opt in and the server enables them.</p>
           <label htmlFor="content">Suspicious URL or message</label>
           <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }}
             maxLength={12000} placeholder="Paste a suspicious URL or message here…" aria-describedby="content-hint" />
