@@ -181,6 +181,11 @@ try {
   await inspectViewport({ width: 1440, height: 900 }, 'desktop');
   await inspectViewport({ width: 390, height: 844 }, 'mobile');
 
+  const unsupportedMethod = await fetch(baseURL + '/api/analyze');
+  assert.equal(unsupportedMethod.status, 405, 'API should reject unsupported methods');
+  assert.equal(unsupportedMethod.headers.get('cache-control'), 'no-store',
+    'framework-generated 405 responses must not inherit cacheable defaults');
+
   const malformed = await fetch(baseURL + '/api/analyze', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: '{not-json',
   });
