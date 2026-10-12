@@ -86,6 +86,11 @@ export default function FirstlightPage() {
         const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:new Date(parsedTime).toISOString(),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
         next.push({...item,digest:await digest(JSON.stringify(item))});
       }
+      const ids = new Set<string>();
+      for (const item of next) {
+        if (ids.has(item.id)) throw new Error('Duplicate evidence ID after normalization: ' + item.id + '. Each event must have a unique ID.');
+        ids.add(item.id);
+      }
       setEvidence(next); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' normalized records · original file SHA-256: '+sourceDigest+' · file bytes hashed locally; no external anchor or custody log.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSelected('evidence'); setNotice('Imported locally. Original file bytes and normalized event records were hashed in this browser; nothing was sent to an AI provider.');
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
   }
