@@ -80,7 +80,10 @@ export default function FirstlightPage() {
       if (rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) throw new Error('Every JSON event must be an object with event fields.');
       const next: Evidence[] = [];
       for (const [i,row] of rows.entries()) {
-        const rawTime = row.timestamp || row.time || new Date().toISOString();
+        const rawTime = row.timestamp || row.time;
+        if (rawTime === undefined || rawTime === null || String(rawTime).trim() === '') {
+          throw new Error('Missing timestamp in event ' + (i + 1) + '. Add a source timestamp; SATARK will not invent event times.');
+        }
         const parsedTime = Date.parse(String(rawTime));
         if (!Number.isFinite(parsedTime)) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use a valid ISO date/time.');
         const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:new Date(parsedTime).toISOString(),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
