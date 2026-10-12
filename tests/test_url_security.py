@@ -52,6 +52,23 @@ class URLSecurityTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertFalse(is_public_url(url))
 
+    def test_only_standard_web_ports_are_allowed(self):
+        for url in (
+            "http://example.com:8080/",
+            "https://example.com:8443/",
+            "https://example.com:80/",
+            "http://example.com:443/",
+        ):
+            with self.subTest(url=url):
+                self.assertFalse(is_public_url(url))
+
+        answers = [(None, None, None, None, ("93.184.216.34", 80))]
+        with patch("url_security.socket.getaddrinfo", return_value=answers):
+            self.assertTrue(is_public_url("http://example.com:80/"))
+        answers = [(None, None, None, None, ("93.184.216.34", 443))]
+        with patch("url_security.socket.getaddrinfo", return_value=answers):
+            self.assertTrue(is_public_url("https://example.com:443/"))
+
     def test_mixed_public_and_private_dns_answers_fail_closed(self):
         answers = [
             (None, None, None, None, ("93.184.216.34", 443)),
