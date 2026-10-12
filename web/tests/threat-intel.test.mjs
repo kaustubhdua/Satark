@@ -31,7 +31,9 @@ test('URL reputation lookup is time-bounded and server secret is not public-pref
 });
 
 test('UI explains optional external data sharing and displays lookup status', () => {
-  assert.match(page, /full extracted URL/);
+  assert.match(page, /query strings and fragments are removed first/);
+  assert.match(page, /Paths can still contain private identifiers/);
+  assert.match(page, /text you submit is sent to Groq/i);
   assert.match(page, /threat_intel\.status/);
 });
 
