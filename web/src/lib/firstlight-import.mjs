@@ -54,7 +54,7 @@ export function parseCsv(text) {
   if (records.some(record => record.length > headers.length)) {
     throw new Error('CSV has rows with more columns than its header.');
   }
-  return records.map((columns, index) => {
+  const events = records.map((columns, index) => {
     const record = {};
     headers.forEach((header, columnIndex) => { record[header] = (columns[columnIndex] || '').trim(); });
     return {
@@ -65,4 +65,10 @@ export function parseCsv(text) {
       summary: record.summary || record.message || record.description || 'Imported event',
     };
   });
+  const ids = new Set();
+  for (const event of events) {
+    if (ids.has(event.id)) throw new Error('CSV contains duplicate evidence IDs.');
+    ids.add(event.id);
+  }
+  return events;
 }
