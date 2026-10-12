@@ -4,12 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      base_url:
-        description: "Public production URL to verify"
-        required: false
-        type: string
-        default: "https://satark-qzym.vercel.app"
   schedule:
     - cron: "30 3 * * *"
   deployment_status:
@@ -27,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      SATARK_PRODUCTION_URL: ${{ inputs.base_url || 'https://satark-qzym.vercel.app' }}
+      SATARK_PRODUCTION_URL: https://satark-qzym.vercel.app
     steps:
       - name: Check public production routes and security headers
         shell: bash
