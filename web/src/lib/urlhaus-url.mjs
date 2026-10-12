@@ -21,3 +21,28 @@ export function extractFirstHttpUrl(input) {
     return null;
   }
 }
+
+/**
+ * Accept only canonical HTTPS references on URLhaus itself.
+ * Provider responses are external data; never pass an arbitrary provider-supplied
+ * URL into a browser link.
+ *
+ * @param {unknown} value Untrusted provider-supplied reference.
+ * @returns {string | undefined} Safe URLhaus reference, if valid.
+ */
+export function safeUrlhausReference(value) {
+  if (typeof value !== 'string' || value.length > 500) return undefined;
+  try {
+    const parsed = new URL(value);
+    if (
+      parsed.protocol !== 'https:' ||
+      parsed.hostname !== 'urlhaus.abuse.ch' ||
+      parsed.username ||
+      parsed.password ||
+      !parsed.pathname.startsWith('/url/')
+    ) return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
