@@ -180,6 +180,19 @@ async function inspectViewport(viewport, label) {
 try {
   await inspectViewport({ width: 1440, height: 900 }, 'desktop');
   await inspectViewport({ width: 390, height: 844 }, 'mobile');
+  await inspectViewport({ width: 320, height: 720 }, 'small-mobile');
+
+  const reducedMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await reducedMotionPage.emulateMedia({ reducedMotion: 'reduce' });
+  await reducedMotionPage.goto(baseURL + '/firstlight', { waitUntil: 'networkidle' });
+  const motion = await reducedMotionPage.evaluate(() => ({
+    shellAnimation: getComputedStyle(document.querySelector('.shell')).animationName,
+    buttonTransition: getComputedStyle(document.querySelector('button')).transitionDuration.split(',')[0].trim(),
+  }));
+  assert.equal(motion.shellAnimation, 'none', 'FIRSTLIGHT must disable decorative animation for reduced-motion users');
+  assert.ok(Number.parseFloat(motion.buttonTransition) <= 0.001,
+    `interactive transitions should be effectively disabled for reduced-motion users, got ${motion.buttonTransition}`);
+  await reducedMotionPage.close();
 
   const unsupportedMethod = await fetch(baseURL + '/api/analyze');
   assert.equal(unsupportedMethod.status, 405, 'API should reject unsupported methods');
