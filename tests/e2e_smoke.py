@@ -66,7 +66,12 @@ def choose_workspace(page, steps_down):
     combobox.click()
     # Clicking the explicit option is more deterministic than repeated keypresses:
     # Streamlit reruns can reset keyboard focus while replacing the popup subtree.
-    page.get_by_role("option", name=options[steps_down], exact=True).click(timeout=10_000)
+    option = page.get_by_role("option", name=options[steps_down], exact=True)
+    option.wait_for(state="visible", timeout=10_000)
+    # A normal Playwright pointer click races Streamlit's popup replacement and
+    # retries against detached React-Aria option nodes. Dispatch the option's
+    # click event directly, then verify the selected workspace by its content.
+    option.dispatch_event("click")
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
 
 
