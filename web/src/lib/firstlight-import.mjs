@@ -1,3 +1,49 @@
+/**
+ * Parse a strict ISO-8601 event timestamp with an explicit timezone.
+ * Ambiguous locale dates and timezone-less local times are rejected so imported
+ * evidence timelines do not depend on the browser's locale or timezone.
+ *
+ * @param {unknown} value
+ * @returns {string | null} Canonical UTC timestamp, or null if invalid.
+ */
+export function parseIsoTimestamp(value) {
+  if (typeof value !== 'string') return null;
+  const input = value.trim();
+  const match = input.match(/^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.(\d{1,9}))?)?(Z|[+-](?:0\d|1[0-4]):[0-5]\d)$/);
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText = '0', , zone] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  calendar.setUTCHours(hour, minute, second, 0);
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month - 1 ||
+    calendar.getUTCDate() !== day ||
+    calendar.getUTCHours() !== hour ||
+    calendar.getUTCMinutes() !== minute ||
+    calendar.getUTCSeconds() !== second
+  ) return null;
+
+  if (zone !== 'Z') {
+    const offset = zone.match(/^[+-](\d{2}):(\d{2})$/);
+    if (!offset) return null;
+    const offsetHours = Number(offset[1]);
+    const offsetMinutes = Number(offset[2]);
+    if (offsetHours > 14 || (offsetHours === 14 && offsetMinutes !== 0)) return null;
+  }
+
+  const parsed = Date.parse(input);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+}
+
 const MAX_CSV_RECORDS = 10_000;
 
 /** Parse bounded RFC-4180-style CSV for the synthetic FIRSTLIGHT workspace. */
