@@ -185,6 +185,6 @@ test('homepage URLhaus consent describes query and fragment removal', () => {
 
 
 test('local analysis rate limits include a standards-based retry hint without enabling caching', () => {
-  assert.match(route, /Too many requests\. Wait a minute and retry\.', 429, \{ 'Retry-After': '60' \}\)/);
-  assert.match(route, /headers: \{ 'Cache-Control': 'no-store', \.\.\.extraHeaders \}/);
+  assert.match(analyze, /Too many requests\. Wait a minute and retry\.', 429, \{ 'Retry-After': '60' \}\)/);
+  assert.match(analyze, /headers: \{ 'Cache-Control': 'no-store', \.\.\.extraHeaders \}/);
 });
