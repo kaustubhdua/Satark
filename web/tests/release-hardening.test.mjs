@@ -89,3 +89,20 @@ test('URLhaus URL sanitizer strips query and fragment values before sharing', as
   assert.match(investigate, /query strings and fragments are removed first/);
   assert.match(investigate, /Paths can still contain private identifiers/);
 });
+
+test('URLhaus provider references cannot create off-site or unsafe links', async () => {
+  const { safeUrlhausReference } = await import('../src/lib/urlhaus-url.mjs');
+  assert.equal(safeUrlhausReference('https://urlhaus.abuse.ch/url/123456/'), 'https://urlhaus.abuse.ch/url/123456/');
+  for (const value of [
+    'javascript:alert(1)',
+    'https://attacker.example/url/123456/',
+    'http://urlhaus.abuse.ch/url/123456/',
+    'https://urlhaus.abuse.ch.evil.example/url/123456/',
+    'https://user@urlhaus.abuse.ch/url/123456/',
+    'https://urlhaus.abuse.ch/redirect?to=https://attacker.example/',
+    'not a URL',
+    null,
+  ]) {
+    assert.equal(safeUrlhausReference(value), undefined, `unsafe provider reference rejected: ${String(value)}`);
+  }
+});
