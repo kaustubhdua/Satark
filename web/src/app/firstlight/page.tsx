@@ -62,9 +62,10 @@ export default function FirstlightPage() {
     finally { setBusy(false); }
   }
   async function importFile(file?: File) {
-    if (!file) return;
+    if (!file || busy) return;
     setNotice('');
     if (file.size > 5 * 1024 * 1024) { setNotice('File exceeds the 5 MiB import limit.'); return; }
+    setBusy(true);
     try {
       const rawBytes = await file.arrayBuffer();
       if (rawBytes.byteLength > 5 * 1024 * 1024) throw new Error('File exceeds the 5 MiB import limit.');
@@ -97,6 +98,7 @@ export default function FirstlightPage() {
       }
       setEvidence(next); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' normalized records · original file SHA-256: '+sourceDigest+' · file bytes hashed locally; no external anchor or custody log.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSourceFileSha256(sourceDigest); setSelected('evidence'); setNotice('Imported locally. Original file bytes and normalized event records were hashed in this browser; nothing was sent to an AI provider.');
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
+    finally { setBusy(false); }
   }
   async function tamper(item: Evidence) {
     const next = evidence.map(e => e.id===item.id ? {...e,summary:e.tampered ? e.summary.replace(' [SIMULATED TAMPER]','') : e.summary+' [SIMULATED TAMPER]',tampered:!e.tampered} : e);
@@ -143,7 +145,7 @@ export default function FirstlightPage() {
   }
   return <main className="shell"><SiteHeader />
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
-      <div className="firstlight-hero"><div><div className="eyebrow">SATARK SENTINEL / PRIMARY WORKSPACE</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Reconstruct a security incident from evidence, verify integrity, correlate activity, and review response decisions. The training scenario is synthetic; no real accounts or endpoints are changed.</p><div className="actions"><button className="btn btn-primary" disabled={busy} onClick={loadCase}>{busy?'Sealing evidence…':caseOpen && !importName?'Reset training case':caseOpen?'Load synthetic case':'Launch training case ↗'}</button><label className="btn btn-secondary upload-trigger">Import JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" onChange={e=>importFile(e.target.files?.[0])}/></label></div></div>
+      <div className="firstlight-hero"><div><div className="eyebrow">SATARK SENTINEL / PRIMARY WORKSPACE</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Reconstruct a security incident from evidence, verify integrity, correlate activity, and review response decisions. The training scenario is synthetic; no real accounts or endpoints are changed.</p><div className="actions"><button className="btn btn-primary" disabled={busy} onClick={loadCase}>{busy?'Sealing evidence…':caseOpen && !importName?'Reset training case':caseOpen?'Load synthetic case':'Launch training case ↗'}</button><label className="btn btn-secondary upload-trigger">Import JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';void importFile(file);}}/></label></div></div>
       <div className="incident-brief"><div className="brief-top"><span>INCIDENT BRIEF</span><span className="live-chip"><i/> SYNTHETIC</span></div><div className="brief-id">{caseOpen?'FL-TRAINING-001':'FL / READY'}</div><p>{caseOpen?'Account-compromise simulation · evidence loaded':'A guided investigation is ready to initialize.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
       <div className="boundary-banner"><span className="boundary-icon">◇</span><div><strong>Evidence-first, not verdict-first</strong><p>Hashes prove only whether these in-session records changed relative to their captured digest. This is not independently anchored chain-of-custody evidence.</p></div></div>
       {notice&&<div className="notice-panel" role="status">{notice}</div>}
