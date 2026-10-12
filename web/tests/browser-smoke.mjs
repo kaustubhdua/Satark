@@ -196,6 +196,14 @@ async function inspectViewport(viewport, label) {
       });
       await page.getByRole('status').filter({ hasText: /Imported locally/i }).waitFor();
       await page.getByText('QA-001').waitFor();
+      assert.equal(await fileInput.inputValue(), '', 'file input should reset so the same artifact can be selected again');
+      await fileInput.setInputFiles({
+        name: 'training-events.json',
+        mimeType: 'application/json',
+        buffer: jsonBuffer,
+      });
+      await page.getByRole('status').filter({ hasText: /Imported locally/i }).waitFor();
+      await page.getByText('QA-001').waitFor();
       await page.getByRole('button', { name: /audit trail/i }).click();
       await page.getByText(originalFileHash, { exact: false }).waitFor();
       await page.getByText(/no external anchor or custody log/i).waitFor();
