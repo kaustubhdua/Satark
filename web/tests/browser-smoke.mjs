@@ -178,6 +178,16 @@ async function inspectViewport(viewport, label) {
         buffer: Buffer.from(JSON.stringify([{ timestamp: 'not-a-date', summary: 'Invalid timestamp case' }])),
       });
       await page.getByRole('status').filter({ hasText: /Invalid timestamp in event 1/i }).waitFor();
+
+      await fileInput.setInputFiles({
+        name: 'duplicate-events.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify([
+          { id: 'DUP-1', timestamp: '2026-10-11T10:00:00Z', summary: 'First event' },
+          { id: 'DUP-1', timestamp: '2026-10-11T10:01:00Z', summary: 'Second event' },
+        ])),
+      });
+      await page.getByRole('status').filter({ hasText: /Duplicate evidence ID/i }).waitFor();
     }
   }
   await page.close();
