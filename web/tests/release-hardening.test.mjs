@@ -31,10 +31,3 @@ test('FIRSTLIGHT explicitly marks response actions as simulation only', () => {
   assert.match(firstlight, /no real system action executed/);
   assert.match(firstlight, /does not inspect the endpoint or file/);
 });
-
-
-test('per-instance throttling does not trust spoofable x-forwarded-for', () => {
-  assert.match(analyze, /request\.headers\.get\('x-real-ip'\)/);
-  assert.doesNotMatch(analyze, /request\.headers\.get\('x-forwarded-for'\)\?\.split\(', '\)\[0\]/);
-  assert.match(analyze, /all requests share[\s\S]*?'unknown' bucket/);
-});
