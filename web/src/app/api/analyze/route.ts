@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isIP } from 'node:net';
+import { extractFirstHttpUrl } from '@/lib/urlhaus-url.mjs';
 import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
 
 export const runtime = 'nodejs';
@@ -53,23 +54,6 @@ type ThreatIntelResult = {
   detail: string;
   reference?: string;
 };
-
-function extractFirstHttpUrl(input: string): string | null {
-  const candidate = input.match(/https?:\/\/[^\s<>"']{1,2048}/i)?.[0];
-  if (!candidate) return null;
-  try {
-    const parsed = new URL(candidate.replace(/[),.;!?]+$/, ''));
-    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.username || parsed.password) return null;
-    // Query strings commonly contain session IDs, signed tokens, email addresses,
-    // and tracking identifiers. Never forward them to an external reputation provider.
-    // Fragments are not sent to the destination server, but remove them for clarity too.
-    parsed.search = '';
-    parsed.hash = '';
-    return parsed.toString().slice(0, 2048);
-  } catch {
-    return null;
-  }
-}
 
 function extractFirstIp(input: string): string | null {
   // Match address-shaped tokens only; isIP performs the actual IPv4/IPv6 validation.
