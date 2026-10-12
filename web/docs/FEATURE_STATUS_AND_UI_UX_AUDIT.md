@@ -78,6 +78,11 @@ Use these definitions in the UI and release notes:
 - **Unavailable/disabled**: configuration or provider state prevents the feature from running.
 
 
+
+## FIRSTLIGHT import integrity boundary
+
+JSON/CSV import now calculates a SHA-256 over the **original uploaded file bytes** and records that digest in the in-session audit trail. Each displayed evidence row also has a separate digest over its normalized event fields. The original-file digest helps detect byte-level changes if the same file is later re-hashed, but the audit trail and hashes remain in browser memory and are not independently anchored, signed, access-controlled, or persisted. This is not chain-of-custody evidence and must not be presented as forensic sealing. NIST's digital-evidence guidance recommends hashing original data and storing hash values separately from the evidence under controlled handling; SATARK's current client-side demo does not implement that custody infrastructure. See [NIST IR 8387](https://doi.org/10.6028/NIST.IR.8387) and [SWGDE digital evidence collection guidance](https://www.swgde.org/documents/published-complete-listing/18-f-002-2-0/).
+
 ## Browser security headers — current baseline
 
 The Next.js response policy now includes HSTS and a baseline Content-Security-Policy with `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, and same-origin resource defaults. Automated browser checks assert these headers across desktop/mobile routes. The static-rendering-compatible policy permits `'unsafe-inline'` for scripts to preserve Next.js hydration; it is defense-in-depth, **not** a strict nonce/hash CSP and does not replace XSS prevention. A future hardening pass should evaluate nonce-based CSP against the app's static-rendering and performance requirements before tightening script policy. Confirm HSTS on the intended production hostname and HTTPS deployment before public launch.
