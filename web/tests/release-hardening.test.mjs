@@ -25,6 +25,8 @@ const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.
 const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 const securityFollowup = readFileSync(new URL('../docs/SECURITY_AND_UX_FOLLOWUP.md', import.meta.url), 'utf8');
 const versionRoute = readFileSync(new URL('../src/app/api/version/route.ts', import.meta.url), 'utf8');
+const homePage = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
+const investigatePage = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
 
 test('baseline security headers and CSP directives are configured', () => {
   for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']) {
@@ -165,4 +167,18 @@ test('production smoke check fails closed when deployment revision is stale', ()
   assert.match(smoke, /api\/version/);
   assert.match(smoke, /deployed_sha.*expected_sha|deployed_sha.*current main/);
   assert.match(smoke, /Deployment is stale/);
+});
+
+
+test('analysis pages disclose AI provider data sharing', () => {
+  assert.match(homePage, /text you submit is sent to Groq/i);
+  assert.match(investigatePage, /full text is sent to Groq/i);
+  assert.match(homePage, /separate optional lookups/i);
+  assert.match(investigatePage, /separate optional lookups/i);
+});
+
+test('homepage URLhaus consent describes query and fragment removal', () => {
+  assert.match(homePage, /query strings and fragments are removed first/);
+  assert.match(homePage, /Paths can still contain private identifiers/);
+  assert.doesNotMatch(homePage, /full extracted URL, including its path and query string, is shared/i);
 });
