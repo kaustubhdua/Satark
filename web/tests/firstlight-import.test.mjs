@@ -28,7 +28,7 @@ test('rejects empty and duplicate headers', () => {
 
 test('rejects CSV rows without source timestamps instead of inventing current time', () => {
   assert.throws(
-    () => parseCsv('id,source,summary\\nEV-1,mail,Message with no timestamp'),
+    () => parseCsv('id,source,summary\nEV-1,mail,Message with no timestamp'),
     /missing a timestamp\/time value/i
   );
 });
