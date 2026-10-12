@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isPublicIpAddress } from '../src/lib/public-ip.mjs';
+import { readJsonWithinLimit } from '../src/lib/bounded-json.mjs';
 
 test('AbuseIPDB lookups accept only public IP literals', () => {
   for (const ip of ['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111', '2001:4860:4860::8888']) {
@@ -108,8 +109,6 @@ test('URLhaus provider references cannot create off-site or unsafe links', async
 });
 
 
-import { readJsonWithinLimit } from '../src/lib/bounded-json.mjs';
-
 test('provider JSON responses are parsed within a strict byte budget', async () => {
   const response = new Response(JSON.stringify({ choices: [{ message: { content: '{"risk_score":25}' } }] }));
   assert.deepEqual(await readJsonWithinLimit(response, 1024), {
@@ -133,4 +132,12 @@ test('analysis route uses the bounded provider response reader', () => {
   assert.match(analyze, /MAX_PROVIDER_RESPONSE_BYTES = 64 \* 1024/);
   assert.match(analyze, /readJsonWithinLimit\(upstream, MAX_PROVIDER_RESPONSE_BYTES\)/);
   assert.doesNotMatch(analyze, /await upstream\.json\(\)/);
+});
+
+
+test('all external provider JSON responses are read within a strict byte budget', () => {
+  assert.equal((analyze.match(/readJsonWithinLimit\(response, MAX_THREAT_INTEL_RESPONSE_BYTES\)/g) || []).length, 2,
+    'AbuseIPDB and URLhaus responses must both use the bounded reader');
+  assert.match(analyze, /MAX_THREAT_INTEL_RESPONSE_BYTES = 32 \* 1024/);
+  assert.doesNotMatch(analyze, /await response\.json\(\)/);
 });
