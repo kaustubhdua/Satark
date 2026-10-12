@@ -193,6 +193,13 @@ async function inspectViewport(viewport, label) {
       await page.getByRole('status').filter({ hasText: /Invalid timestamp in event 1/i }).waitFor();
 
       await fileInput.setInputFiles({
+        name: 'missing-timestamp.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify([{ id: 'NO-TIME-1', summary: 'Timestamp must not be fabricated' }])),
+      });
+      await page.getByRole('status').filter({ hasText: /Missing timestamp in event 1/i }).waitFor();
+
+      await fileInput.setInputFiles({
         name: 'duplicate-events.json',
         mimeType: 'application/json',
         buffer: Buffer.from(JSON.stringify([
