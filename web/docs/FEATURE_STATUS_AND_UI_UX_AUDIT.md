@@ -60,6 +60,11 @@ Use these definitions in the UI and release notes:
 - **Handoff**: navigation to a separate app; it is not native functionality in this Next.js app.
 - **Unavailable/disabled**: configuration or provider state prevents the feature from running.
 
+
+## Browser security headers — current baseline
+
+The Next.js response policy now includes HSTS and a baseline Content-Security-Policy with `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, and same-origin resource defaults. Automated browser checks assert these headers across desktop/mobile routes. The static-rendering-compatible policy permits `'unsafe-inline'` for scripts to preserve Next.js hydration; it is defense-in-depth, **not** a strict nonce/hash CSP and does not replace XSS prevention. A future hardening pass should evaluate nonce-based CSP against the app's static-rendering and performance requirements before tightening script policy. Confirm HSTS on the intended production hostname and HTTPS deployment before public launch.
+
 # SATARK feature status and UI/UX review
 
 Audit date: 2026-10-11
