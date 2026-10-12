@@ -13,6 +13,43 @@ Audit date: 2026-10-11. This section separates code/CI evidence from real deploy
 - P2 history: no durable authenticated investigation history is established in this app. Current state is session/page memory unless a feature explicitly says otherwise.
 - P2 integrations: the FIRSTLIGHT training workflow remains synthetic; Microsoft live-response adapters in PR #40 are not implied to be enabled or production-verified by merging PR #41. Streamlit-linked media tools remain separate handoffs and must be tested in their own deployment.
 
+
+## Deployment verification runbook (required before public launch)
+
+### 1. Configure the hosting edge limit
+
+The in-process map in `web/src/app/api/analyze/route.ts` is only a best-effort fallback. It resets on cold starts, is not shared across instances, and must not be treated as the public abuse-control boundary. Configure a platform/edge rule for `POST /api/analyze` (per-IP and burst limit) in the hosting dashboard or use a shared atomic rate-limit store. Confirm the hosting platform overwrites the `x-real-ip` header; do not trust arbitrary client-supplied forwarding headers. If this cannot be confirmed, do not expose the endpoint broadly.
+
+### 2. Verify environment without exposing secrets
+
+In the intended Vercel project and each intended environment (Preview/Production), verify the presence of server-only `GROQ_API_KEY`. Keep `SATARK_ENABLE_THREAT_INTEL` and `SATARK_ENABLE_ABUSEIPDB` false/unset until each provider has passed the controlled tests below. Configure `URLHAUS_AUTH_KEY` and `ABUSEIPDB_API_KEY` only as server-side secrets. Never use `NEXT_PUBLIC_` for provider keys, paste keys into issues/logs, or include full signed/private URLs in provider tests.
+
+### 3. Authorized, non-sensitive staging checks
+
+Record timestamp, deployment URL, environment, HTTP status, and a redacted outcome—not request bodies or secrets.
+
+| Check | Procedure | Pass condition |
+|---|---|---|
+| Groq success | Submit a fabricated harmless message with no real personal data | HTTP 200; bounded schema; limitations present; no key in client bundle/logs |
+| Groq missing key | Use an isolated preview environment with the key omitted | HTTP 503; no stack trace or secret disclosure |
+| Groq failure | Use a controlled provider outage/quota scenario if safely available | Clear 502/429; no unhandled exception; timeout returns promptly |
+| URLhaus consent | Submit a harmless test URL with consent off, then on only in an approved test environment | Off makes no outbound URLhaus call; on reports match/no-match/unavailable truthfully; no-match is not shown as safe |
+| AbuseIPDB consent | Submit a public, non-sensitive test IP with consent off, then on only in an approved test environment | Off makes no outbound call; on queries only a validated IP literal and shows inconclusive states honestly |
+| Body bounds | Send malformed JSON, empty input, oversized body, and oversized input | 400/413 with generic messages; no provider call |
+| Rate limit | Send more than 8 requests from one controlled client within a minute and repeat across instances | 429 at the configured edge limit; limit remains effective across cold starts/instances |
+| Headers | Inspect homepage and API responses in the deployed environment | Expected security headers present; API responses remain no-store |
+| Browser | Exercise primary flow on desktop and narrow mobile; keyboard-only and reduced-motion | No broken primary path, focus traps, horizontal overflow, or motion-dependent information |
+
+Do not mark any provider **Live** until its successful controlled test is recorded. Never use private/signed URLs for reputation lookups: URLhaus receives the full extracted URL after consent.
+
+### 4. Accessibility and UI acceptance
+
+Automated browser smoke tests are not a WCAG conformance claim. Run an axe-based scan on the home, investigate, reports, and learning routes, then manually verify keyboard order/visible focus, screen-reader labels and announcements, 200% zoom/reflow, text and non-text contrast, reduced motion, and mobile tap targets. Log each failure and retest after fixes.
+
+### 5. Legacy handoff and rollback
+
+Open each image/deepfake, QR, PDF/document, and video/media handoff from the deployed Next.js app and verify the destination is reachable, accepts supported safe sample inputs, explains upload/privacy limits, and fails accessibly. Confirm health monitoring, provider error alerts, deployment rollback procedure, and the last known-good build before public launch.
+
 ## Feature truth labels
 
 Use these definitions in the UI and release notes:
