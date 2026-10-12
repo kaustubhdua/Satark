@@ -60,6 +60,11 @@ function extractFirstHttpUrl(input: string): string | null {
   try {
     const parsed = new URL(candidate.replace(/[),.;!?]+$/, ''));
     if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.username || parsed.password) return null;
+    // Query strings commonly contain session IDs, signed tokens, email addresses,
+    // and tracking identifiers. Never forward them to an external reputation provider.
+    // Fragments are not sent to the destination server, but remove them for clarity too.
+    parsed.search = '';
+    parsed.hash = '';
     return parsed.toString().slice(0, 2048);
   } catch {
     return null;
