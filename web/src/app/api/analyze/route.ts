@@ -168,6 +168,11 @@ export async function POST(request: Request) {
     return error('Too many requests. Wait a minute and retry.', 429);
   }
 
+  const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
+  if (contentType !== 'application/json') {
+    return error('Content-Type must be application/json.', 415);
+  }
+
   const contentLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
     return error('Request body is too large.', 413);
