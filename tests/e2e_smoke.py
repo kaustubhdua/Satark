@@ -52,8 +52,7 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Navigate from the current workspace and verify the destination content."""
-    options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
+    """Navigate the FIRSTLIGHT workspace selector and verify the destination content."""
     active_markers = {
         0: "Collection priority",
         1: "Evidence Integrity Challenge",
@@ -61,14 +60,18 @@ def choose_workspace(page, steps_down):
         3: "Human approval gate",
         4: "Hash-chained audit trail",
     }
+    has_current = hasattr(choose_workspace, "_current_index")
     current_index = getattr(choose_workspace, "_current_index", 0)
-    delta = steps_down - current_index
     combobox = page.get_by_role("combobox", name="Investigation workspace")
     combobox.wait_for(state="visible", timeout=10_000)
     combobox.click()
-    # Navigate relative to the actual previous selection. Repeatedly resetting
-    # to Home is unreliable because Streamlit replaces its React-Aria popup on
-    # reruns and can lose the highlighted option between keypresses.
+    # On first use, Home anchors the selection at Incident. On later changes,
+    # navigate from the last verified workspace instead of resetting Home; the
+    # Streamlit/React-Aria popup can be replaced during each rerun.
+    if not has_current:
+        combobox.press("Home")
+        current_index = 0
+    delta = steps_down - current_index
     for _ in range(abs(delta)):
         combobox = page.get_by_role("combobox", name="Investigation workspace")
         combobox.press("ArrowDown" if delta > 0 else "ArrowUp")
