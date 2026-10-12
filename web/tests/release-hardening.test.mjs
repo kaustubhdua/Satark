@@ -47,3 +47,9 @@ test('all API responses have an explicit no-store cache policy', () => {
   assert.match(config, /source: '\/api\/:path\*'/);
   assert.match(config, /key: 'Cache-Control', value: 'no-store'/);
 });
+
+test('analysis API rejects unsupported media types before parsing bodies', () => {
+  assert.match(analyze, /contentType !== 'application\/json'/);
+  assert.match(analyze, /Content-Type must be application\/json/);
+  assert.match(analyze, /return error\('Content-Type must be application\/json\.', 415\)/);
+});
