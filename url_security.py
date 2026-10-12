@@ -84,6 +84,11 @@ def _validated_destination(url):
         raise ValueError("The URL contains an invalid port.") from exc
     if not (1 <= port <= 65535):
         raise ValueError("The URL contains an invalid port.")
+    # This fetcher is for public web pages, not a general-purpose port scanner.
+    # Restrict outbound connections to the standard port for the selected scheme.
+    expected_port = 443 if parsed.scheme == "https" else 80
+    if port != expected_port:
+        raise ValueError("For safety, only standard HTTP (80) and HTTPS (443) ports can be fetched.")
 
     try:
         records = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
