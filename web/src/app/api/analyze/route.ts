@@ -11,6 +11,7 @@ const MAX_REQUESTS_PER_WINDOW = 8;
 const MAX_BODY_BYTES = 48 * 1024;
 const MAX_INPUT_CHARS = 12_000;
 const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
+const MAX_THREAT_INTEL_RESPONSE_BYTES = 32 * 1024;
 const MAX_TRACKED_CLIENTS = 2_000;
 const requestCounts = new Map<string, { start: number; count: number }>();
 
@@ -87,7 +88,7 @@ async function checkAbuseIpDb(input: string, requested: boolean): Promise<IpInte
       cache: 'no-store',
     });
     if (!response.ok) return { ...base, status: 'unavailable', detail: 'AbuseIPDB could not complete the lookup.' };
-    const payload: unknown = await response.json();
+    const payload: unknown = await readJsonWithinLimit(response, MAX_THREAT_INTEL_RESPONSE_BYTES);
     if (!payload || typeof payload !== 'object' || !('data' in payload) || !payload.data || typeof payload.data !== 'object') {
       return { ...base, status: 'unavailable', detail: 'AbuseIPDB returned an unreadable response.' };
     }
@@ -123,7 +124,7 @@ async function checkUrlhaus(input: string, requested: boolean): Promise<ThreatIn
       cache: 'no-store',
     });
     if (!response.ok) return { ...base, status: 'unavailable', detail: 'URLhaus could not complete the lookup.' };
-    const payload: unknown = await response.json();
+    const payload: unknown = await readJsonWithinLimit(response, MAX_THREAT_INTEL_RESPONSE_BYTES);
     if (!payload || typeof payload !== 'object') return { ...base, status: 'unavailable', detail: 'URLhaus returned an unreadable response.' };
     const data = payload as Record<string, unknown>;
     if (data.query_status === 'no_results') return { ...base, status: 'no_match', detail: 'URLhaus returned no listing. This does not establish that the URL is safe.' };
