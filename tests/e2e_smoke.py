@@ -52,7 +52,7 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Choose a workspace through the combobox keyboard contract, tolerating Streamlit reruns."""
+    """Select a workspace by its visible option and verify its unique content marker."""
     options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
     active_markers = {
         0: "Collection priority",
@@ -61,19 +61,12 @@ def choose_workspace(page, steps_down):
         3: "Human approval gate",
         4: "Hash-chained audit trail",
     }
-    page.get_by_role("combobox", name="Investigation workspace").wait_for(
-        state="visible", timeout=10_000
-    )
-    page.get_by_role("combobox", name="Investigation workspace").click()
-    # Streamlit may replace its React-ARIA popup on reruns. Reacquire the
-    # combobox for every keypress instead of interacting with a transient option.
-    page.get_by_role("combobox", name="Investigation workspace").press("Home")
-    for _ in range(steps_down):
-        page.get_by_role("combobox", name="Investigation workspace").press("ArrowDown")
-    page.get_by_role("combobox", name="Investigation workspace").press("Enter")
-    # The selected label is rendered by Streamlit outside the combobox's
-    # accessible subtree, so do not scope a text locator to the combobox.
-    # Assert the destination workspace's unique heading/content marker instead.
+    combobox = page.get_by_role("combobox", name="Investigation workspace")
+    combobox.wait_for(state="visible", timeout=10_000)
+    combobox.click()
+    # Clicking the explicit option is more deterministic than repeated keypresses:
+    # Streamlit reruns can reset keyboard focus while replacing the popup subtree.
+    page.get_by_role("option", name=options[steps_down], exact=True).click(timeout=10_000)
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
 
 
