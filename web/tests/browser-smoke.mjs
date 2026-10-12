@@ -186,8 +186,16 @@ try {
   assert.equal(unsupportedMethod.headers.get('cache-control'), 'no-store',
     'framework-generated 405 responses must not inherit cacheable defaults');
 
+  const unsupportedContentType = await fetch(baseURL + '/api/analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ input: 'synthetic non-sensitive test input' }),
+  });
+  assert.equal(unsupportedContentType.status, 415, 'API should reject unsupported request media types');
+  assert.equal(unsupportedContentType.headers.get('cache-control'), 'no-store');
+
   const malformed = await fetch(baseURL + '/api/analyze', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{not-json',
+    method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body: '{not-json',
   });
   assert.equal(malformed.status, 400, 'API should reject malformed JSON with 400');
   assert.equal(malformed.headers.get('cache-control'), 'no-store', 'API errors must not be cached');
