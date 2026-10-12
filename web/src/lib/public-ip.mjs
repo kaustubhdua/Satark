@@ -33,7 +33,11 @@ export function isPublicIpAddress(address) {
     // legacy protocol-assignment block rather than querying test addresses.
     if (!/^[23]/.test(normalized)) return false;
     if (normalized.startsWith('2001:db8:') || normalized === '2001:db8') return false;
-    if (/^2001:(?:0|0{1,3}[0-9a-f])(?::|$)/.test(normalized)) return false;
+    if (normalized.startsWith('2001:')) {
+      const secondHextet = normalized.split(':')[1];
+      const secondValue = secondHextet ? Number.parseInt(secondHextet, 16) : 0;
+      if (Number.isFinite(secondValue) && secondValue <= 0x1ff) return false; // 2001::/23 special-purpose block
+    }
     return true;
   }
 
