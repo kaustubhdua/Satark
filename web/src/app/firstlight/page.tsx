@@ -3,7 +3,7 @@
 import SiteHeader from '../site-header';
 
 import { useMemo, useState } from 'react';
-import { parseCsv } from '../../lib/firstlight-import.mjs';
+import { parseCsv, parseIsoTimestamp } from '../../lib/firstlight-import.mjs';
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean };
 type Audit = { time: string; action: string; detail: string };
@@ -86,9 +86,9 @@ export default function FirstlightPage() {
         if (rawTime === undefined || rawTime === null || String(rawTime).trim() === '') {
           throw new Error('Missing timestamp in event ' + (i + 1) + '. Add a source timestamp; SATARK will not invent event times.');
         }
-        const parsedTime = Date.parse(String(rawTime));
-        if (!Number.isFinite(parsedTime)) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use a valid ISO date/time.');
-        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:new Date(parsedTime).toISOString(),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
+        const parsedTime = parseIsoTimestamp(rawTime);
+        if (!parsedTime) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use ISO 8601 date/time with an explicit timezone, e.g. 2026-10-11T10:00:00Z.');
+        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:parsedTime,source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
         next.push({...item,digest:await digest(JSON.stringify(item))});
       }
       const ids = new Set<string>();
