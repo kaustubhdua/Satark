@@ -57,9 +57,11 @@ export function parseCsv(text) {
   const events = records.map((columns, index) => {
     const record = {};
     headers.forEach((header, columnIndex) => { record[header] = (columns[columnIndex] || '').trim(); });
+    const timestamp = record.timestamp || record.time;
+    if (!timestamp) throw new Error('CSV event row ' + (index + 2) + ' is missing a timestamp/time value.');
     return {
       id: record.id || record.evidence_id || 'IMP-' + String(index + 1).padStart(3, '0'),
-      timestamp: record.timestamp || record.time || new Date().toISOString(),
+      timestamp,
       source: record.source || 'Imported source',
       kind: record.kind || 'observation',
       summary: record.summary || record.message || record.description || 'Imported event',
