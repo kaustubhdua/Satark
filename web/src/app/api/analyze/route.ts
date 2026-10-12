@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isIP } from 'node:net';
+import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
 
 export const runtime = 'nodejs';
 
@@ -69,7 +70,7 @@ function extractFirstIp(input: string): string | null {
   // Match address-shaped tokens only; isIP performs the actual IPv4/IPv6 validation.
   const candidates = input.match(/(?:[0-9]{1,3}[.]){3}[0-9]{1,3}|[0-9a-fA-F:]{2,39}/g) || [];
   for (const candidate of candidates) {
-    if (isIP(candidate)) return candidate;
+    if (isIP(candidate) && isPublicIpAddress(candidate)) return candidate;
   }
   return null;
 }
@@ -79,7 +80,7 @@ async function checkAbuseIpDb(input: string, requested: boolean): Promise<IpInte
   if (!requested) return { ...base, status: 'not_requested', detail: 'External IP reputation lookup was not requested.' };
   if (process.env.SATARK_ENABLE_ABUSEIPDB !== 'true') return { ...base, status: 'disabled', detail: 'IP reputation lookup is disabled by the server.' };
   const ip = extractFirstIp(input);
-  if (!ip) return { ...base, status: 'unavailable', detail: 'No valid IP literal could be extracted. Domains and arbitrary text are not queried.' };
+  if (!ip) return { ...base, status: 'unavailable', detail: 'No public IP literal could be extracted. Private, reserved, and arbitrary text are not queried.' };
   const key = process.env.ABUSEIPDB_API_KEY;
   if (!key) return { ...base, status: 'unavailable', detail: 'AbuseIPDB is not configured on the server.' };
   const controller = new AbortController();
