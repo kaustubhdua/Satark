@@ -58,6 +58,19 @@ async function inspectViewport(viewport, label) {
       viewport: document.documentElement.clientWidth,
       document: document.documentElement.scrollWidth,
       body: document.body.scrollWidth,
+      offenders: [...document.querySelectorAll('body *')]
+        .map(element => {
+          const rect = element.getBoundingClientRect();
+          return {
+            tag: element.tagName.toLowerCase(),
+            className: typeof element.className === 'string' ? element.className.slice(0, 90) : '',
+            text: (element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 50),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+          };
+        })
+        .filter(element => element.right > document.documentElement.clientWidth + 1)
+        .slice(0, 8),
     }));
     assert.ok(dimensions.document <= dimensions.viewport + 1,
       `${label}: horizontal overflow at ${route.path}: ${JSON.stringify(dimensions)}`);
