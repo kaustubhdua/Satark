@@ -14,10 +14,18 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: 'standalone',
   async headers() {
-    return [{
-      source: '/:path*',
-      headers: securityHeaders,
-    }];
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+      {
+        // API errors, including framework-generated 405 responses, must not
+        // inherit cacheable defaults even when a handler returns no body data.
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+    ];
   },
 };
 
