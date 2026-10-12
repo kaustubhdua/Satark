@@ -185,10 +185,42 @@ try {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: '{not-json',
   });
   assert.equal(malformed.status, 400, 'API should reject malformed JSON with 400');
+  assert.equal(malformed.headers.get('cache-control'), 'no-store', 'API errors must not be cached');
   const empty = await fetch(baseURL + '/api/analyze', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ input: '   ' }),
   });
   assert.equal(empty.status, 400, 'API should reject empty input with 400');
+  assert.equal(empty.headers.get('cache-control'), 'no-store', 'empty-input errors must not be cached');
+
+  const oversizedBody = await fetch(baseURL + '/api/analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ input: 'x'.repeat(49 * 1024) }),
+  });
+  assert.equal(oversizedBody.status, 413, 'API should reject bodies above the 48 KiB limit');
+  assert.equal(oversizedBody.headers.get('cache-control'), 'no-store');
+
+  const oversizedInput = await fetch(baseURL + '/api/analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ input: 'x'.repeat(12_001) }),
+  });
+  assert.equal(oversizedInput.status, 413, 'API should reject input above 12,000 characters');
+  assert.equal(oversizedInput.headers.get('cache-control'), 'no-store');
+
+  // Use a dedicated test IP so this deterministic in-process check does not
+  // depend on the unknown bucket consumed by earlier malformed/empty requests.
+  const limited = await Promise.all(Array.from({ length: 9 }, () => fetch(baseURL + '/api/analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-real-ip': '198.51.100.91' },
+    body: '{not-json',
+  })));
+  assert.equal(limited.filter(response => response.status === 400).length, 8,
+    'the first eight requests should reach JSON validation');
+  assert.equal(limited.filter(response => response.status === 429).length, 1,
+    'the ninth request from one client should be rate-limited');
+  assert.ok(limited.every(response => response.headers.get('cache-control') === 'no-store'),
+    'rate-limit and validation errors must not be cached');
 
   if (process.env.GROQ_API_KEY) {
     const response = await fetch(baseURL + '/api/analyze', {
