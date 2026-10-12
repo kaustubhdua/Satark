@@ -23,6 +23,7 @@ const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8
 const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
 const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
 const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
+const securityFollowup = readFileSync(new URL('../docs/SECURITY_AND_UX_FOLLOWUP.md', import.meta.url), 'utf8');
 
 test('baseline security headers and CSP directives are configured', () => {
   for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']) {
@@ -140,4 +141,12 @@ test('all external provider JSON responses are read within a strict byte budget'
     'AbuseIPDB and URLhaus responses must both use the bounded reader');
   assert.match(analyze, /MAX_THREAT_INTEL_RESPONSE_BYTES = 32 \* 1024/);
   assert.doesNotMatch(analyze, /await response\.json\(\)/);
+});
+
+
+test('developer privacy notice matches URLhaus URL sanitization behavior', () => {
+  assert.match(securityFollowup, /URLhaus receives the first extracted HTTP\(S\) URL only when the user checks the opt-in control/);
+  assert.match(securityFollowup, /removes query strings and fragments before sharing/);
+  assert.match(securityFollowup, /path can still contain identifiers or other sensitive data/);
+  assert.doesNotMatch(securityFollowup, /including its path and query string/);
 });
