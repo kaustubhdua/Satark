@@ -24,6 +24,7 @@ const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.m
 const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
 const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 const securityFollowup = readFileSync(new URL('../docs/SECURITY_AND_UX_FOLLOWUP.md', import.meta.url), 'utf8');
+const versionRoute = readFileSync(new URL('../src/app/api/version/route.ts', import.meta.url), 'utf8');
 
 test('baseline security headers and CSP directives are configured', () => {
   for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']) {
@@ -149,4 +150,19 @@ test('developer privacy notice matches URLhaus URL sanitization behavior', () =>
   assert.match(securityFollowup, /removes query strings and fragments before sharing/);
   assert.match(securityFollowup, /path can still contain identifiers or other sensitive data/);
   assert.doesNotMatch(securityFollowup, /including its path and query string/);
+});
+
+
+test('version endpoint exposes only a validated build SHA with no-store caching', () => {
+  assert.match(versionRoute, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
+  assert.match(versionRoute, /\^\[0-9a-f\]\{40\}\$/);
+  assert.match(versionRoute, /'Cache-Control': 'no-store'/);
+  assert.doesNotMatch(versionRoute, /process\.env\.(?:GROQ_API_KEY|URLHAUS_AUTH_KEY|ABUSEIPDB_API_KEY)/);
+});
+
+test('production smoke check fails closed when deployment revision is stale', () => {
+  const smoke = readFileSync(new URL('../../../.github/workflows/production-smoke.yml', import.meta.url), 'utf8');
+  assert.match(smoke, /api\/version/);
+  assert.match(smoke, /deployed_sha.*expected_sha|deployed_sha.*current main/);
+  assert.match(smoke, /Deployment is stale/);
 });
