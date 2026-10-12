@@ -81,6 +81,12 @@ async function inspectViewport(viewport, label) {
       await exportButton.click();
       const download = await downloadPromise;
       assert.equal(download.suggestedFilename(), 'satark-review-notes.txt');
+      const jsonExportButton = page.getByRole('button', { name: /export notes \\(\\.json\\)/i });
+      assert.equal(await jsonExportButton.isDisabled(), false, 'JSON export should enable after notes are entered');
+      const jsonDownloadPromise = page.waitForEvent('download');
+      await jsonExportButton.click();
+      const jsonDownload = await jsonDownloadPromise;
+      assert.equal(jsonDownload.suggestedFilename(), 'satark-review-notes.json');
       await page.getByRole('status').filter({ hasText: /download manager/i }).waitFor();
       await page.getByRole('button', { name: /clear notes/i }).click();
       assert.equal(await notes.inputValue(), '');
