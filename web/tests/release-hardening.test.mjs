@@ -42,3 +42,8 @@ test('per-instance throttling does not trust spoofable x-forwarded-for', () => {
   assert.doesNotMatch(analyze, /request\.headers\.get\('x-forwarded-for'\)\?\.split\(', '\)\[0\]/);
   assert.match(analyze, /all requests share[\s\S]*?'unknown' bucket/);
 });
+
+test('all API responses have an explicit no-store cache policy', () => {
+  assert.match(config, /source: '\/api\/:path\*'/);
+  assert.match(config, /key: 'Cache-Control', value: 'no-store'/);
+});
