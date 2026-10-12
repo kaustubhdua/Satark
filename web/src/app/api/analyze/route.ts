@@ -13,7 +13,9 @@ const requestCounts = new Map<string, { start: number; count: number }>();
 // This is a best-effort per-instance guard, not a distributed rate limiter.
 // Configure a shared/platform-level limit before exposing the endpoint to broad traffic.
 function isRateLimited(request: Request) {
-  const client = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  // Trust only the platform's single-hop client IP header; never accept caller-controlled forwarding chains.
+  // Configure the host to overwrite x-real-ip before relying on per-client throttling.
+  const client = request.headers.get('x-real-ip')?.trim() || 'unknown';
   const now = Date.now();
 
   if (requestCounts.size >= MAX_TRACKED_CLIENTS) {
