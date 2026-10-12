@@ -33,6 +33,8 @@ export function isPublicIpAddress(address) {
     // legacy protocol-assignment block rather than querying test addresses.
     if (!/^[23]/.test(normalized)) return false;
     if (normalized.startsWith('2001:db8:') || normalized === '2001:db8') return false;
+    if (normalized.startsWith('3fff:') || normalized === '3fff') return false; // 3fff::/20 documentation prefix
+    if (normalized.startsWith('2002:')) return false; // deprecated 6to4 transition prefix
     if (normalized.startsWith('2001:')) {
       const secondHextet = normalized.split(':')[1];
       const secondValue = secondHextet ? Number.parseInt(secondHextet, 16) : 0;
