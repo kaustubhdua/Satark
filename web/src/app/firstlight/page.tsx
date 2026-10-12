@@ -15,10 +15,17 @@ const starter = [
   { id: 'EV-005', time: '2026-10-11T09:28:00+05:30', source: 'Mail gateway', kind: 'message', summary: 'A lookalike-domain message requested an urgent account review.' }
 ];
 
+function toHex(hash: ArrayBuffer) {
+  return Array.from(new Uint8Array(hash)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
 async function digest(text: string) {
   const bytes = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(hash)).map(x => x.toString(16).padStart(2, '0')).join('');
+  return toHex(await crypto.subtle.digest('SHA-256', bytes));
+}
+
+async function digestBytes(bytes: ArrayBuffer) {
+  return toHex(await crypto.subtle.digest('SHA-256', bytes));
 }
 export default function FirstlightPage() {
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -58,8 +65,10 @@ export default function FirstlightPage() {
     setNotice('');
     if (file.size > 5 * 1024 * 1024) { setNotice('File exceeds the 5 MiB import limit.'); return; }
     try {
-      const text = await file.text();
-      if (new TextEncoder().encode(text).byteLength > 5 * 1024 * 1024) throw new Error('File exceeds the 5 MiB import limit.');
+      const rawBytes = await file.arrayBuffer();
+      if (rawBytes.byteLength > 5 * 1024 * 1024) throw new Error('File exceeds the 5 MiB import limit.');
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+      const sourceDigest = await digestBytes(rawBytes);
       let rows: any[];
       if (file.name.toLowerCase().endsWith('.json')) {
         const parsed = JSON.parse(text);
@@ -77,7 +86,7 @@ export default function FirstlightPage() {
         const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:new Date(parsedTime).toISOString(),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
         next.push({...item,digest:await digest(JSON.stringify(item))});
       }
-      setEvidence(next); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' records · SHA-256 calculated locally.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSelected('evidence'); setNotice('Imported and hashed locally. Content was not sent to an AI provider.');
+      setEvidence(next); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' normalized records · original file SHA-256: '+sourceDigest+' · file bytes hashed locally; no external anchor or custody log.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSelected('evidence'); setNotice('Imported locally. Original file bytes and normalized event records were hashed in this browser; nothing was sent to an AI provider.');
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
   }
   async function tamper(item: Evidence) {
