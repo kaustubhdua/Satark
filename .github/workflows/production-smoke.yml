@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   smoke:
-    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'production'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -54,11 +54,12 @@ jobs:
             echo "PASS $route: HTTP 200, expected content and baseline security headers."
           }
 
-          check_route "/" "Pause the panic|SATARK|SENTINEL"
-          check_route "/investigate" "Investigate|analysis|suspicious"
-          check_route "/firstlight" "FIRSTLIGHT"
-          check_route "/reports" "Reports|Review notes"
-          check_route "/learn" "Learn|safety"
+          # Match route-specific body content rather than navigation labels shared by every page.
+          check_route "/" "Pause the panic|Find the signal"
+          check_route "/investigate" "Suspicious URL or message"
+          check_route "/firstlight" "Launch training case"
+          check_route "/reports" "Review notes"
+          check_route "/learn" "Check answers"
 
           api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
           if [[ "$api_status" != "405" ]]; then
