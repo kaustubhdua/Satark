@@ -98,7 +98,7 @@ export default function InvestigatePage() {
           <label htmlFor="content">Suspicious URL or message</label>
           <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }}
             maxLength={12000} placeholder="Paste a suspicious URL or message here…" aria-describedby="content-hint" />
-          <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. If enabled on the server, the full extracted URL—including path and query string—is shared with this external service. Do not submit private or signed URLs. This is optional.</label>
+          <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. If enabled on the server, the URL origin and path are shared with this external service; query strings and fragments are removed first. Paths can still contain private identifiers, so do not submit private or signed URLs. This is optional.</label>
           <label className="intel-consent"><input type="checkbox" checked={shareIpWithThreatIntel} onChange={event => setShareIpWithThreatIntel(event.target.checked)} /> Also check a literal IP address against AbuseIPDB. If enabled on the server, the extracted IP address is shared with this external service. Domains and arbitrary text are not queried. This is optional.</label>
           <div className="form-bottom">
             <span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span>
