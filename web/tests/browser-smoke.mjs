@@ -204,7 +204,7 @@ try {
     return {
       shellAnimation: getComputedStyle(document.querySelector('.shell')).animationName,
       buttonTransitionSeconds: transition.endsWith('ms') ? numericDuration / 1000 : numericDuration,
-      buttonTransition,
+      buttonTransition: transition,
     };
   });
   assert.equal(motion.shellAnimation, 'none', 'FIRSTLIGHT must disable decorative animation for reduced-motion users');
