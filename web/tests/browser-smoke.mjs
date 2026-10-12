@@ -196,6 +196,19 @@ async function inspectViewport(viewport, label) {
       });
       await page.getByRole('status').filter({ hasText: /Imported locally/i }).waitFor();
       await page.getByText('QA-001').waitFor();
+      const [evidenceDownload] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: /export evidence json/i }).click(),
+      ]);
+      const evidenceExportPath = path.join(artifactDir, `firstlight-evidence-${label}.json`);
+      await evidenceDownload.saveAs(evidenceExportPath);
+      const evidenceExport = JSON.parse(await fs.readFile(evidenceExportPath, 'utf8'));
+      assert.equal(evidenceExport.schema_version, 1, 'evidence export should be versioned');
+      assert.equal(evidenceExport.case_type, 'imported-events');
+      assert.equal(evidenceExport.source_file_sha256, originalFileHash, 'export should include the original byte hash');
+      assert.equal(evidenceExport.evidence[0].id, 'QA-001');
+      assert.ok(evidenceExport.limitations.some(item => /not a certified forensic report or chain-of-custody/i.test(item)),
+        'export must disclose its forensic and custody limitations');
       await page.getByRole('button', { name: /audit trail/i }).click();
       await page.getByText(originalFileHash, { exact: false }).waitFor();
       await page.getByText(/no external anchor or custody log/i).waitFor();
