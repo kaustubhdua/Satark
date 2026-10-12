@@ -161,7 +161,7 @@ test('version endpoint exposes only a validated build SHA with no-store caching'
 });
 
 test('production smoke check fails closed when deployment revision is stale', () => {
-  const smoke = readFileSync(new URL('../../../.github/workflows/production-smoke.yml', import.meta.url), 'utf8');
+  const smoke = readFileSync(new URL('../../.github/workflows/production-smoke.yml', import.meta.url), 'utf8');
   assert.match(smoke, /api\/version/);
   assert.match(smoke, /deployed_sha.*expected_sha|deployed_sha.*current main/);
   assert.match(smoke, /Deployment is stale/);
