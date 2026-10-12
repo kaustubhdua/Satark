@@ -25,6 +25,19 @@ async function inspectViewport(viewport, label) {
     const response = await page.goto(baseURL + route.path, { waitUntil: 'networkidle' });
     assert.ok(response && response.status() < 400, `${label}: ${route.path} returned ${response?.status()}`);
     await page.locator('body').waitFor();
+
+    // Catch structural accessibility regressions on every route and viewport.
+    const semantics = await page.evaluate(() => ({
+      language: document.documentElement.lang,
+      mainLandmarks: document.querySelectorAll('main').length,
+      primaryHeadings: document.querySelectorAll('h1').length,
+      imagesWithoutAlt: document.querySelectorAll('img:not([alt])').length,
+    }));
+    assert.equal(semantics.language, 'en', `${label}: document language must be declared on ${route.path}`);
+    assert.equal(semantics.mainLandmarks, 1, `${label}: expected one main landmark on ${route.path}: ${JSON.stringify(semantics)}`);
+    assert.equal(semantics.primaryHeadings, 1, `${label}: expected one primary heading on ${route.path}: ${JSON.stringify(semantics)}`);
+    assert.equal(semantics.imagesWithoutAlt, 0, `${label}: every image needs an alt attribute on ${route.path}`);
+
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
       `${label}: skip link should be the first keyboard focus target on ${route.path}`);
