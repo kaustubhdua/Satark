@@ -71,9 +71,9 @@ def choose_workspace(page, steps_down):
     for _ in range(steps_down):
         page.get_by_role("combobox", name="Investigation workspace").press("ArrowDown")
     page.get_by_role("combobox", name="Investigation workspace").press("Enter")
-    page.get_by_role("combobox", name="Investigation workspace").get_by_text(
-        options[steps_down], exact=True
-    ).wait_for(timeout=10_000)
+    # The selected label is rendered by Streamlit outside the combobox's
+    # accessible subtree, so do not scope a text locator to the combobox.
+    # Assert the destination workspace's unique heading/content marker instead.
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
 
 
