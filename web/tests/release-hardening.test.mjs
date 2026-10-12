@@ -7,10 +7,14 @@ const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.m
 const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
 const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 
-test('baseline security headers are configured', () => {
-  for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy']) {
+test('baseline security headers and CSP directives are configured', () => {
+  for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']) {
     assert.match(config, new RegExp(header));
   }
+  assert.match(config, /base-uri 'none'/);
+  assert.match(config, /object-src 'none'/);
+  assert.match(config, /frame-ancestors 'none'/);
+  assert.match(config, /form-action 'self'/);
 });
 
 test('independent reputation lookups execute concurrently', () => {
