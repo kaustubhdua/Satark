@@ -52,7 +52,8 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Navigate the FIRSTLIGHT workspace selector and verify the destination content."""
+    """Select a visible FIRSTLIGHT workspace option and verify its content."""
+    options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
     active_markers = {
         0: "Collection priority",
         1: "Evidence Integrity Challenge",
@@ -60,24 +61,17 @@ def choose_workspace(page, steps_down):
         3: "Human approval gate",
         4: "Hash-chained audit trail",
     }
-    has_current = hasattr(choose_workspace, "_current_index")
-    current_index = getattr(choose_workspace, "_current_index", 0)
     combobox = page.get_by_role("combobox", name="Investigation workspace")
     combobox.wait_for(state="visible", timeout=10_000)
     combobox.click()
-    # On first use, Home anchors the selection at Incident. On later changes,
-    # navigate from the last verified workspace instead of resetting Home; the
-    # Streamlit/React-Aria popup can be replaced during each rerun.
-    if not has_current:
-        combobox.press("Home")
-        current_index = 0
-    delta = steps_down - current_index
-    for _ in range(abs(delta)):
-        combobox = page.get_by_role("combobox", name="Investigation workspace")
-        combobox.press("ArrowDown" if delta > 0 else "ArrowUp")
-    page.get_by_role("combobox", name="Investigation workspace").press("Enter")
+    # Clicking the combobox only focuses it in Streamlit's React-Aria widget;
+    # ArrowDown opens the popup. Force the option click to avoid a stability
+    # retry racing the popup's immediate rerender.
+    combobox.press("ArrowDown")
+    option = page.get_by_role("option", name=options[steps_down], exact=True)
+    option.wait_for(state="visible", timeout=10_000)
+    option.click(force=True, timeout=10_000)
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
-    choose_workspace._current_index = steps_down
 
 
 
