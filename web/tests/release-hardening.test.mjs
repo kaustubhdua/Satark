@@ -70,10 +70,21 @@ test('analysis API rejects unsupported media types before parsing bodies', () =>
   assert.match(analyze, /return error\('Content-Type must be application\/json\.', 415\)/);
 });
 
-test('URLhaus consent is opt-in and query strings/fragments are stripped before sharing', () => {
-  assert.match(analyze, /parsed\.search = '';/);
-  assert.match(analyze, /parsed\.hash = '';/);
-  assert.match(analyze, /Never forward them to an external reputation provider/);
+test('URLhaus URL sanitizer strips query and fragment values before sharing', async () => {
+  const { extractFirstHttpUrl } = await import('../src/lib/urlhaus-url.mjs');
+  assert.equal(
+    extractFirstHttpUrl('Please check https://example.test/path?token=secret&email=user%40example.test#session-id'),
+    'https://example.test/path',
+    'query parameters and fragments must not reach URLhaus',
+  );
+  assert.equal(
+    extractFirstHttpUrl('https://example.test/path?x=1).'),
+    'https://example.test/path',
+    'trailing sentence punctuation must not be included in the lookup URL',
+  );
+  assert.equal(extractFirstHttpUrl('https://user:password@example.test/private'), null,
+    'URLs containing embedded credentials must not be shared');
+  assert.equal(extractFirstHttpUrl('No URL was supplied'), null);
   const investigate = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
   assert.match(investigate, /query strings and fragments are removed first/);
   assert.match(investigate, /Paths can still contain private identifiers/);
