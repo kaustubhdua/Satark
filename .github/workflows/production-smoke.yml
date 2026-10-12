@@ -23,10 +23,15 @@ jobs:
     env:
       SATARK_PRODUCTION_URL: https://satark-qzym.vercel.app
     steps:
+      - name: Check out current production branch revision
+        uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Check public production routes and security headers
         shell: bash
         run: |
           set -euo pipefail
+          expected_sha="$(git rev-parse HEAD)"
           base="${SATARK_PRODUCTION_URL%/}"
           body="$(mktemp)"
           headers="$(mktemp)"
@@ -71,3 +76,15 @@ jobs:
             exit 1
           fi
           echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
+
+          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
+          if [[ "$version_status" != "200" ]]; then
+            echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
+            exit 1
+          fi
+          deployed_sha="$(jq -r '.commit // empty' "$body")"
+          if [[ "$deployed_sha" != "$expected_sha" ]]; then
+            echo "::error::Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
+            exit 1
+          fi
+          echo "PASS /api/version: production serves current main commit $expected_sha."
