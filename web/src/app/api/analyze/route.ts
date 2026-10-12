@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { isIP } from 'node:net';
 import { extractFirstHttpUrl, safeUrlhausReference } from '@/lib/urlhaus-url.mjs';
 import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
+import { readJsonWithinLimit } from '@/lib/bounded-json.mjs';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,7 @@ const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 8;
 const MAX_BODY_BYTES = 48 * 1024;
 const MAX_INPUT_CHARS = 12_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
 const MAX_TRACKED_CLIENTS = 2_000;
 const requestCounts = new Map<string, { start: number; count: number }>();
 
@@ -251,7 +253,7 @@ export async function POST(request: Request) {
     if (upstream.status === 429) return error('Groq rate limit reached. Wait and retry.', 429);
     if (!upstream.ok) return error('Groq could not complete the analysis.', 502);
 
-    const payload: unknown = await upstream.json();
+    const payload: unknown = await readJsonWithinLimit(upstream, MAX_PROVIDER_RESPONSE_BYTES);
     const raw = payload && typeof payload === 'object'
       ? (payload as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content
       : undefined;
