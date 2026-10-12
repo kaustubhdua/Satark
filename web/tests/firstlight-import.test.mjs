@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../src/lib/firstlight-import.mjs';
+import { parseCsv, parseIsoTimestamp } from '../src/lib/firstlight-import.mjs';
+
+test('accepts explicit ISO-8601 timestamps and normalizes them to UTC', () => {
+  assert.equal(parseIsoTimestamp('2026-10-11T10:00:00Z'), '2026-10-11T10:00:00.000Z');
+  assert.equal(parseIsoTimestamp('2026-10-11T10:00:00+05:30'), '2026-10-11T04:30:00.000Z');
+  assert.equal(parseIsoTimestamp('2026-10-11T10:00Z'), '2026-10-11T10:00:00.000Z');
+});
+
+test('rejects ambiguous, timezone-less and impossible timestamps', () => {
+  for (const value of [
+    '10/11/2026 10:00',
+    '2026-10-11 10:00:00Z',
+    '2026-10-11T10:00:00',
+    '2026-02-30T10:00:00Z',
+    '2026-10-11T25:00:00Z',
+    '2026-10-11T10:00:00+14:01',
+    1791712800000,
+    null,
+  ]) assert.equal(parseIsoTimestamp(value), null, `invalid timestamp rejected: ${String(value)}`);
+});
 
 test('parses ordinary CSV rows and normalizes headers', () => {
   const rows = parseCsv('id,timestamp,source,summary\n1,2026-10-10T10:00:00Z,mail,Check message');
