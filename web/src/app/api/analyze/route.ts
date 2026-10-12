@@ -140,10 +140,10 @@ async function checkUrlhaus(input: string, requested: boolean): Promise<ThreatIn
   }
 }
 
-function error(message: string, status: number) {
+function error(message: string, status: number, extraHeaders: Record<string, string> = {}) {
   return NextResponse.json({ error: message }, {
     status,
-    headers: { 'Cache-Control': 'no-store' },
+    headers: { 'Cache-Control': 'no-store', ...extraHeaders },
   });
 }
 
@@ -158,7 +158,7 @@ function stringList(value: unknown, maxItems = 6, maxLength = 300): string[] {
 
 export async function POST(request: Request) {
   if (isRateLimited(request)) {
-    return error('Too many requests. Wait a minute and retry.', 429);
+    return error('Too many requests. Wait a minute and retry.', 429, { 'Retry-After': '60' });
   }
 
   const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
