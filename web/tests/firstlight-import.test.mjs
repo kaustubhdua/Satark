@@ -26,6 +26,13 @@ test('rejects empty and duplicate headers', () => {
   assert.throws(() => parseCsv('id,ID,summary\n1,2,y'), /duplicate column headers/i);
 });
 
+test('rejects duplicate evidence IDs in CSV imports', () => {
+  assert.throws(
+    () => parseCsv('id,timestamp,summary\\nEV-1,2026-10-10T10:00:00Z,First\\nEV-1,2026-10-10T10:01:00Z,Second'),
+    /duplicate evidence IDs/i
+  );
+});
+
 test('rejects records with more cells than the header', () => {
   assert.throws(() => parseCsv('id,summary\n1,hello,extra'), /more columns than its header/i);
 });
