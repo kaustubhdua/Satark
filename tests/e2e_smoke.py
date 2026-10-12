@@ -52,7 +52,7 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a workspace by its visible option and verify its unique content marker."""
+    """Navigate from the current workspace and verify the destination content."""
     options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
     active_markers = {
         0: "Collection priority",
@@ -61,18 +61,20 @@ def choose_workspace(page, steps_down):
         3: "Human approval gate",
         4: "Hash-chained audit trail",
     }
+    current_index = getattr(choose_workspace, "_current_index", 0)
+    delta = steps_down - current_index
     combobox = page.get_by_role("combobox", name="Investigation workspace")
     combobox.wait_for(state="visible", timeout=10_000)
     combobox.click()
-    # Clicking the explicit option is more deterministic than repeated keypresses:
-    # Streamlit reruns can reset keyboard focus while replacing the popup subtree.
-    option = page.get_by_role("option", name=options[steps_down], exact=True)
-    option.wait_for(state="visible", timeout=10_000)
-    # A normal Playwright pointer click races Streamlit's popup replacement and
-    # retries against detached React-Aria option nodes. Dispatch the option's
-    # click event directly, then verify the selected workspace by its content.
-    option.dispatch_event("click")
+    # Navigate relative to the actual previous selection. Repeatedly resetting
+    # to Home is unreliable because Streamlit replaces its React-Aria popup on
+    # reruns and can lose the highlighted option between keypresses.
+    for _ in range(abs(delta)):
+        combobox = page.get_by_role("combobox", name="Investigation workspace")
+        combobox.press("ArrowDown" if delta > 0 else "ArrowUp")
+    page.get_by_role("combobox", name="Investigation workspace").press("Enter")
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
+    choose_workspace._current_index = steps_down
 
 
 
