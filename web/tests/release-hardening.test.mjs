@@ -182,3 +182,9 @@ test('homepage URLhaus consent describes query and fragment removal', () => {
   assert.match(homePage, /Paths can still contain private identifiers/);
   assert.doesNotMatch(homePage, /full extracted URL, including its path and query string, is shared/i);
 });
+
+
+test('local analysis rate limits include a standards-based retry hint without enabling caching', () => {
+  assert.match(route, /Too many requests\. Wait a minute and retry\.', 429, \{ 'Retry-After': '60' \}\)/);
+  assert.match(route, /headers: \{ 'Cache-Control': 'no-store', \.\.\.extraHeaders \}/);
+});
