@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isIP } from 'node:net';
-import { extractFirstHttpUrl } from '@/lib/urlhaus-url.mjs';
+import { extractFirstHttpUrl, safeUrlhausReference } from '@/lib/urlhaus-url.mjs';
 import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
 
 export const runtime = 'nodejs';
@@ -126,7 +126,7 @@ async function checkUrlhaus(input: string, requested: boolean): Promise<ThreatIn
     const data = payload as Record<string, unknown>;
     if (data.query_status === 'no_results') return { ...base, status: 'no_match', detail: 'URLhaus returned no listing. This does not establish that the URL is safe.' };
     if (data.query_status !== 'ok') return { ...base, status: 'unavailable', detail: 'URLhaus returned an inconclusive result.' };
-    const reference = typeof data.urlhaus_reference === 'string' ? data.urlhaus_reference.slice(0, 500) : undefined;
+    const reference = safeUrlhausReference(data.urlhaus_reference);
     const threat = typeof data.threat === 'string' ? data.threat.slice(0, 120) : 'Listed URL';
     const tags = Array.isArray(data.tags) ? data.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 5) : [];
     return { ...base, status: 'match', detail: tags.length ? threat + '; tags: ' + tags.join(', ') : threat, ...(reference ? { reference } : {}) };
