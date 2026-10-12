@@ -40,11 +40,34 @@ async function inspectViewport(viewport, label) {
       mainLandmarks: document.querySelectorAll('main').length,
       primaryHeadings: document.querySelectorAll('h1').length,
       imagesWithoutAlt: document.querySelectorAll('img:not([alt])').length,
+      duplicateIds: [...document.querySelectorAll('[id]')].map(element => element.id)
+        .filter((id, index, ids) => ids.indexOf(id) !== index).filter((id, index, ids) => ids.indexOf(id) === index),
+      unnamedVisibleControls: [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea')]
+        .filter(element => {
+          const style = getComputedStyle(element);
+          if (style.display === 'none' || style.visibility === 'hidden' || element.getClientRects().length === 0) return false;
+          const labelledBy = (element.getAttribute('aria-labelledby') || '').split(/\\s+/)
+            .map(id => document.getElementById(id)?.innerText || '').join(' ').trim();
+          const nativeLabel = element.labels ? [...element.labels].map(label => label.innerText).join(' ').trim() : '';
+          const text = (element.innerText || element.textContent || '').trim();
+          const imageAlt = element.getAttribute('alt') || '';
+          return ![
+            element.getAttribute('aria-label') || '',
+            labelledBy,
+            nativeLabel,
+            imageAlt,
+            element.getAttribute('title') || '',
+            text,
+          ].some(name => name.trim().length > 0);
+        })
+        .map(element => ({ tag: element.tagName.toLowerCase(), type: element.getAttribute('type'), id: element.id, html: element.outerHTML.slice(0, 180) })),
     }));
     assert.equal(semantics.language, 'en', `${label}: document language must be declared on ${route.path}`);
     assert.equal(semantics.mainLandmarks, 1, `${label}: expected one main landmark on ${route.path}: ${JSON.stringify(semantics)}`);
     assert.equal(semantics.primaryHeadings, 1, `${label}: expected one primary heading on ${route.path}: ${JSON.stringify(semantics)}`);
     assert.equal(semantics.imagesWithoutAlt, 0, `${label}: every image needs an alt attribute on ${route.path}`);
+    assert.deepEqual(semantics.duplicateIds, [], `${label}: duplicate IDs break label and landmark references on ${route.path}: ${JSON.stringify(semantics.duplicateIds)}`);
+    assert.deepEqual(semantics.unnamedVisibleControls, [], `${label}: visible interactive controls need accessible names on ${route.path}: ${JSON.stringify(semantics.unnamedVisibleControls)}`);
 
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('skip-link')), true,
