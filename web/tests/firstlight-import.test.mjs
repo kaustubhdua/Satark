@@ -26,6 +26,13 @@ test('rejects empty and duplicate headers', () => {
   assert.throws(() => parseCsv('id,ID,summary\n1,2,y'), /duplicate column headers/i);
 });
 
+test('rejects CSV rows without source timestamps instead of inventing current time', () => {
+  assert.throws(
+    () => parseCsv('id,source,summary\\nEV-1,mail,Message with no timestamp'),
+    /missing a timestamp\/time value/i
+  );
+});
+
 test('rejects duplicate evidence IDs in CSV imports', () => {
   assert.throws(
     () => parseCsv('id,timestamp,summary\nEV-1,2026-10-10T10:00:00Z,First\nEV-1,2026-10-10T10:01:00Z,Second'),
