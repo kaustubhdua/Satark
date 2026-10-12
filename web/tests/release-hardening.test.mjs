@@ -4,14 +4,15 @@ import { isPublicIpAddress } from '../src/lib/public-ip.mjs';
 import { readJsonWithinLimit } from '../src/lib/bounded-json.mjs';
 
 test('AbuseIPDB lookups accept only public IP literals', () => {
-  for (const ip of ['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111', '2001:4860:4860::8888']) {
+  for (const ip of ['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111', '2001:4860:4860::8888', '2001:4860:0000:0000::8888']) {
     assert.equal(isPublicIpAddress(ip), true, `${ip} should be accepted`);
   }
   for (const ip of [
     'not-an-ip', '127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1',
     '169.254.1.1', '100.64.0.1', '192.0.2.1', '198.51.100.2',
     '203.0.113.9', '224.0.0.1', '255.255.255.255', '::1',
-    'fc00::1', 'fe80::1', '2001:db8::1', '2001:100::1', '2001:0::1', '3fff::1', '2002:c000:0201::1',
+    'fc00::1', 'fe80::1', '2001:db8::1', '2001:0db8::1', '2001:0000::1',
+    '2001:100::1', '2001:0::1', '3fff::1', '2002:c000:0201::1',
   ]) {
     assert.equal(isPublicIpAddress(ip), false, `${ip} must not be queried`);
   }
