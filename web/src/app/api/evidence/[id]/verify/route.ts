@@ -57,7 +57,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const rows: unknown = await lookup.json();
     if (!Array.isArray(rows) || !rows[0]) return reply({ error: 'Evidence was not found.' }, 404);
     const row = rows[0] as { id:string; tenant_id:string; case_id:string; source_sha256:string|null; record_sha256:string; created_by:string; metadata:Record<string,unknown> };
-    if (row.created_by !== userId && typeof row.tenant_id !== 'string') return reply({ error: 'Evidence access denied.' }, 403);
     const objectKey = row.metadata?.object_key;
     if (typeof objectKey !== 'string' || !objectKey.startsWith(row.tenant_id + '/' + row.case_id + '/')) {
       return reply({ error: 'Evidence storage reference failed validation.' }, 409);
