@@ -302,7 +302,7 @@ body{
 .brand:hover .brand-mark{transform:rotate(-7deg) scale(1.06);box-shadow:0 0 36px rgba(184,243,107,.3)}
 .container{padding-top:clamp(34px,5vw,72px)}
 .hero{position:relative;isolation:isolate;gap:clamp(28px,5vw,76px);padding-block:clamp(26px,4vw,58px) clamp(46px,6vw,84px)}
-.hero:before{content:"";position:absolute;z-index:-1;inset:0 -3vw 30px;border:1px solid rgba(164,190,224,.08);border-radius:34px;background:linear-gradient(125deg,rgba(20,33,54,.54),rgba(9,15,26,.15) 58%,rgba(21,35,51,.28));mask-image:linear-gradient(90deg,#000,rgba(0,0,0,.82) 60%,transparent)}
+.hero:before{content:"";position:absolute;z-index:-1;inset:0 0 30px;border:1px solid rgba(164,190,224,.08);border-radius:34px;background:linear-gradient(125deg,rgba(20,33,54,.54),rgba(9,15,26,.15) 58%,rgba(21,35,51,.28));mask-image:linear-gradient(90deg,#000,rgba(0,0,0,.82) 60%,transparent)}
 .hero h1{max-width:850px;font-size:clamp(44px,6.2vw,88px);line-height:.99;letter-spacing:-.075em;text-wrap:balance}
 .hero h1 span{background:linear-gradient(100deg,var(--lime) 4%,var(--mint) 48%,#a9c7ff 95%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
 .eyebrow,.status{color:var(--mint)}
