@@ -65,6 +65,28 @@ jobs:
           check_route "/firstlight" "Launch training case"
           check_route "/reports" "Review notes"
           check_route "/learn" "Check answers"
+          check_route "/login" "Sign in securely"
+
+
+          # Authenticated persistence APIs must be deployed, configured, and fail closed without a session.
+          check_unauthenticated_api() {
+            local route="$1"
+            local status
+            status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            if [[ "$status" != "401" ]]; then
+              echo "::error::Unauthenticated $route returned HTTP $status (expected 401)."
+              exit 1
+            fi
+            if ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
+              echo "::error::$route must set Cache-Control: no-store."
+              exit 1
+            fi
+            echo "PASS $route: unauthenticated request rejected with 401 and no-store."
+          }
+
+          check_unauthenticated_api "/api/cases"
+          check_unauthenticated_api "/api/findings"
+          check_unauthenticated_api "/api/reports"
 
           api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
           if [[ "$api_status" != "405" ]]; then
