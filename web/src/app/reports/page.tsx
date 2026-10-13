@@ -68,7 +68,7 @@ export default function ReportsPage() {
 
   function download() {
     const notes = report.trim();
-    if (!notes) return;
+    if (!notes && !savedAnalysis) return;
     const analysis = savedAnalysis?.analysis;
     const analysisText = analysis ? [
       '',
@@ -135,8 +135,8 @@ export default function ReportsPage() {
             <span className="hint" id="notes-hint" aria-live="polite">{report.length.toLocaleString()} / 20,000 characters</span>
             <div className="button-row">
               <button className="btn btn-secondary" type="button" disabled={!report} onClick={() => { setReport(''); setExported(false); }}>Clear notes</button>
-              <button className="btn btn-primary" type="button" disabled={!report.trim()} onClick={download}>Export notes (.txt) ↓</button>
-              <button className="btn btn-secondary" type="button" disabled={!report.trim()} onClick={downloadJson}>Export notes (.json) ↓</button>
+              <button className="btn btn-primary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={download}>Export notes (.txt) ↓</button>
+              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={downloadJson}>Export notes (.json) ↓</button>
             </div>
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
