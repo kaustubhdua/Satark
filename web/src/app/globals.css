@@ -414,3 +414,19 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
 .saved-case-row select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;background:#080d15;color:var(--text);padding:10px;font:inherit;font-size:12px}
 .saved-case-row .workspace-choice{min-width:0}
 @media(max-width:640px){.saved-case-row{grid-template-columns:1fr}.saved-case-row select{min-height:40px}}
+
+/* Convert the evidence ledger to stacked cards on phones so row actions stay in the viewport. */
+@media(max-width:600px){
+  .table-wrap{overflow:visible;border:0}
+  .evidence-table{width:100%;min-width:0;table-layout:fixed}
+  .evidence-table thead{display:none}
+  .evidence-table tbody{display:grid;gap:10px}
+  .evidence-table tbody tr{display:block;width:100%;border:1px solid var(--line);border-radius:12px;background:#ffffff04;padding:12px}
+  .evidence-table tbody td{display:block;width:100%;padding:7px 0;border:0;overflow-wrap:anywhere}
+  .evidence-table tbody td:before{display:block;margin-bottom:4px;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  .evidence-table tbody td:nth-child(1):before{content:"Artifact"}
+  .evidence-table tbody td:nth-child(2):before{content:"Source / time"}
+  .evidence-table tbody td:nth-child(3):before{content:"Observation"}
+  .evidence-table tbody td:nth-child(4):before{content:"Integrity"}
+  .evidence-table tbody td:last-child .mini-btn{width:100%;min-height:42px}
+}
