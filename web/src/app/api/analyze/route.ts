@@ -3,46 +3,14 @@ import { isIP } from 'node:net';
 import { extractFirstHttpUrl, safeUrlhausReference } from '@/lib/urlhaus-url.mjs';
 import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
 import { readJsonWithinLimit } from '@/lib/bounded-json.mjs';
+import { checkAnalysisRateLimit } from '@/lib/rate-limit.mjs';
 
 export const runtime = 'nodejs';
 
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 8;
 const MAX_BODY_BYTES = 48 * 1024;
 const MAX_INPUT_CHARS = 12_000;
 const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
 const MAX_THREAT_INTEL_RESPONSE_BYTES = 32 * 1024;
-const MAX_TRACKED_CLIENTS = 2_000;
-const requestCounts = new Map<string, { start: number; count: number }>();
-
-// This is a best-effort per-instance guard, not a distributed rate limiter.
-// Configure a shared/platform-level limit before exposing the endpoint to broad traffic.
-function isRateLimited(request: Request) {
-  // Use the platform-provided single-hop client IP. Do not trust the first
-  // x-forwarded-for value: callers can often prepend spoofed addresses.
-  // If the hosting platform does not overwrite x-real-ip, configure a trusted
-  // edge header before relying on per-client limits; otherwise all requests share
-  // the conservative 'unknown' bucket.
-  const client = request.headers.get('x-real-ip')?.trim() || 'unknown';
-  const now = Date.now();
-
-  if (requestCounts.size >= MAX_TRACKED_CLIENTS) {
-    for (const [key, entry] of requestCounts) {
-      if (now - entry.start >= WINDOW_MS) requestCounts.delete(key);
-    }
-    if (requestCounts.size >= MAX_TRACKED_CLIENTS && !requestCounts.has(client)) {
-      return true;
-    }
-  }
-
-  const entry = requestCounts.get(client);
-  if (!entry || now - entry.start >= WINDOW_MS) {
-    requestCounts.set(client, { start: now, count: 1 });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > MAX_REQUESTS_PER_WINDOW;
-}
 
 type IpIntelResult = {
   status: 'not_requested' | 'disabled' | 'unavailable' | 'no_match' | 'match';
@@ -161,7 +129,11 @@ function stringList(value: unknown, maxItems = 6, maxLength = 300): string[] {
 }
 
 export async function POST(request: Request) {
-  if (isRateLimited(request)) {
+  const rateLimit = await checkAnalysisRateLimit(request);
+  if (rateLimit.unavailable) {
+    return error('Analysis is temporarily unavailable because request protection could not be verified. Retry shortly.', 503, { 'Retry-After': '10' });
+  }
+  if (rateLimit.limited) {
     return error('Too many requests. Wait a minute and retry.', 429, { 'Retry-After': '60' });
   }
 
