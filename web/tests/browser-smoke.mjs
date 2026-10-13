@@ -19,6 +19,7 @@ const routes = [
   { path: '/firstlight', heading: /FIRSTLIGHT/i },
   { path: '/reports', heading: /report/i },
   { path: '/learn', heading: /learn|safety/i },
+  { path: '/login', heading: /investigations that|welcome back/i },
 ];
 
 async function inspectViewport(viewport, label) {
@@ -128,6 +129,11 @@ async function inspectViewport(viewport, label) {
       assert.match(await page.locator('#content-hint').innerText(), /\d+ \/ 12,000 characters/);
       await input.fill('');
       assert.equal(await analyzeButton.isDisabled(), true, 'investigation should disable again when cleared');
+    }
+    if (route.path === '/login') {
+      assert.equal(await page.getByLabel('Email address').isVisible(), true, 'workspace sign-in email must be labelled and visible');
+      assert.equal(await page.getByLabel('Password').isVisible(), true, 'workspace sign-in password must be labelled and visible');
+      assert.equal(await page.getByRole('button', { name: 'Sign in securely' }).isVisible(), true, 'workspace sign-in action must be accessible');
     }
     if (route.path === '/reports') {
       const notes = page.getByLabel('Review notes');
