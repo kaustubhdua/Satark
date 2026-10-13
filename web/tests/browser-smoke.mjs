@@ -176,7 +176,7 @@ async function inspectViewport(viewport, label) {
       await page.getByRole('status').filter({ hasText: /download manager/i }).waitFor();
       await page.getByRole('button', { name: /clear notes/i }).click();
       assert.equal(await notes.inputValue(), '');
-      assert.equal(await exportButton.isDisabled(), true);
+      assert.equal(await exportButton.isDisabled(), false, 'analysis-only export should remain available after clearing notes');
     }
     if (route.path === '/learn') {
       for (const name of ['q0', 'q1', 'q2']) await page.locator(`input[name="${name}"]`).nth(name === 'q0' ? 1 : name === 'q1' ? 2 : 1).check();
