@@ -138,7 +138,7 @@ export default function Home() {
         </section>
 
         <section className="investigation" id="investigate">
-          <aside className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{ color: '#dce6f4' }}>Important:</strong> AI output is an assessment, not proof. The app does not visit submitted URLs or execute files.</p></aside>
+          <div className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{ color: '#dce6f4' }}>Important:</strong> AI output is an assessment, not proof. The app does not visit submitted URLs or execute files.</p></div>
           <div className="form-panel">
             <h3>New investigation</h3>
             <p className="field-note">Before you analyze: the text you submit is sent to Groq for AI-assisted triage. Do not submit information you are not permitted to share. URLhaus and AbuseIPDB are separate optional lookups and receive only the extracted URL or public IP when you opt in and the server enables them.</p>

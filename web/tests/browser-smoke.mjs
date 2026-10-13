@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 
+const require = createRequire(import.meta.url);
+const axePath = require.resolve('axe-core/axe.min.js');
 const baseURL = process.env.SATARK_WEB_URL || 'http://127.0.0.1:3000';
 const artifactDir = process.env.SATARK_WEB_ARTIFACTS || 'artifacts/web';
 await fs.mkdir(artifactDir, { recursive: true });
@@ -33,6 +36,17 @@ async function inspectViewport(viewport, label) {
     assert.match(responseHeaders['strict-transport-security'] || '', /max-age=31536000/,
       `${label}: HSTS must be present on ${route.path}`);
     await page.locator('body').waitFor();
+
+    // Run axe against every primary route at every supported smoke viewport.
+    await page.addScriptTag({ path: axePath });
+    const axeResults = await page.evaluate(async () => await globalThis.axe.run(document, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] },
+    }));
+    assert.deepEqual(axeResults.violations.map(violation => ({
+      id: violation.id,
+      impact: violation.impact,
+      targets: violation.nodes.map(node => node.target),
+    })), [], `${label}: axe accessibility violations on ${route.path}`);
 
     // Catch structural accessibility regressions on every route and viewport.
     const semantics = await page.evaluate(() => ({
