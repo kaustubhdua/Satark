@@ -66,3 +66,25 @@ test('tenant RLS blocks cross-tenant reads and writes for two distinct users', {
     }
   }
 });
+
+const viewerRequired = ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','SATARK_TEST_VIEWER_EMAIL','SATARK_TEST_VIEWER_PASSWORD','SATARK_TEST_VIEWER_TENANT_ID'];
+const viewerMissing = viewerRequired.filter(key => !env[key]);
+test('viewer role cannot create or update cases', { skip: viewerMissing.length ? 'Set up a dedicated viewer test account; missing: ' + viewerMissing.join(', ') : false }, async () => {
+  const viewer = await login(env.SATARK_TEST_VIEWER_EMAIL, env.SATARK_TEST_VIEWER_PASSWORD);
+  const tenantId = env.SATARK_TEST_VIEWER_TENANT_ID;
+  const create = await rest(viewer, 'satark_cases', {
+    method: 'POST', headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ tenant_id: tenantId, title: 'Viewer permission integration probe', status: 'open', severity: 'unknown', created_by: viewer.userId, metadata: { test_probe: true } }),
+  });
+  assert.ok(!create.ok, 'viewer must not create cases');
+  const listQuery = new URLSearchParams({ select:'id',tenant_id:'eq.'+tenantId,limit:'1' });
+  const listed = await rest(viewer, 'satark_cases?' + listQuery);
+  assert.equal(listed.status, 200);
+  const rows = await listed.json();
+  if (rows.length) {
+    const update = await rest(viewer, 'satark_cases?id=eq.'+rows[0].id+'&tenant_id=eq.'+tenantId, {
+      method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'resolved'}),
+    });
+    assert.ok(!update.ok || (await update.json()).length===0, 'viewer must not update cases');
+  }
+});
