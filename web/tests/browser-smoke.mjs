@@ -167,8 +167,8 @@ async function inspectViewport(viewport, label) {
       const jsonPayload = JSON.parse(await fs.readFile(jsonPath, 'utf8'));
       assert.equal(jsonPayload.schema_version, 1);
       assert.equal(jsonPayload.report_type, 'review-notes-with-optional-session-analysis');
-      assert.equal(jsonPayload.analysis_snapshot, null, 'reports without a prior analysis must not invent analysis evidence');
-      assert.equal(jsonPayload.provenance.analysis_included, false);
+      assert.equal(jsonPayload.analysis_snapshot.analysis.summary, 'Synthetic browser test summary');
+      assert.equal(jsonPayload.provenance.analysis_included, true);
       assert.equal(jsonPayload.provenance.submitted_source_text_saved, false);
       assert.equal(jsonPayload.notes, await notes.inputValue().then(value => value.trim()));
       assert.ok(Array.isArray(jsonPayload.limitations) && jsonPayload.limitations.length > 0,
