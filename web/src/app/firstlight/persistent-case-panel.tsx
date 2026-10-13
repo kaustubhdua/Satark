@@ -121,6 +121,19 @@ export default function PersistentCasePanel({
     } finally { setBusy(false); }
   }
 
+  async function updateCaseStatus(item: CaseRow, status: string) {
+    if (!tenant || !session) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await fetch('/api/cases', { method:'PATCH', headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'}, body:JSON.stringify({id:item.id,tenant_id:tenant.id,status}), cache:'no-store' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Case status could not be updated.');
+      setCases(prev=>prev.map(c=>c.id===item.id?{...c,status:data.case.status,updated_at:data.case.updated_at}:c));
+      setMessage('Case status updated. The database appended an audit event.');
+    } catch(e) { setError(e instanceof Error?e.message:'Case status update failed.'); }
+    finally { setBusy(false); }
+  }
+
   async function loadSavedCase(item: CaseRow) {
     if (!tenant || !session) return;
     setBusy(true); setError(''); setMessage('');
@@ -198,7 +211,7 @@ export default function PersistentCasePanel({
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
         <button className="btn btn-primary" type="button" disabled={busy || !evidence.length} onClick={()=>void persistIncident()}>{busy?'Saving…':'Save case, evidence, findings & report'}</button>
       </div>
-      <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><button type="button" key={item.id} className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
+      <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><div className="saved-case-row" key={item.id}><button type="button" className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button><label className="sr-only" htmlFor={'status-'+item.id}>Update status for {item.title}</label><select id={'status-'+item.id} value={item.status} disabled={busy} onChange={e=>void updateCaseStatus(item,e.target.value)}><option value="open">Open</option><option value="contained">Contained</option><option value="resolved">Resolved</option><option value="archived">Archived</option></select></div>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
       <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('AUDIT CHAIN VALID')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 10 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
