@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
-const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration, auditMigration] = await Promise.all([
+const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration, auditMigration, uploadLimitMigration] = await Promise.all([
   read('../src/lib/satark-auth.ts'),
   read('../src/app/api/evidence/route.ts'),
   read('../src/app/api/evidence/[id]/verify/route.ts'),
@@ -15,6 +15,7 @@ const [auth, evidence, verify, records, findings, reports, audit, tenantMigratio
   read('../../supabase/migrations/202610140003_satark_private_evidence_storage.sql'),
   read('../../supabase/migrations/202610140005_satark_findings_reports_audit.sql'),
   read('../../supabase/migrations/202610140006_satark_audit_chain_verification.sql'),
+  read('../../supabase/migrations/202610140009_satark_evidence_upload_limit.sql'),
 ]);
 
 test('browser auth uses publishable key and refreshes sessions without privileged keys', () => {
@@ -27,7 +28,7 @@ test('browser auth uses publishable key and refreshes sessions without privilege
 
 test('evidence upload calculates SHA-256 on the server and bounds file size', () => {
   assert.match(evidence, /createHash\('sha256'\)/);
-  assert.match(evidence, /MAX_FILE_BYTES = 10 \* 1024 \* 1024/);
+  assert.match(evidence, /MAX_FILE_BYTES = 4 \\* 1024 \\* 1024/);
   assert.match(evidence, /satark-evidence/);
   assert.match(evidence, /Cache-Control/);
   assert.doesNotMatch(evidence, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
