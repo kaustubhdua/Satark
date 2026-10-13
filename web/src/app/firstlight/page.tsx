@@ -3,6 +3,7 @@
 import SiteHeader from '../site-header';
 
 import { useMemo, useState } from 'react';
+import PersistentCasePanel from './persistent-case-panel';
 import { parseCsv, parseIsoTimestamp } from '../../lib/firstlight-import.mjs';
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean };
@@ -38,6 +39,7 @@ export default function FirstlightPage() {
   const [showTamper, setShowTamper] = useState(false);
   const [importName, setImportName] = useState('');
   const [sourceFileSha256, setSourceFileSha256] = useState('');
+  const [persistentCaseId, setPersistentCaseId] = useState('');
   const timeline = useMemo(() => [...evidence].sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)), [evidence]);
   const findings = useMemo(() => {
     const all = evidence.map(e => e.summary + ' ' + e.kind).join(' ').toLowerCase();
@@ -149,6 +151,9 @@ export default function FirstlightPage() {
       <div className="incident-brief"><div className="brief-top"><span>INCIDENT BRIEF</span><span className="live-chip"><i/> SYNTHETIC</span></div><div className="brief-id">{caseOpen?'FL-TRAINING-001':'FL / READY'}</div><p>{caseOpen?'Account-compromise simulation · evidence loaded':'A guided investigation is ready to initialize.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
       <div className="boundary-banner"><span className="boundary-icon">◇</span><div><strong>Evidence-first, not verdict-first</strong><p>Hashes prove only whether these in-session records changed relative to their captured digest. This is not independently anchored chain-of-custody evidence.</p></div></div>
       {notice&&<div className="notice-panel" role="status">{notice}</div>}
+      <PersistentCasePanel evidence={evidence} findings={findings} currentCaseId={persistentCaseId} importName={importName}
+        onLoaded={(caseId, rows, events) => { setPersistentCaseId(caseId); setEvidence(rows); setAudit(events); setActions([]); setCaseOpen(true); setSelected('evidence'); setNotice('Persistent case loaded from the workspace database.'); }}
+        onSaved={(caseId, message) => { setPersistentCaseId(caseId); setNotice(message); }} />
       <div className="firstlight-layout"><aside className="incident-nav"><div className="eyebrow">INVESTIGATION FLOW</div>{[['overview','Overview'],['evidence','Evidence ledger'],['findings','Findings & gaps'],['timeline','Event timeline'],['response','Response review'],['audit','Audit trail']].map(([key,label])=><button key={key} className={selected===key?'selected':''} onClick={()=>setSelected(key)}>{label}<span>{key==='evidence'?evidence.length:key==='findings'?findings.length:key==='audit'?audit.length:''}</span></button>)}<div className="side-boundary">SESSION ONLY<br/>No real response actions</div></aside>
       <section className="incident-content">
         {selected==='overview'&&<div className="panel"><div className="panel-kicker">CASE OVERVIEW</div><h2>Establish the timeline before deciding.</h2><p>Start with the synthetic case or import a permitted JSON/CSV event artifact. Each event is normalized, hashed locally and reviewed with simple deterministic patterns.</p><div className="overview-steps">{[['01','Collect','Load training data or import events.'],['02','Validate','Inspect digests and source context.'],['03','Correlate','Review rules-based findings and gaps.'],['04','Decide','Record simulated response approvals.']].map(x=><div key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]}</small></div>)}</div>{!caseOpen&&<button className="btn btn-primary" onClick={loadCase}>Load synthetic case →</button>}</div>}
