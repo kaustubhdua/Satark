@@ -90,7 +90,7 @@ export default function ReportsPage() {
 
   function downloadJson() {
     const notes = report.trim();
-    if (!notes) return;
+    if (!notes && !savedAnalysis) return;
     const exportedAt = new Date().toISOString();
     saveFile('satark-review-notes.json', JSON.stringify({
       schema_version: 1,
