@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs';
 
 const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
 const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
+const rateLimit = readFileSync(new URL('../src/lib/rate-limit.mjs', import.meta.url), 'utf8');
 const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
 const firstlight = readFileSync(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 const securityFollowup = readFileSync(new URL('../docs/SECURITY_AND_UX_FOLLOWUP.md', import.meta.url), 'utf8');
@@ -64,8 +65,9 @@ test('FIRSTLIGHT explicitly marks response actions as simulation only', () => {
 
 
 test('per-instance throttling does not trust spoofable x-forwarded-for', () => {
-  assert.match(analyze, /request\.headers\.get\('x-real-ip'\)/);
-  assert.doesNotMatch(analyze, /request\.headers\.get\('x-forwarded-for'\)\?\.split\(', '\)\[0\]/);
+  assert.match(rateLimit, /request\.headers\.get\('x-real-ip'\)/);
+  assert.doesNotMatch(rateLimit, /request\.headers\.get\('x-forwarded-for'\)\?\.split\(', '\)\[0\]/);
+  assert.match(analyze, /await checkAnalysisRateLimit\(request\)/);
   assert.match(analyze, /all requests share[\s\S]*?'unknown' bucket/);
 });
 
