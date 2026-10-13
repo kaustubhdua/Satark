@@ -40,15 +40,19 @@ revoke all on public.satark_findings, public.satark_reports from anon, authentic
 grant select, insert on public.satark_findings to authenticated;
 grant select, insert on public.satark_reports to authenticated;
 
+drop policy if exists satark_findings_member_read on public.satark_findings;
 create policy satark_findings_member_read on public.satark_findings
   for select to authenticated using (public.satark_has_membership(tenant_id));
+drop policy if exists satark_findings_analyst_insert on public.satark_findings;
 create policy satark_findings_analyst_insert on public.satark_findings
   for insert to authenticated with check (
     created_by = (select auth.uid())
     and public.satark_has_membership(tenant_id, array['owner','responder','analyst'])
   );
+drop policy if exists satark_reports_member_read on public.satark_reports;
 create policy satark_reports_member_read on public.satark_reports
   for select to authenticated using (public.satark_has_membership(tenant_id));
+drop policy if exists satark_reports_analyst_insert on public.satark_reports;
 create policy satark_reports_analyst_insert on public.satark_reports
   for insert to authenticated with check (
     created_by = (select auth.uid())
