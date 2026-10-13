@@ -27,6 +27,7 @@ create table if not exists public.satark_cases (
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (tenant_id, id),
   metadata jsonb not null default '{}'::jsonb check (pg_column_size(metadata) <= 65536)
 );
 create index if not exists satark_cases_tenant_updated_idx on public.satark_cases(tenant_id, updated_at desc);
