@@ -45,11 +45,15 @@ test('independent reputation lookups execute concurrently', () => {
   assert.match(analyze, /checkAbuseIpDb\(input, shareIpWithThreatIntel\)/);
 });
 
-test('reports exports only user-authored notes in TXT and versioned JSON', () => {
+test('reports exports notes with an optional validated session analysis snapshot', () => {
   assert.match(reports, /satark-review-notes\.txt/);
   assert.match(reports, /satark-review-notes\.json/);
   assert.match(reports, /schema_version: 1/);
-  assert.match(reports, /No analysis results or provider evidence are automatically included/);
+  assert.match(reports, /analysis_snapshot: savedAnalysis/);
+  assert.match(reports, /submitted_source_text_saved: false/);
+  assert.match(reports, /sessionStorage/);
+  assert.match(reports, /This export is not a certified forensic report or a verified chain-of-custody record/);
+  assert.match(investigatePage, /satark:last-analysis:v1/);
 });
 
 test('FIRSTLIGHT explicitly marks response actions as simulation only', () => {

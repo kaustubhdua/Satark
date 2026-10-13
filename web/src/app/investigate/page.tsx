@@ -4,6 +4,8 @@ import SiteHeader from '../site-header';
 import { LatticeLoader, ThoughtLine } from '../../components/react-bits';
 import { useState } from 'react';
 
+const LAST_ANALYSIS_KEY = 'satark:last-analysis:v1';
+
 type ThreatIntel = { status: string; source: string; detail: string; reference?: string };
 type Analysis = {
   threat_category: string;
@@ -77,7 +79,18 @@ export default function InvestigatePage() {
       ) {
         throw new Error('The analysis service returned an incomplete result. Please retry.');
       }
-      setResult(candidate as Analysis);
+      const verifiedResult = candidate as Analysis;
+      setResult(verifiedResult);
+      // Session-only snapshot: never persist the submitted source text.
+      try {
+        window.sessionStorage.setItem(LAST_ANALYSIS_KEY, JSON.stringify({
+          schema_version: 1,
+          created_at: new Date().toISOString(),
+          analysis: verifiedResult,
+        }));
+      } catch {
+        // Keep the analysis usable if browser storage is blocked or full.
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not complete analysis.');
     } finally {
