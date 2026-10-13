@@ -61,6 +61,7 @@ test('evidence storage is private and policies are scoped to tenant membership',
   assert.match(storageMigration, /for select to authenticated/);
   assert.match(storageMigration, /for insert to authenticated/);
   assert.match(storageMigration, /satark_has_membership/);
+  assert.match(uploadLimitMigration, /file_size_limit = 4194304/);
 });
 
 test('findings and immutable reports have RLS and append-only audit triggers', () => {
