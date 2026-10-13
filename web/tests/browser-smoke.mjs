@@ -225,6 +225,11 @@ async function inspectViewport(viewport, label) {
       assert.equal(await page.locator('.evidence-table tbody tr').count(), 5, 'training case should load five evidence records');
 
       const tamper = page.getByRole('button', { name: /simulate tamper/i }).first();
+      await tamper.evaluate(element => {
+        const tableViewport = element.closest('.table-wrap');
+        if (tableViewport) tableViewport.scrollLeft = tableViewport.scrollWidth;
+        element.scrollIntoView({ block: 'center', inline: 'center' });
+      });
       await tamper.click();
       await page.getByText('MISMATCH').first().waitFor();
       await page.getByRole('button', { name: /restore demo/i }).first().click();
