@@ -28,6 +28,7 @@ export default function PersistentCasePanel({
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploadedId, setUploadedId] = useState('');
+  const [auditVerification, setAuditVerification] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -164,6 +165,18 @@ export default function PersistentCasePanel({
     finally { setBusy(false); }
   }
 
+  async function verifyAuditChain() {
+    if (!tenant || !session) return;
+    setBusy(true); setError(''); setAuditVerification('');
+    try {
+      const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { headers:{Authorization:'Bearer '+session.access_token}, cache:'no-store' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Audit verification failed.');
+      setAuditVerification((result.chain_valid ? 'AUDIT CHAIN VALID' : 'AUDIT CHAIN INVALID') + ' · ' + result.event_count + ' events · verified ' + result.verified_at + (result.first_invalid_event_id ? ' · first invalid event ' + result.first_invalid_event_id : ''));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Audit verification failed.'); }
+    finally { setBusy(false); }
+  }
+
   async function verifyOriginal() {
     if (!uploadedId || !session) return;
     setBusy(true); setError(''); setMessage('');
@@ -186,7 +199,7 @@ export default function PersistentCasePanel({
         <button className="btn btn-primary" type="button" disabled={busy || !evidence.length} onClick={()=>void persistIncident()}>{busy?'Saving…':'Save case, evidence, findings & report'}</button>
       </div>
       <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><button type="button" key={item.id} className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
-      <div className="private-upload"><label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 10 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
+      <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('AUDIT CHAIN VALID')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 10 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
     {message && <p className="success-message" role="status">{message}</p>}
