@@ -159,7 +159,11 @@ export async function listMyTenants(): Promise<SatarkTenant[]> {
 }
 
 export async function listCases(tenantId: string) {
-  const response = await authenticatedFetch('/api/cases?tenant_id=' + encodeURIComponent(tenantId));
+  const session = await getSession();
+  if (!session) throw new Error('Sign in again to load saved cases.');
+  const response = await fetch('/api/cases?tenant_id=' + encodeURIComponent(tenantId), {
+    headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+  });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Could not load cases.');
   return Array.isArray(data.cases) ? data.cases : [];
