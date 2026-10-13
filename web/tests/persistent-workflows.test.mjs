@@ -28,7 +28,7 @@ test('browser auth uses publishable key and refreshes sessions without privilege
 
 test('evidence upload calculates SHA-256 on the server and bounds file size', () => {
   assert.match(evidence, /createHash\('sha256'\)/);
-  assert.match(evidence, /MAX_FILE_BYTES = 4 \\* 1024 \\* 1024/);
+  assert.match(evidence, /MAX_FILE_BYTES = 4 \* 1024 \* 1024/);
   assert.match(evidence, /satark-evidence/);
   assert.match(evidence, /Cache-Control/);
   assert.doesNotMatch(evidence, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
