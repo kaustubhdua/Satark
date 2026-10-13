@@ -34,7 +34,7 @@ function canonical(value: unknown): string {
 const SEVERITIES = new Set(['info','low','medium','high','critical','review','unknown']);
 export async function GET(request: Request) {
   const cfg = config(); if (!cfg) return reply({ error: 'Finding storage is not configured.' }, 503);
-  const a = await auth(request, cfg); if (a.error || !a.token) return a.error;
+  const a = await auth(request, cfg); if (a.error || !a.token) return a.error ?? reply({ error: 'Sign in is required.' }, 401);
   const params = new URL(request.url).searchParams;
   const tenantId = params.get('tenant_id'), caseId = params.get('case_id');
   if (!tenantId || !UUID.test(tenantId) || !caseId || !UUID.test(caseId)) return reply({ error: 'Valid tenant_id and case_id are required.' }, 400);
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   const cfg = config(); if (!cfg) return reply({ error: 'Finding storage is not configured.' }, 503);
-  const a = await auth(request, cfg); if (a.error || !a.token || !a.userId) return a.error;
+  const a = await auth(request, cfg); if (a.error || !a.token || !a.userId) return a.error ?? reply({ error: 'Sign in is required.' }, 401);
   const length = Number(request.headers.get('content-length') || 0); if (length > 24*1024) return reply({ error: 'Finding is too large.' }, 413);
   let body: unknown; try { body = await request.json(); } catch { return reply({ error: 'A valid JSON object is required.' }, 400); }
   if (!body || typeof body !== 'object' || Array.isArray(body) || Buffer.byteLength(JSON.stringify(body),'utf8') > 24*1024) return reply({ error: 'A bounded JSON object is required.' }, 400);
