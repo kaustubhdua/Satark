@@ -219,6 +219,9 @@ async function inspectViewport(viewport, label) {
       await launch.waitFor();
       await launch.click();
       await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
+      await page.locator('.incident-content .panel').evaluate(async element => {
+        await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => undefined)));
+      });
       assert.equal(await page.locator('.evidence-table tbody tr').count(), 5, 'training case should load five evidence records');
 
       const tamper = page.getByRole('button', { name: /simulate tamper/i }).first();
