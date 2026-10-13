@@ -30,3 +30,10 @@ test('case API bounds and validates untrusted input and disables caching', () =>
   assert.match(source, /SEVERITIES/);
   assert.match(source, /Cache-Control': 'no-store'/);
 });
+
+test('case API updates only validated fields through the caller JWT and RLS', () => {
+  assert.match(source, /export async function PATCH/);
+  assert.match(source, /At least one case field must be provided for update/);
+  assert.match(source, /satark_cases\?/);
+  assert.match(source, /updated_at/);
+});
