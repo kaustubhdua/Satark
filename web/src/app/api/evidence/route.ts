@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   if (!(file instanceof File)) return error('A file is required.', 400);
   if (file.size < 1) return error('Empty evidence files are not accepted.', 400);
-  if (file.size > MAX_FILE_BYTES) return error('File exceeds the 10 MiB upload limit.', 413);
+  if (file.size > MAX_FILE_BYTES) return error('File exceeds the 4 MiB upload limit.', 413);
   if (!UUID.test(tenantId) || !UUID.test(caseId)) return error('Valid tenant_id and case_id are required.', 400);
   if (!sourceLabel || sourceLabel.length > 160 || !eventKind || eventKind.length > 100 || !summary || summary.length > 8192) {
     return error('Evidence metadata contains invalid or oversized fields.', 400);
