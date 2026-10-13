@@ -40,6 +40,7 @@ web/tests/tenant-isolation.integration.test.mjs is skipped unless test credentia
 - SUPABASE_PUBLISHABLE_KEY
 - SATARK_TEST_USER_A_EMAIL, SATARK_TEST_USER_A_PASSWORD, SATARK_TEST_TENANT_A_ID
 - SATARK_TEST_USER_B_EMAIL, SATARK_TEST_USER_B_PASSWORD, SATARK_TEST_TENANT_B_ID
+- Optional viewer test: SATARK_TEST_VIEWER_EMAIL, SATARK_TEST_VIEWER_PASSWORD, SATARK_TEST_VIEWER_TENANT_ID
 
 Use two dedicated non-admin test accounts in separate test tenants. Do not use production user credentials or real investigation data. Run from web/ with node --test tests/tenant-isolation.integration.test.mjs.
 
