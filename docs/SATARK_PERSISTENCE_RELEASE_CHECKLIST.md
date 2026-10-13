@@ -20,7 +20,7 @@ The SATARK Vercel project must have the following configured in production, prev
 Never configure a service-role key in browser code or expose it through a NEXT_PUBLIC_ variable. These routes deliberately use the caller's JWT so RLS remains the authorization boundary. After environment changes, create a fresh deployment.
 
 ## Database migrations
-Apply migrations in filename order. The migration history must include the case-storage foundation, SATARK foreign-key indexes, trusted tenant provisioning, private evidence storage, server audit hash chain, findings/reports, audit-chain verification, and finding/report creator indexes. The migrations are intentionally limited to SATARK-prefixed tables and one private Storage bucket/policy set.
+Apply migrations in filename order. The migration history must include the case-storage foundation, SATARK foreign-key indexes, trusted tenant provisioning, private evidence storage, server audit hash chain, findings/reports, audit-chain verification, finding/report creator indexes, and audit insert hardening. The migrations are intentionally limited to SATARK-prefixed tables and one private Storage bucket/policy set.
 
 ## Manual release verification
 1. Use two separate test users, each a member of a different tenant, and verify cross-tenant reads return no rows and writes are denied.
