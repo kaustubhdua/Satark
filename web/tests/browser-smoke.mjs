@@ -135,7 +135,10 @@ async function inspectViewport(viewport, label) {
       assert.ok(jsonPath, 'JSON export should produce a readable download');
       const jsonPayload = JSON.parse(await fs.readFile(jsonPath, 'utf8'));
       assert.equal(jsonPayload.schema_version, 1);
-      assert.equal(jsonPayload.report_type, 'user-authored-review-notes');
+      assert.equal(jsonPayload.report_type, 'review-notes-with-optional-session-analysis');
+      assert.equal(jsonPayload.analysis_snapshot, null, 'reports without a prior analysis must not invent analysis evidence');
+      assert.equal(jsonPayload.provenance.analysis_included, false);
+      assert.equal(jsonPayload.provenance.submitted_source_text_saved, false);
       assert.equal(jsonPayload.notes, await notes.inputValue().then(value => value.trim()));
       assert.ok(Array.isArray(jsonPayload.limitations) && jsonPayload.limitations.length > 0,
         'JSON export should explain its evidence and certification limitations');
