@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const migration = readFileSync(new URL('../supabase/migrations/202610130001_satark_case_storage.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../../supabase/migrations/202610130001_satark_case_storage.sql', import.meta.url), 'utf8');
 
 test('case storage migration enables RLS on all tenant-scoped tables', () => {
   for (const table of ['satark_tenants', 'satark_memberships', 'satark_cases', 'satark_evidence', 'satark_audit_events']) {
