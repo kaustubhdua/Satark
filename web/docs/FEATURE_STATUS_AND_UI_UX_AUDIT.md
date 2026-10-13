@@ -160,3 +160,36 @@ Do not copy complete UI components or media until a repository's actual license 
 ## Release gate
 
 Do not mark SATARK production-ready until: all intended PRs are reviewed and reconciled; complete CI/security checks pass on the final merged commit; staging provider calls pass with authorized non-sensitive inputs; desktop/mobile browser regression and accessibility checks pass; the legacy Streamlit handoffs are verified; and rollback/monitoring are documented.
+
+## Production re-verification — 2026-10-13
+
+This section supersedes the stale deployment snapshot above where it conflicts with the current observation.
+
+### Verified live state
+- Production deployment `dpl_9VMh2rzeWW8CMCLvz3iK2HL3kJVN` is `READY` for `main`.
+- Its Git source is `kaustubhdua/Satark`, commit `283d51f5f0965d64e1842588352b81674ae74aa4`.
+- `https://satark-qzym.vercel.app/api/version` returns HTTP 200 and the same commit SHA.
+- The production smoke workflow passed: https://github.com/kaustubhdua/Satark/actions/runs/38352715643
+- Web CI, repository CI and CodeQL passed for the same SHA: https://github.com/kaustubhdua/Satark/actions/runs/38292428221, https://github.com/kaustubhdua/Satark/actions/runs/38292427978, https://github.com/kaustubhdua/Satark/actions/runs/38292427987.
+- Production HTML returned HTTP 200 for `/`, `/investigate`, `/firstlight`, `/reports`, and `/learn`.
+- A GET to the POST-only `/api/analyze` returned HTTP 405 as expected.
+
+### Verification limits — do not mark as passed
+- HTML/HTTP checks do not prove client-side JavaScript, layout, animation, form submission, or downloads work in a browser.
+- A full interactive production browser run was attempted through the connected browser service, but it could not run because the service account had no credits. The local execution environment also could not reach GitHub to clone the repository. Thus no fresh screenshot, console log, or interaction artifact was produced in this audit.
+- Live Groq provider verification remains outstanding; Web CI previously skipped its provider smoke because the GitHub Actions `GROQ_API_KEY` secret was not configured. Vercel environment-variable presence is not proof of validity.
+- URLhaus and AbuseIPDB are optional and disabled unless their server feature flags are enabled. Do not turn them on for public traffic until controlled, consented provider tests pass.
+- A distributed Vercel Firewall rate limit remains unverified; the in-process limiter is defense in depth only.
+- Native reports still export user-authored notes only. No durable authenticated investigation history is established. FIRSTLIGHT remains a synthetic training workflow. Streamlit tools remain separate handoffs.
+
+### Release acceptance plan
+1. Run `npm run test:ci` and the existing Playwright `tests/browser-smoke.mjs` against the exact candidate SHA; save artifacts.
+2. Run browser smoke at 1440x900 and 390x844 for every primary route; extend to 1280x800, 768x1024, and 320x700 for visual acceptance. Review screenshot diffs, overflow, layout shifts, console errors, network failures, keyboard navigation, reduced motion, and focus visibility.
+3. Verify the deployed analysis API using authorized synthetic inputs. Confirm empty/malformed/oversized input, normal success, provider timeout/unavailable behavior, consent boundaries, and response-schema validation. Do not claim live provider success if credentials are unavailable.
+4. Run FIRSTLIGHT import/export, malformed-file, tamper/restore, timeline, findings, simulated response and audit-trail tests. Verify TXT and JSON exports by reading actual downloaded files.
+5. Configure and validate a shared edge rate limit for POST `/api/analyze`; confirm excess requests return 429 from a controlled client and inspect edge analytics.
+6. Complete axe-based automated accessibility checks plus manual keyboard, screen-reader, contrast, zoom, reduced-motion and mobile checks.
+7. Test each Streamlit handoff independently, including unavailable-service and invalid-input states.
+8. For report enrichment or persistent history, define the data model, provenance, auth/ownership, retention and deletion requirements before implementation. Never label a notes export as a certified forensic report.
+
+A release claim is only as strong as its evidence: each passed check must include the tested commit SHA and either a CI result, browser artifact, provider outcome, or documented manual test. Skipped/unavailable checks remain open.
