@@ -1,8 +1,8 @@
 name: Production smoke check
 
 on:
-  push:
-    branches: [main]
+  # Check after Vercel reports a production deployment, not immediately on push:
+  # the production alias can still serve the previous commit during deployment.
   workflow_dispatch:
   schedule:
     - cron: "30 3 * * *"
