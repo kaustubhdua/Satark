@@ -8,6 +8,7 @@ const links = [
   { href: '/firstlight', label: 'FIRSTLIGHT' },
   { href: '/reports', label: 'Reports' },
   { href: '/learn', label: 'Learn' },
+  { href: '/login', label: 'Workspace' },
 ];
 
 export default function SiteHeader({ status = false }: { status?: boolean }) {
