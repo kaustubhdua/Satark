@@ -151,3 +151,61 @@ export async function POST(request: Request) {
     return jsonError('Case storage is temporarily unavailable.', 503);
   }
 }
+
+
+export async function PATCH(request: Request) {
+  const config = configuration();
+  if (!config) return jsonError('Case storage is not configured.', 503);
+  const token = bearer(request);
+  if (!token) return jsonError('Sign in is required.', 401);
+  const user = await authenticate(token, config);
+  if (!user) return jsonError('Your session is invalid or expired.', 401);
+
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > MAX_BODY_BYTES) return jsonError('Request body is too large.', 413);
+  let body: unknown;
+  try {
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) return jsonError('Request body is too large.', 413);
+    body = JSON.parse(raw);
+  } catch { return jsonError('A valid JSON body is required.', 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonError('A JSON object is required.', 400);
+  const input = body as Record<string, unknown>;
+  const id = input.id, tenantId = input.tenant_id;
+  if (typeof id !== 'string' || !UUID.test(id) || typeof tenantId !== 'string' || !UUID.test(tenantId)) {
+    return jsonError('Valid id and tenant_id are required.', 400);
+  }
+  const updates: Record<string, unknown> = {};
+  if (input.title !== undefined) {
+    if (typeof input.title !== 'string' || !input.title.trim() || input.title.trim().length > 240) return jsonError('title must contain 1–240 characters.', 400);
+    updates.title = input.title.trim();
+  }
+  if (input.status !== undefined) {
+    if (typeof input.status !== 'string' || !STATUSES.has(input.status)) return jsonError('Invalid case status.', 400);
+    updates.status = input.status;
+  }
+  if (input.severity !== undefined) {
+    if (typeof input.severity !== 'string' || !SEVERITIES.has(input.severity)) return jsonError('Invalid case severity.', 400);
+    updates.severity = input.severity;
+  }
+  if (input.metadata !== undefined) {
+    if (!input.metadata || typeof input.metadata !== 'object' || Array.isArray(input.metadata) ||
+        Buffer.byteLength(JSON.stringify(input.metadata), 'utf8') > 8192) {
+      return jsonError('metadata must be a JSON object no larger than 8 KiB.', 400);
+    }
+    updates.metadata = input.metadata;
+  }
+  if (!Object.keys(updates).length) return jsonError('At least one case field must be provided for update.', 400);
+
+  try {
+    const query = new URLSearchParams({ id: 'eq.' + id, tenant_id: 'eq.' + tenantId, select: 'id,tenant_id,title,status,severity,created_by,created_at,updated_at,metadata' });
+    const response = await supabaseRequest(config, token, 'satark_cases?' + query.toString(), {
+      method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(updates),
+    });
+    if (response.status === 401 || response.status === 403) return jsonError('You do not have permission to update this case.', 403);
+    if (!response.ok) return jsonError('Case could not be updated. Verify workspace membership and role.', 422);
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows) || !rows[0]) return jsonError('Case was not found or you do not have permission to update it.', 404);
+    return NextResponse.json({ case: rows[0] }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch { return jsonError('Case storage is temporarily unavailable.', 503); }
+}
