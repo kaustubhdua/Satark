@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
-const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration] = await Promise.all([
+const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration, auditMigration] = await Promise.all([
   read('../src/lib/satark-auth.ts'),
   read('../src/app/api/evidence/route.ts'),
   read('../src/app/api/evidence/[id]/verify/route.ts'),
@@ -14,6 +14,7 @@ const [auth, evidence, verify, records, findings, reports, audit, tenantMigratio
   read('../../supabase/migrations/202610140002_satark_trusted_tenant_provisioning.sql'),
   read('../../supabase/migrations/202610140003_satark_private_evidence_storage.sql'),
   read('../../supabase/migrations/202610140005_satark_findings_reports_audit.sql'),
+  read('../../supabase/migrations/202610140006_satark_audit_chain_verification.sql'),
 ]);
 
 test('browser auth uses publishable key and refreshes sessions without privileged keys', () => {
@@ -66,5 +67,5 @@ test('findings and immutable reports have RLS and append-only audit triggers', (
   assert.match(workflowMigration, /alter table public\.satark_reports enable row level security/i);
   assert.match(workflowMigration, /satark_audit_finding_after_insert/);
   assert.match(workflowMigration, /satark_audit_report_after_insert/);
-  assert.match(workflowMigration, /satark_verify_audit_chain/);
+  assert.match(auditMigration, /satark_verify_audit_chain/);
 });
