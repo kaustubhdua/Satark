@@ -171,8 +171,6 @@ async function inspectViewport(viewport, label) {
       assert.equal(jsonPayload.provenance.analysis_included, false);
       assert.equal(jsonPayload.provenance.submitted_source_text_saved, false);
       assert.equal(jsonPayload.notes, await notes.inputValue().then(value => value.trim()));
-      assert.equal(jsonPayload.analysis_snapshot.analysis.summary, 'Synthetic browser test summary');
-      assert.equal(jsonPayload.provenance.analysis_included, true);
       assert.ok(Array.isArray(jsonPayload.limitations) && jsonPayload.limitations.length > 0,
         'JSON export should explain its evidence and certification limitations');
       await page.getByRole('status').filter({ hasText: /download manager/i }).waitFor();
