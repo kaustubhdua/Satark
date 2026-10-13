@@ -2,6 +2,7 @@
 
 import SiteHeader from '../site-header';
 import { useEffect, useState } from 'react';
+import PersistentReports from './persistent-reports';
 
 const LAST_ANALYSIS_KEY = 'satark:last-analysis:v1';
 
@@ -114,7 +115,7 @@ export default function ReportsPage() {
       <div className="container subpage" id="main-content" tabIndex={-1}>
         <div className="eyebrow">WORKSPACE / REPORTS</div>
         <h1>Keep the reasoning reviewable.</h1>
-        <p className="lead">Draft and export your own review notes. Analysis results are not automatically saved to a server or shared across sessions.</p>
+        <p className="lead">Draft and export review notes locally, or save an immutable report snapshot against a persistent case when signed in.</p>
         <section className="form-panel" aria-labelledby="notes-title">
           <h2 id="notes-title">Investigation notes</h2>
           <p className="field-note">Record observable facts, evidence references, unresolved questions, and your next steps. Reports remain local to this browser session unless you export them.</p>
@@ -141,7 +142,8 @@ export default function ReportsPage() {
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
         </section>
-        <div className="notice-panel"><strong>Report boundary</strong><p>Exports your notes and, when available, the last successful analysis snapshot from this browser tab. The snapshot excludes the original submitted source text; its findings are not independently verified. Nothing is uploaded or saved to a server, and this is not a certified forensic report or chain-of-custody record. Export before leaving.</p></div>
+        <PersistentReports notes={report} analysis={savedAnalysis} />
+        <div className="notice-panel"><strong>Report boundary</strong><p>Local exports include notes and, when available, the last successful analysis snapshot from this browser tab. Persistent reports are immutable snapshots attached to a case and have a server-calculated digest. Neither type is a certified forensic report or proof of source authenticity.</p></div>
       </div>
     </main>
   );
