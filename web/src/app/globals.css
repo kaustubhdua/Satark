@@ -398,3 +398,14 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
 .private-upload .actions{margin-top:10px}
 .persistent-case-panel a{color:var(--lime);text-underline-offset:3px}
 @media(max-width:640px){.persistent-case-panel .panel-heading{display:block}.persistent-case-panel .panel-heading>.pill,.persistent-case-panel .panel-heading>.safe-chip,.persistent-case-panel .panel-heading>.review-chip{display:inline-block;margin-top:12px}.persistent-controls{grid-template-columns:1fr}.persistent-controls .field-label{grid-column:auto}.persistent-controls .btn{width:100%}.private-upload .actions{display:grid;grid-template-columns:1fr}}
+
+
+/* Persistent report history */
+.persistent-reports{margin:26px 0}
+.persistent-reports h2{margin:8px 0 0;font-size:clamp(22px,3vw,30px);letter-spacing:-.04em}
+.persistent-reports select{display:block;width:100%;min-height:44px;margin:8px 0 14px;border:1px solid var(--line);border-radius:10px;background:#080d15;color:var(--text);padding:10px;font:inherit}
+.persistent-reports>.btn{width:100%;margin:8px 0 14px}
+.report-history-row{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line);border-radius:11px;background:#ffffff04;padding:13px}
+.report-history-row strong,.report-history-row small{display:block;overflow-wrap:anywhere}
+.report-history-row small{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:600px){.report-history-row{align-items:stretch;flex-direction:column}.report-history-row .mini-btn{width:100%}}
