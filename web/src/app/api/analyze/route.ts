@@ -123,7 +123,11 @@ async function checkUrlhaus(input: string, requested: boolean): Promise<ThreatIn
       signal: controller.signal,
       cache: 'no-store',
     });
-    if (!response.ok) return { ...base, status: 'unavailable', detail: 'URLhaus could not complete the lookup.' };
+    if (!response.ok) {
+      // Log only the provider status: never log the submitted URL, response body, or auth header.
+      console.warn('URLhaus lookup returned HTTP status', response.status);
+      return { ...base, status: 'unavailable', detail: 'URLhaus could not complete the lookup.' };
+    }
     const payload: unknown = await readJsonWithinLimit(response, MAX_THREAT_INTEL_RESPONSE_BYTES);
     if (!payload || typeof payload !== 'object') return { ...base, status: 'unavailable', detail: 'URLhaus returned an unreadable response.' };
     const data = payload as Record<string, unknown>;
