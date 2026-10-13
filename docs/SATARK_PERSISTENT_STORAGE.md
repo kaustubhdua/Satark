@@ -19,6 +19,12 @@ This migration is a reviewed starting point for a **dedicated SATARK Supabase pr
 6. Review schema, RLS policies, backups, deletion/retention, data residency and legal/privacy obligations before applying it.
 7. Apply through a reviewed migration in a development/staging project first, run Supabase security advisors, then promote via the normal release process.
 
+## Shared analysis rate limiting
+
+The Next.js analysis endpoint supports a shared Upstash Redis REST limiter when both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured server-side in Vercel. It uses an atomic Redis increment with a 60-second expiry and an 8-request window per hashed client key. If the shared backend is configured but unavailable or misconfigured, the endpoint returns HTTP 503 rather than silently falling back to per-instance limits. If neither value is configured, the endpoint retains a best-effort in-process fallback for local development only.
+
+Before enabling broad public traffic, provision an approved Upstash database, add both secrets to the appropriate Vercel environments, run the shared-limiter tests, and verify the production endpoint returns 429 after the limit and 503 during a controlled backend failure. Do not commit secrets or use a client-exposed `NEXT_PUBLIC_` prefix.
+
 ## Not enabled by this migration
 - The current FIRSTLIGHT page still keeps its evidence and audit trail in browser memory.
 - No live response endpoint is added. Defender isolation and Entra session revocation must remain disabled until authenticated operator authorization, target-bound confirmation, idempotency, server-side audit, and authorized test-tenant validation are complete.
