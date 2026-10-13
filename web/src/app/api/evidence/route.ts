@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function error(message: string, status: number) {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   if (!user) return error('Your session is invalid or expired.', 401);
 
   const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > MAX_FILE_BYTES + 64 * 1024) return error('File exceeds the 10 MiB upload limit.', 413);
+  if (contentLength > MAX_FILE_BYTES + 64 * 1024) return error('File exceeds the 4 MiB upload limit.', 413);
 
   let form: FormData;
   try { form = await request.formData(); }
