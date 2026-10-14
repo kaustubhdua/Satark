@@ -132,6 +132,7 @@ export default function ImageReviewPage() {
   const [preview, setPreview] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const previewRef = useRef('');
 
   useEffect(() => () => {
@@ -140,6 +141,7 @@ export default function ImageReviewPage() {
 
   async function inspectFile(file?: File) {
     setError('');
+    setCopied(false);
     setInspection(null);
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     previewRef.current = '';
@@ -240,9 +242,9 @@ export default function ImageReviewPage() {
               return;
             }
             void navigator.clipboard.writeText(inspection.sha256)
-              .then(() => setError('Fingerprint copied to clipboard.'))
+              .then(() => setCopied(true))
               .catch(() => setError('Clipboard access was blocked. Select and copy the fingerprint manually.'));
-          }}>Copy fingerprint</button>
+          }}>{copied ? 'Fingerprint copied' : 'Copy fingerprint'}</button>
           <h3>Metadata marker hints</h3>
           {inspection.metadataHints.length > 0
             ? <ul>{inspection.metadataHints.map(hint => <li key={hint}>{hint}</li>)}</ul>
