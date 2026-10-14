@@ -93,3 +93,20 @@ def test_oversized_declared_body_is_rejected():
 def test_url_fragment_is_bounded():
     signals = analyze_text("http://" + "a" * 5000 + ".invalid")
     assert len(signals) <= 50
+
+def test_url_evidence_redacts_credentials_query_and_fragment():
+    secret_url = "http://user:password@example.invalid/path?access_token=secret#fragment"
+    signals = analyze_text("Check " + secret_url)
+    excerpt = " ".join(signal.evidence_excerpt for signal in signals)
+    assert "password" not in excerpt
+    assert "access_token" not in excerpt
+    assert "secret" not in excerpt
+    assert "fragment" not in excerpt
+    assert "example.invalid" in excerpt
+
+
+def test_urgency_evidence_does_not_echo_neighboring_sensitive_text():
+    signals = analyze_text("password=do-not-repeat; urgent; token=do-not-repeat")
+    excerpts = [signal.evidence_excerpt for signal in signals if signal.category == "language"]
+    assert excerpts == ["urgent"]
+    assert all("do-not-repeat" not in item for item in excerpts)
