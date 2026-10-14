@@ -22,7 +22,7 @@ function detectBinary(bytes) {
   if (ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 11) === 'AVI') return { type: 'video/x-msvideo', signature: 'avi' };
   if (ascii(bytes, 0, 4) === 'OggS') return { type: 'application/ogg', signature: 'ogg' };
   if (ascii(bytes, 0, 4) === 'fLaC') return { type: 'audio/flac', signature: 'flac' };
-  if (ascii(bytes, 0, 3) === 'ID3' || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0 && (bytes[1] & 0x06) !== 0)) return { type: 'audio/mpeg', signature: 'mpeg-audio' };
+  if (ascii(bytes, 0, 3) === 'ID3' || (bytes.length >= 4 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0 && (bytes[1] & 0x06) !== 0)) return { type: 'audio/mpeg', signature: 'mpeg-audio' };
   if (bytes.length >= 12 && ascii(bytes, 4, 8) === 'ftyp') {
     const brand = ascii(bytes, 8, 12);
     return brand === 'qt  ' ? { type: 'video/quicktime', signature: 'quicktime-ftyp' } : { type: 'video/mp4', signature: 'mp4-ftyp' };
