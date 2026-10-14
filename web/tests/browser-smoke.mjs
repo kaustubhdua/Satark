@@ -13,6 +13,28 @@ await fs.mkdir(artifactDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
 const failures = [];
+
+// The readiness endpoint must remain public-safe and report booleans only.
+{
+  const response = await fetch(baseURL + '/api/health', { headers: { Accept: 'application/json' } });
+  assert.equal(response.status, 200, 'readiness endpoint should be available');
+  assert.match(response.headers.get('cache-control') || '', /no-store/);
+  const health = await response.json();
+  assert.ok(['ready', 'degraded'].includes(health.status));
+  for (const key of ['analysisProvider', 'sharedRateLimit', 'urlhaus', 'abuseIpDb', 'persistentStorage']) {
+    assert.ok(health.checks?.[key], 'missing readiness diagnostic: ' + key);
+  }
+  for (const key of ['analysisProvider', 'sharedRateLimit', 'persistentStorage']) {
+    assert.equal(typeof health.checks[key].configured, 'boolean');
+  }
+  for (const key of ['urlhaus', 'abuseIpDb']) {
+    assert.equal(typeof health.checks[key].enabled, 'boolean');
+    assert.equal(typeof health.checks[key].configured, 'boolean');
+  }
+  assert.equal(JSON.stringify(health).includes('GROQ_API_KEY'), false);
+  assert.equal(JSON.stringify(health).includes('URLHAUS_AUTH_KEY'), false);
+  assert.equal(JSON.stringify(health).includes('ABUSEIPDB_API_KEY'), false);
+}
 const routes = [
   { path: '/', heading: /SATARK|SENTINEL/i },
   { path: '/investigate', heading: /investigate|analysis|suspicious/i },
