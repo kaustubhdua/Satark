@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { inspectEvidenceFile } from '@/lib/evidence-signature.mjs';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -79,16 +80,19 @@ export async function POST(request: Request) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
   if (bytes.byteLength !== file.size) return error('File bytes could not be verified.', 400);
+  const inspection = inspectEvidenceFile(bytes, file.type);
+  if (!inspection.ok) return error('File content does not match its declared type or the supported evidence format.', 415);
+
   const sourceSha256 = createHash('sha256').update(bytes).digest('hex');
   const evidenceId = randomUUID();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'evidence.bin';
   const objectKey = tenantId + '/' + caseId + '/' + evidenceId + '_' + safeName;
-  const contentType = file.type && /^[\w.+-]+\/[\w.+-]+$/.test(file.type) ? file.type : 'application/octet-stream';
+  const contentType = inspection.contentType;
   const record = {
     id: evidenceId, tenant_id: tenantId, case_id: caseId,
     source_label: sourceLabel, event_kind: eventKind, observed_at: new Date(observedAt).toISOString(),
     summary, source_sha256: sourceSha256, created_by: user.id,
-    metadata: { object_key: objectKey, original_filename: safeName, content_type: contentType, size_bytes: bytes.byteLength },
+    metadata: { object_key: objectKey, original_filename: safeName, content_type: contentType, size_bytes: bytes.byteLength, signature_type: inspection.signatureType, signature_verified: inspection.signatureVerified },
   };
   const recordSha256 = createHash('sha256').update(JSON.stringify(record)).digest('hex');
   const headers = {
