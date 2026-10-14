@@ -62,7 +62,6 @@ from ui.loading import render_intro_loader
 from ui.navigation import render_sidebar
 from ui.results import render_threat_analysis, render_verification_sources, render_evidence_ledger, render_evidence_review, render_investigation_timeline, render_threat_intelligence
 from evidence_engine import extract_deterministic_evidence
-from threat_intel import enrich_submitted_url
 from ui.history import render_history
 from ui.learning import render_academy, render_classroom
 
@@ -170,7 +169,7 @@ from input_processing import (
 # Streamlit entry point; feature modules are kept separate where practical
 #
 # Keeps the original SATARK analysis flow, while adding:
-# - automatic Groq model discovery
+# - automatic local Ollama model discovery
 # - resilient model selection based on provider discovery
 # - improved result presentation
 # - session history + report export
@@ -187,7 +186,7 @@ from input_processing import (
 # 2. render_result() color-codes the confidence metric (red/amber/green)
 #    so low-confidence results are visually distinct.
 # 3. VISION_MODEL_PREFERENCES is now a real fallback chain instead of a
-#    single hardcoded model; analyze_with_groq tries each in order instead
+#    single hardcoded model; analyze_with_local_model tries each in order instead
 #    of giving up after the first failure.
 # 4. is_scam_claim / normalize_result_consistency now trust the model's
 #    explicit threat_category field first, and only fall back to regex
@@ -197,9 +196,9 @@ from input_processing import (
 #    full 0-100 range honestly instead of defaulting high.
 # 6. NEW: Video scanner mode. Videos are analyzed by extracting a handful of
 #    representative frames (via OpenCV) and, when ffmpeg/moviepy is available,
-#    transcribing the audio track (via Groq Whisper) so speech-based scam
+#    transcribing the audio track (via local Whisper) so speech-based scam
 #    signals aren't missed. Frames + transcript are fed into the same
-#    analyze_with_groq pipeline used for images/text.
+#    analyze_with_local_model pipeline used for images/text.
 # ============================================================
 
 st.set_page_config(
@@ -221,8 +220,8 @@ render_radar_background()
 
 # --------------------------- Helpers --------------------------
 
-def analyze_with_groq(client, content, mode, role, image_data_urls=None, available_models=None):
-    """Run a SATARK analysis using an appropriate Groq model.
+def analyze_with_local_model(client, content, mode, role, image_data_urls=None, available_models=None):
+    """Run a SATARK analysis using an appropriate local model.
 
     Vision requests now try each model in VISION_MODEL_PREFERENCES in order
     instead of a single hardcoded model, so a deprecated/inaccessible vision
@@ -311,7 +310,7 @@ Not detected, Low, Medium, High.
                 raise RuntimeError("The AI provider returned an incomplete response.")
             raw = getattr(message, "content", "") or ""
 
-            # Groq normally returns a string. Be defensive if an SDK version
+            # Ollama returns a string. Be defensive if an SDK version
             # exposes structured content instead.
             if not isinstance(raw, str):
                 if isinstance(raw, list):
@@ -383,14 +382,14 @@ Not detected, Low, Medium, High.
     detail = "Provider requests failed for the configured models. Check the server logs and provider status for diagnostics."
     if image_data_urls:
         hint = (
-            "\n\nThis looks like a Groq rate-limit (tokens-per-minute) issue on the free/on-demand "
+            "\n\nThis looks like a local model resource or timeout issue on the free/on-demand "
             "tier rather than a broken model. Wait a minute and try again with fewer or smaller "
-            "images, or upgrade the Groq account tier."
+            "images, or upgrade the local model tier."
         ) if rate_limited else ""
         raise RuntimeError(
             "SATARK could not complete the visual analysis with any configured "
             "vision model (tried: " + ", ".join(candidates) + "). Please verify "
-            "that this Groq API key/project has access to at least one supported "
+            "that this configured local Ollama instance has access to at least one supported "
             "vision model and try again.\n" + detail + hint
         )
 
@@ -863,12 +862,7 @@ elif st.session_state.page == "Analyze":
             type="url",
             key="url_input"
         )
-        st.checkbox(
-            "Share indicators with external threat-intelligence providers (optional)",
-            value=False,
-            key="threat_intel_opt_in",
-            help="When enabled, URLhaus receives the URL without query strings or fragments; paths may still contain private identifiers. URLs with embedded credentials are rejected. A public IPv4 literal is also sent to AbuseIPDB. Use only indicators you are comfortable sharing with these providers.",
-        )
+        st.caption("URL reputation lookups are disabled in local-only mode. No indicator is sent to a third-party service.")
 
 
     # ==========================================================
@@ -1040,7 +1034,7 @@ elif st.session_state.page == "Analyze":
         if not safe_text(api_key):
 
             st.error(
-                "🔑 Enter your Groq API key in the sidebar first."
+                "🔑 Enter your Ollama API key in the sidebar first."
             )
 
             st.stop()
@@ -1283,23 +1277,12 @@ elif st.session_state.page == "Analyze":
                     # text-only local rules independently verified visual claims.
                     deterministic_evidence = []
 
-                # External reputation is user-opt-in and cannot override local/AI analysis.
-                threat_intelligence = {"results": [], "provider_notes": [], "queried": False}
-                if mode == "URL" and st.session_state.get("threat_intel_opt_in", False):
-                    def _server_secret(name):
-                        value = os.getenv(name, "")
-                        try:
-                            if not value and name in st.secrets:
-                                value = str(st.secrets[name])
-                        except Exception:
-                            pass
-                        return value.strip()
-
-                    threat_intelligence = enrich_submitted_url(
-                        content,
-                        urlhaus_key=_server_secret("URLHAUS_AUTH_KEY"),
-                        abuseipdb_key=_server_secret("ABUSEIPDB_API_KEY"),
-                    )
+                # Local-only mode never calls external reputation APIs.
+                threat_intelligence = {
+                    "results": [],
+                    "provider_notes": ["External reputation lookups are disabled in local-only mode."],
+                    "queried": False,
+                }
                 evidence_context_ti = json.dumps(
                     threat_intelligence.get("results", []),
                     ensure_ascii=False,
@@ -1334,7 +1317,7 @@ elif st.session_state.page == "Analyze":
                 # GROQ ANALYSIS
                 # ==================================================
 
-                result = analyze_with_groq(
+                result = analyze_with_local_model(
                     client,
                     prompt,
                     mode,
@@ -1386,7 +1369,7 @@ elif st.session_state.page == "Analyze":
 
             st.error(
                 "⚠️ SATARK could not complete the analysis. "
-                "Check your API key, internet connection, "
+                "Check that your local Ollama service is running, "
                 "input and model access."
             )
 
