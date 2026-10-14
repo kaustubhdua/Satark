@@ -35,7 +35,7 @@ export default function ServiceReadiness() {
         {health.checks.localModel.configured
           ? 'Self-hosted model is configured; deterministic checks remain the fallback.'
           : 'No third-party AI key is required. Deterministic local rules are active; configure your own Ollama model for local-language summaries.'}
-        {!health.checks.persistentStorage.configured ? ' Persistent case/evidence storage is not configured in this deployment.' : ''}
+        {health.checks.persistentStorage.configured ? ' Persistent-storage configuration is present, but this status does not verify database connectivity or tenant authorization.' : ' Persistent case/evidence storage is not configured in this deployment.'}
         {!health.checks.rateLimit.sharedAcrossInstances ? ' Rate limiting is per instance; use host-level controls before exposing publicly.' : ''}
       </small>
     </span>
