@@ -3,48 +3,37 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function present(...values: Array<string | undefined>) {
-  return values.some(value => typeof value === 'string' && value.trim().length > 0);
-}
+const present = (...values: Array<string | undefined>) =>
+  values.some(value => typeof value === 'string' && value.trim().length > 0);
 
-/**
- * Public, non-secret configuration diagnostics. Never return credential values,
- * provider responses, project identifiers, or user data from this endpoint.
- */
+/** Configuration-only diagnostics; never disclose secret values or user data. */
 export async function GET() {
-  const sharedRateLimitConfigured = present(
-    process.env.UPSTASH_REDIS_REST_URL,
-    process.env.UPSTASH_REDIS_REST_TOKEN,
-  ) && Boolean(process.env.UPSTASH_REDIS_REST_URL?.trim())
-    && Boolean(process.env.UPSTASH_REDIS_REST_TOKEN?.trim());
+  const mode = process.env.SATARK_ANALYSIS_MODE || 'local';
+  const localModelConfigured = present(process.env.SATARK_OLLAMA_BASE_URL, process.env.SATARK_OLLAMA_MODEL);
   const checks = {
-    analysisProvider: { configured: Boolean(process.env.GROQ_API_KEY?.trim()) },
-    sharedRateLimit: { configured: sharedRateLimitConfigured },
-    urlhaus: {
-      enabled: process.env.SATARK_ENABLE_THREAT_INTEL === 'true',
-      configured: Boolean(process.env.URLHAUS_AUTH_KEY?.trim()),
+    analysis: {
+      mode: mode === 'local' ? 'local-only' : mode === 'groq' ? 'legacy-provider' : 'unsupported',
+      configured: mode === 'local' || (mode === 'groq' && present(process.env.GROQ_API_KEY)),
     },
-    abuseIpDb: {
-      enabled: process.env.SATARK_ENABLE_ABUSEIPDB === 'true',
-      configured: Boolean(process.env.ABUSEIPDB_API_KEY?.trim()),
+    localModel: { configured: localModelConfigured },
+    sharedRateLimit: {
+      configured: present(process.env.UPSTASH_REDIS_REST_URL) && present(process.env.UPSTASH_REDIS_REST_TOKEN),
+      requiredForLocalMode: false,
+    },
+    externalThreatIntel: {
+      enabled: mode === 'groq' && (process.env.SATARK_ENABLE_THREAT_INTEL === 'true' || process.env.SATARK_ENABLE_ABUSEIPDB === 'true'),
+      configured: mode === 'groq'
+        && (process.env.SATARK_ENABLE_THREAT_INTEL !== 'true' || present(process.env.URLHAUS_AUTH_KEY))
+        && (process.env.SATARK_ENABLE_ABUSEIPDB !== 'true' || present(process.env.ABUSEIPDB_API_KEY)),
     },
     persistentStorage: {
-      configured: Boolean(
-        process.env.SUPABASE_URL?.trim()
-        && process.env.SUPABASE_PUBLISHABLE_KEY?.trim(),
-      ),
+      configured: present(process.env.SUPABASE_URL) && present(process.env.SUPABASE_PUBLISHABLE_KEY),
     },
   };
-  const requiredReady = checks.analysisProvider.configured
-    && checks.sharedRateLimit.configured
-    && (!checks.urlhaus.enabled || checks.urlhaus.configured)
-    && (!checks.abuseIpDb.enabled || checks.abuseIpDb.configured);
-  return NextResponse.json(
-    {
-      status: requiredReady ? 'ready' : 'degraded',
-      checks,
-      note: 'Configuration presence only; this endpoint does not validate credentials or contact external providers.',
-    },
-    { headers: { 'Cache-Control': 'no-store' } },
-  );
+  const ready = checks.analysis.configured && checks.analysis.mode !== 'unsupported';
+  return NextResponse.json({
+    status: ready ? 'ready' : 'degraded',
+    checks,
+    note: 'Configuration presence only. Local analysis uses deterministic rules; an Ollama model is optional. Storage and model availability are not validated by this endpoint.',
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
