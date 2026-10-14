@@ -279,48 +279,15 @@ streamlit run satark.py
 
 Streamlit prints the local URL in the terminal. Open that address in your browser. The built-in FIRSTLIGHT scenario and offline sample are intended to make parts of the prototype explorable without live provider credentials.
 
-## 11. Configure the AI provider
+## 11. Local AI and data handling
 
-SATARK reads GROQ_API_KEY from Streamlit-managed secrets first and can fall back to the environment variable.
+The Next.js analysis route runs local deterministic rules by default. It does not call Groq, URLhaus, AbuseIPDB, or another third-party analysis API. No third-party AI API key is required.
 
-### Windows PowerShell
+To use an AI model, run an Ollama instance you control and configure `SATARK_OLLAMA_BASE_URL` and `SATARK_OLLAMA_MODEL` on the web server. The Compose example uses an internal `http://ollama:11434` service address and downloads a model without an API key. The initial model download needs internet access; inference is local after download.
 
-~~~powershell
-$env:GROQ_API_KEY="your-key"
-streamlit run satark.py
-~~~
+The Python/Streamlit legacy app has a separate provider configuration path documented in its own section below. It is not part of the Next.js local-only analysis path. Do not describe legacy features as local-only until they are migrated and tested too.
 
-### macOS / Linux
-
-~~~bash
-export GROQ_API_KEY="your-key"
-streamlit run satark.py
-~~~
-
-### Streamlit Community Cloud
-
-In the app's **Settings → Secrets**, add:
-
-~~~toml
-GROQ_API_KEY = "your-key"
-~~~
-
-Use your own key from the official [Groq Console](https://console.groq.com/). Never commit secrets, paste them into issues, or place them in browser-visible code. Use the hosting platform's secret manager for deployed environments. If a key may have been exposed, revoke/rotate it.
-
-**Privacy note:** provider-backed analysis may transmit the prepared input to Groq. Review provider data-handling terms and your own legal/privacy requirements before sending sensitive content. For the current hackathon demo, use synthetic or non-sensitive data.
-
-## Local-only web deployment (no third-party AI API keys)
-
-The web app defaults to local deterministic analysis. For optional private model inference, run the app and Ollama using the repository's Compose stack:
-
-```bash
-docker compose -f docker-compose.local.yml up --build -d
-docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
-```
-
-Open `http://127.0.0.1:3000`. The stack publishes the web UI only on host loopback; Ollama stays on the private Compose network. The initial model download requires internet access but no API key. See [the local-only deployment guide](docs/LOCAL_ONLY_DEPLOYMENT.md) for limits, offline use, and production cautions.
-
-The local analysis result is a heuristic triage aid, not a probability, proof of safety, or malware verdict. Persistent case/evidence workflows still need their database configured and verified separately.
+See [Local-only deployment](docs/LOCAL_ONLY_DEPLOYMENT.md) for setup and safety boundaries.
 
 ## 12. Tests and engineering safeguards
 
