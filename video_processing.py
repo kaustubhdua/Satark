@@ -130,7 +130,7 @@ def _bgr_to_pil(frame_bgr):
 
 def pil_frames_to_data_urls(frames, max_side=512):
     """Convert extracted PIL frames into compact JPEG data URLs for the vision
-    model. Kept small (512px, low JPEG quality) because Groq's on-demand tier
+    model. Kept small (512px, low JPEG quality) because local model context windows
     has a tight tokens-per-minute budget shared across every frame AND the
     audio transcript AND the system prompt in the same request."""
     from io import BytesIO
