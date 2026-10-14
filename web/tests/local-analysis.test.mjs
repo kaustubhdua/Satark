@@ -7,7 +7,8 @@ test('local-only analysis produces explainable signals without calling network s
   assert.equal(result.threat_category, 'Phishing');
   assert.ok(result.deterministic_signals.includes('URL does not use HTTPS'));
   assert.ok(result.deterministic_signals.includes('Urgency or pressure language'));
-  assert.equal(result.threat_intel.status, 'disabled');
+  assert.equal(result.threat_intel.status, 'not_configured');
+  assert.equal(result.local_ioc_cache.status, 'not_configured');
   assert.equal(result.ip_threat_intel.status, 'disabled');
   assert.equal(result.model, 'deterministic-local-rules');
   assert.equal(result.score_type, 'heuristic_priority_not_probability');
