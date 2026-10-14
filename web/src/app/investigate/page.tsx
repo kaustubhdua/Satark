@@ -2,6 +2,7 @@
 
 import SiteHeader from '../site-header';
 import { LatticeLoader, ThoughtLine } from '../../components/react-bits';
+import ServiceReadiness from '../../components/service-readiness';
 import { useState } from 'react';
 
 const LAST_ANALYSIS_KEY = 'satark:last-analysis:v1';
@@ -102,6 +103,7 @@ export default function InvestigatePage() {
     <main className="shell">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
+        <ServiceReadiness />
         <div className="eyebrow">WORKSPACE / INVESTIGATE</div>
         <h1>Start with the evidence.</h1>
         <p className="lead">Submit a suspicious message or URL as text. SATARK combines AI-assisted triage with basic deterministic signals. It will not visit the URL or execute files.</p>
