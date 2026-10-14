@@ -433,3 +433,24 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
 
 /* Production readiness: visible, concise, and responsive integration status. */
 .readiness-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin:0 0 24px;border:1px solid var(--line);border-radius:14px;background:#ffffff05;color:var(--text)}.readiness-banner>span:last-child{display:grid;gap:5px;min-width:0}.readiness-banner strong{font-size:13px;line-height:1.4}.readiness-banner small{font-size:12px;line-height:1.65;color:var(--muted);overflow-wrap:anywhere}.readiness-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;margin-top:4px;background:#e8b35e;box-shadow:0 0 0 4px #e8b35e1a}.readiness-ready{border-color:#c9f36b38}.readiness-ready .readiness-dot{background:var(--lime);box-shadow:0 0 0 4px #c9f36b1a}.readiness-degraded{border-color:#e8b35e55;background:#e8b35e08}@media(max-width:600px){.readiness-banner{padding:12px;margin-bottom:18px}.readiness-banner small{font-size:11px}}
+
+
+/* Focused home launchpad: fewer simultaneous tasks, stronger hierarchy. */
+.home-hero{padding-top:18px;padding-bottom:44px;animation:home-arrive .55s cubic-bezier(.2,.7,.2,1) both}
+.home-privacy-note{margin:18px 0 0;color:var(--muted);font-size:11px;line-height:1.7}
+.home-signal-card{align-self:stretch}
+.home-workspaces{margin:10px 0 38px}
+.home-workspace-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.home-workspace-grid .workspace-card{min-width:0;animation:home-arrive .5s cubic-bezier(.2,.7,.2,1) both}
+.home-workspace-grid .workspace-card:nth-child(2){animation-delay:70ms}
+.home-workspace-grid .workspace-card:nth-child(3){animation-delay:140ms}
+.home-workspace-grid .workspace-card:nth-child(4){animation-delay:210ms}
+.home-workspace-grid .workspace-card p{min-height:0}
+.home-card-actions{gap:16px;margin-top:18px}
+.home-card-actions .text-link{white-space:nowrap}
+.home-tools{margin-top:36px}
+.home-overview .tools-disclosure{margin-bottom:8px}
+@keyframes home-arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:850px){.home-workspace-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.home-hero{padding-top:8px;padding-bottom:32px}.home-workspace-grid{grid-template-columns:1fr}.home-card-actions{display:flex;flex-wrap:wrap}.home-card-actions .text-link{white-space:normal}}
+@media(prefers-reduced-motion:reduce){.home-hero,.home-workspace-grid .workspace-card{animation:none}}
