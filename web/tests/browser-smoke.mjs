@@ -411,30 +411,29 @@ try {
   const limited = await Promise.all(Array.from({ length: 9 }, () => fetch(baseURL + '/api/analyze', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-real-ip': '198.51.100.91' },
-    body: '{not-json',
+    body: JSON.stringify({ input: 'Synthetic training example: please verify your account.' }),
   })));
-  assert.equal(limited.filter(response => response.status === 400).length, 8,
-    'the first eight requests should reach JSON validation');
+  assert.equal(limited.filter(response => response.status === 200).length, 8,
+    'the first eight valid requests should be analyzed locally');
   assert.equal(limited.filter(response => response.status === 429).length, 1,
     'the ninth request from one client should be rate-limited');
   assert.ok(limited.every(response => response.headers.get('cache-control') === 'no-store'),
     'rate-limit and validation errors must not be cached');
 
-  if (process.env.GROQ_API_KEY) {
-    const response = await fetch(baseURL + '/api/analyze', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ input: 'Training-only example: "Your account will be closed today; verify your password at example.invalid". Assess cautiously; do not visit the domain.' }),
-    });
-    assert.equal(response.status, 200, `configured provider request returned ${response.status}: ${(await response.text()).slice(0, 500)}`);
-    const result = await response.json();
-    assert.ok(result && typeof result === 'object', 'provider response should be JSON');
-    assert.ok(typeof result.risk_score === 'number', 'provider response should include a numeric risk_score');
-    assert.ok(typeof result.summary === 'string', 'provider response should include a summary');
-    console.log('Provider smoke test: passed with synthetic non-sensitive input.');
-  } else {
-    console.warn('Provider smoke test skipped: GROQ_API_KEY is not configured in this CI run.');
-  }
+  const localAnalysisResponse = await fetch(baseURL + '/api/analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-real-ip': '198.51.100.92' },
+    body: JSON.stringify({ input: 'Training-only example: "Your account will be closed today; verify your password at http://example.invalid/login". Do not visit the URL.' }),
+  });
+  assert.equal(localAnalysisResponse.status, 200,
+    `local analysis should work without API credentials: ${(await localAnalysisResponse.clone().text()).slice(0, 500)}`);
+  const localResult = await localAnalysisResponse.json();
+  assert.equal(localResult.model, 'deterministic-local-rules',
+    'CI without a self-hosted model should use deterministic local rules');
+  assert.ok(typeof localResult.risk_score === 'number', 'local result should include a heuristic priority');
+  assert.ok(Array.isArray(localResult.deterministic_signals), 'local result should include explainable signals');
+  assert.match(localResult.notice, /No third-party AI or threat-intelligence API was called/);
+  console.log('Local analysis smoke test: passed without API keys.');
 
   assert.deepEqual(failures, [], failures.join('\n'));
   console.log('SATARK web browser smoke tests passed at desktop and mobile viewports.');
