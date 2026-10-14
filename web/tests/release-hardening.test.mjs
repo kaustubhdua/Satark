@@ -98,7 +98,7 @@ test('URLhaus URL sanitizer strips query and fragment values before sharing', as
     'URLs containing embedded credentials must not be shared');
   assert.equal(extractFirstHttpUrl('No URL was supplied'), null);
   const investigate = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
-  assert.match(investigate, /local-only rules/i);
+  assert.match(investigate, /No third-party AI or reputation API is called in local-only mode/i);
   assert.doesNotMatch(investigate, /query strings and fragments are removed first/);
 });
 
@@ -177,8 +177,8 @@ test('production smoke check fails closed when deployment revision is stale', ()
 
 
 test('analysis pages disclose local-only processing and no third-party AI sharing', () => {
-  assert.match(homePage, /local-only rules/i);
-  assert.match(investigatePage, /local-only rules/i);
+  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
   assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/i);
   assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
   assert.doesNotMatch(homePage, /text you submit is sent to Groq/i);
