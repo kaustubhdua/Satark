@@ -379,24 +379,61 @@ Not detected, Low, Medium, High.
             # immediately — this applies to text, image and video requests now.
             continue
 
-    detail = "Local Ollama requests failed for the configured models. Check Ollama status and the local model logs."
+    # Never make the app unusable just because the optional local model is
+    # offline. Return conservative local pattern signals, clearly marked as
+    # insufficient evidence; never label a no-model result "Safe".
+    lowered = safe_text(content).lower()
+    indicators = []
+    score = 0
+    if re.search(r"https?://", lowered):
+        indicators.append("URL present; destination reputation was not checked.")
+        score += 8
+    if re.search(r"\b(urgent|immediately|act now|account suspended|verify your account|last chance)\b", lowered):
+        indicators.append("Urgency or account-pressure language.")
+        score += 10
+    if re.search(r"\b(password|passcode|otp|verification code|login credentials|private key)\b", lowered):
+        indicators.append("Credential or secret-related language.")
+        score += 20
+    if re.search(r"\b(prize|processing fee|gift card|wire transfer|crypto payment|payment required)\b", lowered):
+        indicators.append("Payment, prize, or transfer language.")
+        score += 12
     if image_data_urls:
-        hint = (
-            "\n\nThis looks like a local model resource or timeout issue on the free/on-demand "
-            "tier rather than a broken model. Wait a minute and try again with fewer or smaller "
-            "images, or upgrade the local model tier."
-        ) if rate_limited else ""
-        raise RuntimeError(
-            "SATARK could not complete the visual analysis with any configured "
-            "vision model (tried: " + ", ".join(candidates) + "). Please verify "
-            "that this configured local Ollama instance has access to at least one supported "
-            "vision model and try again.\n" + detail + hint
-        )
+        indicators.append("Local vision model unavailable; image/video frames were not visually assessed.")
+    if not indicators:
+        indicators.append("Local model unavailable; no AI inference was performed.")
 
-    raise RuntimeError(
-        '<tbody>'+''.join(rows)+'</tbody></table>'
+    category = "Phishing" if any("Credential" in item for item in indicators) else (
+        "Scam" if any("Payment" in item for item in indicators) else (
+            "Suspicious" if score else "Needs review"
+        )
     )
-    st.markdown(f'<section class="report-section"><h3>📚 Official Verification Sources</h3>{table}</section>', unsafe_allow_html=True)
+    fallback_result = {
+        "risk_score": min(80, score),
+        "confidence": 15,
+        "threat_category": category,
+        "verdict": "Local model unavailable; manual review is required.",
+        "summary": (
+            "Ollama did not return a result. SATARK used only conservative local pattern checks; "
+            "no AI inference or external reputation lookup was performed. This is insufficient "
+            "evidence, not a safety verdict."
+        ),
+        "key_indicators": indicators[:8],
+        "recommendations": [
+            "Verify the sender and destination through an independent trusted channel.",
+            "Do not enter credentials or payment details while investigating.",
+            "Preserve the original evidence and retry after your local model is available.",
+        ],
+        "scam_pattern": "local-model-unavailable",
+        "threat_analysis": build_fallback_threat_analysis({
+            "threat_category": category,
+            "key_indicators": indicators,
+            "summary": "Local model unavailable; needs review.",
+        }),
+        "final_conclusion": "The configured local model did not complete inference. Treat these pattern matches as triage hints only and verify independently.",
+    }
+    return normalize_result_consistency(
+        normalize_result(fallback_result, json.dumps(fallback_result), "local-deterministic-fallback")
+    )
 
 
 def confidence_css_class(confidence):
