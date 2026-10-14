@@ -22,6 +22,9 @@ test('local-only analysis is the default and does not require a provider API key
 test('local mode labels external reputation as disabled and never calls those services', () => {
   assert.match(localAnalysis, /External lookups are disabled in local-only mode/);
   assert.match(localAnalysis, /No third-party AI or threat-intelligence API was called/);
+  assert.match(localAnalysis, /No exact match in the currently fresh local cache\. This is not a safety verdict\./);
+  assert.match(page, /Local threat-intelligence cache/);
+  assert.match(investigatePage, /Local threat-intelligence cache/);
   assert.doesNotMatch(route, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
   assert.match(route, /analyzeWithLocalModel\(input\.trim\(\)\)/);
 });
