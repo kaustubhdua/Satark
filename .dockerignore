@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/.next
+**/artifacts
+**/dist
+**/build
+.env
+.env.*
+!.env.example
+*.log
