@@ -84,7 +84,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - [x] Validate media type, request limits, local-model timeout, bounded model responses, structured output, and deterministic fallback in the Next.js local route.
 - [ ] Test the live self-hosted Ollama model on supported hardware and run prompt-injection/quality evaluations.
 - [x] Remove third-party AI/reputation HTTP calls and provider API-key requirements from the Next.js analysis route.
-- [ ] Replace reputation API lookups with an operator-managed local threat-intelligence cache refreshed from reviewed, license-compatible public feeds; analysis itself must not call third-party services.
+- [x] Add an offline operator-managed IOC cache with freshness/provenance states and a local-feed import command. The checked-in cache intentionally remains empty until an operator selects a license-compatible source; analysis never fetches feeds.
 - [ ] Verify no-match, unavailable, and not-requested never render as a green "safe" result.
 
 **Acceptance:** the local route succeeds with no API keys and no outbound requests; optional local model failure falls back to deterministic results; local intelligence matches show source/version/freshness and absence of a match is never a safe verdict.
@@ -217,7 +217,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 7. **Keyboard/mobile:** complete the core journey at a narrow viewport with accessible focus and errors.
 8. **Release truth:** deployment SHA, version endpoint, CI runs, readiness state, and live links match the release.
 
-## Current status at roadmap creation
+## Historical status at roadmap creation (before the local-first migration was merged)
 
 - The self-hosted AI prototype is merged, and its dedicated AI CI passed. No model has been trained; the tiny synthetic set is only a smoke test.
 - The production-readiness PR branch now defaults the Next.js analysis route to deterministic local checks, with optional self-hosted Ollama summaries and no third-party provider path. A loopback-bound Docker Compose stack and setup guide were added.
@@ -232,3 +232,13 @@ P0 means SATARK must not be described as production-ready until applicable gates
 SATARK can be called finished for its declared scope only when every advertised feature is real and tested or clearly labelled unavailable/demo; all P0 acceptance criteria pass; the FIRSTLIGHT workflow is persistent and recoverable; production integrations are exercised with authorized credentials; security, tenant isolation, accessibility, responsive UX, and performance have evidence-based sign-off; release build and live version are verified; and documentation matches what actually works.
 
 "Finished" does not mean every imaginable security capability exists. It means the declared scope is coherent, honest, tested, secure for its intended deployment, usable, and maintainable.
+
+
+## Follow-up status — 2026-10-14
+
+- PR #100 is merged to `main` at `257c6b4168c53c26436e8f82febafcfcbab69419`. Vercel deployment `dpl_8QefQRRtB3ndVFqLJciCY6MedT2s` reached `READY`, targets production, and is associated with that exact commit. The production build completed successfully. Direct HTTP assertions against the live `/api/version` and `/api/health` responses remain to be confirmed by the GitHub production-smoke workflow; this session's web fetcher could not access the live endpoint.
+- The local-only Compose configuration was malformed on `main`; PR #102 repaired its service structure and was merged as `6142a38083bbd5286a47c7de088c0f0f99aacedd`. The YAML was parsed locally and the expected three services, loopback-only app ports, and private Ollama exposure were asserted. A Docker-enabled Compose build/start test remains outstanding.
+- PR #103 adds an offline IOC cache and an operator-supplied feed importer. The cache is intentionally empty until a permitted source is chosen; its CI checks must pass before merge. The cache reports `not_configured`, `no_match`, `match`, `stale`, or `unavailable` distinctly.
+- Web CI, Python CI, and CodeQL passed on the first tested PR #103 revision. Additional commits were then pushed to improve provenance and exact-domain tests; the latest revision's workflows must finish before merge.
+- Local Ollama and faster-whisper still require a real hardware run. No SATARK-specific model has been trained or evaluated on a representative held-out corpus.
+- The primary product still needs a visual desktop/mobile audit, an end-to-end persistent case/evidence/report verification using dedicated test tenants, and a documented backup/restore test. Do not equate a successful Vercel build with these acceptance gates.
