@@ -11,7 +11,27 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
+      streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      SATARK_WHISPER_MODEL: base
+      SATARK_WHISPER_DEVICE: cpu
+      SATARK_WHISPER_COMPUTE_TYPE: int8
+    ports:
+      - "127.0.0.1:8501:8501"
+    depends_on:
       ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  ollama:
         condition: service_healthy
     restart: unless-stopped
     security_opt:
