@@ -108,7 +108,7 @@ export function analyzeLocally(input) {
   const unique = signals.filter((item, index, all) =>
     all.findIndex(other => other.label === item.label && other.evidence === item.evidence) === index
   ).slice(0, 30);
-  const score = Math.min(90, unique.reduce((sum, item) => sum + ({ high: 25, medium: 14, low: 7, info: 2 }[item.severity] || 0)));
+  const score = Math.min(90, unique.reduce((sum, item) => sum + ({ high: 25, medium: 14, low: 7, info: 2 }[item.severity] || 0), 0));
   const credentialPressure = unique.some(item => item.label === 'Credential or secret-related language');
   const paymentPressure = unique.some(item => item.label === 'Payment, prize, or transfer language');
   const category = credentialPressure ? 'Phishing' : paymentPressure ? 'Scam' : unique.length ? 'Suspicious' : 'Needs review';
