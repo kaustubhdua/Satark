@@ -5,7 +5,7 @@ import { inspectEvidenceFile } from '../src/lib/evidence-signature.mjs';
 test('recognizes supported binary signatures independent of filename', () => {
   assert.deepEqual(inspectEvidenceFile(Uint8Array.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]), 'image/png'), { ok: true, contentType: 'image/png', signatureType: 'png', signatureVerified: true });
   assert.equal(inspectEvidenceFile(Uint8Array.from([0x25,0x50,0x44,0x46,0x2d,0x31]), '').contentType, 'application/pdf');
-  assert.equal(inspectEvidenceFile(Uint8Array.from([0x50,0x4b,0x03,0x04]), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document').signatureVerified, true);
+  assert.equal(inspectEvidenceFile(Uint8Array.from([0x50,0x4b,0x03,0x04]), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document').signatureVerified, false);
 });
 
 test('does not overstate ZIP container verification for Office document MIME types', () => {
