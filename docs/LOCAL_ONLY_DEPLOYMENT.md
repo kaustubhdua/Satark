@@ -49,7 +49,7 @@ To delete the downloaded model volume as well, use `docker compose -f docker-com
 - The model download needs an internet connection initially; no API key is required. You can pre-load a model in an offline environment and then disconnect.
 - This Compose stack runs the web and model services only. Persistent case/evidence APIs still require the database environment documented in the project. Do not assume that cases, evidence, or reports are durable until their persistence path is configured and end-to-end tested.
 - Do not expose port 3000 or Ollama to the public internet. Production deployment requires authentication, tenant authorization, shared abuse controls, TLS, backup/restore, privacy review, and operational monitoring.
-- Existing legacy external-provider code remains available only through explicit `SATARK_ANALYSIS_MODE=groq`; it is not the default and is not needed for local analysis. Do not set that mode if you require a no-provider-key environment.
+- The default analysis API has no third-party provider code path. External threat-intelligence lookups are not part of this web implementation; the local engine only evaluates local patterns and the optional self-hosted model.
 
 ## Local analysis test
 
