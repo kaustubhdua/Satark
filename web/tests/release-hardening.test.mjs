@@ -177,17 +177,13 @@ test('production smoke check fails closed when deployment revision is stale', ()
 });
 
 
-test('analysis pages disclose AI provider data sharing', () => {
-  assert.match(homePage, /text you submit is sent to Groq/i);
-  assert.match(investigatePage, /full text is sent to Groq/i);
-  assert.match(homePage, /separate optional lookups/i);
-  assert.match(investigatePage, /separate optional lookups/i);
-});
-
-test('homepage URLhaus consent describes query and fragment removal', () => {
-  assert.match(homePage, /query strings and fragments are removed first/);
-  assert.match(homePage, /Paths can still contain private identifiers/);
-  assert.doesNotMatch(homePage, /full extracted URL, including its path and query string, is shared/i);
+test('analysis pages disclose local-only processing and no third-party AI sharing', () => {
+  assert.match(homePage, /local-only rules/i);
+  assert.match(investigatePage, /local-only rules/i);
+  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.doesNotMatch(homePage, /text you submit is sent to Groq/i);
+  assert.doesNotMatch(investigatePage, /full text is sent to Groq/i);
 });
 
 
