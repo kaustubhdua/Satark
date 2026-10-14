@@ -4,6 +4,7 @@ import { extractFirstHttpUrl, safeUrlhausReference } from '@/lib/urlhaus-url.mjs
 import { isPublicIpAddress } from '../../../lib/public-ip.mjs';
 import { readJsonWithinLimit } from '@/lib/bounded-json.mjs';
 import { checkAnalysisRateLimit } from '@/lib/rate-limit.mjs';
+import { analyzeWithLocalModel } from '@/lib/local-analysis.mjs';
 
 export const runtime = 'nodejs';
 
@@ -186,6 +187,13 @@ export async function POST(request: Request) {
   }
   if (input.length > MAX_INPUT_CHARS) {
     return error('Input must be 12,000 characters or fewer.', 413);
+  }
+
+  // Local-only is the default: no provider API keys and no outbound threat-intel
+  // requests. Groq remains an explicit legacy opt-in, never an implicit fallback.
+  if ((process.env.SATARK_ANALYSIS_MODE || 'local') === 'local') {
+    const result = await analyzeWithLocalModel(input);
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   let shareWithThreatIntel = false;
