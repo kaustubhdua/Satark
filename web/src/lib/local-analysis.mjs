@@ -120,7 +120,7 @@ export function analyzeLocally(input) {
   };
 }
 
-export async function analyzeWithLocalModel(input, env: Record<string, string | undefined> = process.env, fetchImpl = fetch) {
+export async function analyzeWithLocalModel(input, env = process.env, fetchImpl = fetch) {
   const base = (env.SATARK_OLLAMA_BASE_URL || '').trim().replace(/\/$/, '');
   const model = (env.SATARK_OLLAMA_MODEL || '').trim();
   const deterministic = analyzeLocally(input);
