@@ -20,7 +20,7 @@ const failures = [];
   assert.match(response.headers.get('cache-control') || '', /no-store/);
   const health = await response.json();
   assert.equal(health.status, 'configuration-only');
-  assert.match(health.note || '', /does not probe model or database connectivity/i);
+  assert.match(health.note || '', /does not probe model, database, or Redis connectivity/i);
   for (const key of ['analysis', 'localModel', 'rateLimit', 'persistentStorage']) {
     assert.ok(health.checks?.[key], 'missing readiness diagnostic: ' + key);
   }
