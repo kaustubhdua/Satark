@@ -18,7 +18,7 @@ test('local fallback enforces the per-client window and keeps keys hashed', asyn
 });
 
 test('production refuses to downgrade to an instance-local rate limit', async () => {
-  const limiter = createRateLimiter({ env: { NODE_ENV: 'production' } });
+  const limiter = createRateLimiter({ env: { NODE_ENV: 'production', SATARK_ANALYSIS_MODE: 'groq' } });
   assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared' });
 });
 
