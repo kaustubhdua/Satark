@@ -432,7 +432,7 @@ try {
     'CI without a self-hosted model should use deterministic local rules');
   assert.ok(typeof localResult.risk_score === 'number', 'local result should include a heuristic priority');
   assert.ok(Array.isArray(localResult.deterministic_signals), 'local result should include explainable signals');
-  assert.match(localResult.notice, /No third-party AI or threat-intelligence API was called/);
+  assert.match(localResult.notice, /No submitted content was sent to a third-party AI or threat-intelligence API/);
   console.log('Local analysis smoke test: passed without API keys.');
 
   assert.deepEqual(failures, [], failures.join('\n'));
