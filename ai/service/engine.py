@@ -26,8 +26,10 @@ def _public_ip(value: str) -> bool:
 
 def _safe_url_excerpt(scheme: str, hostname: str, path: str) -> str:
     # Never echo URL user-info, query parameters, or fragments into a report.
+    safe_host = hostname[:253]
+    base = f"{scheme.lower()}://{safe_host}"
     suffix = "/…" if path and path != "/" else ""
-    return f"{scheme.lower()}://{hostname}{suffix}"
+    return (base + suffix)[:300]
 
 
 def analyze_text(text: str) -> list[Signal]:
