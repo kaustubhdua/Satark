@@ -10,7 +10,7 @@ const envExample = readFileSync(new URL('../.env.example', import.meta.url), 'ut
 const localAnalysis = readFileSync(new URL('../src/lib/local-analysis.mjs', import.meta.url), 'utf8');
 
 test('local-only analysis is the default and does not require a provider API key', () => {
-  assert.match(route, /SATARK_ANALYSIS_MODE \|\| 'local'/);
+  assert.match(route, /analyzeWithLocalModel/);
   assert.match(route, /analyzeWithLocalModel\(input\)/);
   assert.match(localAnalysis, /deterministic-local-rules/);
   assert.match(page, /local-only rules/i);
@@ -22,18 +22,15 @@ test('local-only analysis is the default and does not require a provider API key
 test('local mode labels external reputation as disabled and never calls those services', () => {
   assert.match(localAnalysis, /External lookups are disabled in local-only mode/);
   assert.match(localAnalysis, /No third-party AI or threat-intelligence API was called/);
-  assert.match(route, /if \(\(process\.env\.SATARK_ANALYSIS_MODE \|\| 'local'\) === 'local'\)/);
-  assert.ok(route.indexOf('analyzeWithLocalModel(input)') < route.indexOf("fetch('https://urlhaus-api.abuse.ch/v1/url/'"));
+  assert.doesNotMatch(route, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
+  assert.match(route, /analyzeWithLocalModel\(input\.trim\(\)\)/);
 });
 
-test('legacy URLhaus and AbuseIPDB paths require explicit non-default provider mode and opt-in', () => {
-  assert.match(route, /SATARK_ENABLE_THREAT_INTEL !== 'true'/);
-  assert.match(route, /SATARK_ENABLE_ABUSEIPDB !== 'true'/);
-  assert.match(route, /URLHAUS_AUTH_KEY/);
-  assert.match(route, /ABUSEIPDB_API_KEY/);
-  assert.match(envExample, /SATARK_ANALYSIS_MODE=local/);
-  assert.doesNotMatch(route, /NEXT_PUBLIC_ABUSEIPDB_API_KEY/);
-  assert.doesNotMatch(route, /NEXT_PUBLIC_URLHAUS_AUTH_KEY/);
+test('default environment has no third-party analysis provider keys', () => {
+  assert.match(envExample, /SATARK_OLLAMA_BASE_URL/);
+  assert.match(envExample, /SATARK_OLLAMA_MODEL/);
+  assert.doesNotMatch(envExample, /GROQ_API_KEY|URLHAUS_AUTH_KEY|ABUSEIPDB_API_KEY|UPSTASH_REDIS/);
+  assert.doesNotMatch(route, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
 });
 
 test('URL and IP heuristics do not claim no-match means safe', () => {
