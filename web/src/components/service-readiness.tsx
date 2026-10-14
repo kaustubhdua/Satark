@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 type Health = {
   status: 'ready' | 'degraded';
   checks: {
-    analysisProvider: { configured: boolean };
-    sharedRateLimit: { configured: boolean };
-    urlhaus: { enabled: boolean; configured: boolean };
-    abuseIpDb: { enabled: boolean; configured: boolean };
+    analysis: { mode: string; configured: boolean };
+    localModel: { configured: boolean };
+    sharedRateLimit: { configured: boolean; requiredForLocalMode: boolean };
+    externalThreatIntel: { enabled: boolean; configured: boolean };
     persistentStorage: { configured: boolean };
   };
 };
@@ -31,30 +31,18 @@ export default function ServiceReadiness() {
   }, []);
 
   if (!health) return null;
-
-  const missing: string[] = [];
-  if (!health.checks.analysisProvider.configured) missing.push('AI analysis provider');
-  if (!health.checks.sharedRateLimit.configured) missing.push('shared rate limiting');
-  const optionalMissing: string[] = [];
-  if (health.checks.urlhaus.enabled && !health.checks.urlhaus.configured) optionalMissing.push('URLhaus');
-  if (health.checks.abuseIpDb.enabled && !health.checks.abuseIpDb.configured) optionalMissing.push('AbuseIPDB');
-
-  if (!missing.length && !optionalMissing.length) {
-    return <div className="readiness-banner readiness-ready" role="status">
-      <span className="readiness-dot" aria-hidden="true" />
-      <span><strong>Service configuration present</strong><small>Credential presence is checked, not provider health.</small></span>
-    </div>;
+  const notes: string[] = [];
+  if (!health.checks.localModel.configured) notes.push('Ollama model is optional; deterministic local rules are active.');
+  if (!health.checks.persistentStorage.configured) notes.push('Persistent case storage is not configured.');
+  if (health.checks.externalThreatIntel.enabled && !health.checks.externalThreatIntel.configured) {
+    notes.push('A legacy external intelligence connector is enabled but not configured.');
   }
 
-  return <div className="readiness-banner readiness-degraded" role="status">
+  return <div className={health.status === 'ready' ? 'readiness-banner readiness-ready' : 'readiness-banner readiness-degraded'} role="status">
     <span className="readiness-dot" aria-hidden="true" />
     <span>
-      <strong>{missing.length ? 'Some core services need configuration' : 'Optional integrations need configuration'}</strong>
-      <small>
-        {missing.length ? 'Core: ' + missing.join(' and ') + '. ' : ''}
-        {optionalMissing.length ? 'Optional: ' + optionalMissing.join(' and ') + '. ' : ''}
-        Add credentials in Vercel Project Settings → Environment Variables, then redeploy. Do not put secrets in browser code.
-      </small>
+      <strong>{health.status === 'ready' ? 'Local analysis available' : 'Analysis configuration needs attention'}</strong>
+      <small>{notes.length ? notes.join(' ') : 'Local-only mode is enabled. No third-party AI API key is required.'}</small>
     </span>
   </div>;
 }
