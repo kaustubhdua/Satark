@@ -11,7 +11,7 @@ const localAnalysis = readFileSync(new URL('../src/lib/local-analysis.mjs', impo
 
 test('local-only analysis is the default and does not require a provider API key', () => {
   assert.match(route, /analyzeWithLocalModel/);
-  assert.match(route, /analyzeWithLocalModel\(input\)/);
+  assert.match(route, /analyzeWithLocalModel\(input\.trim\(\)\)/);
   assert.match(localAnalysis, /deterministic-local-rules/);
   assert.match(page, /local-only rules/i);
   assert.match(investigatePage, /local-only rules/i);
