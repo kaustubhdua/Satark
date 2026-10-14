@@ -20,19 +20,16 @@ const failures = [];
   assert.match(response.headers.get('cache-control') || '', /no-store/);
   const health = await response.json();
   assert.ok(['ready', 'degraded'].includes(health.status));
-  for (const key of ['analysis', 'localModel', 'sharedRateLimit', 'externalThreatIntel', 'persistentStorage']) {
+  for (const key of ['analysis', 'localModel', 'rateLimit', 'persistentStorage']) {
     assert.ok(health.checks?.[key], 'missing readiness diagnostic: ' + key);
   }
   assert.equal(health.checks.analysis.mode, 'local-only');
   assert.equal(health.checks.analysis.configured, true, 'local rules must work without API credentials');
-  for (const key of ['localModel', 'sharedRateLimit', 'persistentStorage']) {
+  for (const key of ['localModel', 'rateLimit', 'persistentStorage']) {
     assert.equal(typeof health.checks[key].configured, 'boolean');
   }
-  assert.equal(typeof health.checks.externalThreatIntel.enabled, 'boolean');
-  assert.equal(typeof health.checks.externalThreatIntel.configured, 'boolean');
-  assert.equal(JSON.stringify(health).includes('GROQ_API_KEY'), false);
-  assert.equal(JSON.stringify(health).includes('URLHAUS_AUTH_KEY'), false);
-  assert.equal(JSON.stringify(health).includes('ABUSEIPDB_API_KEY'), false);
+  assert.equal(health.checks.rateLimit.sharedAcrossInstances, false);
+  assert.equal(JSON.stringify(health).includes('API_KEY'), false);
 }
 
 const browser = await chromium.launch({ headless: true });
