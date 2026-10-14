@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 from .engine import analyze_text
 from .schemas import AnalyzeRequest, AnalyzeResponse
 
 MAX_MODEL_RESPONSE_BYTES = 8_192
+MAX_REQUEST_BYTES = 48 * 1024
 DISCLAIMER = (
     "Triage assistance only. Heuristic signals are not a verdict; no-match or missing "
     "intelligence is not proof of safety. Verify findings before taking action."
@@ -33,13 +36,23 @@ def _config() -> tuple[str | None, str | None]:
 def _valid_base_url(value: str) -> bool:
     # Local-only defaults reduce accidental exposure; explicitly remote URLs require HTTPS.
     try:
-        from urllib.parse import urlsplit
         parsed = urlsplit(value)
         if parsed.scheme == "https":
             return bool(parsed.hostname)
         return parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
     except ValueError:
         return False
+
+
+def _authorize(authorization: str | None) -> None:
+    expected = os.getenv("SATARK_AI_API_TOKEN", "")
+    if not expected:
+        return
+    if len(expected) < 32:
+        raise HTTPException(status_code=503, detail="AI service token configuration is invalid")
+    supplied = authorization or ""
+    if not supplied.startswith("Bearer ") or not secrets.compare_digest(supplied[7:], expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 async def _model_summary(text: str, signals: list[dict[str, Any]]) -> tuple[str | None, str]:
@@ -109,15 +122,30 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def bound_request_size(request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BYTES:
+                return JSONResponse(status_code=413, content={"detail": "Request body is too large"})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
+    return await call_next(request)
+
+
 @app.get("/health")
 async def health() -> JSONResponse:
     base_url, model = _config()
     configured = bool(base_url and model and _valid_base_url(base_url))
+    token = os.getenv("SATARK_AI_API_TOKEN", "")
     return JSONResponse(
         status_code=200,
         content={
             "status": "configured" if configured else "deterministic_only",
             "model_configured": configured,
+            "api_auth_required": bool(token),
+            "api_auth_configured": not token or len(token) >= 32,
             "deterministic_engine": True,
             "production_ready": False,
         },
@@ -126,8 +154,12 @@ async def health() -> JSONResponse:
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    if len(request.text.encode("utf-8")) > 48 * 1024:
+async def analyze(
+    request: AnalyzeRequest,
+    authorization: str | None = Header(default=None),
+) -> AnalyzeResponse:
+    _authorize(authorization)
+    if len(request.text.encode("utf-8")) > MAX_REQUEST_BYTES:
         raise HTTPException(status_code=413, detail="Input is too large")
 
     signals = analyze_text(request.text)
@@ -146,7 +178,7 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         schema_version="1.0",
         case_id=request.case_id,
         verdict="needs_review" if signals else "insufficient_evidence",
-        ai_status=ai_status,  # configured means configured and responded successfully for this request
+        ai_status=ai_status,
         summary=summary,
         signals=signals,
         next_steps=NEXT_STEPS,
