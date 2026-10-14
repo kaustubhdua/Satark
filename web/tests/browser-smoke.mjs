@@ -36,6 +36,7 @@ const browser = await chromium.launch({ headless: true });
 const routes = [
   { path: '/', heading: /SATARK|SENTINEL/i },
   { path: '/investigate', heading: /investigate|analysis|suspicious/i },
+  { path: '/image-review', heading: /image review|inspect the image|image metadata/i },
   { path: '/firstlight', heading: /FIRSTLIGHT/i },
   { path: '/reports', heading: /report/i },
   { path: '/learn', heading: /learn|safety/i },
@@ -348,6 +349,31 @@ try {
   await inspectViewport({ width: 1440, height: 900 }, 'desktop');
   await inspectViewport({ width: 390, height: 844 }, 'mobile');
   await inspectViewport({ width: 320, height: 720 }, 'small-mobile');
+
+  // Image inspection must stay in-browser and produce a reproducible SHA-256.
+  {
+    const imagePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const externalRequests = [];
+    const origin = new URL(baseURL).origin;
+    imagePage.on('request', request => {
+      const url = new URL(request.url());
+      if (url.protocol.startsWith('http') && url.origin !== origin) externalRequests.push(url.origin);
+    });
+    await imagePage.goto(baseURL + '/image-review', { waitUntil: 'networkidle' });
+    const imageBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64');
+    const expectedHash = createHash('sha256').update(imageBytes).digest('hex');
+    await imagePage.locator('#image-file').setInputFiles({
+      name: 'one-pixel.png',
+      mimeType: 'image/png',
+      buffer: imageBytes,
+    });
+    await imagePage.getByText('Image inspection complete', { exact: true }).waitFor();
+    const imageText = await imagePage.locator('body').innerText();
+    assert.match(imageText, /1 × 1 pixels/);
+    assert.ok(imageText.includes(expectedHash), 'image review must expose the byte-exact SHA-256 fingerprint');
+    assert.deepEqual(externalRequests, [], 'image review must not send the file or metadata to external services');
+    await imagePage.close();
+  }
 
   const reducedMotionPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await reducedMotionPage.emulateMedia({ reducedMotion: 'reduce' });
