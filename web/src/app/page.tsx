@@ -25,8 +25,6 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | null>(null);
-  const [shareWithThreatIntel, setShareWithThreatIntel] = useState(false);
-  const [shareIpWithThreatIntel, setShareIpWithThreatIntel] = useState(false);
 
   async function analyze() {
     setError('');
@@ -40,7 +38,7 @@ export default function Home() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ input: input.trim(), shareWithThreatIntel, shareIpWithThreatIntel })
+        body: JSON.stringify({ input: input.trim() })
       });
       const contentType = response.headers.get('content-type') || '';
       const data: unknown = contentType.includes('application/json')
@@ -151,8 +149,8 @@ export default function Home() {
             <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy || !input.trim()} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
             {error && <div className="result error" role="alert">{error}</div>}
             {result && <div className="analysis-result" role="status">
-              <div className="result-top"><span className="pill">{result.threat_category}</span><strong>Risk signal: {result.risk_score}/100</strong></div>
-              <p>{result.summary}</p>
+              <div className="result-top"><span className="pill">{result.threat_category}</span><strong>Heuristic priority: {result.risk_score}/100</strong></div>
+              <p>{result.summary}</p><p className="field-note">{result.notice}</p>
               {result.deterministic_signals.length > 0 && <><h4>Deterministic signals</h4><ul>{result.deterministic_signals.map(signal => <li key={signal}>{signal}</li>)}</ul></>}
               <h4>AI-identified indicators</h4><ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
               <h4>Recommended next steps</h4><ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
