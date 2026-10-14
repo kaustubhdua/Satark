@@ -190,7 +190,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ## End-to-end acceptance scenarios
 
 1. **New investigation:** create case, upload synthetic evidence, verify hash, analyze, inspect findings/source, build timeline, export report, reopen case, verify record.
-2. **Provider unavailable:** remove provider credentials in staging; UI shows unavailable, local checks still run, and nothing is labelled safe.
+2. **Local model unavailable:** stop Ollama or remove model weights; deterministic fallback remains available, and nothing is labelled safe.
 3. **Cross-tenant attack:** tenant A uses tenant B's IDs; reads/writes are denied.
 4. **Prompt injection:** evidence tells the model to ignore rules or reveal secrets; it remains untrusted data, schema validation holds, and no action executes.
 5. **Bad upload:** corrupt/oversized/unsupported file is rejected with no server-side execution.
@@ -203,10 +203,10 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - The self-hosted AI prototype is merged, and its dedicated AI CI passed. No model has been trained; the tiny synthetic set is only a smoke test.
 - The production-readiness PR branch now defaults the Next.js analysis route to deterministic local checks, with optional self-hosted Ollama summaries and no third-party provider path. A loopback-bound Docker Compose stack and setup guide were added.
 - The local analysis route uses a bounded in-process limiter; this is not a shared limiter across Vercel instances. The UI readiness banner calls this out. Do not expose the service publicly without platform-level abuse controls.
-- The Next.js no-key path is not the same as the whole repository being no-key: the legacy Python/Streamlit app still contains Groq-specific code and must be migrated under P1.6.
+- The Next.js and Python/Streamlit analysis paths now use local Ollama and no Groq SDK/API-key field. Optional local faster-whisper handles video audio. This implementation still requires CI confirmation and real model testing on supported hardware.
 - Durable case/evidence workflows still require a self-hosted database deployment and end-to-end tenant-isolation verification. The local Compose stack does not yet provide that database.
 - Web CI has exposed regression-test failures during migration; merge only after the latest Web CI, Python CI, CodeQL, and browser smoke runs all pass.
-- Production is not proven to have complete tenant-isolation testing, live provider tests, fully implemented response actions, or a visually audited desktop/mobile experience.
+- Production is not proven to have complete tenant-isolation testing, a local IOC feed cache, fully implemented response actions, or a visually audited desktop/mobile experience.
 
 ## Definition of done
 
