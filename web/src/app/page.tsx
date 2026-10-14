@@ -2,6 +2,7 @@
 
 import SiteHeader from './site-header';
 import { Radar, SplitFlapText } from '../components/react-bits';
+import ServiceReadiness from '../components/service-readiness';
 
 import { useState } from 'react';
 
@@ -87,6 +88,7 @@ export default function Home() {
       <SiteHeader status />
 
       <div className="container" id="main-content" tabIndex={-1}>
+        <ServiceReadiness />
         <section className="hero">
           <div>
             <div className="eyebrow">✳ DIGITAL THREAT INVESTIGATION</div>
