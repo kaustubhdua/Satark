@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkAnalysisRateLimit } from '@/lib/rate-limit.mjs';
-import { analyzeWithLocalModel } from '@/lib/local-analysis.mjs';
+import { analyzeLocally, analyzeWithLocalModel } from '@/lib/local-analysis.mjs';
 
 export const runtime = 'nodejs';
 
@@ -76,9 +76,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     // Defensive fallback should remain usable even if an unexpected adapter error occurs.
-    const result = await analyzeWithLocalModel(input.trim(), {}, async () => {
-      throw new Error('Local model disabled after unexpected adapter failure');
-    });
+    const result = analyzeLocally(input.trim());
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   }
 }
