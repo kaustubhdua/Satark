@@ -3,13 +3,9 @@ import os
 import streamlit as st
 
 
-def configured_groq_api_key():
-    """Read the Groq key from Streamlit secrets or the process environment."""
-    try:
-        secret_key = st.secrets.get("GROQ_API_KEY", "")
-    except Exception:
-        secret_key = ""
-    return str(secret_key or os.getenv("GROQ_API_KEY", "")).strip()
+def configured_ollama_base_url():
+    """Read the operator-controlled local Ollama endpoint."""
+    return str(os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).strip().rstrip("/")
 
 
 def render_sidebar(get_client, discover_models, choose_model, text_preferences, vision_preferences):
@@ -36,42 +32,27 @@ def render_sidebar(get_client, discover_models, choose_model, text_preferences, 
             ("Classroom", "Classroom Mode"),
         ])
 
-        env_key = configured_groq_api_key()
-        api_key = env_key
-        with st.expander("AI provider", expanded=not bool(env_key)):
-            st.caption("Connect a provider to run live analysis. The offline sample works without a key.")
-            api_key = st.text_input(
-                "Groq API key", value=env_key, type="password",
-                placeholder="Paste your Groq API key",
-                help="Used for the current Streamlit session. Never commit keys to source control.",
-                key="groq_api_key_input",
-            )
-            if api_key and st.button("Test connection", key="check_ai", use_container_width=True):
+        api_key = "local"
+        with st.expander("Local AI model", expanded=False):
+            st.caption("SATARK uses an Ollama model running on infrastructure you control. No third-party AI API key is required.")
+            st.code(configured_ollama_base_url(), language="text")
+            st.caption("Default models: qwen2.5:3b for text and qwen2.5vl:3b for images. Download model weights once with Ollama; first-time downloads require internet access.")
+            if st.button("Test local model connection", key="check_ai", use_container_width=True):
                 try:
-                    client = get_client(api_key)
+                    client = get_client()
                     available = discover_models(client)
                     st.session_state.available_models = available
                     if not available:
                         st.session_state.text_model = None
                         st.session_state.vision_model = None
-                        st.error(
-                            "Could not verify provider access. Check the API key, "
-                            "account permissions, network and provider status."
-                        )
+                        st.error("Ollama is unreachable or no models are installed. Start Ollama and run ollama pull qwen2.5:3b.")
                     else:
                         st.session_state.text_model = choose_model(available, text_preferences)
                         st.session_state.vision_model = choose_model(available, vision_preferences)
-                        if st.session_state.text_model and st.session_state.vision_model:
-                            st.success("Connected · text and vision ready")
-                        elif st.session_state.text_model:
-                            st.warning("Connected · text ready; vision model unavailable")
-                        else:
-                            st.error("No supported text model is available for this key.")
+                        st.success("Local Ollama reachable · " + str(len(available)) + " model(s) installed")
                 except Exception as exc:
-                    st.error(
-                        f"Connection check failed ({type(exc).__name__}). "
-                        "Verify the key, network and provider status."
-                    )
+                    st.error("Local model connection failed (" + type(exc).__name__ + "). Check OLLAMA_BASE_URL and Ollama status.")
+
 
         with st.expander("Analysis context", expanded=False):
             role = st.selectbox(
@@ -84,7 +65,7 @@ def render_sidebar(get_client, discover_models, choose_model, text_preferences, 
 
         st.markdown(
             '<div class="privacy"><span class="privacy-icon">↳</span>'
-            '<div><strong>Privacy boundary</strong><p>History stays in this session. Content is sent to the AI provider only when you start an analysis. Do not submit passwords, OTPs, private keys or unnecessary personal data.</p></div></div>',
+            '<div><strong>Privacy boundary</strong><p>History stays in this session. Submitted content is processed by your configured local model only when you start an analysis; no hosted AI provider is used. Do not submit passwords, OTPs, private keys or unnecessary personal data.</p></div></div>',
             unsafe_allow_html=True,
         )
     return api_key, role
