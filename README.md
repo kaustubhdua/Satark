@@ -5,7 +5,7 @@
 
 **Investigate the incident. Trace the evidence. Make the next decision with context.**
 
-SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. It combines a deterministic, evidence-linked investigation workflow with optional AI-assisted analysis of suspicious digital content. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting an AI score as a verdict.
+SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. Its web analysis defaults to local deterministic checks and can optionally use a self-hosted Ollama model. The default analysis path requires no third-party AI API key and does not send submitted content to external threat-intelligence APIs. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting a heuristic score as a verdict.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SATARK-111827?logo=vercel&logoColor=white)](https://satark-qzym.vercel.app/)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
@@ -51,7 +51,7 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 
 The central design principle is to keep **observations, model interpretation, uncertainty, and response decisions distinct**. The system should help a person understand what the available evidence supports, what remains unknown, and what should be checked next.
 
-**Current implementation:** a Python/Streamlit application with a Groq integration for supported AI workflows, a deterministic FIRSTLIGHT engine, bounded input-processing helpers, URL-fetching protections, report export, automated tests, and CI/CodeQL workflows.
+**Current implementation:** a Next.js web workspace plus a Python/Streamlit legacy application, a deterministic FIRSTLIGHT engine, a no-key local analysis path, optional self-hosted Ollama summaries, bounded input-processing helpers, report export, automated tests, and CI/CodeQL workflows. The no-key local path is not a malware scanner and is not a substitute for live threat intelligence.
 
 ## 2. The problem
 
@@ -308,6 +308,19 @@ GROQ_API_KEY = "your-key"
 Use your own key from the official [Groq Console](https://console.groq.com/). Never commit secrets, paste them into issues, or place them in browser-visible code. Use the hosting platform's secret manager for deployed environments. If a key may have been exposed, revoke/rotate it.
 
 **Privacy note:** provider-backed analysis may transmit the prepared input to Groq. Review provider data-handling terms and your own legal/privacy requirements before sending sensitive content. For the current hackathon demo, use synthetic or non-sensitive data.
+
+## Local-only web deployment (no third-party AI API keys)
+
+The web app defaults to local deterministic analysis. For optional private model inference, run the app and Ollama using the repository's Compose stack:
+
+```bash
+docker compose -f docker-compose.local.yml up --build -d
+docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
+```
+
+Open `http://127.0.0.1:3000`. The stack publishes the web UI only on host loopback; Ollama stays on the private Compose network. The initial model download requires internet access but no API key. See [the local-only deployment guide](docs/LOCAL_ONLY_DEPLOYMENT.md) for limits, offline use, and production cautions.
+
+The local analysis result is a heuristic triage aid, not a probability, proof of safety, or malware verdict. Persistent case/evidence workflows still need their database configured and verified separately.
 
 ## 12. Tests and engineering safeguards
 
