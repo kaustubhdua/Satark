@@ -6,6 +6,8 @@ SATARK so the analysis workflow can stay provider-agnostic. No API key is used.
 import base64
 import json
 import os
+import ipaddress
+from urllib.parse import urlsplit
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -27,7 +29,19 @@ class LocalOllamaClient:
     """Small synchronous client for a locally controlled Ollama server."""
 
     def __init__(self, base_url=None, timeout=None):
-        self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
+        candidate = (base_url or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).strip().rstrip("/")
+        parsed = urlsplit(candidate)
+        host = parsed.hostname or ""
+        local_host = host.lower() in {"localhost", "ollama", "::1"}
+        private_ip = False
+        try:
+            address = ipaddress.ip_address(host)
+            private_ip = address.is_private or address.is_loopback
+        except ValueError:
+            pass
+        if parsed.scheme != "http" or not (local_host or private_ip):
+            raise ValueError("OLLAMA_BASE_URL must point to localhost or a private-network Ollama host.")
+        self.base_url = candidate
         self.timeout = float(timeout or os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
         self.models = SimpleNamespace(list=self._list_models)
         self.chat = SimpleNamespace(
