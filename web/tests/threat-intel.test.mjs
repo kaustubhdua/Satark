@@ -13,8 +13,8 @@ test('local-only analysis is the default and does not require a provider API key
   assert.match(route, /analyzeWithLocalModel/);
   assert.match(route, /analyzeWithLocalModel\(input\.trim\(\)\)/);
   assert.match(localAnalysis, /deterministic-local-rules/);
-  assert.match(page, /local deterministic rules/i);
-  assert.match(investigatePage, /local deterministic rules/i);
+  assert.match(page, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
   assert.doesNotMatch(page, /checked=\{shareWithThreatIntel\}/);
   assert.doesNotMatch(investigatePage, /checked=\{shareIpWithThreatIntel\}/);
 });
