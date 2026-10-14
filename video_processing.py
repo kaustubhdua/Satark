@@ -7,7 +7,6 @@ import tempfile
 from io import BytesIO
 
 from PIL import Image
-from groq import Groq
 
 from satark_utils import safe_text
 from config import MAX_UPLOAD_BYTES
@@ -151,15 +150,15 @@ def pil_frames_to_data_urls(frames, max_side=512):
     return urls
 
 
-def transcribe_video_audio(uploaded_file, client):
-    """Best-effort audio transcription via ffmpeg + Groq Whisper.
+def transcribe_video_audio(uploaded_file, client=None):
+    """Transcribe a short video audio track with a locally installed Whisper model.
 
-    The video itself is not sent to the audio endpoint. SATARK first extracts
-    a mono MP3 track with ffmpeg, then sends only that audio to Whisper. If
-    ffmpeg, audio, or provider access is unavailable, frame-only analysis can
-    continue without raising.
+    No hosted transcription API is called. Install faster-whisper from
+    requirements-local-ai.txt and allow the model weights to be downloaded
+    once, or pre-cache the model for offline operation.
     """
-    if client is None or shutil.which("ffmpeg") is None:
+    del client  # Kept for compatibility with the existing caller.
+    if shutil.which("ffmpeg") is None:
         return ""
 
     try:
@@ -177,16 +176,14 @@ def transcribe_video_audio(uploaded_file, client):
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as video_file:
             video_file.write(data)
             video_path = video_file.name
-
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as audio_file:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
             audio_path = audio_file.name
 
         completed = subprocess.run(
             [
                 "ffmpeg", "-nostdin", "-y", "-v", "error",
-                "-i", video_path,
-                "-vn", "-ac", "1", "-ar", "16000",
-                "-b:a", "32k", audio_path,
+                "-i", video_path, "-vn", "-t", "180",
+                "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", audio_path,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -195,17 +192,33 @@ def transcribe_video_audio(uploaded_file, client):
         )
         if completed.returncode != 0 or not os.path.exists(audio_path):
             return ""
-        if os.path.getsize(audio_path) == 0 or os.path.getsize(audio_path) > 100 * 1024 * 1024:
+        audio_size = os.path.getsize(audio_path)
+        if audio_size == 0 or audio_size > 32 * 1024 * 1024:
             return ""
 
-        with open(audio_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                file=(os.path.basename(audio_path), audio_file.read()),
-                model="whisper-large-v3-turbo",
-                response_format="text",
-            )
-        text = transcript if isinstance(transcript, str) else safe_text(getattr(transcript, "text", ""))
-        return text.strip()[:3000]
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError:
+            return ""
+
+        model_size = os.getenv("SATARK_WHISPER_MODEL", "base").strip() or "base"
+        device = os.getenv("SATARK_WHISPER_DEVICE", "cpu").strip() or "cpu"
+        compute_type = os.getenv("SATARK_WHISPER_COMPUTE_TYPE", "int8").strip() or "int8"
+        model = WhisperModel(model_size, device=device, compute_type=compute_type)
+        segments, _info = model.transcribe(audio_path, beam_size=1, vad_filter=True)
+        parts = []
+        total = 0
+        for segment in segments:
+            text = safe_text(getattr(segment, "text", "")).strip()
+            if not text:
+                continue
+            remaining = 3000 - total
+            if remaining <= 0:
+                break
+            text = text[:remaining]
+            parts.append(text)
+            total += len(text)
+        return " ".join(parts).strip()
     except Exception:
         return ""
     finally:
