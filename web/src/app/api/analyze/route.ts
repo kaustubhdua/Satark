@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { readJsonWithinLimit } from '@/lib/bounded-json.mjs';
 import { checkAnalysisRateLimit } from '@/lib/rate-limit.mjs';
 import { analyzeWithLocalModel } from '@/lib/local-analysis.mjs';
 
