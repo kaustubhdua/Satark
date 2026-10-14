@@ -1,5 +1,6 @@
 import { isIP } from 'node:net';
 import { isPublicIpAddress } from './public-ip.mjs';
+import { lookupLocalIocs } from './local-ioc-cache.mjs';
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']{1,2048}/gi;
 const URGENCY = /\b(urgent|act now|immediately|last chance|account suspended|verify your account|unusual sign-in|limited time)\b/ig;
@@ -63,6 +64,7 @@ function addMatches(input, regex, category, label, severity, signals) {
 
 export function analyzeLocally(input) {
   const signals = [];
+  const localIoc = lookupLocalIocs(input);
   const seenUrls = new Set();
   URL_PATTERN.lastIndex = 0;
 
@@ -105,6 +107,20 @@ export function analyzeLocally(input) {
     }
   }
 
+  for (const match of localIoc.matches) {
+    if (signals.length >= 30) break;
+    signals.push({
+      category: 'threat-intelligence',
+      label: 'Local IOC match (' + match.source + ')',
+      severity: 'high',
+      evidence: match.evidence,
+      explanation: 'Exact match in a fresh operator-managed local cache; independently verify source provenance and context.',
+      source: match.source,
+      source_version: match.source_version,
+      last_successful_sync: match.last_successful_sync,
+    });
+  }
+
   const unique = signals.filter((item, index, all) =>
     all.findIndex(other => other.label === item.label && other.evidence === item.evidence) === index
   ).slice(0, 30);
@@ -127,7 +143,7 @@ export function analyzeLocally(input) {
       'Preserve the original evidence and record when and where it was obtained.',
     ],
     limitations: [
-      'No external threat-intelligence service was contacted.',
+      'No external threat-intelligence service was contacted; local cache status: ' + localIoc.status + '.',
       'These heuristics can miss threats and produce false positives.',
       'A score is a triage priority, not a probability of compromise.',
     ],
@@ -135,7 +151,20 @@ export function analyzeLocally(input) {
     evidence: unique,
     model: 'deterministic-local-rules',
     ai_status: 'deterministic_only',
-    threat_intel: { status: 'disabled', source: 'Local only', detail: 'External lookups are disabled in local-only mode.' },
+    threat_intel: {
+      status: localIoc.status,
+      source: 'Operator-managed local cache',
+      detail: localIoc.status === 'match'
+        ? 'A fresh local cache contains an exact URL or domain indicator match; verify the source and context.'
+        : localIoc.status === 'no_match'
+          ? 'No exact match in the currently fresh local cache. This is not a safety verdict.'
+          : localIoc.status === 'stale'
+            ? 'The configured local cache is stale; its indicators were not used for active matches.'
+            : localIoc.status === 'not_configured'
+              ? 'No approved local IOC feed has been imported.'
+              : 'Local IOC cache could not be read or validated.',
+    },
+    local_ioc_cache: { status: localIoc.status, matches: localIoc.matches },
     ip_threat_intel: { status: 'disabled', source: 'Local only', detail: 'External lookups are disabled in local-only mode.' },
     notice: 'Local-only analysis. No submitted content was sent to a third-party AI or threat-intelligence API. Results are triage signals, not a verdict.',
   };
