@@ -40,10 +40,10 @@ test('baseline security headers and CSP directives are configured', () => {
   assert.match(config, /form-action 'self'/);
 });
 
-test('independent reputation lookups execute concurrently', () => {
-  assert.match(analyze, /Promise\.all\(\[/);
-  assert.match(analyze, /checkUrlhaus\(input, shareWithThreatIntel\)/);
-  assert.match(analyze, /checkAbuseIpDb\(input, shareIpWithThreatIntel\)/);
+test('analysis route uses only local analysis and has no third-party provider calls', () => {
+  assert.match(analyze, /analyzeWithLocalModel\(input\.trim\(\)\)/);
+  assert.doesNotMatch(analyze, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
+  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/);
 });
 
 test('reports exports notes with an optional validated session analysis snapshot', () => {
@@ -98,8 +98,8 @@ test('URLhaus URL sanitizer strips query and fragment values before sharing', as
     'URLs containing embedded credentials must not be shared');
   assert.equal(extractFirstHttpUrl('No URL was supplied'), null);
   const investigate = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
-  assert.match(investigate, /query strings and fragments are removed first/);
-  assert.match(investigate, /Paths can still contain private identifiers/);
+  assert.match(investigate, /local-only rules/i);
+  assert.doesNotMatch(investigate, /query strings and fragments are removed first/);
 });
 
 test('URLhaus provider references cannot create off-site or unsafe links', async () => {
@@ -139,26 +139,25 @@ test('provider JSON responses are parsed within a strict byte budget', async () 
   );
 });
 
-test('analysis route uses the bounded provider response reader', () => {
-  assert.match(analyze, /MAX_PROVIDER_RESPONSE_BYTES = 64 \* 1024/);
-  assert.match(analyze, /readJsonWithinLimit\(upstream, MAX_PROVIDER_RESPONSE_BYTES\)/);
+test('analysis route validates bounded local input and never calls a provider', () => {
+  assert.match(analyze, /MAX_BODY_BYTES = 48 \* 1024/);
+  assert.match(analyze, /MAX_INPUT_CHARS = 12_000/);
+  assert.match(analyze, /analyzeWithLocalModel/);
   assert.doesNotMatch(analyze, /await upstream\.json\(\)/);
 });
 
 
-test('all external provider JSON responses are read within a strict byte budget', () => {
-  assert.equal((analyze.match(/readJsonWithinLimit\(response, MAX_THREAT_INTEL_RESPONSE_BYTES\)/g) || []).length, 2,
-    'AbuseIPDB and URLhaus responses must both use the bounded reader');
-  assert.match(analyze, /MAX_THREAT_INTEL_RESPONSE_BYTES = 32 \* 1024/);
-  assert.doesNotMatch(analyze, /await response\.json\(\)/);
+test('default analysis API contains no external provider response parsing', () => {
+  assert.doesNotMatch(analyze, /MAX_THREAT_INTEL_RESPONSE_BYTES|readJsonWithinLimit/);
+  assert.doesNotMatch(analyze, /await response\.json\(\)|fetch\(['"]https?:/);
 });
 
 
-test('developer privacy notice matches URLhaus URL sanitization behavior', () => {
-  assert.match(securityFollowup, /URLhaus receives the first extracted HTTP\(S\) URL only when the user checks the opt-in control/);
-  assert.match(securityFollowup, /removes query strings and fragments before sharing/);
-  assert.match(securityFollowup, /path can still contain identifiers or other sensitive data/);
-  assert.doesNotMatch(securityFollowup, /including its path and query string/);
+test('local deployment guide documents no third-party analysis API dependency', () => {
+  const localGuide = readFileSync(new URL('../../docs/LOCAL_ONLY_DEPLOYMENT.md', import.meta.url), 'utf8');
+  assert.match(localGuide, /does not call Groq, URLhaus, AbuseIPDB/);
+  assert.match(localGuide, /no API key is required/i);
+  assert.match(localGuide, /not an antivirus/i);
 });
 
 
