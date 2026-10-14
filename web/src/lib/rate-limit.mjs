@@ -55,6 +55,11 @@ export function createRateLimiter({
     }
 
     if (!redisUrl || !redisToken) {
+      // Per-instance memory is acceptable for local development only. A production
+      // deployment must not silently downgrade to a bypassable serverless limit.
+      if (env.NODE_ENV === 'production') {
+        return { limited: false, unavailable: true, mode: 'shared' };
+      }
       return { limited: localLimit(key, now()), unavailable: false, mode: 'local' };
     }
 
