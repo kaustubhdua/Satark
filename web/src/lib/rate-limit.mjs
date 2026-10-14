@@ -36,7 +36,7 @@ function localLimit(key, now) {
 function sharedConfig(env) {
   const url = env.UPSTASH_REDIS_REST_URL?.trim();
   const token = env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (!url && !token) return { mode: 'local' };
+  if (!url && !token) return { mode: env.VERCEL === '1' ? 'shared-required' : 'local' };
   if (!url || !token) return { mode: 'misconfigured' };
   try {
     const parsed = new URL(url);
@@ -75,17 +75,15 @@ async function sharedLimit(key, config, fetcher) {
       mode: 'shared',
     };
   } catch {
-    // Do not silently downgrade to per-instance throttling when shared limiting
-    // was explicitly configured: a provider outage must fail closed.
+    // Never downgrade a configured distributed limiter to process-local behavior.
     return { limited: false, unavailable: true, mode: 'shared' };
   }
 }
 
 /**
- * Uses an atomic Upstash Redis REST/Lua counter when configured. If shared
- * limiting was requested but is misconfigured or unavailable, fails closed.
- * Without shared credentials, uses a bounded in-process fallback suitable only
- * for local development or a single trusted instance—not a distributed quota.
+ * Uses atomic shared Redis counters when configured. Production on Vercel fails
+ * closed if distributed limiting is missing or unavailable; process-local limits
+ * are retained only for local development and isolated test deployments.
  */
 export function createRateLimiter({ now = Date.now, env = process.env, fetcher = fetch } = {}) {
   const config = sharedConfig(env);
@@ -94,12 +92,11 @@ export function createRateLimiter({ now = Date.now, env = process.env, fetcher =
     if (config.mode === 'misconfigured') {
       return { limited: false, unavailable: true, mode: 'misconfigured' };
     }
+    if (config.mode === 'shared-required') {
+      return { limited: false, unavailable: true, mode: 'shared-required' };
+    }
     if (config.mode === 'shared') return sharedLimit(key, config, fetcher);
-    return {
-      limited: localLimit(key, now()),
-      unavailable: false,
-      mode: 'local',
-    };
+    return { limited: localLimit(key, now()), unavailable: false, mode: 'local' };
   };
 }
 
