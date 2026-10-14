@@ -33,7 +33,7 @@ export default function Home() {
               <a className="btn btn-primary" href="/investigate">Start an investigation <span aria-hidden="true">↗</span></a>
               <a className="btn btn-secondary" href="/firstlight">Open FIRSTLIGHT <span aria-hidden="true">→</span></a>
             </div>
-            <p className="home-privacy-note">Local deterministic checks by default · No third-party AI key required · Human review always</p>
+            <p className="home-privacy-note">Local deterministic checks by default · No third-party AI key is required · Human review always</p>
           </div>
           <div className="signal-card home-signal-card">
             <div className="radar-preview"><Radar color="#c9f36b" mode="sweep" speed={0.8} trail={0.3} scale={0.86} ringCount={5} spokeCount={12} targets={5} clutter={0.3} mouseInteraction={false} grain={0.01} /></div>
