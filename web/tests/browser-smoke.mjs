@@ -360,14 +360,17 @@ try {
       if (url.protocol.startsWith('http') && url.origin !== origin) externalRequests.push(url.origin);
     });
     await imagePage.goto(baseURL + '/image-review', { waitUntil: 'networkidle' });
-    const imageBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64');
+    const imageBytes = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
     const expectedHash = createHash('sha256').update(imageBytes).digest('hex');
     await imagePage.locator('#image-file').setInputFiles({
-      name: 'one-pixel.png',
-      mimeType: 'image/png',
+      name: 'one-pixel.gif',
+      mimeType: 'image/gif',
       buffer: imageBytes,
     });
-    await imagePage.getByText('Image inspection complete', { exact: true }).waitFor();
+    await imagePage.getByText('Image inspection complete', { exact: true }).waitFor({ timeout: 10_000 }).catch(async () => {
+      const failure = await imagePage.getByRole('alert').innerText().catch(() => 'No image-review error message was rendered.');
+      throw new Error('Image review failed: ' + failure);
+    });
     const imageText = await imagePage.locator('body').innerText();
     assert.match(imageText, /1 × 1 pixels/);
     assert.ok(imageText.includes(expectedHash), 'image review must expose the byte-exact SHA-256 fingerprint');
