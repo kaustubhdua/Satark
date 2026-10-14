@@ -1031,15 +1031,6 @@ elif st.session_state.page == "Analyze":
 
     if analyze_clicked:
 
-        if not safe_text(api_key):
-
-            st.error(
-                "🔑 Enter your Ollama API key in the sidebar first."
-            )
-
-            st.stop()
-
-
         allowed, retry_after = consume_analysis_slot(MAX_ANALYSES_PER_MINUTE)
         if not allowed:
             wait_seconds = max(1, int(retry_after + 0.999))
@@ -1304,7 +1295,7 @@ elif st.session_state.page == "Analyze":
                     f"Submitted content and extracted content:\n{prepared}\n\n"
                     "Independent local rule observations (JSON; observations, not verdicts):\n"
                     f"{evidence_context}\n\n"
-                    f"Optional external threat-intelligence results (JSON; corroborating signals only):\n{evidence_context_ti}\n\n"
+                    f"Local threat-intelligence status (external lookups disabled; no API was called):\n{evidence_context_ti}\n\n"
                     "Use these observations as a separate evidence source. Do not claim that "
                     "an observation proves fraud. Do not invent corroboration when the list is "
                     "empty. Clearly distinguish direct observations, inference, and unknowns. "
@@ -1314,7 +1305,7 @@ elif st.session_state.page == "Analyze":
 
 
                 # ==================================================
-                # GROQ ANALYSIS
+                # LOCAL OLLAMA ANALYSIS
                 # ==================================================
 
                 result = analyze_with_local_model(
