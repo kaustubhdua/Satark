@@ -1,0 +1,3 @@
+# Optional offline speech transcription for video workflows.
+# Ollama itself is installed as a separate local service/application.
+faster-whisper>=1.1,<2
