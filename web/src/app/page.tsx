@@ -140,7 +140,7 @@ export default function Home() {
             {[
               ['01','Text & message triage','Spot pressure tactics, impersonation cues and risky requests.','/investigate','OPEN ANALYSIS'],
               ['02','URL review','Review a URL as text without automatically visiting it.','/investigate','OPEN ANALYSIS'],
-              ['03','Image & deepfake review','Local image metadata and content-analysis workflow is not yet migrated.','', 'NOT YET PORTED'],
+              ['03','Image metadata & integrity','Inspect supported image metadata markers and SHA-256 locally; this is not a deepfake verdict.','/image-review','OPEN IMAGE REVIEW'],
               ['04','QR-code investigation','Decode QR payloads locally with safe parsing and evidence capture.','', 'NOT YET PORTED'],
               ['05','PDF & document review','Extract text and metadata in a sandboxed local file pipeline.','', 'NOT YET PORTED'],
               ['06','Video & media signals','Media processing and provenance checks are not yet migrated.','', 'NOT YET PORTED'],
@@ -148,7 +148,7 @@ export default function Home() {
               ['08','Academy & scam challenge','Practice recognition and awareness workflows.','/learn','OPEN LEARNING']
             ].map(([number,title,description,href,action]) => <article className="tool-card" key={number}><div className="tool-card-top"><span>{number}</span><span className="tool-arrow">↗</span></div><h3>{title}</h3><p>{description}</p>{href ? <a className="text-link" href={href} target={href.startsWith('http')?'_blank':undefined} rel={href.startsWith('http')?'noreferrer':undefined}>{action} →</a> : <span className="text-link" aria-disabled="true">{action}</span>}</article>)}
           </div>
-          <div className="tool-boundary"><span>i</span><p><strong>Feature availability:</strong> text/URL triage and the interactive FIRSTLIGHT training workflow run in this Next.js workspace. Image, QR, PDF, video, and durable case-history features are not yet ported to the local-only web app; no external legacy link is presented as a working native feature.</p></div>
+          <div className="tool-boundary"><span>i</span><p><strong>Feature availability:</strong> text/URL triage and the interactive FIRSTLIGHT training workflow run in this Next.js workspace. Image metadata and integrity review runs locally, but it is not a deepfake detector. QR, PDF, and video analysis remain unported to this web workspace; no external legacy link is presented as a working native feature.</p></div>
           </details>
         </section>
 
