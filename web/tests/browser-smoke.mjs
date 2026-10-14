@@ -138,9 +138,9 @@ async function inspectViewport(viewport, label) {
     if (route.path === '/') {
       const start = page.getByRole('link', { name: /start an investigation/i });
       await start.click();
-      await page.waitForURL(/#investigate$/);
-      assert.equal(await page.getByRole('button', { name: /analyze with satark/i }).isDisabled(), true,
-        'homepage analysis should stay disabled until content is entered');
+      await page.waitForURL(/\/investigate$/);
+      assert.equal(await page.getByRole('button', { name: /analyze content/i }).isDisabled(), true,
+        'focused investigation route should keep analysis disabled until content is entered');
     }
     if (route.path === '/investigate') {
       const analyzeButton = page.getByRole('button', { name: /analyze content/i });
