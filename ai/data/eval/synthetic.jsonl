@@ -1,0 +1,4 @@
+{"id":"syn-001","text":"Urgent: verify your account at http://example.invalid/login","expected_signal_categories":["url","language"],"label":"needs_review"}
+{"id":"syn-002","text":"Meeting starts at 10 AM in room 4.","expected_signal_categories":[],"label":"insufficient_evidence"}
+{"id":"syn-003","text":"A report mentions public address 8.8.8.8 without other context.","expected_signal_categories":["ip"],"label":"needs_review"}
+{"id":"syn-004","text":"Use https://example.invalid for the documentation draft.","expected_signal_categories":[],"label":"insufficient_evidence"}
