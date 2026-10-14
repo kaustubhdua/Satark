@@ -186,7 +186,12 @@ export async function analyzeWithLocalModel(input, env = process.env, fetchImpl 
     const payload = JSON.parse(raw);
     const content = payload?.message?.content;
     if (typeof content !== 'string' || content.length > 8_000) return { ...deterministic, ai_status: 'local_model_invalid_output' };
-    const result = JSON.parse(content);
+    let result;
+    try {
+      result = JSON.parse(content);
+    } catch {
+      return { ...deterministic, ai_status: 'local_model_invalid_output' };
+    }
     if (!result || typeof result.summary !== 'string' || result.summary.length > 1_200 ||
       !Array.isArray(result.key_indicators) || !Array.isArray(result.recommendations)) {
       return { ...deterministic, ai_status: 'local_model_invalid_output' };
