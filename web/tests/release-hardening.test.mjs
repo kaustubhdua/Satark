@@ -43,7 +43,8 @@ test('baseline security headers and CSP directives are configured', () => {
 test('analysis route uses only local analysis and has no third-party provider calls', () => {
   assert.match(analyze, /analyzeWithLocalModel\(input\.trim\(\)\)/);
   assert.doesNotMatch(analyze, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
-  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/);
+  assert.match(homePage, /No third-party AI key is required/);
+  assert.match(homePage, /href=\"\/investigate\"/);
 });
 
 test('reports exports notes with an optional validated session analysis snapshot', () => {
@@ -177,9 +178,10 @@ test('production smoke check fails closed when deployment revision is stale', ()
 
 
 test('analysis pages disclose local-only processing and no third-party AI sharing', () => {
-  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/i);
-  assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
-  assert.match(homePage, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(homePage, /Local deterministic checks by default/i);
+  assert.match(homePage, /No third-party AI key is required/i);
+  assert.match(homePage, /href=\"\/investigate\"/);
+  assert.doesNotMatch(homePage, /result\.notice|Local threat-intelligence cache/);
   assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
   assert.doesNotMatch(homePage, /text you submit is sent to Groq/i);
   assert.doesNotMatch(investigatePage, /full text is sent to Groq/i);
