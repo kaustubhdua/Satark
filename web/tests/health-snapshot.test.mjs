@@ -10,7 +10,8 @@ test('health snapshot never claims full readiness and exposes non-shared rate li
   assert.equal(snapshot.checks.localModel.configured, false);
   assert.equal(snapshot.checks.persistentStorage.configured, false);
   assert.equal(snapshot.checks.rateLimit.sharedAcrossInstances, false);
-  assert.match(snapshot.note, /does not probe model or database connectivity/i);
+  assert.equal(snapshot.checks.rateLimit.connectivityVerified, false);
+  assert.match(snapshot.note, /does not probe model, database, or Redis connectivity/i);
 });
 
 test('optional model and persistent storage require complete configuration pairs', () => {
@@ -25,4 +26,18 @@ test('blank environment values count as missing', () => {
   const snapshot = buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: '  ', SATARK_OLLAMA_MODEL: 'model', SUPABASE_URL: 'url', SUPABASE_PUBLISHABLE_KEY: '' });
   assert.equal(snapshot.checks.localModel.configured, false);
   assert.equal(snapshot.checks.persistentStorage.configured, false);
+});
+
+test('shared rate limit configuration is reported without claiming connectivity', () => {
+  const configured = buildHealthSnapshot({
+    UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
+    UPSTASH_REDIS_REST_TOKEN: 'test-token',
+  });
+  assert.equal(configured.checks.rateLimit.mode, 'shared-upstash');
+  assert.equal(configured.checks.rateLimit.configured, true);
+  assert.equal(configured.checks.rateLimit.sharedAcrossInstances, true);
+  assert.equal(configured.checks.rateLimit.connectivityVerified, false);
+  const partial = buildHealthSnapshot({ UPSTASH_REDIS_REST_URL: 'https://redis.example.com' });
+  assert.equal(partial.checks.rateLimit.mode, 'misconfigured');
+  assert.equal(partial.checks.rateLimit.configured, false);
 });
