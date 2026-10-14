@@ -430,3 +430,6 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
   .evidence-table tbody td:nth-child(4):before{content:"Integrity"}
   .evidence-table tbody td:last-child .mini-btn{width:100%;min-height:42px}
 }
+
+/* Production readiness: visible, concise, and responsive integration status. */
+.readiness-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin:0 0 24px;border:1px solid var(--line);border-radius:14px;background:#ffffff05;color:var(--text)}.readiness-banner>span:last-child{display:grid;gap:5px;min-width:0}.readiness-banner strong{font-size:13px;line-height:1.4}.readiness-banner small{font-size:12px;line-height:1.65;color:var(--muted);overflow-wrap:anywhere}.readiness-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;margin-top:4px;background:#e8b35e;box-shadow:0 0 0 4px #e8b35e1a}.readiness-ready{border-color:#c9f36b38}.readiness-ready .readiness-dot{background:var(--lime);box-shadow:0 0 0 4px #c9f36b1a}.readiness-degraded{border-color:#e8b35e55;background:#e8b35e08}@media(max-width:600px){.readiness-banner{padding:12px;margin-bottom:18px}.readiness-banner small{font-size:11px}}
