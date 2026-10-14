@@ -62,13 +62,13 @@ P0 means SATARK must not be described as production-ready until applicable gates
 
 ### P0.4 Real analysis and truthful provider states
 - [x] Keep deterministic checks available without third-party provider credentials; the web analysis route now defaults to local-only deterministic rules and optionally calls a configured self-hosted Ollama instance.
-- [ ] Validate media type, request limits, schema, timeouts, upstream response limits, and safe error mapping.
-- [ ] Test local model success, timeout, malformed output, unavailable model, and deterministic fallback; retain separate contract tests for legacy provider mode.
-- [ ] Run live smoke tests with authorized credentials in a secure environment; never commit or paste credentials.
-- [ ] Keep URLhaus and AbuseIPDB lookups opt-in; show what is sent externally.
+- [x] Validate media type, request limits, local-model timeout, bounded model responses, structured output, and deterministic fallback in the Next.js local route.
+- [ ] Test the live self-hosted Ollama model on supported hardware and run prompt-injection/quality evaluations.
+- [x] Remove third-party AI/reputation HTTP calls and provider API-key requirements from the Next.js analysis route.
+- [ ] Replace reputation API lookups with an operator-managed local threat-intelligence cache refreshed from reviewed, license-compatible public feeds; analysis itself must not call third-party services.
 - [ ] Verify no-match, unavailable, and not-requested never render as a green "safe" result.
 
-**Acceptance:** every provider state is covered by tests; live integration tests record status/source without logging submitted artifacts or secrets. If credentials are absent, the app states that live reputation was not checked.
+**Acceptance:** the local route succeeds with no API keys and no outbound requests; optional local model failure falls back to deterministic results; local intelligence matches show source/version/freshness and absence of a match is never a safe verdict.
 
 ### P0.5 Real UI interactions
 - [ ] Inventory every visible button, link, form, toggle, tab, upload control, export, filter, and response action.
@@ -131,6 +131,15 @@ P0 means SATARK must not be described as production-ready until applicable gates
 
 **Acceptance:** simulated actions are never presented as live; enabled integrations have end-to-end contract tests and documented failure/recovery.
 
+### P1.6 Migrate the legacy Streamlit feature set to local-only operation
+- [ ] Remove the Groq API-key field and provider SDK dependency from the legacy UI; default text/image analysis to an operator-controlled Ollama endpoint.
+- [ ] Add a local speech-to-text option for video (for example a reviewed offline Whisper implementation), with clear model-download and hardware requirements; no hosted transcription API.
+- [ ] Migrate image, QR, PDF, video, history, classroom, and report workflows into the primary Next.js product or formally retire each unsupported feature.
+- [ ] Replace external reputation lookups with a local IOC cache and deterministic parsers; provide an explicit, auditable feed-update command that can run separately from analysis.
+- [ ] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete.
+
+**Acceptance:** the full declared product runs without third-party API keys, submitted evidence never leaves operator-controlled infrastructure during analysis, and every retained media feature passes fixture-based tests in an offline test environment.
+
 ## P2 — excellent UX, accessibility, and performance
 
 ### P2.1 Information architecture
@@ -191,10 +200,11 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ## Current status at roadmap creation
 
 - The self-hosted AI prototype is merged, and its dedicated AI CI passed. No model has been trained; the tiny synthetic set is only a smoke test.
-- The production-readiness PR branch now defaults the web analysis route to local deterministic checks, with optional self-hosted Ollama summaries and no required third-party AI API key. A loopback-bound Docker Compose stack and setup guide were added; this does not yet prove production hosting or durable case/evidence storage works without database configuration.
-- Production is not integrated with the new AI service.
-- Previous checks found missing provider credentials and shared rate-limit configuration; these must be rechecked before live integrations can be called healthy.
-- The production-readiness diagnostics PR remains open. Its frontend CI exposed a failing browser smoke assertion: unsupported media type returned 503 instead of 415 when shared rate-limit configuration was missing. A fix has been pushed and must be revalidated by the full frontend suite before merge.
+- The production-readiness PR branch now defaults the Next.js analysis route to deterministic local checks, with optional self-hosted Ollama summaries and no third-party provider path. A loopback-bound Docker Compose stack and setup guide were added.
+- The local analysis route uses a bounded in-process limiter; this is not a shared limiter across Vercel instances. The UI readiness banner calls this out. Do not expose the service publicly without platform-level abuse controls.
+- The Next.js no-key path is not the same as the whole repository being no-key: the legacy Python/Streamlit app still contains Groq-specific code and must be migrated under P1.6.
+- Durable case/evidence workflows still require a self-hosted database deployment and end-to-end tenant-isolation verification. The local Compose stack does not yet provide that database.
+- Web CI has exposed regression-test failures during migration; merge only after the latest Web CI, Python CI, CodeQL, and browser smoke runs all pass.
 - Production is not proven to have complete tenant-isolation testing, live provider tests, fully implemented response actions, or a visually audited desktop/mobile experience.
 
 ## Definition of done
