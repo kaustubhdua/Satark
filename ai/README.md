@@ -35,12 +35,12 @@ curl -X POST http://127.0.0.1:8787/analyze \
   -d '{"text":"Urgent: verify your account at https://example.invalid/login","case_id":"demo-001"}'
 ```
 
-The service binds to loopback by default in the example. Do not expose it to the internet without authentication, TLS, network controls, shared rate limiting, and an explicit privacy review.
+The service binds to loopback by default in the example. For local Docker use, publish the port only on loopback (for example, bind host port 127.0.0.1:8787 to container port 8787). If the service is reachable by other users or machines, set SATARK_AI_API_TOKEN to a cryptographically random secret of at least 32 characters; requests to /analyze then require Authorization: Bearer <token>. The optional token is not a substitute for TLS, tenant-aware authorization, shared rate limiting, network controls, or an explicit privacy review. The health endpoint reveals only configuration booleans and always reports production_ready=false.
 
 ## Optional local model with Ollama
 
 1. Install Ollama separately and pull a model whose license and hardware requirements have been reviewed.
-2. Set `SATARK_OLLAMA_BASE_URL=http://127.0.0.1:11434` and `SATARK_OLLAMA_MODEL=<reviewed-model-tag>`.
+2. Set `SATARK_OLLAMA_BASE_URL=http://127.0.0.1:11434` and `SATARK_OLLAMA_MODEL=<reviewed-model-tag>`. If the service is not strictly local, also set `SATARK_AI_API_TOKEN` to a cryptographically random secret of at least 32 characters.
 3. Restart the service and call `/health` to see whether the model is configured. Health reports configuration only; it does not claim that a model is loaded or that inference quality is acceptable.
 4. The model is used only for a bounded narrative summary. Deterministic signals remain independently visible. If the model is unavailable or returns invalid output, the endpoint returns the deterministic result with an AI status explaining the failure.
 
