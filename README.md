@@ -7,7 +7,7 @@
 
 SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. It combines a deterministic, evidence-linked investigation workflow with optional AI-assisted analysis of suspicious digital content. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting an AI score as a verdict.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SATARK-111827?logo=streamlit&logoColor=white)](https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SATARK-111827?logo=vercel&logoColor=white)](https://satark-qzym.vercel.app/)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
