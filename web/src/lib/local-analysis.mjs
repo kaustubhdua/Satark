@@ -3,7 +3,7 @@ import { isPublicIpAddress } from './public-ip.mjs';
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']{1,2048}/gi;
 const URGENCY = /\b(urgent|act now|immediately|last chance|account suspended|verify your account|unusual sign-in|limited time)\b/ig;
-const CREDENTIALS = /\b(password|passcode|otp|one[- ]time code|verification code|login credentials|recovery phrase|private key)\b/ig;
+const CREDENTIALS = /\b(password|passcode|otp|one[- ]time code|verification code|login credentials|recovery phrase|private key|verify your account|account verification)\b/ig;
 const PAYMENT = /\b(prize|processing fee|gift card|payment required|wire transfer|crypto payment|refund pending|invoice overdue)\b/ig;
 const SHORTENERS = new Set(['bit.ly', 'tinyurl.com', 't.co', 'is.gd', 'ow.ly', 'cutt.ly']);
 
