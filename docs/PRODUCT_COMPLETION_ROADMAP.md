@@ -26,6 +26,25 @@ These are references for patterns and standards, not instructions to clone a UI:
 5. Privacy by default. Keep submitted artifacts out of browser persistence and telemetry unless required; external intelligence sharing must be opt-in and target-specific.
 6. No pretend controls. Demo-only actions are labelled, and no button claims an operation that is not connected to a tested implementation.
 
+## Research and implementation references
+
+These are engineering references and inspiration, not claims that SATARK already implements their capabilities.
+
+### Incident workflow and SOC UX
+- [Elastic Security cases](https://www.elastic.co/docs/solutions/security/investigate/cases/): cases should collect alerts, evidence, analyst notes, timelines, indicators, and status transitions in one reviewable place. SATARK should adopt the evidence-to-case-to-timeline pattern, not copy proprietary UI.
+- [Wazuh dashboard](https://documentation.wazuh.com/current/getting-started/components/wazuh-dashboard.html): show clear security-event summaries, drill-down paths, rule-testing feedback, component health, and useful empty/error states.
+- [NIST SP 800-61 Rev. 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final): model FIRSTLIGHT around preparation, detection, response, recovery, communication, and improvement rather than a single “scan” button.
+
+### Security verification and AI safety
+- [OWASP ASVS 5.0](https://github.com/OWASP/ASVS): use versioned, testable requirements for authentication, authorization, input validation, file handling, logging, and configuration.
+- [OWASP GenAI / LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/): explicitly test prompt injection, insecure output handling, sensitive-data disclosure, model denial of service, supply-chain risk, and excessive agency. The model must not authorize or execute response actions.
+- [Sigma rules](https://sigmahq.io/): use versioned, provenance-rich, testable detection rules for log/event detection. Do not apply log rules directly to arbitrary pasted text without a defined data model and tests.
+
+### UI system and motion
+- [Radix accessibility guidance](https://www.radix-ui.com/primitives/docs/overview/accessibility): use semantic controls, keyboard behavior, focus management, and correct ARIA patterns. Prefer native controls where they suffice.
+- [React Bits](https://reactbits.dev/): inspiration for restrained source-owned motion and interaction components. Copy/adapt only the components needed, keep them accessible, respect reduced-motion preferences, and avoid runtime dependency on a hosted animation service.
+- Design rule for SATARK: use a persistent navigation shell, one primary task per page, progressive disclosure for advanced evidence, source-linked findings, clear “not checked / unavailable / insufficient evidence” states, and compact cards instead of a wall of widgets.
+
 ## P0 — release blockers
 
 P0 means SATARK must not be described as production-ready until applicable gates pass.
