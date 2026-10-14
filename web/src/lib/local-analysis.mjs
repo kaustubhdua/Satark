@@ -117,6 +117,8 @@ export function analyzeLocally(input) {
       explanation: 'Exact match in a fresh operator-managed local cache; independently verify source provenance and context.',
       source: match.source,
       source_version: match.source_version,
+      source_url: match.source_url,
+      source_license: match.source_license,
       last_successful_sync: match.last_successful_sync,
     });
   }
@@ -164,7 +166,12 @@ export function analyzeLocally(input) {
               ? 'No approved local IOC feed has been imported.'
               : 'Local IOC cache could not be read or validated.',
     },
-    local_ioc_cache: { status: localIoc.status, matches: localIoc.matches },
+    local_ioc_cache: {
+      status: localIoc.status,
+      fresh_sources: localIoc.freshSources,
+      stale_sources: localIoc.staleSources,
+      matches: localIoc.matches,
+    },
     ip_threat_intel: { status: 'disabled', source: 'Local only', detail: 'External lookups are disabled in local-only mode.' },
     notice: 'Local-only analysis. No submitted content was sent to a third-party AI or threat-intelligence API. Results are triage signals, not a verdict.',
   };
