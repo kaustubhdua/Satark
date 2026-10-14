@@ -1,7 +1,7 @@
 const OCTET_STREAM = 'application/octet-stream';
 const TEXT_TYPES = new Set([
-  'application/json', 'application/ld+json', 'application/xml', 'application/x-ndjson',
-  'text/csv', 'text/plain', 'text/tab-separated-values', 'text/xml',
+  'application/json', 'application/ld+json', 'application/x-ndjson',
+  'text/csv', 'text/plain', 'text/tab-separated-values',
 ]);
 
 const startsWith = (bytes, signature) => signature.every((value, index) => bytes[index] === value);
@@ -31,7 +31,7 @@ function detectBinary(bytes) {
 }
 
 function isTextLike(bytes, declaredType) {
-  if (!TEXT_TYPES.has(declaredType) && declaredType !== 'image/svg+xml') return null;
+  if (!TEXT_TYPES.has(declaredType)) return null;
   try {
     const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)) return null;
