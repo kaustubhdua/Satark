@@ -19,11 +19,12 @@ const failures = [];
   assert.equal(response.status, 200, 'readiness endpoint should be available');
   assert.match(response.headers.get('cache-control') || '', /no-store/);
   const health = await response.json();
-  assert.ok(['ready', 'degraded'].includes(health.status));
+  assert.equal(health.status, 'configuration-only');
+  assert.match(health.note || '', /does not probe model or database connectivity/i);
   for (const key of ['analysis', 'localModel', 'rateLimit', 'persistentStorage']) {
     assert.ok(health.checks?.[key], 'missing readiness diagnostic: ' + key);
   }
-  assert.equal(health.checks.analysis.mode, 'local-only');
+  assert.equal(health.checks.analysis.mode, 'deterministic-local');
   assert.equal(health.checks.analysis.configured, true, 'local rules must work without API credentials');
   for (const key of ['localModel', 'rateLimit', 'persistentStorage']) {
     assert.equal(typeof health.checks[key].configured, 'boolean');
