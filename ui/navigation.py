@@ -32,7 +32,6 @@ def render_sidebar(get_client, discover_models, choose_model, text_preferences, 
             ("Classroom", "Classroom Mode"),
         ])
 
-        api_key = "local"
         with st.expander("Local AI model", expanded=False):
             st.caption("SATARK uses an Ollama model running on infrastructure you control. No third-party AI API key is required.")
             st.code(configured_ollama_base_url(), language="text")
@@ -68,7 +67,7 @@ def render_sidebar(get_client, discover_models, choose_model, text_preferences, 
             '<div><strong>Privacy boundary</strong><p>History stays in this session. Submitted content is processed by your configured local model only when you start an analysis; no hosted AI provider is used. Do not submit passwords, OTPs, private keys or unnecessary personal data.</p></div></div>',
             unsafe_allow_html=True,
         )
-    return api_key, role
+    return None, role
 
 
 def _render_page_buttons(pages):
