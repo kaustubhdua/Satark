@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi.testclient import TestClient
 
 from service import app as service_app
@@ -44,7 +42,7 @@ def test_non_global_ip_is_not_emitted_as_public_indicator():
 def test_global_ip_is_only_context_not_a_malicious_verdict():
     signals = analyze_text("Observed source 8.8.8.8")
     assert any(signal.category == "ip" for signal in signals)
-    assert all("not" not in signal.description.lower() or "malicious" not in signal.description.lower() for signal in signals)
+    assert any("reputation or context is needed" in signal.description for signal in signals)
 
 
 def test_health_never_claims_production_ready():
@@ -64,6 +62,32 @@ def test_invalid_ollama_output_falls_back_to_deterministic(monkeypatch):
     assert response.status_code == 200
     assert response.json()["ai_status"] == "invalid_output"
     assert response.json()["signals"]
+
+
+def test_api_token_is_enforced_when_configured(monkeypatch):
+    token = "t" * 40
+    monkeypatch.setenv("SATARK_AI_API_TOKEN", token)
+    assert client.post("/analyze", json={"text": "hello"}).status_code == 401
+    assert client.post(
+        "/analyze",
+        json={"text": "hello"},
+        headers={"Authorization": "Bearer " + token},
+    ).status_code == 200
+
+
+def test_short_api_token_fails_closed(monkeypatch):
+    monkeypatch.setenv("SATARK_AI_API_TOKEN", "weak")
+    response = client.post("/analyze", json={"text": "hello"})
+    assert response.status_code == 503
+
+
+def test_oversized_declared_body_is_rejected():
+    response = client.post(
+        "/analyze",
+        content=b'{"text":"hello"}',
+        headers={"Content-Type": "application/json", "Content-Length": str(48 * 1024 + 1)},
+    )
+    assert response.status_code == 413
 
 
 def test_url_fragment_is_bounded():
