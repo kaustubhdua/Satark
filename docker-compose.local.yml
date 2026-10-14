@@ -11,7 +11,17 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
-      streamlit:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
+  streamlit:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
@@ -30,16 +40,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-
-  ollama:
-        condition: service_healthy
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    cap_drop:
-      - ALL
 
   ollama:
     image: ollama/ollama:latest
