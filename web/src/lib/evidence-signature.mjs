@@ -73,7 +73,10 @@ export function inspectEvidenceFile(bytes, declaredMime = '') {
       ok: true,
       contentType: declaredType && declaredType !== OCTET_STREAM ? declaredType : detected.type,
       signatureType: detected.signature,
-      signatureVerified: true,
+      // ZIP magic only proves the container, not that it contains a valid OOXML
+      // package. Do not claim a DOCX/XLSX/PPTX payload is fully verified here.
+      signatureVerified: detected.signature !== 'zip-container' ||
+        declaredType === 'application/zip' || declaredType === 'application/x-zip-compressed',
     };
   }
 
