@@ -38,6 +38,15 @@ class ProviderHelperTests(unittest.TestCase):
         self.assertIsInstance(get_client(""), LocalOllamaClient)
         self.assertIsInstance(get_client(None), LocalOllamaClient)
 
+
+    def test_public_ollama_endpoint_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "localhost or a private-network"):
+            LocalOllamaClient(base_url="https://api.example.com")
+
+    def test_private_network_ollama_endpoint_is_allowed(self):
+        client = LocalOllamaClient(base_url="http://192.168.1.40:11434")
+        self.assertEqual(client.base_url, "http://192.168.1.40:11434")
+
     @patch("ai_provider.urlopen")
     def test_discover_models_reads_local_ollama_tags(self, urlopen):
         response = Mock()
