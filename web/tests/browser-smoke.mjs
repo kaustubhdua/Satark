@@ -11,7 +11,6 @@ const baseURL = process.env.SATARK_WEB_URL || 'http://127.0.0.1:3000';
 const artifactDir = process.env.SATARK_WEB_ARTIFACTS || 'artifacts/web';
 await fs.mkdir(artifactDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
 const failures = [];
 
 // The readiness endpoint must remain public-safe and report booleans only.
@@ -35,6 +34,8 @@ const failures = [];
   assert.equal(JSON.stringify(health).includes('URLHAUS_AUTH_KEY'), false);
   assert.equal(JSON.stringify(health).includes('ABUSEIPDB_API_KEY'), false);
 }
+
+const browser = await chromium.launch({ headless: true });
 const routes = [
   { path: '/', heading: /SATARK|SENTINEL/i },
   { path: '/investigate', heading: /investigate|analysis|suspicious/i },
