@@ -54,3 +54,16 @@ test('local model accepts only localhost HTTP or HTTPS endpoints', async () => {
   assert.equal(calls, 0);
   assert.equal(result.ai_status, 'local_model_unavailable');
 });
+
+test('oversized local model responses are rejected and fall back without exposing output', async () => {
+  const result = await analyzeWithLocalModel('A suspicious message', {
+    SATARK_OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
+    SATARK_OLLAMA_MODEL: 'reviewed-model',
+  }, async () => new Response('x'.repeat(40_000), {
+    status: 200,
+    headers: { 'Content-Length': '40000' },
+  }));
+  assert.equal(result.ai_status, 'local_model_unavailable');
+  assert.equal(result.model, 'deterministic-local-rules');
+  assert.doesNotMatch(JSON.stringify(result), /x{100}/);
+});
