@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Opt-in LoRA SFT for reviewed SATARK examples.")
+    parser = argparse.ArgumentParser(description="Opt-in LoRA SFT for reviewed SATARK prompt/completion pairs.")
     parser.add_argument("--model", required=True, help="Reviewed Hugging Face model ID or local path")
     parser.add_argument("--input", default="data/train/examples.jsonl")
     parser.add_argument("--output", default="artifacts/satark-lora")
@@ -19,6 +19,31 @@ def main() -> int:
     if args.max_steps < 1 or args.max_steps > 100_000:
         parser.error("--max-steps must be between 1 and 100000")
 
+    rows = []
+    seen_ids: set[str] = set()
+    for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            parser.error(f"invalid JSON at line {line_number}")
+        if not isinstance(row, dict):
+            parser.error(f"invalid row at line {line_number}: expected object")
+        row_id = row.get("id")
+        prompt = row.get("prompt")
+        completion = row.get("completion")
+        if not isinstance(row_id, str) or not row_id.strip() or row_id in seen_ids:
+            parser.error(f"invalid or duplicate id at line {line_number}")
+        if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 12_000:
+            parser.error(f"invalid prompt at line {line_number}")
+        if not isinstance(completion, str) or not completion.strip() or len(completion) > 6_000:
+            parser.error(f"invalid completion at line {line_number}")
+        seen_ids.add(row_id)
+        rows.append({"prompt": prompt, "completion": completion})
+    if len(rows) < 10:
+        parser.error("at least 10 reviewed training examples are required; the eval set is not training data")
+
     # Imports are delayed so normal service installs do not require a GPU/training stack.
     try:
         from datasets import Dataset
@@ -27,17 +52,6 @@ def main() -> int:
         from trl import SFTConfig, SFTTrainer
     except ImportError as exc:
         parser.error(f"training dependencies missing; install training/requirements.txt ({exc})")
-
-    rows = []
-    for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        if not isinstance(row, dict) or not isinstance(row.get("text"), str) or not row["text"].strip():
-            parser.error(f"invalid training row at line {line_number}: expected a non-empty text field")
-        rows.append({"text": row["text"]})
-    if len(rows) < 10:
-        parser.error("at least 10 reviewed training examples are required; the eval set is not training data")
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     if tokenizer.pad_token is None:
@@ -61,6 +75,7 @@ def main() -> int:
         save_steps=25,
         report_to="none",
         fp16=False,
+        completion_only_loss=True,
     )
     trainer = SFTTrainer(
         model=model,
