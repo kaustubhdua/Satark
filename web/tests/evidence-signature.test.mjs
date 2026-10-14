@@ -8,6 +8,17 @@ test('recognizes supported binary signatures independent of filename', () => {
   assert.equal(inspectEvidenceFile(Uint8Array.from([0x50,0x4b,0x03,0x04]), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document').signatureVerified, true);
 });
 
+test('does not overstate ZIP container verification for Office document MIME types', () => {
+  const docx = inspectEvidenceFile(
+    Uint8Array.from([0x50,0x4b,0x03,0x04,0x00,0x00]),
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  );
+  assert.equal(docx.ok, true);
+  assert.equal(docx.signatureType, 'zip-container');
+  assert.equal(docx.signatureVerified, false);
+  assert.equal(inspectEvidenceFile(Uint8Array.from([0x50,0x4b,0x03,0x04]), 'application/zip').signatureVerified, true);
+});
+
 test('rejects a declared MIME type that conflicts with the bytes', () => {
   assert.deepEqual(inspectEvidenceFile(Uint8Array.from([0xff,0xd8,0xff,0x00]), 'image/png'), { ok: false, reason: 'mime_signature_mismatch' });
   assert.deepEqual(inspectEvidenceFile(Uint8Array.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]), 'application/pdf'), { ok: false, reason: 'mime_signature_mismatch' });
