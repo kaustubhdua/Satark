@@ -47,6 +47,12 @@ export function createRateLimiter({
 } = {}) {
   return async function checkRateLimit(request) {
     const key = getClientKey(request);
+    // The local-only engine is cheap and does not call external providers. Use a
+    // bounded per-instance limit when no shared store is configured. This is
+    // best-effort on serverless hosts; self-hosted deployments can add Redis.
+    if ((env.SATARK_ANALYSIS_MODE || 'local') === 'local') {
+      return { limited: localLimit(key, now()), unavailable: false, mode: 'local' };
+    }
     const redisUrl = env.UPSTASH_REDIS_REST_URL;
     const redisToken = env.UPSTASH_REDIS_REST_TOKEN;
 
