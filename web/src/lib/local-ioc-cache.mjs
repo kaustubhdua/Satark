@@ -79,6 +79,8 @@ export function lookupLocalIocs(input, now = Date.now(), data = cache) {
         evidence: hostname.slice(0, 253),
         source: String(source.name || source.id).slice(0, 120),
         source_id: source.id,
+        source_url: String(source.url || '').slice(0, 500),
+        source_license: String(source.license || 'unspecified').slice(0, 240),
         source_version: String(source.version || 'unspecified').slice(0, 80),
         last_successful_sync: source.last_successful_sync,
       });
