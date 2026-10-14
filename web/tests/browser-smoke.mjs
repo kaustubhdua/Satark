@@ -59,6 +59,20 @@ async function inspectViewport(viewport, label) {
     assert.match(responseHeaders['strict-transport-security'] || '', /max-age=31536000/,
       `${label}: HSTS must be present on ${route.path}`);
     await page.locator('body').waitFor();
+    // Route transitions must be a fixed, temporary overlay, never normal-flow
+    // content that leaves a large brand card above every page.
+    await page.waitForFunction(() => {
+      const veil = document.querySelector('.route-veil');
+      return !!veil && getComputedStyle(veil).visibility === 'hidden';
+    });
+    const veilLayout = await page.locator('.route-veil').evaluate(element => ({
+      position: getComputedStyle(element).position,
+      opacity: getComputedStyle(element).opacity,
+      pointerEvents: getComputedStyle(element).pointerEvents,
+    }));
+    assert.equal(veilLayout.position, 'fixed', `${label}: route veil must not occupy document flow`);
+    assert.equal(veilLayout.opacity, '0', `${label}: route veil must be hidden when idle`);
+    assert.equal(veilLayout.pointerEvents, 'none', `${label}: hidden route veil must not block controls`);
 
     // Run axe against every primary route at every supported smoke viewport.
     await page.addScriptTag({ path: axePath });
