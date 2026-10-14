@@ -17,6 +17,11 @@ test('local fallback enforces the per-client window and keeps keys hashed', asyn
   assert.deepEqual(await limiter(request()), { limited: false, unavailable: false, mode: 'local' });
 });
 
+test('production refuses to downgrade to an instance-local rate limit', async () => {
+  const limiter = createRateLimiter({ env: { NODE_ENV: 'production' } });
+  assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared' });
+});
+
 test('shared limiter sends an atomic Redis operation and blocks above the threshold', async () => {
   let command;
   const limiter = createRateLimiter({
