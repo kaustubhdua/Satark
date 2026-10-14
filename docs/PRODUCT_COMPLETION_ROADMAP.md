@@ -247,3 +247,8 @@ SATARK can be called finished for its declared scope only when every advertised 
 ## Follow-up — local media review
 
 - The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. QR, PDF, and video analysis remain unported in the Next.js workspace.
+
+
+## Release status correction — 2026-10-14
+
+PR #104 merged as `0ebc4307eaad77319376bdf60e711daf6018e333`. Production deployment, shared rate limiting, tenant isolation, database-backed end-to-end tests, local model hardware tests, accessibility review, and backup/restore remain unverified. Do not call the product production-ready until the current main SHA is deployed and the release gates above have reproducible evidence.
