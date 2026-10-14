@@ -10,8 +10,20 @@ test('health snapshot never claims full readiness and exposes non-shared rate li
   assert.equal(snapshot.checks.localModel.configured, false);
   assert.equal(snapshot.checks.persistentStorage.configured, false);
   assert.equal(snapshot.checks.rateLimit.sharedAcrossInstances, false);
+  assert.equal(snapshot.checks.rateLimit.mode, 'in-process');
+  assert.equal(snapshot.checks.rateLimit.configured, true);
   assert.equal(snapshot.checks.rateLimit.connectivityVerified, false);
   assert.match(snapshot.note, /does not probe model, database, or Redis connectivity/i);
+});
+
+test('production health accurately marks shared limiting as a hard requirement', () => {
+  const snapshot = buildHealthSnapshot({ VERCEL: '1' });
+  assert.equal(snapshot.checks.rateLimit.mode, 'shared-required');
+  assert.equal(snapshot.checks.rateLimit.configured, false);
+  assert.equal(snapshot.checks.rateLimit.sharedAcrossInstances, false);
+  const partial = buildHealthSnapshot({ VERCEL: '1', UPSTASH_REDIS_REST_URL: 'https://redis.example.com' });
+  assert.equal(partial.checks.rateLimit.mode, 'misconfigured');
+  assert.equal(partial.checks.rateLimit.configured, false);
 });
 
 test('optional model and persistent storage require complete configuration pairs', () => {
@@ -29,15 +41,9 @@ test('blank environment values count as missing', () => {
 });
 
 test('shared rate limit configuration is reported without claiming connectivity', () => {
-  const configured = buildHealthSnapshot({
-    UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
-    UPSTASH_REDIS_REST_TOKEN: 'test-token',
-  });
+  const configured = buildHealthSnapshot({ UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token', VERCEL: '1' });
   assert.equal(configured.checks.rateLimit.mode, 'shared-upstash');
   assert.equal(configured.checks.rateLimit.configured, true);
   assert.equal(configured.checks.rateLimit.sharedAcrossInstances, true);
   assert.equal(configured.checks.rateLimit.connectivityVerified, false);
-  const partial = buildHealthSnapshot({ UPSTASH_REDIS_REST_URL: 'https://redis.example.com' });
-  assert.equal(partial.checks.rateLimit.mode, 'misconfigured');
-  assert.equal(partial.checks.rateLimit.configured, false);
 });
