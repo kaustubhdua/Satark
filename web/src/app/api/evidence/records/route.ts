@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const response = await fetch(cfg.url + '/rest/v1/satark_evidence', {
       method: 'POST',
       headers: { apikey: cfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ ...record, record_sha256: recordSha }), cache: 'no-store',
+      body: JSON.stringify({ ...record, record_sha256: recordSha }), cache: 'no-store', signal: AbortSignal.timeout(8_000),
     });
     if (response.status === 401 || response.status === 403) return reply({ error: 'You do not have permission to add evidence to this case.' }, 403);
     if (response.status === 409) return reply({ error: 'This evidence record already exists.' }, 409);
