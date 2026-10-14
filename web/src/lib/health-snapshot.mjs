@@ -1,8 +1,6 @@
 /**
- * Reports configuration only. Do not interpret this as a dependency or security
- * readiness probe: the serverless limiter is per-instance and storage/model
- * connectivity is not checked here.
- * @param {Record<string, string | undefined>} [env={}]
+ * Reports configuration only. It is not a dependency or security readiness
+ * probe: model/database connectivity and actual limiter behavior are not tested.
  */
 const hasValue = value => typeof value === 'string' && value.trim().length > 0;
 
@@ -10,15 +8,24 @@ const hasValue = value => typeof value === 'string' && value.trim().length > 0;
 export function buildHealthSnapshot(env = {}) {
   const localModelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
   const persistentStorageConfigured = hasValue(env.SUPABASE_URL) && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
+  const redisUrl = hasValue(env.UPSTASH_REDIS_REST_URL);
+  const redisToken = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
+  const sharedLimiterConfigured = redisUrl && redisToken;
+  const limiterMisconfigured = redisUrl !== redisToken;
 
   return {
     status: 'configuration-only',
     checks: {
       analysis: { mode: 'deterministic-local', configured: true },
       localModel: { configured: localModelConfigured },
-      rateLimit: { mode: 'in-process', configured: true, sharedAcrossInstances: false },
+      rateLimit: {
+        mode: sharedLimiterConfigured ? 'shared-upstash' : limiterMisconfigured ? 'misconfigured' : 'in-process',
+        configured: sharedLimiterConfigured || !limiterMisconfigured,
+        sharedAcrossInstances: sharedLimiterConfigured,
+        connectivityVerified: false,
+      },
       persistentStorage: { configured: persistentStorageConfigured },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model or database connectivity, prove tenant isolation, or validate shared rate limiting. Deterministic analysis requires no third-party API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. Deterministic analysis requires no third-party AI API key.',
   };
 }
