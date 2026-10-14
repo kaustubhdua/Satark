@@ -47,3 +47,11 @@ test('stale feed never produces an active IOC match', () => {
 test('invalid cache fails closed to unavailable', () => {
   assert.equal(lookupLocalIocs('https://bad.example', now, {}).status, 'unavailable');
 });
+
+test('domain indicators require an exact hostname match', () => {
+  const result = lookupLocalIocs('https://evil.example/account', now, freshCache);
+  assert.equal(result.status, 'match');
+  assert.ok(result.matches.some(match => match.type === 'domain'));
+  const subdomain = lookupLocalIocs('https://sub.evil.example/account', now, freshCache);
+  assert.equal(subdomain.status, 'no_match');
+});
