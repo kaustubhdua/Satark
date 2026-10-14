@@ -1,0 +1,41 @@
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      SATARK_ANALYSIS_MODE: local
+      SATARK_OLLAMA_BASE_URL: http://ollama:11434
+      SATARK_OLLAMA_MODEL: ${SATARK_OLLAMA_MODEL:-qwen2.5:3b}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  ollama_models:
