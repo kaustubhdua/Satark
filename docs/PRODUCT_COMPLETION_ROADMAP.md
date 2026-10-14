@@ -242,3 +242,8 @@ SATARK can be called finished for its declared scope only when every advertised 
 - Web CI, Python CI, and CodeQL passed on the first tested PR #103 revision. Additional commits were then pushed to improve provenance and exact-domain tests; the latest revision's workflows must finish before merge.
 - Local Ollama and faster-whisper still require a real hardware run. No SATARK-specific model has been trained or evaluated on a representative held-out corpus.
 - The primary product still needs a visual desktop/mobile audit, an end-to-end persistent case/evidence/report verification using dedicated test tenants, and a documented backup/restore test. Do not equate a successful Vercel build with these acceptance gates.
+
+
+## Follow-up — local media review
+
+- The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. QR, PDF, and video analysis remain unported in the Next.js workspace.
