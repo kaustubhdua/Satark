@@ -107,6 +107,7 @@ export async function POST(request: Request) {
       headers: { ...headers, 'Content-Type': contentType, 'x-upsert': 'false' },
       body: bytes,
       cache: 'no-store',
+      signal: AbortSignal.timeout(8_000),
     });
     if (!upload.ok) {
       if (upload.status === 401 || upload.status === 403) return error('You do not have permission to upload evidence to this case.', 403);
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
       headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify(row),
       cache: 'no-store',
+      signal: AbortSignal.timeout(8_000),
     });
     if (!saved.ok) {
       // Keep the object private. Do not expose a delete path to the browser; an administrator
