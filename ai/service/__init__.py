@@ -1,0 +1,1 @@
+"""Opt-in SATARK self-hosted AI prototype."""
