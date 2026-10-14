@@ -287,7 +287,7 @@ The Next.js analysis route runs local deterministic rules by default. It does no
 
 To use an AI model, run an Ollama instance you control and configure `SATARK_OLLAMA_BASE_URL` and `SATARK_OLLAMA_MODEL` on the web server. The Compose example uses an internal `http://ollama:11434` service address and downloads a model without an API key. The initial model download needs internet access; inference is local after download.
 
-The Python/Streamlit app now uses the same local Ollama approach; the default requirements no longer include the Groq SDK. Video transcription is optional and uses local faster-whisper when installed.
+The Python/Streamlit app now uses the same local Ollama approach; the default requirements no longer include the Groq SDK. The self-hosted Compose image includes local faster-whisper for video-audio transcription. No third-party AI API key is required.
 
 See [Local-only deployment](docs/LOCAL_ONLY_DEPLOYMENT.md) for setup and safety boundaries.
 
