@@ -12,6 +12,7 @@ export function buildHealthSnapshot(env = {}) {
   const redisToken = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const sharedLimiterConfigured = redisUrl && redisToken;
   const limiterMisconfigured = redisUrl !== redisToken;
+  const sharedLimiterRequired = env.VERCEL === '1' && !sharedLimiterConfigured && !limiterMisconfigured;
 
   return {
     status: 'configuration-only',
@@ -19,13 +20,13 @@ export function buildHealthSnapshot(env = {}) {
       analysis: { mode: 'deterministic-local', configured: true },
       localModel: { configured: localModelConfigured },
       rateLimit: {
-        mode: sharedLimiterConfigured ? 'shared-upstash' : limiterMisconfigured ? 'misconfigured' : 'in-process',
-        configured: sharedLimiterConfigured || !limiterMisconfigured,
+        mode: sharedLimiterConfigured ? 'shared-upstash' : limiterMisconfigured ? 'misconfigured' : sharedLimiterRequired ? 'shared-required' : 'in-process',
+        configured: sharedLimiterConfigured || (!limiterMisconfigured && !sharedLimiterRequired),
         sharedAcrossInstances: sharedLimiterConfigured,
         connectivityVerified: false,
       },
       persistentStorage: { configured: persistentStorageConfigured },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. Deterministic analysis requires no third-party AI API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
   };
 }
