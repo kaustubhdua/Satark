@@ -24,6 +24,12 @@ def _public_ip(value: str) -> bool:
     return parsed.is_global
 
 
+def _safe_url_excerpt(scheme: str, hostname: str, path: str) -> str:
+    # Never echo URL user-info, query parameters, or fragments into a report.
+    suffix = "/…" if path and path != "/" else ""
+    return f"{scheme.lower()}://{hostname}{suffix}"
+
+
 def analyze_text(text: str) -> list[Signal]:
     """Return explainable signals only; absence of signals does not imply safety."""
     signals: list[Signal] = []
@@ -48,7 +54,7 @@ def analyze_text(text: str) -> list[Signal]:
                 category="url",
                 severity="medium",
                 description="URL uses HTTP rather than HTTPS; this alone does not establish maliciousness.",
-                evidence_excerpt=raw[:300],
+                evidence_excerpt=_safe_url_excerpt(parsed.scheme, hostname, parsed.path),
             ))
         if hostname in URL_SHORTENERS:
             signals.append(Signal(
@@ -56,7 +62,7 @@ def analyze_text(text: str) -> list[Signal]:
                 category="url",
                 severity="low",
                 description="URL uses a known link-shortening domain; inspect the resolved destination safely.",
-                evidence_excerpt=raw[:300],
+                evidence_excerpt=_safe_url_excerpt(parsed.scheme, hostname, parsed.path),
             ))
         if hostname.startswith("xn--") or ".xn--" in hostname:
             signals.append(Signal(
@@ -64,7 +70,7 @@ def analyze_text(text: str) -> list[Signal]:
                 category="url",
                 severity="low",
                 description="URL hostname contains an internationalized-domain label; verify the intended domain.",
-                evidence_excerpt=raw[:300],
+                evidence_excerpt=_safe_url_excerpt(parsed.scheme, hostname, parsed.path),
             ))
 
     for match in IP_RE.finditer(text):
@@ -79,7 +85,7 @@ def analyze_text(text: str) -> list[Signal]:
             ))
 
     for match in URGENCY_RE.finditer(text):
-        excerpt = text[max(0, match.start() - 70):min(len(text), match.end() + 70)]
+        excerpt = match.group(0)
         signals.append(Signal(
             id=f"urgency-{len(signals) + 1}",
             category="language",
