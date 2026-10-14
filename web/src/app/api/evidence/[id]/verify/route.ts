@@ -51,7 +51,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       select: 'id,tenant_id,case_id,source_sha256,record_sha256,created_by,metadata',
       id: 'eq.' + id, limit: '1',
     });
-    const lookup = await fetch(config.url + '/rest/v1/satark_evidence?' + query, { headers, cache: 'no-store' });
+    const lookup = await fetch(config.url + '/rest/v1/satark_evidence?' + query, { headers, cache: 'no-store', signal: AbortSignal.timeout(8_000) });
     if (lookup.status === 401 || lookup.status === 403) return reply({ error: 'You do not have access to this evidence.' }, 403);
     if (!lookup.ok) return reply({ error: 'Evidence metadata is temporarily unavailable.' }, 503);
     const rows: unknown = await lookup.json();
@@ -64,6 +64,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const download = await fetch(config.url + '/storage/v1/object/satark-evidence/' + objectKey.split('/').map(encodeURIComponent).join('/'), {
       headers: { apikey: config.publishableKey, Authorization: 'Bearer ' + match[1] },
       cache: 'no-store',
+      signal: AbortSignal.timeout(8_000),
     });
     if (download.status === 401 || download.status === 403) return reply({ error: 'You do not have permission to verify this evidence.' }, 403);
     if (!download.ok) return reply({ error: 'The private evidence object could not be retrieved for verification.' }, 503);
