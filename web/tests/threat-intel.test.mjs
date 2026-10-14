@@ -1,64 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { isPublicIpAddress } from '../src/lib/public-ip.mjs';
 
 const route = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
 const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
 const investigatePage = readFileSync(new URL('../src/app/investigate/page.tsx', import.meta.url), 'utf8');
 const envExample = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
+const localAnalysis = readFileSync(new URL('../src/lib/local-analysis.mjs', import.meta.url), 'utf8');
 
-test('URLhaus lookup is gated by explicit user opt-in and a server-side flag', () => {
-  assert.match(page, /checked=\{shareWithThreatIntel\}/);
-  assert.match(route, /parsedBody\.shareWithThreatIntel === true/);
+test('local-only analysis is the default and does not require a provider API key', () => {
+  assert.match(route, /SATARK_ANALYSIS_MODE \|\| 'local'/);
+  assert.match(route, /analyzeWithLocalModel\(input\)/);
+  assert.match(localAnalysis, /deterministic-local-rules/);
+  assert.match(page, /local-only rules/i);
+  assert.match(investigatePage, /local-only rules/i);
+  assert.doesNotMatch(page, /checked=\{shareWithThreatIntel\}/);
+  assert.doesNotMatch(investigatePage, /checked=\{shareIpWithThreatIntel\}/);
+});
+
+test('local mode labels external reputation as disabled and never calls those services', () => {
+  assert.match(localAnalysis, /External lookups are disabled in local-only mode/);
+  assert.match(localAnalysis, /No third-party AI or threat-intelligence API was called/);
+  assert.match(route, /if \(\(process\.env\.SATARK_ANALYSIS_MODE \|\| 'local'\) === 'local'\)/);
+  assert.ok(route.indexOf('analyzeWithLocalModel(input)') < route.indexOf("fetch('https://urlhaus-api.abuse.ch/v1/url/'"));
+});
+
+test('legacy URLhaus and AbuseIPDB paths require explicit non-default provider mode and opt-in', () => {
   assert.match(route, /SATARK_ENABLE_THREAT_INTEL !== 'true'/);
-});
-
-test('URLhaus receives an extracted HTTP(S) URL, not the entire submitted message', () => {
-  assert.match(route, /extractFirstHttpUrl\(input\)/);
-  assert.match(route, /body: new URLSearchParams\(\{ url \}\)/);
-  assert.doesNotMatch(route, /body: new URLSearchParams\(\{\s*input\s*\}\)/);
-});
-
-test('a no-match result explicitly does not mean safe', () => {
-  assert.match(route, /This does not establish that the URL is safe/);
-  assert.match(route, /status: 'no_match'/);
-});
-
-test('URL reputation lookup is time-bounded and server secret is not public-prefixed', () => {
-  assert.match(route, /AbortController/);
+  assert.match(route, /SATARK_ENABLE_ABUSEIPDB !== 'true'/);
   assert.match(route, /URLHAUS_AUTH_KEY/);
+  assert.match(route, /ABUSEIPDB_API_KEY/);
+  assert.match(envExample, /SATARK_ANALYSIS_MODE=local/);
+  assert.doesNotMatch(route, /NEXT_PUBLIC_ABUSEIPDB_API_KEY/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_URLHAUS_AUTH_KEY/);
 });
 
-test('UI explains optional external data sharing and displays lookup status', () => {
-  assert.match(page, /query strings and fragments are removed first/);
-  assert.match(page, /Paths can still contain private identifiers/);
-  assert.match(page, /text you submit is sent to Groq/i);
-  assert.match(page, /threat_intel\.status/);
+test('URL and IP heuristics do not claim no-match means safe', () => {
+  assert.match(localAnalysis, /insufficient evidence, not a safety verdict/);
+  assert.match(localAnalysis, /A review signal only/);
+  assert.match(localAnalysis, /isPublicIpAddress\(candidate\)/);
 });
 
-test('URLhaus consent and status are available in both investigation entry points', () => {
-  assert.match(page, /checked=\{shareWithThreatIntel\}/);
-  assert.match(investigatePage, /checked=\{shareWithThreatIntel\}/);
-  assert.match(investigatePage, /threat_intel\.status/);
+test('public IP helper rejects private and documentation addresses', () => {
+  for (const ip of ['8.8.8.8', '1.1.1.1']) assert.equal(isPublicIpAddress(ip), true);
+  for (const ip of ['127.0.0.1', '10.1.2.3', '192.168.1.1', '203.0.113.9', '2001:db8::1']) {
+    assert.equal(isPublicIpAddress(ip), false, ip);
+  }
 });
 
-test('AbuseIPDB is opt-in, separately feature-flagged, IP-literal-only, and time-bounded', () => {
-  assert.match(page, /checked=\{shareIpWithThreatIntel\}/);
-  assert.match(investigatePage, /checked=\{shareIpWithThreatIntel\}/);
-  assert.match(route, /parsedBody\.shareIpWithThreatIntel === true/);
-  assert.match(route, /SATARK_ENABLE_ABUSEIPDB !== 'true'/);
-  assert.match(route, /ABUSEIPDB_API_KEY/);
-  assert.match(route, /isIP\(candidate\)/);
-  assert.match(route, /api\.abuseipdb\.com\/api\/v2\/check/);
-  assert.match(route, /searchParams\.set\('maxAgeInDays', '90'\)/);
-  assert.match(route, /AbortController/);
-  assert.doesNotMatch(route, /NEXT_PUBLIC_ABUSEIPDB_API_KEY/);
-  assert.match(envExample, /SATARK_ENABLE_ABUSEIPDB=false/);
-});
-
-test('IP reputation result is displayed and no-match is not called safe', () => {
-  assert.match(page, /ip_threat_intel/);
-  assert.match(investigatePage, /ip_threat_intel/);
-  assert.match(route, /A low score is not proof of safety/);
+test('both investigation entry points disclose the local-only privacy model', () => {
+  assert.match(page, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(investigatePage, /No third-party AI or reputation API is called in local-only mode/i);
+  assert.match(page, /result\.notice/);
+  assert.match(investigatePage, /result\.notice/);
 });
