@@ -112,7 +112,7 @@ export default function Home() {
         <section>
           <div className="section-title"><div><div className="eyebrow">YOUR WORKSPACE</div><h2>Investigate with context.</h2></div><p>Clear workflows. Evidence before conclusions.</p></div>
           <div className="workspace-grid">
-            <article className="workspace-card"><div className="workspace-icon">⌕</div><h3>Investigate content</h3><p>Analyze a suspicious URL or message with AI-assisted triage and deterministic signals.</p><a className="text-link" href="/investigate">Open investigation →</a></article>
+            <article className="workspace-card"><div className="workspace-icon">⌕</div><h3>Investigate content</h3><p>Analyze a suspicious URL or message with local rules and optional self-hosted AI.</p><a className="text-link" href="/investigate">Open investigation →</a></article>
             <article className="workspace-card"><div className="workspace-icon">✳</div><h3>FIRSTLIGHT case lab</h3><p>Explore a guided synthetic case, evidence integrity, timelines and response decisions.</p><a className="text-link" href="/firstlight">Open case lab →</a></article>
             <article className="workspace-card"><div className="workspace-icon">▤</div><h3>Evidence & reports</h3><p>Draft and export your own investigation review notes.</p><a className="text-link" href="/reports">Open reports →</a></article>
             <article className="workspace-card"><div className="workspace-icon">◎</div><h3>Security learning</h3><p>Practice identifying social engineering signals with safe, educational examples.</p><a className="text-link" href="/learn">Open learning hub →</a></article>
@@ -120,20 +120,20 @@ export default function Home() {
         </section>
 
         <section className="tools-section">
-          <div className="section-title"><div><div className="eyebrow">SATARK TOOLKIT</div><h2>One workspace. Different kinds of evidence.</h2></div><p>Choose a focused workflow. Tools that are not yet ported into Next.js open the existing full SATARK application.</p></div>
-          <details className="tools-disclosure"><summary><span><strong>Browse all eight tools</strong><small>Includes links to legacy workflows and tools in this workspace</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary><div className="tool-grid">
+          <div className="section-title"><div><div className="eyebrow">SATARK TOOLKIT</div><h2>One workspace. Different kinds of evidence.</h2></div><p>Choose a focused workflow. Unported tools are clearly marked as planned and will not redirect to an unverified legacy deployment.</p></div>
+          <details className="tools-disclosure"><summary><span><strong>Browse all eight tools</strong><small>Shows what is available now and what is still being migrated</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary><div className="tool-grid">
             {[
               ['01','Text & message triage','Spot pressure tactics, impersonation cues and risky requests.','/investigate','OPEN ANALYSIS'],
               ['02','URL review','Review a URL as text without automatically visiting it.','/investigate','OPEN ANALYSIS'],
-              ['03','Image & deepfake review','Image authenticity and visual-content analysis in the full app.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
-              ['04','QR-code investigation','Inspect suspicious QR content using the existing scanner.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
-              ['05','PDF & document review','Review document content with the full SATARK scanner.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
-              ['06','Video & media signals','Explore available video and media workflows in the full app.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
-              ['07','History & reports','Review the full app’s session history and export options.','https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/','OPEN FULL APP'],
+              ['03','Image & deepfake review','Local image metadata and content-analysis workflow is not yet migrated.','', 'NOT YET PORTED'],
+              ['04','QR-code investigation','Decode QR payloads locally with safe parsing and evidence capture.','', 'NOT YET PORTED'],
+              ['05','PDF & document review','Extract text and metadata in a sandboxed local file pipeline.','', 'NOT YET PORTED'],
+              ['06','Video & media signals','Media processing and provenance checks are not yet migrated.','', 'NOT YET PORTED'],
+              ['07','History & reports','Persistent case history and evidence-linked report exports are in progress.','', 'NOT YET PORTED'],
               ['08','Academy & scam challenge','Practice recognition and awareness workflows.','/learn','OPEN LEARNING']
-            ].map(([number,title,description,href,action]) => <article className="tool-card" key={number}><div className="tool-card-top"><span>{number}</span><span className="tool-arrow">↗</span></div><h3>{title}</h3><p>{description}</p><a className="text-link" href={href} target={href.startsWith('http')?'_blank':undefined} rel={href.startsWith('http')?'noreferrer':undefined}>{action} →</a></article>)}
+            ].map(([number,title,description,href,action]) => <article className="tool-card" key={number}><div className="tool-card-top"><span>{number}</span><span className="tool-arrow">↗</span></div><h3>{title}</h3><p>{description}</p>{href ? <a className="text-link" href={href} target={href.startsWith('http')?'_blank':undefined} rel={href.startsWith('http')?'noreferrer':undefined}>{action} →</a> : <span className="text-link" aria-disabled="true">{action}</span>}</article>)}
           </div>
-          <div className="tool-boundary"><span>i</span><p><strong>Feature availability:</strong> text/URL triage and the interactive FIRSTLIGHT training workflow run in this Next.js workspace. The image, QR, PDF, video, and extended history tools still run in the existing Streamlit application; they are linked here rather than falsely presented as native Next.js features.</p></div>
+          <div className="tool-boundary"><span>i</span><p><strong>Feature availability:</strong> text/URL triage and the interactive FIRSTLIGHT training workflow run in this Next.js workspace. Image, QR, PDF, video, and durable case-history features are not yet ported to the local-only web app; no external legacy link is presented as a working native feature.</p></div>
           </details>
         </section>
 
