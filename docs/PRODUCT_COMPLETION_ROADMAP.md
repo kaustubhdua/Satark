@@ -135,7 +135,8 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - [x] Remove the Groq API-key field and SDK dependency from the legacy UI; default text/image analysis to an operator-controlled Ollama endpoint.
 - [x] Add optional local faster-whisper speech-to-text for video, with model-download and hardware requirements; no hosted transcription API.
 - [ ] Migrate image, QR, PDF, video, history, classroom, and report workflows into the primary Next.js product or formally retire each unsupported feature.
-- [x] Disable external reputation API lookups in the active Streamlit analysis path. [ ] Build a local IOC cache and an explicit, auditable feed-update command that runs separately from analysis.
+- [x] Disable external reputation API lookups in the active Streamlit analysis path.
+- [ ] Build a local IOC cache and an explicit, auditable feed-update command that runs separately from analysis.
 - [ ] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete.
 
 **Acceptance:** the full declared product runs without third-party API keys, submitted evidence never leaves operator-controlled infrastructure during analysis, and every retained media feature passes fixture-based tests in an offline test environment.
