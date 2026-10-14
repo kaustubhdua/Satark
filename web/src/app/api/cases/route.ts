@@ -69,6 +69,7 @@ async function supabaseRequest(
       ...init.headers,
     },
     cache: 'no-store',
+    signal: init.signal ?? AbortSignal.timeout(8_000),
   });
 }
 
