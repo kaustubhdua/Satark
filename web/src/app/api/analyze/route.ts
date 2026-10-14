@@ -129,14 +129,8 @@ function stringList(value: unknown, maxItems = 6, maxLength = 300): string[] {
 }
 
 export async function POST(request: Request) {
-  const rateLimit = await checkAnalysisRateLimit(request);
-  if (rateLimit.unavailable) {
-    return error('Analysis is temporarily unavailable because request protection could not be verified. Retry shortly.', 503, { 'Retry-After': '10' });
-  }
-  if (rateLimit.limited) {
-    return error('Too many requests. Wait a minute and retry.', 429, { 'Retry-After': '60' });
-  }
-
+  // Reject malformed media types and oversized declared bodies before consuming
+  // shared rate-limit capacity. These checks are local and inexpensive.
   const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
   if (contentType !== 'application/json') {
     return error('Content-Type must be application/json.', 415);
@@ -145,6 +139,14 @@ export async function POST(request: Request) {
   const contentLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
     return error('Request body is too large.', 413);
+  }
+
+  const rateLimit = await checkAnalysisRateLimit(request);
+  if (rateLimit.unavailable) {
+    return error('Analysis is temporarily unavailable because request protection could not be verified. Retry shortly.', 503, { 'Retry-After': '10' });
+  }
+  if (rateLimit.limited) {
+    return error('Too many requests. Wait a minute and retry.', 429, { 'Retry-After': '60' });
   }
 
   let bodyText = '';
