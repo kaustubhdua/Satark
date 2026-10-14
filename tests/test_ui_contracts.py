@@ -136,7 +136,7 @@ class UIContractTests(unittest.TestCase):
 
     def test_intro_loading_screen_is_branded_accessible_and_nonblocking(self):
         self.assertIn("from ui.loading import render_intro_loader", APP)
-        self.assertLess(APP.index("render_intro_loader()"), APP.index("api_key, role = render_sidebar("))
+        self.assertLess(APP.index("render_intro_loader()"), APP.index("_, role = render_sidebar("))
         for expected in (
             "SATARK",
             "FIRSTLIGHT",
