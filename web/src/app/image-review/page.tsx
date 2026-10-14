@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_PIXELS = 40_000_000;
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 type ImageInspection = {
   name: string;
@@ -42,10 +42,26 @@ function headerDimensions(bytes: Uint8Array, mime: string): { width: number; hei
   if (mime === 'image/gif' && bytes.length >= 10 && ascii(bytes, 0, 3) === 'GIF') {
     return { width: bytes[6] | (bytes[7] << 8), height: bytes[8] | (bytes[9] << 8) };
   }
-  if (mime === 'image/webp' && bytes.length >= 30 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP' && ascii(bytes, 12, 4) === 'VP8X') {
-    const width = 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16);
-    const height = 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16);
-    return { width, height };
+  if (mime === 'image/webp' && bytes.length >= 30 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') {
+    const kind = ascii(bytes, 12, 4);
+    if (kind === 'VP8X') {
+      return {
+        width: 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16),
+        height: 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16),
+      };
+    }
+    if (kind === 'VP8 ' && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+      return {
+        width: ((bytes[26] | (bytes[27] << 8)) & 0x3fff),
+        height: ((bytes[28] | (bytes[29] << 8)) & 0x3fff),
+      };
+    }
+    if (kind === 'VP8L' && bytes[20] === 0x2f) {
+      return {
+        width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8),
+        height: 1 + ((bytes[22] & 0xc0) >> 6) + (bytes[23] << 2) + ((bytes[24] & 0x0f) << 10),
+      };
+    }
   }
   if (mime === 'image/jpeg' && bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
     let offset = 2;
@@ -143,7 +159,8 @@ export default function ImageReviewPage() {
       const raw = await file.arrayBuffer();
       const bytes = new Uint8Array(raw);
       const dimensions = headerDimensions(bytes, file.type);
-      if (dimensions && (dimensions.width <= 0 || dimensions.height <= 0 || dimensions.width * dimensions.height > MAX_PIXELS)) {
+      if (!dimensions) throw new Error('Could not safely read dimensions from this file header. Use a supported JPEG, PNG, GIF, or WebP image.');
+      if (dimensions.width <= 0 || dimensions.height <= 0 || dimensions.width * dimensions.height > MAX_PIXELS) {
         throw new Error('Image dimensions are invalid or exceed the 40-megapixel safety limit.');
       }
       const bitmap = await createImageBitmap(file);
@@ -189,9 +206,9 @@ export default function ImageReviewPage() {
         </div>
         <section className="form-panel" aria-labelledby="image-upload-title">
           <h2 id="image-upload-title">Choose an image</h2>
-          <p className="field-note">Supported: JPEG, PNG, WebP, GIF, and AVIF · Maximum file size 10 MiB · Maximum decoded dimensions 40 megapixels.</p>
+          <p className="field-note">Supported: JPEG, PNG, WebP, and GIF · Maximum file size 10 MiB · Maximum decoded dimensions 40 megapixels.</p>
           <label htmlFor="image-file">Image file</label>
-          <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void inspectFile(file); }}
             disabled={busy} />
           <p className="hint">The file is read in this browser tab only. It is not sent to SATARK servers, stored in browser history, or saved to session storage.</p>
