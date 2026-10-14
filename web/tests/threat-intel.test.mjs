@@ -32,7 +32,9 @@ test('local mode labels external reputation as disabled and never calls those se
 test('default environment has no third-party analysis provider keys', () => {
   assert.match(envExample, /SATARK_OLLAMA_BASE_URL/);
   assert.match(envExample, /SATARK_OLLAMA_MODEL/);
-  assert.doesNotMatch(envExample, /GROQ_API_KEY|URLHAUS_AUTH_KEY|ABUSEIPDB_API_KEY|UPSTASH_REDIS/);
+  assert.doesNotMatch(envExample, /GROQ_API_KEY|URLHAUS_AUTH_KEY|ABUSEIPDB_API_KEY/);
+  assert.match(envExample, /UPSTASH_REDIS_REST_URL/);
+  assert.match(envExample, /UPSTASH_REDIS_REST_TOKEN/);
   assert.doesNotMatch(route, /api\.groq\.com|urlhaus-api\.abuse\.ch|api\.abuseipdb\.com/);
 });
 
