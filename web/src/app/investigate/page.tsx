@@ -20,6 +20,21 @@ type Analysis = {
   notice: string;
   threat_intel?: ThreatIntel;
   ip_threat_intel?: ThreatIntel;
+  local_ioc_cache?: {
+    status: string;
+    fresh_sources: number;
+    stale_sources: number;
+    matches: Array<{
+      type: string;
+      evidence: string;
+      source: string;
+      source_id: string;
+      source_url: string;
+      source_license: string;
+      source_version: string;
+      last_successful_sync: string;
+    }>;
+  };
 };
 
 export default function InvestigatePage() {
@@ -125,6 +140,19 @@ export default function InvestigatePage() {
               <strong id="analysis-result-title">Heuristic priority: {result.risk_score}/100</strong>
             </div>
             <p>{result.summary}</p><p className="field-note">{result.notice}</p>
+            {result.threat_intel && <div className="notice-panel" aria-label="Local threat-intelligence status">
+              <h3>Local threat-intelligence cache</h3>
+              <p><strong>Status: {result.threat_intel.status.replaceAll('_', ' ')}</strong> — {result.threat_intel.detail}</p>
+              {result.local_ioc_cache && <p className="hint">{result.local_ioc_cache.fresh_sources} fresh source(s) · {result.local_ioc_cache.stale_sources} stale source(s)</p>}
+              {result.local_ioc_cache?.matches.map((match, index) => <div className="evidence" key={match.source_id + ':' + match.type + ':' + index}>
+                <div className="evidence-icon" aria-hidden="true">!</div>
+                <div className="evidence-copy">
+                  <strong>{match.source} · {match.type} match</strong>
+                  <small>Indicator: {match.evidence} · Version: {match.source_version} · Last sync: {match.last_successful_sync}</small>
+                  <small>License: {match.source_license} · Source: {match.source_url}</small>
+                </div>
+              </div>)}
+            </div>}
             {result.deterministic_signals.length > 0 && <><h3>Deterministic signals</h3><ul>{result.deterministic_signals.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
             <h3>Indicators and context</h3>
             <ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
