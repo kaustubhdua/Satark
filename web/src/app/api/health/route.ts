@@ -35,7 +35,10 @@ export async function GET() {
       ),
     },
   };
-  const requiredReady = checks.analysisProvider.configured && checks.sharedRateLimit.configured;
+  const requiredReady = checks.analysisProvider.configured
+    && checks.sharedRateLimit.configured
+    && (!checks.urlhaus.enabled || checks.urlhaus.configured)
+    && (!checks.abuseIpDb.enabled || checks.abuseIpDb.configured);
   return NextResponse.json(
     {
       status: requiredReady ? 'ready' : 'degraded',
