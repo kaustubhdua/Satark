@@ -234,7 +234,15 @@ export default function ImageReviewPage() {
           </div>
           <h3>SHA-256 fingerprint</h3>
           <p className="field-note" style={{ overflowWrap: 'anywhere' }}>{inspection.sha256}</p>
-          <button className="btn btn-secondary" onClick={() => { void navigator.clipboard?.writeText(inspection.sha256).catch(() => setError('Clipboard access was blocked. Select and copy the fingerprint manually.')); }}>Copy fingerprint</button>
+          <button className="btn btn-secondary" onClick={() => {
+            if (!navigator.clipboard?.writeText) {
+              setError('Clipboard access is unavailable. Select and copy the fingerprint manually.');
+              return;
+            }
+            void navigator.clipboard.writeText(inspection.sha256)
+              .then(() => setError('Fingerprint copied to clipboard.'))
+              .catch(() => setError('Clipboard access was blocked. Select and copy the fingerprint manually.'));
+          }}>Copy fingerprint</button>
           <h3>Metadata marker hints</h3>
           {inspection.metadataHints.length > 0
             ? <ul>{inspection.metadataHints.map(hint => <li key={hint}>{hint}</li>)}</ul>
