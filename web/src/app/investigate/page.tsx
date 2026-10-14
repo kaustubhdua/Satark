@@ -131,8 +131,6 @@ export default function InvestigatePage() {
             <h3>Recommended next steps</h3>
             <ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
             {result.limitations.length > 0 && <><h3>Limitations</h3><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
-            {result.threat_intel && <div className="threat-intel-result"><h3>URL reputation · {result.threat_intel.source}</h3><p><strong>{result.threat_intel.status.replaceAll('_', ' ')}</strong> — {result.threat_intel.detail}</p>{result.threat_intel.reference && <a href={result.threat_intel.reference} target="_blank" rel="noreferrer">Open URLhaus reference ↗</a>}</div>}
-            {result.ip_threat_intel && <div className="threat-intel-result"><h3>IP reputation · {result.ip_threat_intel.source}</h3><p><strong>{result.ip_threat_intel.status.replaceAll('_', ' ')}</strong> — {result.ip_threat_intel.detail}</p>{result.ip_threat_intel.reference && <a href={result.ip_threat_intel.reference} target="_blank" rel="noreferrer">Open AbuseIPDB reference ↗</a>}</div>}
             <p className="hint">{result.notice} · Model: {result.model}</p>
           </section>}
         </section>
