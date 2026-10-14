@@ -1,6 +1,6 @@
 # Run SATARK locally without third-party AI API keys
 
-This is the supported local-first path for the Next.js web app and optional local language model. The analysis route defaults to deterministic local rules and does not call Groq, URLhaus, AbuseIPDB, or another third-party analysis service. If Ollama is configured, the submitted text is sent to that Ollama instance, which must be under your control.
+This Compose stack runs the Next.js web workspace, the Python/Streamlit workspace, and a private Ollama service. Both app paths use local inference and require no third-party AI API keys. The analysis route defaults to deterministic local rules and does not call Groq, URLhaus, AbuseIPDB, or another third-party analysis service. If Ollama is configured, the submitted text is sent to that Ollama instance, which must be under your control.
 
 ## Requirements
 
@@ -14,10 +14,10 @@ From the repository root:
 
 ```bash
 docker compose -f docker-compose.local.yml up --build -d
-docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
+docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b\ndocker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5vl:3b
 ```
 
-Open http://127.0.0.1:3000. The app and Ollama are bound to a private Docker network; only the web UI is published, and it is bound to host loopback. The first model pull requires internet access to download model files, but it does not require an API key. After the model is downloaded, inference runs locally. You may choose another model only after reviewing its license, hardware needs, and model-card limitations.
+Open http://127.0.0.1:3000 for the Next.js workspace or http://127.0.0.1:8501 for the Streamlit workspace. Both apps and Ollama communicate over a private Docker network; the web UIs are published only on host loopback, and Ollama has no published host port. The first model pull requires internet access to download model files, but it does not require an API key. After the model is downloaded, inference runs locally. You may choose another model only after reviewing its license, hardware needs, and model-card limitations.
 
 Check service state:
 
