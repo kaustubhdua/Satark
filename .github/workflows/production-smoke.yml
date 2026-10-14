@@ -99,6 +99,42 @@ jobs:
           fi
           echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
 
+          # Health is a public-safe configuration snapshot, not a claim of live dependency readiness.
+          health_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/health")"
+          if [[ "$health_status" != "200" ]]; then
+            echo "::error::Production /api/health returned HTTP $health_status (expected 200)."
+            exit 1
+          fi
+          jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
+          rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
+          shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
+          echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
+
+          # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
+          # but it is still a release blocker because the primary analysis feature is unavailable.
+          analysis_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
+            -X POST "$base/api/analyze" -H 'Content-Type: application/json' \
+            --data '{"input":"Synthetic release smoke test: an ordinary internal status update."}')"
+          if [[ "$rate_mode" == "shared-upstash" && "$shared_limiter_ok" == "true" ]]; then
+            if [[ "$analysis_status" != "200" ]]; then
+              echo "::error::Configured shared limiter did not allow the synthetic analysis smoke test (HTTP $analysis_status)."
+              exit 1
+            fi
+            jq -e 'has("threat_category") and has("summary") and has("notice") and (.summary | length > 0)' "$body" >/dev/null
+            echo "PASS /api/analyze: synthetic request returned a structured local analysis result."
+          else
+            if [[ "$analysis_status" != "503" ]]; then
+              echo "::error::Analysis must fail closed when shared rate limiting is absent; received HTTP $analysis_status."
+              exit 1
+            fi
+            if ! grep -Eiq '^retry-after:' "$headers"; then
+              echo "::error::Fail-closed /api/analyze response must include Retry-After."
+              exit 1
+            fi
+            echo "::error::Production release is degraded: shared rate limiting is not configured (mode=$rate_mode); analysis correctly fails closed with 503."
+            exit 1
+          fi
+
           version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
           if [[ "$version_status" != "200" ]]; then
             echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
