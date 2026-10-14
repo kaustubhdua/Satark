@@ -11,6 +11,27 @@ function excerpt(value, max = 220) {
   return value.replace(/[\r\n\t]+/g, ' ').slice(0, max);
 }
 
+async function readBoundedText(response, maxBytes) {
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error('Local model response exceeded the allowed size');
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error('Local model response exceeded the allowed size');
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 function safeUrl(raw) {
   try {
     const url = new URL(raw);
@@ -128,7 +149,7 @@ export async function analyzeWithLocalModel(input, env = process.env, fetchImpl 
 
   let parsedBase;
   try { parsedBase = new URL(base); } catch { return { ...deterministic, ai_status: 'local_model_unavailable' }; }
-  if (!(parsedBase.protocol === 'https:' || (parsedBase.protocol === 'http:' && ['localhost', '127.0.0.1', 'ollama', '::1'].includes(parsedBase.hostname)))) {
+  if (!(parsedBase.protocol === 'http:' && ['localhost', '127.0.0.1', 'ollama', '[::1]'].includes(parsedBase.hostname))) {
     return { ...deterministic, ai_status: 'local_model_unavailable' };
   }
 
@@ -161,8 +182,7 @@ export async function analyzeWithLocalModel(input, env = process.env, fetchImpl 
       }),
     });
     if (!response.ok) return { ...deterministic, ai_status: 'local_model_unavailable' };
-    const raw = await response.text();
-    if (raw.length > 32 * 1024) return { ...deterministic, ai_status: 'local_model_invalid_output' };
+    const raw = await readBoundedText(response, 32 * 1024);
     const payload = JSON.parse(raw);
     const content = payload?.message?.content;
     if (typeof content !== 'string' || content.length > 8_000) return { ...deterministic, ai_status: 'local_model_invalid_output' };
