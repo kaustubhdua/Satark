@@ -337,7 +337,7 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
 .result-card{border-radius:22px;animation:panel-rise .5s cubic-bezier(.2,.8,.2,1) both}
 .threat-intel-result{border-radius:14px}
 .footer{border-top:1px solid var(--line);color:#8f9eb5}
-.route-veil{background:rgba(5,9,17,.78);backdrop-filter:blur(18px);transition:opacity .32s,visibility .32s}
+.route-veil{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;opacity:0;visibility:hidden;pointer-events:none;background:rgba(5,9,17,.78);backdrop-filter:blur(18px);transition:opacity .32s,visibility .32s}.route-veil.route-veil-visible{opacity:1;visibility:visible;pointer-events:auto}@media(prefers-reduced-motion:reduce){.route-veil{transition:none!important}}
 .route-veil-card{min-width:220px;padding:28px;border:1px solid rgba(164,190,224,.18);border-radius:24px;background:linear-gradient(145deg,rgba(20,31,49,.96),rgba(7,12,22,.96));box-shadow:0 28px 100px rgba(0,0,0,.45),0 0 70px rgba(109,230,203,.07)}
 .route-veil-mark{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 18px;border-radius:17px;background:linear-gradient(135deg,var(--lime),var(--mint));color:#08120c;font-size:25px;font-weight:900;box-shadow:0 0 40px rgba(109,230,203,.18);animation:mark-breathe 1.7s ease-in-out infinite}
 .route-veil-label{color:#eaf3ff;letter-spacing:.22em;font-size:10px}
