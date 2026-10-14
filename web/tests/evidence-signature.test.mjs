@@ -24,6 +24,15 @@ test('keeps unknown binary evidence as octet-stream but marks it unverified', ()
   assert.deepEqual(inspectEvidenceFile(Uint8Array.from([0x00,0xff,0x81]), 'application/x-msdownload'), { ok: false, reason: 'unrecognized_or_invalid_signature' });
 });
 
+test('rejects active SVG and XML content types instead of serving untrusted markup inline', () => {
+  assert.deepEqual(inspectEvidenceFile(new TextEncoder().encode('<svg><script>alert(1)</script></svg>'), 'image/svg+xml'), {
+    ok: false, reason: 'unrecognized_or_invalid_signature',
+  });
+  assert.deepEqual(inspectEvidenceFile(new TextEncoder().encode('<root/>'), 'application/xml'), {
+    ok: false, reason: 'unrecognized_or_invalid_signature',
+  });
+});
+
 test('rejects empty payloads', () => {
   assert.deepEqual(inspectEvidenceFile(new Uint8Array(), 'application/octet-stream'), { ok: false, reason: 'empty_or_invalid_bytes' });
 });
