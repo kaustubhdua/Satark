@@ -304,10 +304,10 @@ Not detected, Low, Medium, High.
             response = call(model)
             choices = getattr(response, "choices", None) or []
             if not choices:
-                raise RuntimeError("The AI provider returned no choices.")
+                raise RuntimeError("Local Ollama returned no choices.")
             message = getattr(choices[0], "message", None)
             if message is None:
-                raise RuntimeError("The AI provider returned an incomplete response.")
+                raise RuntimeError("Local Ollama returned an incomplete response.")
             raw = getattr(message, "content", "") or ""
 
             # Ollama returns a string. Be defensive if an SDK version
@@ -370,7 +370,7 @@ Not detected, Low, Medium, High.
             return normalize_result_consistency(result)
 
         except Exception as exc:
-            # Classify rate limits before discarding provider details. SDK errors
+            # Classify local model failures before discarding diagnostics. HTTP errors
             # can include request metadata, so never return their raw text to users.
             error_text = str(exc).lower()
             rate_limited = rate_limited or "rate_limit_exceeded" in error_text or "request too large" in error_text
@@ -379,7 +379,7 @@ Not detected, Low, Medium, High.
             # immediately — this applies to text, image and video requests now.
             continue
 
-    detail = "Provider requests failed for the configured models. Check the server logs and provider status for diagnostics."
+    detail = "Local Ollama requests failed for the configured models. Check Ollama status and the local model logs."
     if image_data_urls:
         hint = (
             "\n\nThis looks like a local model resource or timeout issue on the free/on-demand "
@@ -582,7 +582,7 @@ sc_init_state()  # Scam Challenge v2 session-state defaults
 render_intro_loader()  # One-time, dismissible intro; app remains usable underneath
 
 # --------------------------- Sidebar ---------------------------
-api_key, role = render_sidebar(
+_, role = render_sidebar(
     get_client,
     discover_models,
     choose_model,
@@ -1053,7 +1053,7 @@ elif st.session_state.page == "Analyze":
             st.session_state.result = None
             st.session_state.vision_model = None
 
-            client = get_client(api_key)
+            client = get_client()
 
             st.markdown(
                 '<div class="analysis-loader" '
@@ -1367,7 +1367,7 @@ elif st.session_state.page == "Analyze":
             # Do not echo raw provider/network exception strings into the UI:
             # SDK errors can contain request metadata or other sensitive details.
             st.caption(
-                "Technical details were withheld to avoid exposing provider metadata. "
+                "Technical details were withheld to avoid exposing local runtime metadata. "
                 "Check the server-side logs for the exception type and request context."
             )
 
