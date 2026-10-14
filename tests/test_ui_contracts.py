@@ -102,7 +102,7 @@ class UIContractTests(unittest.TestCase):
 
     def test_provider_check_does_not_claim_success_when_discovery_fails(self):
         self.assertIn("if not available:", NAV)
-        self.assertIn("Could not verify provider access", NAV)
+        self.assertIn("Ollama is unreachable or no models are installed", NAV)
         self.assertIn("st.session_state.text_model = None", NAV)
 
     def test_primary_navigation_stays_focused(self):
