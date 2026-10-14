@@ -142,7 +142,7 @@ export default function InvestigatePage() {
             <p>{result.summary}</p><p className="field-note">{result.notice}</p>
             {result.threat_intel && <div className="notice-panel" aria-label="Local threat-intelligence status">
               <h3>Local threat-intelligence cache</h3>
-              <p><strong>Status: {result.threat_intel.status.replaceAll('_', ' ')}</strong> — {result.threat_intel.detail}</p>
+              <p><strong>Status: {result.threat_intel.status.replace(/_/g, ' ')}</strong> — {result.threat_intel.detail}</p>
               {result.local_ioc_cache && <p className="hint">{result.local_ioc_cache.fresh_sources} fresh source(s) · {result.local_ioc_cache.stale_sources} stale source(s)</p>}
               {result.local_ioc_cache?.matches.map((match, index) => <div className="evidence" key={match.source_id + ':' + match.type + ':' + index}>
                 <div className="evidence-icon" aria-hidden="true">!</div>
