@@ -141,22 +141,18 @@ export default function Home() {
           <div className="info-panel"><div className="eyebrow">START HERE</div><h3>Inspect before you trust.</h3><p>Submit only content you are permitted to analyze. Do not include passwords, authentication codes, private keys or other secrets.</p><p><strong style={{ color: '#dce6f4' }}>Important:</strong> AI output is an assessment, not proof. The app does not visit submitted URLs or execute files.</p></div>
           <div className="form-panel">
             <h3>New investigation</h3>
-            <p className="field-note">Before you analyze: the text you submit is sent to Groq for AI-assisted triage. Do not submit information you are not permitted to share. URLhaus and AbuseIPDB are separate optional lookups and receive only the extracted URL or public IP when you opt in and the server enables them.</p>
+            <p className="field-note">Analysis runs with local deterministic rules by default. If you configure your own Ollama instance, the text is sent only to that self-hosted model. No third-party AI or reputation API is called in local-only mode. Never submit passwords, OTPs, private keys or secrets.</p>
             <label htmlFor="content">Suspicious URL or message</label>
             <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }} placeholder="Paste a suspicious URL or message here…" maxLength={12000} aria-describedby="content-hint" />
-             <label className="intel-consent"><input type="checkbox" checked={shareWithThreatIntel} onChange={event => setShareWithThreatIntel(event.target.checked)} /> Also check the extracted URL against URLhaus. If enabled on the server, the URL origin and path are shared; query strings and fragments are removed first. Paths can still contain private identifiers, so do not submit private or signed URLs. This is optional.</label>
-            <label className="intel-consent"><input type="checkbox" checked={shareIpWithThreatIntel} onChange={event => setShareIpWithThreatIntel(event.target.checked)} /> Also check a literal IP address against AbuseIPDB. The extracted IP is shared with that external service if enabled on the server; domains and arbitrary text are not queried. This is optional.</label>
             <div className="form-bottom"><span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span><button className="btn btn-primary" disabled={busy || !input.trim()} onClick={analyze}>{busy ? 'Analyzing…' : 'Analyze with SATARK →'}</button></div>
             {error && <div className="result error" role="alert">{error}</div>}
             {result && <div className="analysis-result" role="status">
               <div className="result-top"><span className="pill">{result.threat_category}</span><strong>Heuristic priority: {result.risk_score}/100</strong></div>
               <p>{result.summary}</p><p className="field-note">{result.notice}</p>
               {result.deterministic_signals.length > 0 && <><h4>Deterministic signals</h4><ul>{result.deterministic_signals.map(signal => <li key={signal}>{signal}</li>)}</ul></>}
-              <h4>AI-identified indicators</h4><ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              <h4>Indicators and context</h4><ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
               <h4>Recommended next steps</h4><ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
               {result.limitations.length > 0 && <><h4>Limitations</h4><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
-               {result.threat_intel && <div className="threat-intel-result"><h4>URL reputation · {result.threat_intel.source}</h4><p><strong>{result.threat_intel.status.replaceAll("_", " ")}</strong> — {result.threat_intel.detail}</p>{result.threat_intel.reference && <a href={result.threat_intel.reference} target="_blank" rel="noreferrer">Open URLhaus reference ↗</a>}</div>}
-              {result.ip_threat_intel && <div className="threat-intel-result"><h4>IP reputation · {result.ip_threat_intel.source}</h4><p><strong>{result.ip_threat_intel.status.replaceAll("_", " ")}</strong> — {result.ip_threat_intel.detail}</p>{result.ip_threat_intel.reference && <a href={result.ip_threat_intel.reference} target="_blank" rel="noreferrer">Open AbuseIPDB reference ↗</a>}</div>}
               <small>{result.notice} · Model: {result.model}</small>
             </div>}
           </div>
