@@ -61,9 +61,9 @@ P0 means SATARK must not be described as production-ready until applicable gates
 **Acceptance:** upload → hash → private storage → record → verify → report export works end-to-end; mutation, replacement, deletion, and cross-tenant tests fail safely.
 
 ### P0.4 Real analysis and truthful provider states
-- [ ] Keep deterministic checks available when optional AI or threat intelligence is disabled.
+- [x] Keep deterministic checks available without third-party provider credentials; the web analysis route now defaults to local-only deterministic rules and optionally calls a configured self-hosted Ollama instance.
 - [ ] Validate media type, request limits, schema, timeouts, upstream response limits, and safe error mapping.
-- [ ] Test provider success, no-match, match, timeout, malformed response, rate limit, and missing credentials.
+- [ ] Test local model success, timeout, malformed output, unavailable model, and deterministic fallback; retain separate contract tests for legacy provider mode.
 - [ ] Run live smoke tests with authorized credentials in a secure environment; never commit or paste credentials.
 - [ ] Keep URLhaus and AbuseIPDB lookups opt-in; show what is sent externally.
 - [ ] Verify no-match, unavailable, and not-requested never render as a green "safe" result.
@@ -191,6 +191,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ## Current status at roadmap creation
 
 - The self-hosted AI prototype is merged, and its dedicated AI CI passed. No model has been trained; the tiny synthetic set is only a smoke test.
+- The production-readiness PR branch now defaults the web analysis route to local deterministic checks, with optional self-hosted Ollama summaries and no required third-party AI API key. A loopback-bound Docker Compose stack and setup guide were added; this does not yet prove production hosting or durable case/evidence storage works without database configuration.
 - Production is not integrated with the new AI service.
 - Previous checks found missing provider credentials and shared rate-limit configuration; these must be rechecked before live integrations can be called healthy.
 - The production-readiness diagnostics PR remains open. Its frontend CI exposed a failing browser smoke assertion: unsupported media type returned 503 instead of 415 when shared rate-limit configuration was missing. A fix has been pushed and must be revalidated by the full frontend suite before merge.
