@@ -20,14 +20,14 @@ test('clean text is insufficient evidence and never declared safe', () => {
   assert.equal(result.threat_category, 'Needs review');
   assert.equal(result.risk_score, 0);
   assert.match(result.summary, /insufficient evidence/i);
-  assert.doesNotMatch(result.summary, /\bsafe\b/i);
+  assert.doesNotMatch(result.summary, /\\bsafe\\b/i);
 });
 
 test('URL evidence redacts credentials, query parameters, and fragments', () => {
   const result = analyzeLocally('http://user:secret@example.invalid/path?token=abc#frag');
   const evidence = JSON.stringify(result.evidence);
   assert.doesNotMatch(evidence, /secret|token|abc|frag/);
-  assert.match(evidence, /example\.invalid/);
+  assert.match(evidence, /example\\.invalid/);
 });
 
 test('local model is optional and fallback is deterministic when not configured', async () => {
