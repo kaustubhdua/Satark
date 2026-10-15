@@ -18,9 +18,10 @@ This checklist distinguishes code validation from production readiness. A green 
 
 ## Tenant and role acceptance
 Use dedicated non-production accounts only. Never use real user credentials as CI fixtures.
+- [ ] Seed synthetic fixture cases in two distinct tenants, plus tenant B evidence, finding, report and private object. Set the matching SATARK_TEST_* fixture IDs and relative storage path.
 - [ ] Two distinct users are members of distinct tenants; each can read its own cases, evidence, findings, reports and private objects.
 - [ ] Cross-tenant reads return no records; writes and storage access are denied.
-- [ ] Viewer role cannot create or update cases, upload evidence, create findings or save reports.
+- [ ] A viewer test user can read its seeded case but cannot create or update cases, upload evidence, create findings or save reports.
 - [ ] Owner/responder/analyst roles behave according to the reviewed policy matrix.
 - [ ] Audit chain verification passes for the fixture tenant; audit events cannot be changed by normal clients.
 - [ ] Evidence objects remain private and downloads are authorized by the same tenant and case relationship.

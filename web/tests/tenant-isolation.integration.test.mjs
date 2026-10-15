@@ -38,7 +38,7 @@ async function rest(session, path, init = {}) {
   });
 }
 
-test('tenant RLS blocks cross-tenant reads and writes for two distinct users', { skip: configured ? false : 'Set up two non-admin Supabase test users and separate tenant IDs; missing: ' + missing.join(', ') }, async () => {
+test('tenant RLS blocks cross-tenant case queries and writes for two distinct users', { skip: configured ? false : 'Set up two non-admin Supabase test users and separate tenant IDs; missing: ' + missing.join(', ') }, async () => {
   assert.notEqual(env.SATARK_TEST_TENANT_A_ID, env.SATARK_TEST_TENANT_B_ID, 'test tenants must be distinct');
   const [a, b] = await Promise.all([
     login(env.SATARK_TEST_USER_A_EMAIL, env.SATARK_TEST_USER_A_PASSWORD),
@@ -67,11 +67,88 @@ test('tenant RLS blocks cross-tenant reads and writes for two distinct users', {
   }
 });
 
-const viewerRequired = ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','SATARK_TEST_VIEWER_EMAIL','SATARK_TEST_VIEWER_PASSWORD','SATARK_TEST_VIEWER_TENANT_ID'];
+const fixtureRequired = [
+  ...required,
+  'SATARK_TEST_CASE_A_ID',
+  'SATARK_TEST_CASE_B_ID',
+  'SATARK_TEST_EVIDENCE_B_ID',
+  'SATARK_TEST_FINDING_B_ID',
+  'SATARK_TEST_REPORT_B_ID',
+  'SATARK_TEST_STORAGE_OBJECT_B_PATH',
+];
+const fixtureMissing = fixtureRequired.filter(key => !env[key]);
+
+async function fixtureRows(session, table, id, tenantId, withCase = false) {
+  const query = new URLSearchParams({
+    select: withCase ? 'id,tenant_id,case_id' : 'id,tenant_id',
+    id: 'eq.' + id,
+    tenant_id: 'eq.' + tenantId,
+    limit: '2',
+  });
+  const response = await rest(session, table + '?' + query);
+  assert.equal(response.status, 200, table + ' fixture query must succeed');
+  const rows = await response.json();
+  assert.ok(Array.isArray(rows), table + ' query must return a row list');
+  return rows;
+}
+
+async function storageObject(session, objectPath) {
+  const encodedPath = objectPath.split('/').map(encodeURIComponent).join('/');
+  return fetch(base + '/storage/v1/object/satark-evidence/' + encodedPath, {
+    headers: { apikey: apiKey, Authorization: 'Bearer ' + session.token },
+    cache: 'no-store',
+    redirect: 'error',
+  });
+}
+
+test('seeded tenant fixtures prove isolation for cases, evidence, findings, reports and private storage', {
+  skip: fixtureMissing.length ? 'Seed synthetic tenant fixtures and configure dedicated non-production accounts; missing: ' + fixtureMissing.join(', ') : false,
+}, async () => {
+  assert.notEqual(env.SATARK_TEST_TENANT_A_ID, env.SATARK_TEST_TENANT_B_ID, 'fixture tenants must be distinct');
+  assert.ok(env.SATARK_TEST_STORAGE_OBJECT_B_PATH && !env.SATARK_TEST_STORAGE_OBJECT_B_PATH.startsWith('/'), 'storage fixture path must be relative to the private bucket');
+  assert.ok(!env.SATARK_TEST_STORAGE_OBJECT_B_PATH.split('/').some(part => !part || part === '.' || part === '..'), 'storage fixture path must not contain empty or traversal segments');
+
+  const [a, b] = await Promise.all([
+    login(env.SATARK_TEST_USER_A_EMAIL, env.SATARK_TEST_USER_A_PASSWORD),
+    login(env.SATARK_TEST_USER_B_EMAIL, env.SATARK_TEST_USER_B_PASSWORD),
+  ]);
+  assert.notEqual(a.userId, b.userId, 'fixture users must be distinct');
+
+  const ownA = await fixtureRows(a, 'satark_cases', env.SATARK_TEST_CASE_A_ID, env.SATARK_TEST_TENANT_A_ID);
+  const ownB = await fixtureRows(b, 'satark_cases', env.SATARK_TEST_CASE_B_ID, env.SATARK_TEST_TENANT_B_ID);
+  assert.equal(ownA.length, 1, 'user A must read its seeded case');
+  assert.equal(ownB.length, 1, 'user B must read its seeded case');
+  assert.equal((await fixtureRows(a, 'satark_cases', env.SATARK_TEST_CASE_B_ID, env.SATARK_TEST_TENANT_B_ID)).length, 0, 'user A must not read user B case');
+  assert.equal((await fixtureRows(b, 'satark_cases', env.SATARK_TEST_CASE_A_ID, env.SATARK_TEST_TENANT_A_ID)).length, 0, 'user B must not read user A case');
+
+  const relatedFixtures = [
+    ['satark_evidence', env.SATARK_TEST_EVIDENCE_B_ID],
+    ['satark_findings', env.SATARK_TEST_FINDING_B_ID],
+    ['satark_reports', env.SATARK_TEST_REPORT_B_ID],
+  ];
+  for (const [table, id] of relatedFixtures) {
+    const own = await fixtureRows(b, table, id, env.SATARK_TEST_TENANT_B_ID, true);
+    assert.equal(own.length, 1, table + ' fixture must be readable by its tenant member');
+    assert.equal(own[0].case_id, env.SATARK_TEST_CASE_B_ID, table + ' fixture must belong to tenant B case');
+    const foreign = await fixtureRows(a, table, id, env.SATARK_TEST_TENANT_B_ID, true);
+    assert.deepEqual(foreign, [], 'user A must not read tenant B ' + table);
+  }
+
+  const ownObject = await storageObject(b, env.SATARK_TEST_STORAGE_OBJECT_B_PATH);
+  assert.equal(ownObject.status, 200, 'tenant B must download its seeded synthetic evidence object');
+  await ownObject.arrayBuffer();
+  const foreignObject = await storageObject(a, env.SATARK_TEST_STORAGE_OBJECT_B_PATH);
+  assert.ok([400, 403, 404].includes(foreignObject.status), 'tenant A must not download tenant B private evidence object');
+  await foreignObject.arrayBuffer();
+});
+
+const viewerRequired = ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','SATARK_TEST_VIEWER_EMAIL','SATARK_TEST_VIEWER_PASSWORD','SATARK_TEST_VIEWER_TENANT_ID','SATARK_TEST_VIEWER_CASE_ID'];
 const viewerMissing = viewerRequired.filter(key => !env[key]);
 test('viewer role cannot create or update cases', { skip: viewerMissing.length ? 'Set up a dedicated viewer test account; missing: ' + viewerMissing.join(', ') : false }, async () => {
   const viewer = await login(env.SATARK_TEST_VIEWER_EMAIL, env.SATARK_TEST_VIEWER_PASSWORD);
   const tenantId = env.SATARK_TEST_VIEWER_TENANT_ID;
+  const visibleCase = await fixtureRows(viewer, 'satark_cases', env.SATARK_TEST_VIEWER_CASE_ID, tenantId);
+  assert.equal(visibleCase.length, 1, 'viewer must read its seeded case');
   const create = await rest(viewer, 'satark_cases', {
     method: 'POST', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ tenant_id: tenantId, title: 'Viewer permission integration probe', status: 'open', severity: 'unknown', created_by: viewer.userId, metadata: { test_probe: true } }),
