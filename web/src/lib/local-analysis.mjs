@@ -195,7 +195,7 @@ export async function analyzeWithLocalModel(input, env = process.env, fetchImpl 
     const response = await fetchImpl(base + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      cache: 'no-store',
+      cache: 'no-store', redirect: 'error',
       signal: controller.signal,
       body: JSON.stringify({
         model,
