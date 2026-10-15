@@ -135,6 +135,12 @@ export default function InvestigatePage() {
           <label htmlFor="content">Suspicious URL or message</label>
           <textarea id="content" value={input} onChange={event => { setInput(event.target.value); setError(''); setResult(null); }}
             maxLength={12000} placeholder="Paste a suspicious URL or message here…" aria-describedby="content-hint" />
+          <div className="actions" aria-label="Sample investigation inputs">
+            <button type="button" className="btn btn-secondary" onClick={() => { setInput('URGENT: Your account will be suspended today. Verify your account immediately using this shortened link: https://bit.ly/account-check and enter your password and one-time code.'); setError(''); setResult(null); }} disabled={busy}>Try phishing example</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setInput('Hi team, the meeting is moved to 3 PM tomorrow. Please bring the draft agenda. No links or payment requests are included.'); setError(''); setResult(null); }} disabled={busy}>Try ordinary message</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setInput('I received a message asking me to review an invoice. It includes a link, but I do not know whether the sender is genuine.'); setError(''); setResult(null); }} disabled={busy}>Try ambiguous case</button>
+          </div>
+          <p className="field-note">Demo samples are synthetic. They are sent through the same analysis endpoint as your own input; they do not display pre-written results.</p>
           <div className="form-bottom">
             <span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span>
             <button className="btn btn-primary" onClick={run} disabled={busy || !input.trim()}>
