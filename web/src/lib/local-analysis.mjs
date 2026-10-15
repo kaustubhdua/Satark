@@ -38,9 +38,15 @@ function safeUrl(raw) {
     const url = new URL(raw);
     const hostname = (url.hostname || '').toLowerCase().slice(0, 253);
     if (!hostname) return null;
+    const scheme = url.protocol.replace(':', '').toLowerCase();
+    const port = url.port ? Number(url.port) : null;
     return {
       hostname,
-      scheme: url.protocol.replace(':', '').toLowerCase(),
+      scheme,
+      hasCredentials: Boolean(url.username || url.password),
+      port,
+      isIpHost: isIP(hostname.replace(/^\\[|\\]$/g, '')) > 0,
+      riskyDownload: /\\.(?:exe|msi|scr|bat|cmd|ps1|vbs|js|jar|apk|dmg|iso)(?:$|\\.)/i.test(url.pathname),
       evidence: (url.protocol + '//' + hostname + (url.pathname && url.pathname !== '/' ? '/…' : '')).slice(0, 300),
     };
   } catch {
@@ -78,6 +84,22 @@ export function analyzeLocally(input) {
       signals.push({ category: 'url', label: 'Malformed or unsupported URL', severity: 'low', evidence: '[URL redacted]', explanation: 'The URL could not be parsed safely.' });
       continue;
     }
+    if (parsed.hasCredentials) signals.push({
+      category: 'url', label: 'URL embeds username or password', severity: 'high', evidence: parsed.evidence,
+      explanation: 'Credentials embedded in a URL can hide the true destination or expose secrets if the full URL is shared.',
+    });
+    if (parsed.port !== null && parsed.port !== (parsed.scheme === 'https' ? 443 : 80)) signals.push({
+      category: 'url', label: 'URL uses a non-default port', severity: 'low', evidence: parsed.evidence,
+      explanation: 'A non-default port is not malicious by itself, but the service and destination should be verified.',
+    });
+    if (parsed.isIpHost) signals.push({
+      category: 'url', label: 'URL uses an IP address as its host', severity: 'low', evidence: parsed.evidence,
+      explanation: 'IP-hosted sites can be legitimate, but they do not provide the same familiar domain identity cues.',
+    });
+    if (parsed.riskyDownload) signals.push({
+      category: 'url', label: 'URL path references an executable or installable file', severity: 'medium', evidence: parsed.evidence,
+      explanation: 'The path appears to reference a file type that can execute code; do not download or run it unless independently verified.',
+    });
     if (parsed.scheme !== 'https') signals.push({
       category: 'url', label: 'URL does not use HTTPS', severity: 'medium', evidence: parsed.evidence,
       explanation: 'Transport security alone does not establish whether a destination is malicious.',
