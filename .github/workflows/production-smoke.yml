@@ -24,7 +24,7 @@ jobs:
       SATARK_PRODUCTION_URL: https://satark-qzym.vercel.app
     steps:
       - name: Check out current production branch revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: main
       - name: Check public production routes and security headers
@@ -36,27 +36,38 @@ jobs:
           body="$(mktemp)"
           headers="$(mktemp)"
           trap 'rm -f "$body" "$headers"' EXIT
+          failures=0
+
+          record_failure() {
+            echo "::error::$1"
+            failures=$((failures + 1))
+          }
 
           check_route() {
             local route="$1"
             local marker="$2"
             local status
-            status="$(curl --silent --show-error --location --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            if ! status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"; then
+              record_failure "Production route $route request failed."
+              return 0
+            fi
             if [[ "$status" != "200" ]]; then
-              echo "::error::Production route $route returned HTTP $status (expected 200)."
-              exit 1
+              record_failure "Production route $route returned HTTP $status (expected 200)."
+              return 0
             fi
             if ! grep -Eiq "$marker" "$body"; then
-              echo "::error::Production route $route did not contain its expected content marker."
-              exit 1
+              record_failure "Production route $route did not contain its expected content marker."
             fi
+            local missing_headers=0
             for header in content-security-policy strict-transport-security x-content-type-options x-frame-options referrer-policy; do
               if ! grep -Eiq "^$header:" "$headers"; then
-                echo "::error::Production route $route is missing security header $header."
-                exit 1
+                record_failure "Production route $route is missing security header $header."
+                missing_headers=1
               fi
             done
-            echo "PASS $route: HTTP 200, expected content and baseline security headers."
+            if [[ "$missing_headers" == "0" ]]; then
+              echo "PASS $route: HTTP 200, expected content and baseline security headers."
+            fi
           }
 
           # Match route-specific body content rather than navigation labels shared by every page.
@@ -66,20 +77,24 @@ jobs:
           check_route "/reports" "Review notes"
           check_route "/learn" "Check answers"
           check_route "/login" "Sign in securely"
-
+          check_route "/tools" "Every tool, with its real status"
+          check_route "/qr" "Decode first. Verify before you visit"
 
           # Authenticated persistence APIs must be deployed, configured, and fail closed without a session.
           check_unauthenticated_api() {
             local route="$1"
             local status
-            status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            if ! status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"; then
+              record_failure "Unauthenticated $route request failed."
+              return 0
+            fi
             if [[ "$status" != "401" ]]; then
-              echo "::error::Unauthenticated $route returned HTTP $status (expected 401)."
-              exit 1
+              record_failure "Unauthenticated $route returned HTTP $status (expected 401)."
+              return 0
             fi
             if ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
-              echo "::error::$route must set Cache-Control: no-store."
-              exit 1
+              record_failure "$route must set Cache-Control: no-store."
+              return 0
             fi
             echo "PASS $route: unauthenticated request rejected with 401 and no-store."
           }
@@ -88,61 +103,69 @@ jobs:
           check_unauthenticated_api "/api/findings"
           check_unauthenticated_api "/api/reports"
 
-          api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
-          if [[ "$api_status" != "405" ]]; then
-            echo "::error::GET /api/analyze returned HTTP $api_status (expected 405)."
-            exit 1
+          if ! api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"; then
+            record_failure "GET /api/analyze request failed."
+          elif [[ "$api_status" != "405" ]]; then
+            record_failure "GET /api/analyze returned HTTP $api_status (expected 405)."
+          elif ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
+            record_failure "GET /api/analyze must set Cache-Control: no-store."
+          else
+            echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
           fi
-          if ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
-            echo "::error::GET /api/analyze must set Cache-Control: no-store."
-            exit 1
-          fi
-          echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
 
           # Health is a public-safe configuration snapshot, not a claim of live dependency readiness.
-          health_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/health")"
-          if [[ "$health_status" != "200" ]]; then
-            echo "::error::Production /api/health returned HTTP $health_status (expected 200)."
-            exit 1
+          rate_mode="unknown"
+          shared_limiter_ok="false"
+          if ! health_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/health")"; then
+            record_failure "Production /api/health request failed."
+          elif [[ "$health_status" != "200" ]]; then
+            record_failure "Production /api/health returned HTTP $health_status (expected 200)."
+          elif ! jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null; then
+            record_failure "Production /api/health returned an invalid or unsafe configuration snapshot."
+          else
+            rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
+            shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
+            echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
           fi
-          jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
-          rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
-          shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
-          echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
 
-          # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
-          # but it is still a release blocker because the primary analysis feature is unavailable.
-          analysis_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
+          # Exercise a harmless synthetic input. Missing shared limiting must fail closed,
+          # but it remains a release blocker because the primary analysis feature is unavailable.
+          if ! analysis_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
             -X POST "$base/api/analyze" -H 'Content-Type: application/json' \
-            --data '{"input":"Synthetic release smoke test: an ordinary internal status update."}')"
-          if [[ "$rate_mode" == "shared-upstash" && "$shared_limiter_ok" == "true" ]]; then
+            --data '{"input":"Synthetic release smoke test: an ordinary internal status update."}')"; then
+            record_failure "Synthetic POST /api/analyze request failed."
+          elif [[ "$rate_mode" == "shared-upstash" && "$shared_limiter_ok" == "true" ]]; then
             if [[ "$analysis_status" != "200" ]]; then
-              echo "::error::Configured shared limiter did not allow the synthetic analysis smoke test (HTTP $analysis_status)."
-              exit 1
+              record_failure "Configured shared limiter did not allow the synthetic analysis smoke test (HTTP $analysis_status)."
+            elif ! jq -e 'has("threat_category") and has("summary") and has("notice") and (.summary | length > 0)' "$body" >/dev/null; then
+              record_failure "Synthetic analysis response did not contain the required structured fields."
+            else
+              echo "PASS /api/analyze: synthetic request returned a structured local analysis result."
             fi
-            jq -e 'has("threat_category") and has("summary") and has("notice") and (.summary | length > 0)' "$body" >/dev/null
-            echo "PASS /api/analyze: synthetic request returned a structured local analysis result."
           else
             if [[ "$analysis_status" != "503" ]]; then
-              echo "::error::Analysis must fail closed when shared rate limiting is absent; received HTTP $analysis_status."
-              exit 1
+              record_failure "Analysis must fail closed when shared rate limiting is absent; received HTTP $analysis_status."
             fi
             if ! grep -Eiq '^retry-after:' "$headers"; then
-              echo "::error::Fail-closed /api/analyze response must include Retry-After."
-              exit 1
+              record_failure "Fail-closed /api/analyze response must include Retry-After."
             fi
-            echo "::error::Production release is degraded: shared rate limiting is not configured (mode=$rate_mode); analysis correctly fails closed with 503."
-            exit 1
+            record_failure "Production release is degraded: shared rate limiting is not configured (mode=$rate_mode); analysis returned HTTP $analysis_status."
           fi
 
-          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
-          if [[ "$version_status" != "200" ]]; then
-            echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
+          if ! version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"; then
+            record_failure "Production /api/version request failed; the deployed build revision cannot be verified."
+          elif [[ "$version_status" != "200" ]]; then
+            record_failure "Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
+          elif ! deployed_sha="$(jq -r '.commit // empty' "$body")"; then
+            record_failure "Production /api/version returned invalid JSON."
+          elif [[ "$deployed_sha" != "$expected_sha" ]]; then
+            record_failure "Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
+          else
+            echo "PASS /api/version: production serves current main commit $expected_sha."
+          fi
+
+          if [[ "$failures" -gt 0 ]]; then
+            echo "::error::Production smoke completed with $failures release-gate failure(s)."
             exit 1
           fi
-          deployed_sha="$(jq -r '.commit // empty' "$body")"
-          if [[ "$deployed_sha" != "$expected_sha" ]]; then
-            echo "::error::Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
-            exit 1
-          fi
-          echo "PASS /api/version: production serves current main commit $expected_sha."
+          echo "PASS production release smoke: all route, API, limiter and revision gates passed."
