@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   const caseId = url.searchParams.get('case_id') || '';
   if (!UUID.test(tenantId) || !UUID.test(caseId)) return reply({ error: 'Valid tenant_id and case_id are required.' }, 400);
   const query = new URLSearchParams({
-    select: 'id,tenant_id,case_id,source_label,event_kind,observed_at,summary,source_sha256,record_sha256,created_at',
+    select: 'id,tenant_id,case_id,source_label,event_kind,observed_at,summary,source_sha256,record_sha256,created_at,metadata',
     tenant_id: 'eq.' + tenantId,
     case_id: 'eq.' + caseId,
     order: 'observed_at.desc',
@@ -53,7 +53,12 @@ export async function GET(request: Request) {
     if (!response.ok) return reply({ error: 'Evidence records could not be loaded. Check case access and retry.' }, 422);
     const rows: unknown = await response.json();
     if (!Array.isArray(rows)) return reply({ error: 'Evidence storage returned an invalid response.' }, 502);
-    return reply({ evidence: rows });
+    const evidence = rows.map((row: Record<string, unknown>) => {
+      const metadata = row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? row.metadata as Record<string, unknown> : {};
+      const { metadata: _privateMetadata, ...safeRow } = row;
+      return { ...safeRow, has_private_file: typeof metadata.object_key === 'string' };
+    });
+    return reply({ evidence });
   } catch {
     return reply({ error: 'Evidence storage is temporarily unavailable.' }, 503);
   }

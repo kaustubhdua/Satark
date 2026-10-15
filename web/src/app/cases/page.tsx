@@ -8,7 +8,7 @@ import {
   type SatarkSession, type SatarkTenant,
 } from '../../lib/satark-auth';
 
-type EvidenceRecord = { id: string; source_label: string; event_kind: string; observed_at: string; summary: string; source_sha256: string; record_sha256: string; created_at: string };
+type EvidenceRecord = { id: string; source_label: string; event_kind: string; observed_at: string; summary: string; source_sha256: string; record_sha256: string; created_at: string; has_private_file: boolean };
 
 type CaseRow = {
   id: string;
@@ -144,6 +144,23 @@ export default function CasesPage() {
     } finally { setBusy(false); }
   }
 
+  async function downloadEvidence(item: EvidenceRecord) {
+    if (!session || !item.has_private_file) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const response = await fetch('/api/evidence/' + encodeURIComponent(item.id), { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
+      if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(typeof data.error === 'string' ? data.error : 'Evidence download failed.'); }
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const filename = /filename="([A-Za-z0-9._-]{1,100})"/i.exec(disposition)?.[1] || ('satark-evidence-' + item.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.style.display = 'none';
+      document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice('Private evidence downloaded through the authenticated endpoint. Compare its SHA-256 against the recorded source digest if integrity verification is required.');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Evidence download failed.'); }
+    finally { setBusy(false); }
+  }
+
   async function uploadEvidence(event: FormEvent) {
     event.preventDefault();
     if (!session || !tenantId || !evidenceCaseId || !evidenceFile) { setError('Choose a saved case and evidence file first.'); return; }
@@ -275,7 +292,7 @@ export default function CasesPage() {
               </form>
               {evidenceReceipt && <div className="notice-panel" role="status" aria-live="polite"><h3>Evidence integrity receipt</h3><p><strong>Evidence ID:</strong> <code>{evidenceReceipt.id}</code></p><p><strong>File SHA-256:</strong></p><code>{evidenceReceipt.source_sha256}</code><p><strong>Record SHA-256:</strong></p><code>{evidenceReceipt.record_sha256}</code><p className="muted">This receipt supports later integrity comparison; it does not prove source authenticity.</p></div>}
               <div className="saved-cases" aria-labelledby="saved-evidence-heading"><strong id="saved-evidence-heading">Saved evidence records</strong>
-                {evidenceLoading ? <p className="empty-state" role="status">Loading evidence records…</p> : evidenceError ? <p className="error-message" role="alert">{evidenceError}</p> : evidenceRecords.length ? evidenceRecords.map(item => <article className="report-history-row" key={item.id}><div><strong>{item.source_label}</strong><small>{pretty(item.event_kind)} · {new Date(item.observed_at).toLocaleString()} · ID {item.id}</small><p>{item.summary}</p><small>File SHA-256: {item.source_sha256}</small><small>Record SHA-256: {item.record_sha256}</small></div></article>) : <p className="empty-state">No saved evidence records for this case yet. Uploaded file contents remain in private storage; this list exposes only authorized metadata and integrity digests.</p>}
+                {evidenceLoading ? <p className="empty-state" role="status">Loading evidence records…</p> : evidenceError ? <p className="error-message" role="alert">{evidenceError}</p> : evidenceRecords.length ? evidenceRecords.map(item => <article className="report-history-row" key={item.id}><div><strong>{item.source_label}</strong><small>{pretty(item.event_kind)} · {new Date(item.observed_at).toLocaleString()} · ID {item.id}</small><p>{item.summary}</p><small>File SHA-256: {item.source_sha256}</small><small>Record SHA-256: {item.record_sha256}</small></div>{item.has_private_file && <button className="mini-btn" type="button" disabled={busy} onClick={() => void downloadEvidence(item)}>Download private file</button>}</article>) : <p className="empty-state">No saved evidence records for this case yet. Uploaded file contents remain in private storage; this list exposes only authorized metadata and integrity digests.</p>}
               </div>
             </section>
           </>
