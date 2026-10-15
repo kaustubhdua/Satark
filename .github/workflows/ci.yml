@@ -133,3 +133,39 @@ jobs:
           if bad:
               raise SystemExit('\\n'.join(bad))
           PY
+
+  tenant-isolation-integration:
+    name: Supabase tenant isolation integration
+    if: ${{ vars.SATARK_SUPABASE_INTEGRATION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    env:
+      SUPABASE_URL: ${{ secrets.SATARK_TEST_SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SATARK_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      SATARK_TEST_USER_A_EMAIL: ${{ secrets.SATARK_TEST_USER_A_EMAIL }}
+      SATARK_TEST_USER_A_PASSWORD: ${{ secrets.SATARK_TEST_USER_A_PASSWORD }}
+      SATARK_TEST_TENANT_A_ID: ${{ secrets.SATARK_TEST_TENANT_A_ID }}
+      SATARK_TEST_USER_B_EMAIL: ${{ secrets.SATARK_TEST_USER_B_EMAIL }}
+      SATARK_TEST_USER_B_PASSWORD: ${{ secrets.SATARK_TEST_USER_B_PASSWORD }}
+      SATARK_TEST_TENANT_B_ID: ${{ secrets.SATARK_TEST_TENANT_B_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        run: npm ci
+      - name: Require all integration credentials
+        run: |
+          for name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID; do
+            if [ -z "${!name}" ]; then echo "::error::Missing required integration configuration: $name"; exit 1; fi
+          done
+      - name: Run real two-tenant isolation tests
+        run: npm run test:integration
