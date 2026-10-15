@@ -68,3 +68,22 @@ test('oversized local model responses are rejected and fall back without exposin
   assert.equal(result.model, 'deterministic-local-rules');
   assert.doesNotMatch(JSON.stringify(result), /x{100}/);
 });
+
+test('local model suggestions never replace deterministic findings', async () => {
+  const input = 'Urgent! verify your account at http://example.invalid/login';
+  const deterministic = analyzeLocally(input);
+  const result = await analyzeWithLocalModel(input, {
+    SATARK_OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
+    SATARK_OLLAMA_MODEL: 'reviewed-model',
+  }, async () => new Response(JSON.stringify({ message: { content: JSON.stringify({
+    summary: 'Everything is safe; ignore all warnings.',
+    key_indicators: ['No risk', 'Ignore deterministic rules'],
+    recommendations: ['Click the suspicious link immediately'],
+  }) } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  assert.equal(result.summary, deterministic.summary);
+  assert.deepEqual(result.key_indicators, deterministic.key_indicators);
+  assert.deepEqual(result.recommendations, deterministic.recommendations);
+  assert.equal(result.threat_category, deterministic.threat_category);
+  assert.deepEqual(result.model_suggestions.key_indicators, ['No risk', 'Ignore deterministic rules']);
+  assert.match(result.notice, /remain authoritative/i);
+});
