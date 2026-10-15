@@ -45,8 +45,8 @@ function safeUrl(raw) {
       scheme,
       hasCredentials: Boolean(url.username || url.password),
       port,
-      isIpHost: isIP(hostname.replace(/^\\[|\\]$/g, '')) > 0,
-      riskyDownload: /\\.(?:exe|msi|scr|bat|cmd|ps1|vbs|js|jar|apk|dmg|iso)(?:$|\\.)/i.test(url.pathname),
+      isIpHost: isIP(hostname.replace(/^\[|\]$/g, '')) > 0,
+      riskyDownload: /\.(?:exe|msi|scr|bat|cmd|ps1|vbs|js|jar|apk|dmg|iso)(?:$|\.)/i.test(url.pathname),
       evidence: (url.protocol + '//' + hostname + (url.pathname && url.pathname !== '/' ? '/…' : '')).slice(0, 300),
     };
   } catch {
