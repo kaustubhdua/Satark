@@ -89,7 +89,12 @@ export default function ReportsPage() {
     saveFile('satark-review-notes.txt', notes + analysisText + '\n', 'text/plain;charset=utf-8');
   }
 
-  function printPdf() {\n    if (!report.trim() && !savedAnalysis) return;\n    window.print();\n  }\n\n  function downloadJson() {
+  function printPdf() {
+    if (!report.trim() && !savedAnalysis) return;
+    window.print();
+  }
+
+  function downloadJson() {
     const notes = report.trim();
     if (!notes && !savedAnalysis) return;
     const exportedAt = new Date().toISOString();
@@ -137,7 +142,8 @@ export default function ReportsPage() {
             <div className="button-row">
               <button className="btn btn-secondary" type="button" disabled={!report} onClick={() => { setReport(''); setExported(false); }}>Clear notes</button>
               <button className="btn btn-primary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={download}>Export notes (.txt) ↓</button>
-              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={downloadJson}>Export notes (.json) ↓</button>\n              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={printPdf}>Print / Save as PDF ↗</button>
+              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={downloadJson}>Export notes (.json) ↓</button>
+              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={printPdf}>Print / Save as PDF ↗</button>
             </div>
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
