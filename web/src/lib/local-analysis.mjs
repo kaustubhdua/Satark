@@ -86,7 +86,7 @@ export function analyzeLocally(input) {
     }
     if (parsed.hasCredentials) signals.push({
       category: 'url', label: 'URL embeds username or password', severity: 'high', evidence: parsed.evidence,
-      explanation: 'Credentials embedded in a URL can hide the true destination or expose secrets if the full URL is shared.',
+      explanation: 'Credentials embedded in a URL can hide the true destination or expose sensitive values if the full URL is shared.',
     });
     if (parsed.port !== null && parsed.port !== (parsed.scheme === 'https' ? 443 : 80)) signals.push({
       category: 'url', label: 'URL uses a non-default port', severity: 'low', evidence: parsed.evidence,
