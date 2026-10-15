@@ -60,7 +60,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const contentType = metadata.content_type;
     const originalName = metadata.original_filename;
     if (typeof objectKey !== 'string' || typeof contentType !== 'string' || !supportedType(contentType) ||
-        typeof originalName !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(originalName) || originalName.includes('..')) {
+        typeof originalName !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(originalName) || originalName === '.' || originalName === '..') {
       return error('This evidence record does not reference a supported private file.', 404);
     }
     const parts = objectKey.split('/');

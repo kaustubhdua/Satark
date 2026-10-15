@@ -8,7 +8,7 @@ import {
   type SatarkSession, type SatarkTenant,
 } from '../../lib/satark-auth';
 
-type EvidenceRecord = { id: string; source_label: string; event_kind: string; observed_at: string; summary: string; source_sha256: string; record_sha256: string; created_at: string; has_private_file: boolean };
+type EvidenceRecord = { id: string; source_label: string; event_kind: string; observed_at: string; summary: string; source_sha256: string | null; record_sha256: string | null; created_at: string; has_private_file: boolean };
 
 type CaseRow = {
   id: string;
@@ -294,7 +294,7 @@ export default function CasesPage() {
               </form>
               {evidenceReceipt && <div className="notice-panel" role="status" aria-live="polite"><h3>Evidence integrity receipt</h3><p><strong>Evidence ID:</strong> <code>{evidenceReceipt.id}</code></p><p><strong>File SHA-256:</strong></p><code>{evidenceReceipt.source_sha256}</code><p><strong>Record SHA-256:</strong></p><code>{evidenceReceipt.record_sha256}</code><p className="muted">This receipt supports later integrity comparison; it does not prove source authenticity.</p></div>}
               <div className="saved-cases" aria-labelledby="saved-evidence-heading"><strong id="saved-evidence-heading">Saved evidence records</strong>
-                {evidenceLoading ? <p className="empty-state" role="status">Loading evidence records…</p> : evidenceError ? <p className="error-message" role="alert">{evidenceError}</p> : evidenceRecords.length ? evidenceRecords.map(item => <article className="report-history-row" key={item.id}><div><strong>{item.source_label}</strong><small>{pretty(item.event_kind)} · {new Date(item.observed_at).toLocaleString()} · ID {item.id}</small><p>{item.summary}</p><small>File SHA-256: {item.source_sha256}</small><small>Record SHA-256: {item.record_sha256}</small></div>{item.has_private_file && <button className="mini-btn" type="button" disabled={busy} onClick={() => void downloadEvidence(item)}>Download private file</button>}</article>) : <p className="empty-state">No saved evidence records for this case yet. Uploaded file contents remain in private storage; this list exposes only authorized metadata and integrity digests.</p>}
+                {evidenceLoading ? <p className="empty-state" role="status">Loading evidence records…</p> : evidenceError ? <p className="error-message" role="alert">{evidenceError}</p> : evidenceRecords.length ? evidenceRecords.map(item => <article className="report-history-row" key={item.id}><div><strong>{item.source_label}</strong><small>{pretty(item.event_kind)} · {new Date(item.observed_at).toLocaleString()} · ID {item.id}</small><p>{item.summary}</p>{item.source_sha256 ? <small>File SHA-256: {item.source_sha256}</small> : <small>Source file SHA-256: not recorded for metadata-only evidence.</small>}{item.record_sha256 && <small>Record SHA-256: {item.record_sha256}</small>}</div>{item.has_private_file && <button className="mini-btn" type="button" disabled={busy} onClick={() => void downloadEvidence(item)}>Download private file</button>}</article>) : <p className="empty-state">No saved evidence records for this case yet. Uploaded file contents remain in private storage; this list exposes only authorized metadata and integrity digests.</p>}
               </div>
             </section>
           </>
