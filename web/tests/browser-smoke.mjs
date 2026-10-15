@@ -129,6 +129,15 @@ async function inspectViewport(viewport, label) {
       `${label}: skip link should be the first keyboard focus target on ${route.path}`);
     const bodyText = await page.locator('body').innerText();
     assert.match(bodyText, route.heading, `${label}: expected route content missing at ${route.path}`);
+    if (route.path === '/url') {
+      await page.getByLabel('URL or hostname').fill('https://alice:secret@bit.ly/path?token=do-not-display');
+      await page.getByRole('button', { name: 'Inspect URL locally' }).click();
+      const resultText = await page.locator('.notice-panel').innerText();
+      assert.match(resultText, /Credentials embedded in URL/i, `${label}: URL inspector should flag embedded credentials`);
+      assert.match(resultText, /URL-shortening service/i, `${label}: URL inspector should flag a shortener`);
+      assert.doesNotMatch(resultText, /alice|secret|do-not-display/i, `${label}: URL inspector must not display URL credential or query values`);
+      assert.match(resultText, /did not visit this URL/i, `${label}: URL inspector must disclose local-only behavior`);
+    }
     if (route.path === '/') {
       const disclosure = page.locator('.tools-disclosure');
       // Force the disclosure into its expanded state instead of toggling it.

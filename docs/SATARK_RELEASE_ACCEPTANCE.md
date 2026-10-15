@@ -27,7 +27,7 @@ Use dedicated non-production accounts only. Never use real user credentials as C
 - [ ] Evidence objects remain private and downloads are authorized by the same tenant and case relationship.
 
 ## Feature and browser acceptance
-- [ ] Check homepage, investigate, image review, QR, PDF/video local triage, FIRSTLIGHT, cases, reports, learning and login on desktop and mobile.
+- [ ] Check homepage, investigate, local URL review, image review, QR, PDF/video local triage, FIRSTLIGHT, cases, reports, learning and login on desktop and mobile.
 - [ ] Verify keyboard-only use, accessible names, focus visibility, reduced motion, 44px touch targets and no axe violations.
 - [ ] Verify PDF/JSON/TXT exports and confirm all exports state their limitations and do not silently include submitted source text.
 - [ ] Verify case/evidence/report save, reload, status update, duplicate handling, integrity checks and error/retry behavior.
