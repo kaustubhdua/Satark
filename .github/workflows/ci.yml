@@ -151,6 +151,9 @@ jobs:
       SATARK_TEST_USER_B_EMAIL: ${{ secrets.SATARK_TEST_USER_B_EMAIL }}
       SATARK_TEST_USER_B_PASSWORD: ${{ secrets.SATARK_TEST_USER_B_PASSWORD }}
       SATARK_TEST_TENANT_B_ID: ${{ secrets.SATARK_TEST_TENANT_B_ID }}
+      SATARK_TEST_VIEWER_EMAIL: ${{ secrets.SATARK_TEST_VIEWER_EMAIL }}
+      SATARK_TEST_VIEWER_PASSWORD: ${{ secrets.SATARK_TEST_VIEWER_PASSWORD }}
+      SATARK_TEST_VIEWER_TENANT_ID: ${{ secrets.SATARK_TEST_VIEWER_TENANT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -164,7 +167,7 @@ jobs:
         run: npm ci
       - name: Require all integration credentials
         run: |
-          for name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID; do
+          for name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID SATARK_TEST_VIEWER_EMAIL SATARK_TEST_VIEWER_PASSWORD SATARK_TEST_VIEWER_TENANT_ID; do
             if [ -z "${!name}" ]; then echo "::error::Missing required integration configuration: $name"; exit 1; fi
           done
       - name: Run real two-tenant isolation tests
