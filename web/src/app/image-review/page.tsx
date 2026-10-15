@@ -148,7 +148,7 @@ export default function ImageReviewPage() {
     setPreview('');
     if (!file) return;
     if (!ACCEPTED_TYPES.has(file.type)) {
-      setError('Choose a JPEG, PNG, WebP, GIF, or AVIF image. SVG and unknown file types are not accepted.');
+      setError('Choose a JPEG, PNG, WebP, or GIF image. AVIF, SVG and unknown file types are not supported.');
       return;
     }
     if (file.size <= 0 || file.size > MAX_FILE_BYTES) {
