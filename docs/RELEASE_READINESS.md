@@ -6,7 +6,7 @@ This document separates a working hackathon demonstration from a service that is
 
 - **Hackathon demonstration with synthetic/non-sensitive inputs:** suitable only after the exact deployed revision passes the checks below.
 - **Small supervised pilot with non-sensitive content:** conditional on provider, deployment, abuse-control and recovery checks.
-- **Public anonymous service using a shared provider key:** **not ready by default**. A shared per-process sliding-window limiter is defense in depth, not a distributed/global quota: multiple workers, replicas or restarts can bypass its aggregate ceiling. A public service still needs gateway/provider-side global quotas, rate limiting, concurrency limits and cost controls.
+- **Public anonymous analysis service:** **not ready by default**. A shared per-process sliding-window limiter is defense in depth, not a distributed/global quota: multiple workers, replicas or restarts can bypass its aggregate ceiling. A public service still needs gateway-level global quotas, rate limiting, concurrency limits and cost controls.
 - **Confidential, regulated or multi-tenant incident evidence:** **not ready** without authenticated access, authorization/tenant isolation, retention and deletion controls, approved provider data handling, durable case storage, and an independently reviewed operational design.
 - **Production / high availability:** requires a separate threat model, security review, monitoring, incident response, backup/restore and rollback exercises.
 
@@ -16,7 +16,7 @@ This document separates a working hackathon demonstration from a service that is
 2. Run the exact-commit CI and CodeQL workflows. Check dependency consistency, Python compilation, unit tests, desktop/mobile browser smoke tests, report download, and the offline sample. Review every new high/critical code-scanning alert on the changed code; do not suppress an alert without a documented, reviewed rationale.
 3. The current Python/Streamlit analysis client uses self-hosted Ollama and does not require a third-party API key. Configure `OLLAMA_BASE_URL` only for an operator-controlled localhost/private-network Ollama service; never expose an Ollama endpoint publicly. Do not add API keys to `.streamlit/secrets.toml` committed to Git, source files, screenshots, issue reports or browser code. If a legacy provider integration is intentionally reintroduced, keep its credential in the host's secret manager and review its data-processing terms first.
 4. Keep hosted exception details hidden. The repository's Streamlit defaults set `client.showErrorDetails = "none"` and cap a single upload at 50 MB; PDF and image processing have stricter per-format limits. Confirm the host respects these settings and any platform-level request limits.
-5. Test without a provider key. The offline sample and deterministic FIRSTLIGHT demo must remain usable, and failed live-provider requests must not be presented as a safe verdict.
+5. Test without third-party API credentials. The offline sample and deterministic FIRSTLIGHT demo must remain usable, local-model failures must degrade safely, and failed optional external lookups must never be presented as proof that content is safe.
 6. With a dedicated non-production Ollama instance and pinned test models, exercise a successful text scan and supported vision scan, connection timeout, unavailable model, malformed model output, oversized response, and rate-limit response. Verify deterministic fallback and user-facing errors do not expose secrets, request headers or raw provider payloads. Do not treat local inference as a calibrated or exhaustive detection verdict.
 7. Exercise malformed, encrypted and oversized PDFs; malformed and oversized images; decompression-bomb-like image dimensions; empty and oversized videos; invalid URLs; private/reserved IPs; mixed DNS answers; and redirects to blocked destinations. Confirm rejection is graceful and bounded.
 8. Verify the hosting layer enforces request body size, execution timeout, concurrency and outbound network policy. Application URL checks are defense in depth, not a replacement for egress controls.
@@ -41,7 +41,7 @@ This document separates a working hackathon demonstration from a service that is
 - Hosting target / app URL:
 - CI run:
 - CodeQL run:
-- Live provider test:
+- Local-model and optional external-lookup tests:
 - File and URL abuse tests:
 - Secret and privacy review:
 - Resource and concurrency checks:
@@ -81,7 +81,7 @@ The current `ai_provider.py` client uses self-hosted Ollama and does not call Gr
 
 1. Deployment owner updates the actual configured deployment repository/branch to the approved candidate, then records the resulting deployed SHA from the host/build evidence.
 2. Run CI and CodeQL against the exact final candidate SHA; the previously documented green results apply to the earlier PR head, not automatically to later commits.
-3. Complete live, provider-free smoke tests and exports first; then use an authorized dedicated test key to exercise provider success, timeout, invalid key, unavailable model and rate-limit paths.
+3. Complete live, credential-free smoke tests and exports first. Then test local Ollama success, timeout, unavailable model and malformed output with a dedicated non-production instance; separately test any explicitly enabled external threat-intelligence integration with authorized test credentials.
 4. Run controlled upload/URL abuse cases and verify bounded failure behavior; do not test against internal or third-party systems without authorization.
 5. Verify host-level body/time/concurrency/egress controls and inspect logs for accidental key or submitted-content exposure.
 6. Make a human go/no-go decision and assign an owner for rollback, incident handling and privacy questions.
