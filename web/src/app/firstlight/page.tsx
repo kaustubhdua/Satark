@@ -103,8 +103,25 @@ export default function FirstlightPage() {
     finally { setBusy(false); }
   }
   async function tamper(item: Evidence) {
-    const next = evidence.map(e => e.id===item.id ? {...e,summary:e.tampered ? e.summary.replace(' [SIMULATED TAMPER]','') : e.summary+' [SIMULATED TAMPER]',tampered:!e.tampered} : e);
-    setEvidence(next); log('TAMPER_SIMULATED',item.id+' modified for training; original digest remains to demonstrate integrity mismatch.');
+    const changed = evidence.map(e => {
+      if (e.id !== item.id) return e;
+      const summary = e.tampered
+        ? e.summary.replace(/ \\[SIMULATED TAMPER\\]$/, '')
+        : e.summary + ' [SIMULATED TAMPER]';
+      return { ...e, summary };
+    });
+    // Verify integrity from the actual record bytes/fields, not from a UI toggle.
+    const verified: Evidence[] = [];
+    for (const record of changed) {
+      const canonical = { id: record.id, time: record.time, source: record.source, kind: record.kind, summary: record.summary };
+      const currentDigest = await digest(JSON.stringify(canonical));
+      verified.push({ ...record, tampered: currentDigest !== record.digest });
+    }
+    setEvidence(verified);
+    const result = verified.find(e => e.id === item.id);
+    log(result?.tampered ? 'INTEGRITY_MISMATCH' : 'INTEGRITY_RESTORED', item.id + (result?.tampered
+      ? ' current SHA-256 differs from the original digest.'
+      : ' current SHA-256 matches the original digest again.'));
   }
   function responseAction(action: string, decision: 'Approved'|'Rejected') {
     setActions(prev=>[...prev,decision+' · '+action]); log('SIMULATED_RESPONSE_'+decision.toUpperCase(),action+' · training only; no real system action executed.');
