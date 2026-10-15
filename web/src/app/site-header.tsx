@@ -9,6 +9,7 @@ const links = [
   { href: '/qr', label: 'QR review' },
   { href: '/image-review', label: 'Image review' },
   { href: '/firstlight', label: 'FIRSTLIGHT' },
+  { href: '/cases', label: 'Cases' },
   { href: '/reports', label: 'Reports' },
   { href: '/learn', label: 'Learn' },
   { href: '/login', label: 'Workspace' },
@@ -27,7 +28,7 @@ export default function SiteHeader({ status = false }: { status?: boolean }) {
         </Link>
         <nav className="nav-links" aria-label="Main navigation">
           {links.map(link => {
-            const active = pathname === link.href || (link.href === '/firstlight' && pathname.startsWith('/firstlight/'));
+            const active = pathname === link.href || (link.href === '/firstlight' && pathname.startsWith('/firstlight/')) || (link.href === '/cases' && pathname.startsWith('/cases/'));
             return (
               <Link key={link.href} href={link.href} className={active ? 'active' : undefined}
                 aria-current={active ? 'page' : undefined}>
