@@ -43,3 +43,18 @@ Use dedicated non-production accounts only. Never use real user credentials as C
 
 ## Non-code gates
 A developer cannot manufacture secret values, test identities, billing quota or owner-level branch-protection permissions. Keep release blocked until the authorized owner supplies/configures these items and the acceptance tests pass.
+
+## Live release status — 2026-10-16 IST
+
+This status record is intentionally separate from the checklist above. It records observed blockers and does not grant release approval.
+
+- Repository: `kaustubhdua/Satark`, PR [#125](https://github.com/kaustubhdua/Satark/pull/125).
+- Observed PR head: `66c2ec2bd1b1af9aad88169c0a569a34d1c274a6`; observed `main`: `8a8882ff62a7a4189f1a21267e853fb93e85c6e8`.
+- GitHub Actions at the PR head: SATARK AI CI run 35, CodeQL run 828, CI run 2211, and Web CI run 952 all report success.
+- Vercel's PR-head status is failing with `build-rate-limit` / `api-deployments-free-per-day`. The latest observed READY preview is commit `40463ee8cb8a1d082406b5cef4a89190398a92c8`, which is behind the observed PR head. Do not repeatedly retry builds while the quota restriction remains.
+- The production alias `satark-qzym.vercel.app` was observed on commit `265dae7f97d7a6c1fde342db93e76dd0ccd6eedf`, not the observed current main commit. Exact-SHA production acceptance is therefore outstanding.
+- Production environment inspection found the Upstash URL/token variable names absent. The analysis endpoint correctly fails closed when shared rate limiting is not configured; this leaves the primary analysis action unavailable in production.
+- The PR's current release notes also identify empty threat-intelligence provider credentials, missing dedicated synthetic tenant fixtures, owner-level branch-protection verification, and incomplete acceptance for cross-browser QR decoding, full PDF text extraction, semantic/audio video analysis, retention/deletion, and authenticated case/evidence/report journeys.
+- The configured Supabase project must be confirmed as the dedicated SATARK project before any migration or test data is written. Do not seed or mutate the existing Nirdhoom project without owner confirmation.
+- **Decision: NOT RELEASE-APPROVED.** Do not merge/promote based on green GitHub CI alone. The owner must resolve quota and environment prerequisites, then run the exact-commit deployment, shared-limiter, tenant-isolation, and production smoke gates above.
+
