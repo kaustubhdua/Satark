@@ -102,6 +102,23 @@ export default function FirstlightPage() {
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
     finally { setBusy(false); }
   }
+  async function verifyIntegrity(records: Evidence[] = evidence) {
+    const verified: Evidence[] = [];
+    for (const record of records) {
+      const canonical = { id: record.id, time: record.time, source: record.source, kind: record.kind, summary: record.summary };
+      const currentDigest = await digest(JSON.stringify(canonical));
+      verified.push({ ...record, tampered: currentDigest !== record.digest });
+    }
+    setEvidence(verified);
+    const mismatches = verified.filter(record => record.tampered);
+    log(mismatches.length ? 'INTEGRITY_MISMATCH' : 'INTEGRITY_VERIFIED',
+      mismatches.length
+        ? mismatches.length + ' record(s) differ from their stored SHA-256 digest: ' + mismatches.map(record => record.id).join(', ')
+        : verified.length + ' record(s) match their stored SHA-256 digest.');
+    setNotice(mismatches.length
+      ? 'Integrity check found ' + mismatches.length + ' mismatch(es). Review the marked records; this check does not prove original-source authenticity.'
+      : 'Integrity check complete: all ' + verified.length + ' current records match their stored digests. This does not independently prove original-source authenticity.');
+  }
   async function tamper(item: Evidence) {
     const changed = evidence.map(e => {
       if (e.id !== item.id) return e;
@@ -110,18 +127,7 @@ export default function FirstlightPage() {
         : e.summary + ' [SIMULATED TAMPER]';
       return { ...e, summary };
     });
-    // Verify integrity from the actual record bytes/fields, not from a UI toggle.
-    const verified: Evidence[] = [];
-    for (const record of changed) {
-      const canonical = { id: record.id, time: record.time, source: record.source, kind: record.kind, summary: record.summary };
-      const currentDigest = await digest(JSON.stringify(canonical));
-      verified.push({ ...record, tampered: currentDigest !== record.digest });
-    }
-    setEvidence(verified);
-    const result = verified.find(e => e.id === item.id);
-    log(result?.tampered ? 'INTEGRITY_MISMATCH' : 'INTEGRITY_RESTORED', item.id + (result?.tampered
-      ? ' current SHA-256 differs from the original digest.'
-      : ' current SHA-256 matches the original digest again.'));
+    await verifyIntegrity(changed);
   }
   function responseAction(action: string, decision: 'Approved'|'Rejected') {
     setActions(prev=>[...prev,decision+' · '+action]); log('SIMULATED_RESPONSE_'+decision.toUpperCase(),action+' · training only; no real system action executed.');
@@ -174,7 +180,7 @@ export default function FirstlightPage() {
       <div className="firstlight-layout"><aside className="incident-nav"><div className="eyebrow">INVESTIGATION FLOW</div>{[['overview','Overview'],['evidence','Evidence ledger'],['findings','Findings & gaps'],['timeline','Event timeline'],['response','Response review'],['audit','Audit trail']].map(([key,label])=><button key={key} className={selected===key?'selected':''} onClick={()=>setSelected(key)}>{label}<span>{key==='evidence'?evidence.length:key==='findings'?findings.length:key==='audit'?audit.length:''}</span></button>)}<div className="side-boundary">SESSION ONLY<br/>No real response actions</div></aside>
       <section className="incident-content">
         {selected==='overview'&&<div className="panel"><div className="panel-kicker">CASE OVERVIEW</div><h2>Establish the timeline before deciding.</h2><p>Start with the synthetic case or import a permitted JSON/CSV event artifact. Each event is normalized, hashed locally and reviewed with simple deterministic patterns.</p><div className="overview-steps">{[['01','Collect','Load training data or import events.'],['02','Validate','Inspect digests and source context.'],['03','Correlate','Review rules-based findings and gaps.'],['04','Decide','Record simulated response approvals.']].map(x=><div key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]}</small></div>)}</div>{!caseOpen&&<button className="btn btn-primary" onClick={loadCase}>Load synthetic case →</button>}</div>}
-        {selected==='evidence'&&<div className="panel"><div className="panel-heading"><div><div className="panel-kicker">EVIDENCE LEDGER</div><h2>Artifacts & integrity</h2></div><div className="actions"><button className="mini-btn" onClick={exportEvidence} disabled={!evidence.length}>Export evidence JSON ↓</button><span className="pill">{importName||'TRAINING CASE'}</span></div></div>{!evidence.length?<p className="empty-state">No case loaded. Launch the training case or import a JSON/CSV event file.</p>:<><div className="table-wrap"><table className="evidence-table"><thead><tr><th>Artifact</th><th>Source / time</th><th>Observation</th><th>Integrity</th><th/></tr></thead><tbody>{evidence.map(item=><tr key={item.id}><td><strong>{item.id}</strong><small>{item.kind}</small></td><td>{item.source}<small>{item.time}</small></td><td>{item.summary}<small className="digest">{item.digest}</small></td><td><span className={item.tampered?'risk-chip':'safe-chip'}>{item.tampered?'MISMATCH':'HASHED'}</span></td><td><button className="mini-btn" onClick={()=>tamper(item)}>{item.tampered?'Restore demo':'Simulate tamper'}</button></td></tr>)}</tbody></table></div><p className="hint">Simulation note: a tamper toggle modifies the record while preserving its original digest so the mismatch can be demonstrated.</p></>}</div>}
+        {selected==='evidence'&&<div className="panel"><div className="panel-heading"><div><div className="panel-kicker">EVIDENCE LEDGER</div><h2>Artifacts & integrity</h2></div><div className="actions"><button className="mini-btn" onClick={() => { void verifyIntegrity(); }} disabled={!evidence.length || busy}>Verify integrity</button><button className="mini-btn" onClick={exportEvidence} disabled={!evidence.length}>Export evidence JSON ↓</button><span className="pill">{importName||'TRAINING CASE'}</span></div></div>{!evidence.length?<p className="empty-state">No case loaded. Launch the training case or import a JSON/CSV event file.</p>:<><div className="table-wrap"><table className="evidence-table"><thead><tr><th>Artifact</th><th>Source / time</th><th>Observation</th><th>Integrity</th><th/></tr></thead><tbody>{evidence.map(item=><tr key={item.id}><td><strong>{item.id}</strong><small>{item.kind}</small></td><td>{item.source}<small>{item.time}</small></td><td>{item.summary}<small className="digest">{item.digest}</small></td><td><span className={item.tampered?'risk-chip':'safe-chip'}>{item.tampered?'MISMATCH':'HASHED'}</span></td><td><button className="mini-btn" onClick={()=>tamper(item)}>{item.tampered?'Restore demo':'Simulate tamper'}</button></td></tr>)}</tbody></table></div><p className="hint">Simulation note: a tamper toggle modifies the record while preserving its original digest so the mismatch can be demonstrated.</p></>}</div>}
         {selected==='findings'&&<div className="panel"><div className="panel-kicker">DETERMINISTIC CORRELATION</div><h2>Findings & evidence gaps</h2><p>Rules run locally against imported summaries and event types. These are leads to review, not proof of compromise.</p>{!caseOpen?<p className="empty-state">Load a case to generate findings.</p>:findings.length?findings.map((f,i)=><article className="finding-card" key={f.title}><div className="finding-number">{String(i+1).padStart(2,'0')}</div><div><div className="finding-title-row"><h3>{f.title}</h3><span className={f.severity==='High'?'risk-chip':'review-chip'}>{f.severity}</span></div><p>{f.detail}</p><div className="reference-list">Evidence references: {f.refs.length?f.refs.join(', '):'No direct references'}</div></div></article>):<p className="empty-state">No configured pattern matched. This does not prove the incident is benign.</p>}<div className="gap-card"><strong>Evidence gaps to resolve</strong><ul><li>Confirm the source system and collection time for each artifact.</li><li>Independently validate sign-in IP, device, and user context.</li><li>Verify any destination domain through a trusted channel.</li><li>Preserve originals and document external corroboration.</li></ul></div></div>}
         {selected==='timeline'&&<div className="panel"><div className="panel-kicker">EVENT RECONSTRUCTION</div><h2>Put observations in context.</h2>{!timeline.length?<p className="empty-state">No timeline yet. Load or import evidence first.</p>:<div className="timeline-list">{timeline.map((item,i)=><div className="timeline-item" key={item.id}><div className="timeline-rail"><span/></div><div className="timeline-time">{new Date(item.time).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div><strong>{item.kind.replaceAll('_',' ')}</strong><p>{item.summary}</p><small>{item.source} · {item.id}</small></div>)}</div>}</div>}
         {selected==='response'&&<div className="panel"><div className="panel-kicker">HUMAN DECISION GATE</div><h2>Review before you respond.</h2><p>Approve or reject these simulated response proposals. Decisions are recorded in this browser session only; nothing is sent to an endpoint, identity provider, or network control.</p>{[['Preserve relevant logs','Export and retain original evidence under your organization’s policy.'],['Verify the account owner','Use a trusted out-of-band channel before making account changes.'],['Escalate for incident review','Ask an authorized responder to confirm scope and severity.']].map(([action,detail])=><div className="response-row" key={action}><div><strong>{action}</strong><p>{detail}</p></div><div className="response-buttons"><button className="mini-btn approve" onClick={()=>responseAction(action,'Approved')}>Approve</button><button className="mini-btn" onClick={()=>responseAction(action,'Rejected')}>Reject</button></div></div>)}{actions.length>0&&<div className="gap-card"><strong>Recorded decisions</strong>{actions.map((a,i)=><p key={i}>{a}</p>)}</div>}</div>}
