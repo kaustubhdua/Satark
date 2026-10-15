@@ -89,7 +89,7 @@ export default function ReportsPage() {
     saveFile('satark-review-notes.txt', notes + analysisText + '\n', 'text/plain;charset=utf-8');
   }
 
-  function downloadJson() {
+  function printPdf() {\n    if (!report.trim() && !savedAnalysis) return;\n    window.print();\n  }\n\n  function downloadJson() {
     const notes = report.trim();
     if (!notes && !savedAnalysis) return;
     const exportedAt = new Date().toISOString();
@@ -137,12 +137,38 @@ export default function ReportsPage() {
             <div className="button-row">
               <button className="btn btn-secondary" type="button" disabled={!report} onClick={() => { setReport(''); setExported(false); }}>Clear notes</button>
               <button className="btn btn-primary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={download}>Export notes (.txt) ↓</button>
-              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={downloadJson}>Export notes (.json) ↓</button>
+              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={downloadJson}>Export notes (.json) ↓</button>\n              <button className="btn btn-secondary" type="button" disabled={!report.trim() && !savedAnalysis} onClick={printPdf}>Print / Save as PDF ↗</button>
             </div>
           </div>
           <p className="export-feedback" role="status" aria-live="polite">{exported ? 'Your notes were sent to the browser download manager.' : ''}</p>
         </section>
-        <PersistentReports notes={report} analysis={savedAnalysis} />
+        <PersistentReports notes={report} analysis={savedAnalysis} />\n
+        <section className="print-report-sheet" aria-label="Printable SATARK report">
+          <div className="print-report-brand">SATARK · DIGITAL THREAT INVESTIGATION</div>
+          <h1>Investigation review report</h1>
+          <p className="print-report-meta">Generated {new Date().toISOString()} · Local review notes with optional session analysis</p>
+          <h2>Investigation notes</h2>
+          <pre className="print-report-notes">{report.trim() || 'No additional notes supplied.'}</pre>
+          {savedAnalysis && <>
+            <h2>Analysis snapshot</h2>
+            <p><strong>Created:</strong> {savedAnalysis.created_at}</p>
+            <p><strong>Category:</strong> {savedAnalysis.analysis.threat_category}</p>
+            <p><strong>Risk signal:</strong> {savedAnalysis.analysis.risk_score}/100</p>
+            <p><strong>Summary:</strong> {savedAnalysis.analysis.summary}</p>
+            <h3>Deterministic signals</h3>
+            <ul>{savedAnalysis.analysis.deterministic_signals.map((item, i) => <li key={'signal-' + i}>{item}</li>)}</ul>
+            <h3>Indicators</h3>
+            <ul>{savedAnalysis.analysis.key_indicators.map((item, i) => <li key={'indicator-' + i}>{item}</li>)}</ul>
+            <h3>Recommendations</h3>
+            <ul>{savedAnalysis.analysis.recommendations.map((item, i) => <li key={'recommendation-' + i}>{item}</li>)}</ul>
+            <h3>Limitations</h3>
+            <ul>{savedAnalysis.analysis.limitations.map((item, i) => <li key={'limitation-' + i}>{item}</li>)}</ul>
+            <p><strong>Model:</strong> {savedAnalysis.analysis.model}</p>
+            <p><strong>Notice:</strong> {savedAnalysis.analysis.notice}</p>
+          </>}
+          <hr />
+          <p className="print-report-disclaimer">Triage output is not independently verified evidence or a verdict that content is safe or malicious. External reputation observations are not proof of safety. The original submitted source text is not included in this report snapshot. Preserve original evidence securely and verify findings through trusted channels.</p>
+        </section>
         <div className="notice-panel"><strong>Report boundary</strong><p>Local exports include notes and, when available, the last successful analysis snapshot from this browser tab. Persistent reports are immutable snapshots attached to a case and have a server-calculated digest. Neither type is a certified forensic report or proof of source authenticity.</p></div>
       </div>
     </main>
