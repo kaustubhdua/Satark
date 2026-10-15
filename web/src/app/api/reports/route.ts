@@ -15,7 +15,7 @@ async function auth(request: Request, cfg: {url:string;key:string}) {
   if (!match) return { token: null, userId: null, error: reply({ error: 'Sign in is required.' }, 401) };
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 4000);
   try {
-    const response = await fetch(cfg.url + '/auth/v1/user', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + match[1] }, cache: 'no-store', signal: controller.signal });
+    const response = await fetch(cfg.url + '/auth/v1/user', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + match[1] }, cache: 'no-store', redirect: 'error', signal: controller.signal });
     const user: unknown = response.ok ? await response.json() : null;
     if (!user || typeof user !== 'object' || !('id' in user) || typeof user.id !== 'string' || !UUID.test(user.id)) return { token: null, userId: null, error: reply({ error: 'Your session is invalid or expired.' }, 401) };
     return { token: match[1], userId: user.id, error: null };
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   if (!tenantId || !UUID.test(tenantId) || !caseId || !UUID.test(caseId)) return reply({ error: 'Valid tenant_id and case_id are required.' }, 400);
   try {
     const query = new URLSearchParams({ select:'id,tenant_id,case_id,title,report_version,snapshot_sha256,created_by,created_at',tenant_id:'eq.'+tenantId,case_id:'eq.'+caseId,order:'created_at.desc',limit:'100' });
-    const response = await fetch(cfg.url+'/rest/v1/satark_reports?'+query,{headers:{apikey:cfg.key,Authorization:'Bearer '+a.token},cache:'no-store',signal:AbortSignal.timeout(8_000)});
+    const response = await fetch(cfg.url+'/rest/v1/satark_reports?'+query,{headers:{apikey:cfg.key,Authorization:'Bearer '+a.token},cache: 'no-store', redirect: 'error',signal:AbortSignal.timeout(8_000)});
     if (response.status===401||response.status===403) return reply({error:'Workspace access denied.'},403);
     if (!response.ok) return reply({error:'Report storage is temporarily unavailable.'},503);
     return reply({reports:await response.json()});
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   try{
     const response=await fetch(cfg.url+'/rest/v1/satark_reports',{
       method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+a.token,'Content-Type':'application/json',Accept:'application/json',Prefer:'return=representation'},
-      body:JSON.stringify({tenant_id:tenantId,case_id:caseId,title,report_version:1,snapshot,snapshot_sha256:snapshotSha,created_by:a.userId}),cache:'no-store',signal:AbortSignal.timeout(8_000)
+      body:JSON.stringify({tenant_id:tenantId,case_id:caseId,title,report_version:1,snapshot,snapshot_sha256:snapshotSha,created_by:a.userId}),cache: 'no-store', redirect: 'error',signal:AbortSignal.timeout(8_000)
     });
     if(response.status===401||response.status===403)return reply({error:'You do not have permission to save this report.'},403);
     if(!response.ok)return reply({error:'Report could not be saved. Verify case access and retry.'},422);
