@@ -37,6 +37,7 @@ const browser = await chromium.launch({ headless: true });
 const routes = [
   { path: '/', heading: /SATARK|SENTINEL/i },
   { path: '/investigate', heading: /investigate|analysis|suspicious/i },
+  { path: '/url', heading: /inspect the link|URL structure review/i },
   { path: '/image-review', heading: /image review|inspect the image|image metadata/i },
   { path: '/tools', heading: /every tool|capability directory/i },
   { path: '/qr', heading: /decode first|QR investigation/i },

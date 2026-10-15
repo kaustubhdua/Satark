@@ -6,7 +6,7 @@ import ServiceReadiness from '../components/service-readiness';
 
 const tools = [
   ['01', 'Text & message triage', 'Spot pressure tactics, impersonation cues and risky requests.', '/investigate', 'OPEN ANALYSIS'],
-  ['02', 'URL review', 'Review a URL as text without automatically visiting it.', '/investigate', 'OPEN ANALYSIS'],
+  ['02', 'URL review', 'Inspect host, scheme and format cues locally without visiting the destination.', '/url', 'INSPECT URL'],
   ['03', 'Image metadata & integrity', 'Inspect supported metadata markers and calculate a SHA-256 fingerprint locally. Not a deepfake verdict.', '/image-review', 'OPEN IMAGE REVIEW'],
   ['04', 'QR-code investigation', 'Decode QR payloads locally in supported browsers; cross-browser decoding and destination inspection are not yet available.', '/qr', 'OPEN QR DECODER'],
   ['05', 'PDF & document review', 'Inspect PDF structure and SHA-256 locally. Full text extraction and malware scanning are not provided.', '/tools#pdf-review', 'OPEN PDF REVIEW'],
