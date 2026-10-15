@@ -48,6 +48,20 @@ test('shared rate limit configuration is reported without claiming connectivity'
   assert.equal(configured.checks.rateLimit.connectivityVerified, false);
 });
 
+test('unsafe or malformed dependency URLs are never reported as configured', () => {
+  for (const url of ['http://redis.example.com', 'not-a-url', 'https://user:password@redis.example.com']) {
+    const snapshot = buildHealthSnapshot({
+      VERCEL: '1',
+      UPSTASH_REDIS_REST_URL: url,
+      UPSTASH_REDIS_REST_TOKEN: 'test-token',
+      SUPABASE_URL: url,
+      SUPABASE_PUBLISHABLE_KEY: 'public-key',
+    });
+    assert.equal(snapshot.checks.rateLimit.mode, 'misconfigured', 'unsafe Redis URL: ' + url);
+    assert.equal(snapshot.checks.rateLimit.configured, false, 'unsafe Redis URL must fail closed: ' + url);
+    assert.equal(snapshot.checks.persistentStorage.configured, false, 'unsafe Supabase URL: ' + url);
+  }
+});
 
 test('rate-limit status copy distinguishes fail-closed production from local-only limiting', () => {
   const production = buildHealthSnapshot({ VERCEL: '1' });
@@ -55,6 +69,9 @@ test('rate-limit status copy distinguishes fail-closed production from local-onl
 
   const partial = buildHealthSnapshot({ VERCEL: '1', UPSTASH_REDIS_REST_URL: 'https://redis.example.com' });
   assert.match(describeRateLimitStatus(partial.checks.rateLimit), /configuration is incomplete/i);
+
+  const unsafe = buildHealthSnapshot({ VERCEL: '1', UPSTASH_REDIS_REST_URL: 'http://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token' });
+  assert.match(describeRateLimitStatus(unsafe.checks.rateLimit), /incomplete or unsafe/i);
 
   const local = buildHealthSnapshot({});
   assert.match(describeRateLimitStatus(local.checks.rateLimit), /process-local, not shared/i);
