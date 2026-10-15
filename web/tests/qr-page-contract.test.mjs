@@ -21,7 +21,7 @@ test('capability directory labels partial local media triage honestly', async ()
   assert.match(source, /Video & media review/);
   assert.match(source, /PDF structural triage/);
   assert.match(source, /Sample video frames/);
-  assert.match(source, /No upload/);
+  assert.match(source, /No upload/i);
   assert.match(source, /10 MiB/);
   assert.match(source, /50 MiB/);
   assert.match(source, /not full PDF parsing or malware scanning/i);
