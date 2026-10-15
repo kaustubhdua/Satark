@@ -12,6 +12,53 @@ function config() {
   try { const url = new URL(raw); if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return null; return { url: url.origin, key }; }
   catch { return null; }
 }
+export async function GET(request: Request) {
+  const cfg = config();
+  if (!cfg) return reply({ error: 'Evidence storage is not configured.' }, 503);
+  const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get('authorization') || '');
+  if (!match) return reply({ error: 'Sign in is required.' }, 401);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const auth = await fetch(cfg.url + '/auth/v1/user', {
+      headers: { apikey: cfg.key, Authorization: 'Bearer ' + match[1] },
+      cache: 'no-store', redirect: 'error', signal: controller.signal,
+    });
+    const user: unknown = auth.ok ? await auth.json() : null;
+    if (!user || typeof user !== 'object' || !('id' in user) || typeof user.id !== 'string' || !UUID.test(user.id)) {
+      return reply({ error: 'Your session is invalid or expired.' }, 401);
+    }
+  } catch {
+    return reply({ error: 'Authentication service is temporarily unavailable.' }, 503);
+  } finally { clearTimeout(timer); }
+
+  const url = new URL(request.url);
+  const tenantId = url.searchParams.get('tenant_id') || '';
+  const caseId = url.searchParams.get('case_id') || '';
+  if (!UUID.test(tenantId) || !UUID.test(caseId)) return reply({ error: 'Valid tenant_id and case_id are required.' }, 400);
+  const query = new URLSearchParams({
+    select: 'id,tenant_id,case_id,source_label,event_kind,observed_at,summary,source_sha256,record_sha256,created_at',
+    tenant_id: 'eq.' + tenantId,
+    case_id: 'eq.' + caseId,
+    order: 'observed_at.desc',
+    limit: '100',
+  });
+  try {
+    const response = await fetch(cfg.url + '/rest/v1/satark_evidence?' + query.toString(), {
+      headers: { apikey: cfg.key, Authorization: 'Bearer ' + match[1], Accept: 'application/json' },
+      cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8000),
+    });
+    if (response.status === 401 || response.status === 403) return reply({ error: 'You do not have permission to view evidence for this case.' }, 403);
+    if (!response.ok) return reply({ error: 'Evidence records could not be loaded. Check case access and retry.' }, 422);
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows)) return reply({ error: 'Evidence storage returned an invalid response.' }, 502);
+    return reply({ evidence: rows });
+  } catch {
+    return reply({ error: 'Evidence storage is temporarily unavailable.' }, 503);
+  }
+}
+
 export async function POST(request: Request) {
   const cfg = config(); if (!cfg) return reply({ error: 'Evidence storage is not configured.' }, 503);
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get('authorization') || '');

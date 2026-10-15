@@ -8,6 +8,8 @@ import {
   type SatarkSession, type SatarkTenant,
 } from '../../lib/satark-auth';
 
+type EvidenceRecord = { id: string; source_label: string; event_kind: string; observed_at: string; summary: string; source_sha256: string; record_sha256: string; created_at: string };
+
 type CaseRow = {
   id: string;
   tenant_id: string;
@@ -36,6 +38,10 @@ export default function CasesPage() {
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceSummary, setEvidenceSummary] = useState('Evidence file uploaded.');
   const [evidenceReceipt, setEvidenceReceipt] = useState<{ id: string; source_sha256: string; record_sha256: string } | null>(null);
+  const [evidenceRecords, setEvidenceRecords] = useState<EvidenceRecord[]>([]);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceError, setEvidenceError] = useState('');
+  const [evidenceRefresh, setEvidenceRefresh] = useState(0);
   const [severity, setSeverity] = useState<CaseRow['severity']>('unknown');
   const [statusFilter, setStatusFilter] = useState<'all' | CaseRow['status']>('all');
   const [search, setSearch] = useState('');
@@ -74,6 +80,23 @@ export default function CasesPage() {
   }
 
   useEffect(() => { void initialize(); }, []);
+
+  useEffect(() => {
+    if (!session || !tenantId || !evidenceCaseId) { setEvidenceRecords([]); setEvidenceError(''); return; }
+    let cancelled = false;
+    setEvidenceLoading(true); setEvidenceError('');
+    fetch('/api/evidence/records?tenant_id=' + encodeURIComponent(tenantId) + '&case_id=' + encodeURIComponent(evidenceCaseId), {
+      headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+    }).then(async response => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Could not load evidence records.');
+      if (!Array.isArray(data.evidence)) throw new Error('Evidence service returned an invalid record list.');
+      if (!cancelled) setEvidenceRecords(data.evidence as EvidenceRecord[]);
+    }).catch(cause => {
+      if (!cancelled) { setEvidenceRecords([]); setEvidenceError(cause instanceof Error ? cause.message : 'Could not load evidence records.'); }
+    }).finally(() => { if (!cancelled) setEvidenceLoading(false); });
+    return () => { cancelled = true; };
+  }, [session, tenantId, evidenceCaseId, evidenceRefresh]);
 
   const visibleCases = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -138,6 +161,7 @@ export default function CasesPage() {
       const digest = data.integrity as { source_sha256?: string; record_sha256?: string } | undefined;
       if (!row?.id || !digest?.source_sha256 || !digest?.record_sha256) throw new Error('Upload response did not include a complete integrity receipt. Contact an administrator before retrying.');
       setEvidenceReceipt({ id: row.id, source_sha256: digest.source_sha256, record_sha256: digest.record_sha256 });
+      setEvidenceRefresh(value => value + 1);
       setEvidenceFile(null); setEvidenceSummary('Evidence file uploaded.');
       const input = document.getElementById('case-evidence-file') as HTMLInputElement | null;
       if (input) input.value = '';
@@ -250,6 +274,9 @@ export default function CasesPage() {
                 <button className="btn btn-primary" type="submit" disabled={busy || !cases.length || !evidenceFile}>{busy ? 'Uploading privately…' : 'Upload evidence & calculate digest'}</button>
               </form>
               {evidenceReceipt && <div className="notice-panel" role="status" aria-live="polite"><h3>Evidence integrity receipt</h3><p><strong>Evidence ID:</strong> <code>{evidenceReceipt.id}</code></p><p><strong>File SHA-256:</strong></p><code>{evidenceReceipt.source_sha256}</code><p><strong>Record SHA-256:</strong></p><code>{evidenceReceipt.record_sha256}</code><p className="muted">This receipt supports later integrity comparison; it does not prove source authenticity.</p></div>}
+              <div className="saved-cases" aria-labelledby="saved-evidence-heading"><strong id="saved-evidence-heading">Saved evidence records</strong>
+                {evidenceLoading ? <p className="empty-state" role="status">Loading evidence records…</p> : evidenceError ? <p className="error-message" role="alert">{evidenceError}</p> : evidenceRecords.length ? evidenceRecords.map(item => <article className="report-history-row" key={item.id}><div><strong>{item.source_label}</strong><small>{pretty(item.event_kind)} · {new Date(item.observed_at).toLocaleString()} · ID {item.id}</small><p>{item.summary}</p><small>File SHA-256: {item.source_sha256}</small><small>Record SHA-256: {item.record_sha256}</small></div></article>) : <p className="empty-state">No saved evidence records for this case yet. Uploaded file contents remain in private storage; this list exposes only authorized metadata and integrity digests.</p>}
+              </div>
             </section>
           </>
         )}
