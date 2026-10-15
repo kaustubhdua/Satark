@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const response = await fetch(url.origin + '/rest/v1/rpc/satark_verify_audit_chain', {
       method: 'POST',
       headers: { apikey: key, Authorization: 'Bearer ' + match[1], 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ target_tenant: tenantId }), cache: 'no-store', signal: AbortSignal.timeout(8_000),
+      body: JSON.stringify({ target_tenant: tenantId }), cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8_000),
     });
     if (response.status === 401 || response.status === 403) return reply({ error: 'Workspace access denied.' }, 403);
     if (!response.ok) return reply({ error: 'Audit chain could not be verified. Check database migration status and workspace permissions.' }, 503);
