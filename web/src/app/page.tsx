@@ -11,7 +11,7 @@ const tools = [
   ['04', 'QR-code investigation', 'Decode QR payloads locally in supported browsers; cross-browser decoding and destination inspection are not yet available.', '/qr', 'OPEN QR DECODER'],
   ['05', 'PDF & document review', 'Inspect PDF structure and SHA-256 locally. Full text extraction and malware scanning are not provided.', '/tools#pdf-review', 'OPEN PDF REVIEW'],
   ['06', 'Video & media review', 'Sample up to five video frames locally and calculate fingerprints. No semantic or audio analysis is provided.', '/tools#video-review', 'OPEN VIDEO REVIEW'],
-  ['07', 'Persistent history & exports', 'Review reports here; durable case history requires a configured workspace database.', '/reports', 'OPEN REPORTS'],
+  ['07', 'Persistent cases & exports', 'Create tenant-scoped cases, track status and continue evidence-led investigations.', '/cases', 'OPEN CASES'],
   ['08', 'Academy & scam challenge', 'Practice recognizing social-engineering patterns with educational examples.', '/learn', 'OPEN LEARNING'],
 ];
 
