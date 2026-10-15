@@ -82,7 +82,7 @@ export default function CasesPage() {
   useEffect(() => { void initialize(); }, []);
 
   useEffect(() => {
-    if (!session || !tenantId || !evidenceCaseId) { setEvidenceRecords([]); setEvidenceError(''); return; }
+    if (!session || !tenantId || !evidenceCaseId) { setEvidenceRecords([]); setEvidenceError(''); setEvidenceLoading(false); return; }
     let cancelled = false;
     setEvidenceLoading(true); setEvidenceError('');
     fetch('/api/evidence/records?tenant_id=' + encodeURIComponent(tenantId) + '&case_id=' + encodeURIComponent(evidenceCaseId), {
