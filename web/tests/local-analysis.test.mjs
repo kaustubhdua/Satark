@@ -106,7 +106,7 @@ test('local URL analysis identifies credential-bearing URLs, unusual ports, IP h
   assert.ok(labels.includes('URL path references an executable or installable file'));
   const evidence = JSON.stringify(result.evidence);
   assert.doesNotMatch(evidence, /secret/);
-  assert.match(evidence, /198\\.51\\.100\\.20/);
+  assert.ok(evidence.includes('198.51.100.20'));
 });
 
 test('local URL analysis treats ordinary HTTPS URLs without suspicious extensions as inconclusive', () => {
