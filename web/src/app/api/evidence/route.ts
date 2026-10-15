@@ -34,7 +34,7 @@ async function authenticate(token: string, config: NonNullable<ReturnType<typeof
   try {
     const response = await fetch(config.url + '/auth/v1/user', {
       headers: { apikey: config.publishableKey, Authorization: 'Bearer ' + token, Accept: 'application/json' },
-      cache: 'no-store', signal: controller.signal,
+      cache: 'no-store', redirect: 'error', signal: controller.signal,
     });
     if (!response.ok) return null;
     const user: unknown = await response.json();
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { ...headers, 'Content-Type': contentType, 'x-upsert': 'false' },
       body: bytes,
-      cache: 'no-store',
+      cache: 'no-store', redirect: 'error',
       signal: AbortSignal.timeout(8_000),
     });
     if (!upload.ok) {
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify(row),
-      cache: 'no-store',
+      cache: 'no-store', redirect: 'error',
       signal: AbortSignal.timeout(8_000),
     });
     if (!saved.ok) {
