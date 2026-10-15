@@ -14,10 +14,16 @@ test('QR page uses bounded local decoding and never fetches decoded URLs', async
   assert.doesNotMatch(source, /window\.open|location\.href\s*=/, 'decoded payload must not navigate the browser');
 });
 
-test('capability directory labels unported media tools honestly', async () => {
+test('capability directory labels partial local media triage honestly', async () => {
   const source = await readFile(new URL('../src/app/tools/page.tsx', import.meta.url), 'utf8');
   assert.match(source, /QR-code investigation/);
-  assert.match(source, /PDF & document analysis/);
-  assert.match(source, /Video & media analysis/);
-  assert.match(source, /Not migrated/);
+  assert.match(source, /PDF & document review/);
+  assert.match(source, /Video & media review/);
+  assert.match(source, /PDF structural triage/);
+  assert.match(source, /Sample video frames/);
+  assert.match(source, /No upload/);
+  assert.match(source, /10 MiB/);
+  assert.match(source, /50 MiB/);
+  assert.match(source, /not full PDF parsing or malware scanning/i);
+  assert.match(source, /does not interpret scene meaning/i);
 });
