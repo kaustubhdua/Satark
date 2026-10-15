@@ -151,7 +151,7 @@ export default function ReportsPage() {
         <PersistentReports notes={report} analysis={savedAnalysis} />\n
         <section className="print-report-sheet" aria-label="Printable SATARK report">
           <div className="print-report-brand">SATARK · DIGITAL THREAT INVESTIGATION</div>
-          <h1>Investigation review report</h1>
+          <h2 className="print-report-title">Investigation review report</h2>
           <p className="print-report-meta">Generated {new Date().toISOString()} · Local review notes with optional session analysis</p>
           <h2>Investigation notes</h2>
           <pre className="print-report-notes">{report.trim() || 'No additional notes supplied.'}</pre>
