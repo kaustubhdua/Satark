@@ -32,6 +32,10 @@ export default function CasesPage() {
   const [tenantId, setTenantId] = useState('');
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [title, setTitle] = useState('');
+  const [evidenceCaseId, setEvidenceCaseId] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceSummary, setEvidenceSummary] = useState('Evidence file uploaded.');
+  const [evidenceReceipt, setEvidenceReceipt] = useState<{ id: string; source_sha256: string; record_sha256: string } | null>(null);
   const [severity, setSeverity] = useState<CaseRow['severity']>('unknown');
   const [statusFilter, setStatusFilter] = useState<'all' | CaseRow['status']>('all');
   const [search, setSearch] = useState('');
@@ -54,10 +58,13 @@ export default function CasesPage() {
       if (active) {
         setTenantId(active.id);
         setActiveTenant(active.id);
-        setCases(await listCases(active.id) as CaseRow[]);
+        const loadedCases = await listCases(active.id) as CaseRow[];
+        setCases(loadedCases);
+        setEvidenceCaseId(loadedCases[0]?.id || '');
       } else {
         setTenantId('');
         setCases([]);
+        setEvidenceCaseId('');
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the case workspace.');
@@ -80,11 +87,18 @@ export default function CasesPage() {
     setTenantId(id);
     setActiveTenant(id);
     setCases([]);
+    setEvidenceCaseId('');
+    setEvidenceReceipt(null);
+    setEvidenceFile(null);
     setError('');
     setNotice('');
     if (!id) return;
     setLoading(true);
-    try { setCases(await listCases(id) as CaseRow[]); }
+    try {
+      const loadedCases = await listCases(id) as CaseRow[];
+      setCases(loadedCases);
+      setEvidenceCaseId(loadedCases[0]?.id || '');
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not load cases for this workspace.'); }
     finally { setLoading(false); }
   }
@@ -98,12 +112,38 @@ export default function CasesPage() {
       const created = await createCase(tenantId, title.trim(), severity) as CaseRow;
       if (!created?.id) throw new Error('The case was not returned by the storage service.');
       setCases(previous => [created, ...previous.filter(item => item.id !== created.id)]);
+      setEvidenceCaseId(created.id);
       setTitle('');
       setSeverity('unknown');
       setNotice('Case created and saved to the selected workspace.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not create the case.');
     } finally { setBusy(false); }
+  }
+
+  async function uploadEvidence(event: FormEvent) {
+    event.preventDefault();
+    if (!session || !tenantId || !evidenceCaseId || !evidenceFile) { setError('Choose a saved case and evidence file first.'); return; }
+    if (evidenceFile.size < 1 || evidenceFile.size > 4 * 1024 * 1024) { setError('Choose a non-empty file no larger than 4 MiB.'); return; }
+    setBusy(true); setError(''); setNotice(''); setEvidenceReceipt(null);
+    try {
+      const form = new FormData();
+      form.set('file', evidenceFile); form.set('tenant_id', tenantId); form.set('case_id', evidenceCaseId);
+      form.set('source_label', evidenceFile.name.slice(0, 160)); form.set('event_kind', 'file');
+      form.set('summary', evidenceSummary.trim() || 'Evidence file uploaded.');
+      const response = await fetch('/api/evidence', { method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token }, body: form, cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Evidence upload failed.');
+      const row = data.evidence as { id?: string } | undefined;
+      const digest = data.integrity as { source_sha256?: string; record_sha256?: string } | undefined;
+      if (!row?.id || !digest?.source_sha256 || !digest?.record_sha256) throw new Error('Upload response did not include a complete integrity receipt. Contact an administrator before retrying.');
+      setEvidenceReceipt({ id: row.id, source_sha256: digest.source_sha256, record_sha256: digest.record_sha256 });
+      setEvidenceFile(null); setEvidenceSummary('Evidence file uploaded.');
+      const input = document.getElementById('case-evidence-file') as HTMLInputElement | null;
+      if (input) input.value = '';
+      setNotice('Evidence uploaded to private storage and the metadata record was saved. Keep the integrity receipt with your case notes.');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Evidence upload failed.'); }
+    finally { setBusy(false); }
   }
 
   async function changeStatus(item: CaseRow, status: CaseRow['status']) {
@@ -191,6 +231,25 @@ export default function CasesPage() {
                   ))}
                 </div>
               )}
+            </section>
+
+            <section className="form-panel" aria-labelledby="case-evidence-heading">
+              <div className="panel-heading"><div><div className="panel-kicker">PRIVATE EVIDENCE STORAGE</div><h2 id="case-evidence-heading">Attach evidence to a case</h2></div><span className="safe-chip">SHA-256 RECEIPT</span></div>
+              <p className="field-note">Upload a supported file up to 4 MiB. SATARK validates basic file signatures, calculates a server-side SHA-256 digest and stores the object privately. A digest proves byte equality, not source authenticity or safety.</p>
+              <form className="case-create-form" onSubmit={uploadEvidence}>
+                <label className="field-label" htmlFor="evidence-case-select">Saved case</label>
+                <select id="evidence-case-select" value={evidenceCaseId} onChange={event => setEvidenceCaseId(event.target.value)} disabled={busy || !cases.length} required>
+                  {!cases.length && <option value="">Create a case first</option>}
+                  {cases.map(item => <option key={item.id} value={item.id}>{item.title} · {pretty(item.status)}</option>)}
+                </select>
+                <label className="field-label" htmlFor="case-evidence-file">Evidence file</label>
+                <input id="case-evidence-file" type="file" onChange={event => { setEvidenceFile(event.target.files?.[0] ?? null); setEvidenceReceipt(null); }} disabled={busy || !cases.length} required />
+                {evidenceFile && <p className="hint">{evidenceFile.name} · {(evidenceFile.size / 1024).toFixed(1)} KiB</p>}
+                <label className="field-label" htmlFor="evidence-summary">Observation / summary</label>
+                <textarea id="evidence-summary" value={evidenceSummary} onChange={event => setEvidenceSummary(event.target.value)} maxLength={8192} rows={3} disabled={busy} />
+                <button className="btn btn-primary" type="submit" disabled={busy || !cases.length || !evidenceFile}>{busy ? 'Uploading privately…' : 'Upload evidence & calculate digest'}</button>
+              </form>
+              {evidenceReceipt && <div className="notice-panel" role="status" aria-live="polite"><h3>Evidence integrity receipt</h3><p><strong>Evidence ID:</strong> <code>{evidenceReceipt.id}</code></p><p><strong>File SHA-256:</strong></p><code>{evidenceReceipt.source_sha256}</code><p><strong>Record SHA-256:</strong></p><code>{evidenceReceipt.record_sha256}</code><p className="muted">This receipt supports later integrity comparison; it does not prove source authenticity.</p></div>}
             </section>
           </>
         )}
