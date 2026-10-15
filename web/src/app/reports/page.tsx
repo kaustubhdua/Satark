@@ -110,7 +110,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="shell">
+    <main className="shell report-print-page">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
         <div className="eyebrow">WORKSPACE / REPORTS</div>
