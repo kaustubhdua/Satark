@@ -9,8 +9,8 @@ const tools = [
   ['02', 'URL review', 'Review a URL as text without automatically visiting it.', '/investigate', 'OPEN ANALYSIS'],
   ['03', 'Image metadata & integrity', 'Inspect supported metadata markers and calculate a SHA-256 fingerprint locally. Not a deepfake verdict.', '/image-review', 'OPEN IMAGE REVIEW'],
   ['04', 'QR-code investigation', 'Decode QR payloads locally in supported browsers; cross-browser decoding and destination inspection are not yet available.', '/qr', 'OPEN QR DECODER'],
-  ['05', 'PDF & document review', 'A sandboxed local document pipeline is not yet available here. See current status and migration plan.', '/tools#pdf', 'VIEW STATUS'],
-  ['06', 'Video & media signals', 'Video processing and provenance checks are not yet migrated. See current status and migration plan.', '/tools#video', 'VIEW STATUS'],
+  ['05', 'PDF & document review', 'Inspect PDF structure and SHA-256 locally. Full text extraction and malware scanning are not provided.', '/tools#pdf-review', 'OPEN PDF REVIEW'],
+  ['06', 'Video & media review', 'Sample up to five video frames locally and calculate fingerprints. No semantic or audio analysis is provided.', '/tools#video-review', 'OPEN VIDEO REVIEW'],
   ['07', 'Persistent history & exports', 'Review reports here; durable case history requires a configured workspace database.', '/reports', 'OPEN REPORTS'],
   ['08', 'Academy & scam challenge', 'Practice recognizing social-engineering patterns with educational examples.', '/learn', 'OPEN LEARNING'],
 ];
