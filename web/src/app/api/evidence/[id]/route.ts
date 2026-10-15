@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -37,7 +38,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   finally { clearTimeout(timer); }
 
   const query = new URLSearchParams({
-    select: 'id,tenant_id,case_id,source_label,metadata',
+    select: 'id,tenant_id,case_id,source_label,source_sha256,metadata',
     id: 'eq.' + id,
     limit: '1',
   });
@@ -74,6 +75,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!download.ok) return error('Private evidence storage is temporarily unavailable.', 503);
     const bytes = await download.arrayBuffer();
     if (bytes.byteLength < 1 || bytes.byteLength > 4 * 1024 * 1024) return error('Stored evidence failed the expected size check.', 502);
+    if (typeof row.source_sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(row.source_sha256)) return error('Stored evidence has no valid source digest.', 502);
+    const actualSha256 = createHash('sha256').update(Buffer.from(bytes)).digest('hex');
+    if (actualSha256.toLowerCase() !== row.source_sha256.toLowerCase()) return error('Downloaded bytes do not match the recorded source digest. The file was not returned.', 409);
     const safeName = originalName.replace(/[^A-Za-z0-9._-]/g, '_');
     return new Response(bytes, {
       status: 200,
@@ -83,6 +87,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         'Content-Length': String(bytes.byteLength),
         'Cache-Control': 'private, no-store, max-age=0',
         'X-Content-Type-Options': 'nosniff',
+        'X-SATARK-SHA256': actualSha256,
         'Content-Security-Policy': "default-src 'none'; sandbox",
       },
     });

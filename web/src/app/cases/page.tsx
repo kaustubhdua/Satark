@@ -150,13 +150,15 @@ export default function CasesPage() {
     try {
       const response = await fetch('/api/evidence/' + encodeURIComponent(item.id), { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(typeof data.error === 'string' ? data.error : 'Evidence download failed.'); }
+      const verifiedSha256 = response.headers.get('x-satark-sha256') || '';
+      if (!/^[a-f0-9]{64}$/i.test(verifiedSha256) || verifiedSha256.toLowerCase() !== item.source_sha256.toLowerCase()) throw new Error('Downloaded evidence did not match its recorded SHA-256 digest; the file was not saved.');
       const blob = await response.blob();
       const disposition = response.headers.get('content-disposition') || '';
       const filename = /filename="([A-Za-z0-9._-]{1,100})"/i.exec(disposition)?.[1] || ('satark-evidence-' + item.id);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.style.display = 'none';
       document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice('Private evidence downloaded through the authenticated endpoint. Compare its SHA-256 against the recorded source digest if integrity verification is required.');
+      setNotice('Private evidence downloaded and its server-verified SHA-256 digest matched the saved record. This verifies byte integrity, not source authenticity.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Evidence download failed.'); }
     finally { setBusy(false); }
   }
