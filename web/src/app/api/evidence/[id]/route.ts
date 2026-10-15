@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'text/plain', 'text/csv', 'application/zip', 'application/octet-stream']);
+const TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp', 'image/tiff', 'text/plain', 'text/csv', 'text/tab-separated-values', 'application/json', 'application/ld+json', 'application/x-ndjson', 'application/zip', 'application/x-zip-compressed', 'application/octet-stream', 'application/gzip', 'video/webm', 'audio/wav', 'audio/x-wav', 'video/x-msvideo', 'application/ogg', 'audio/ogg', 'video/ogg', 'audio/flac', 'audio/mpeg', 'video/mp4', 'audio/mp4', 'application/mp4', 'audio/webm']);
+function supportedType(value: string) { return TYPES.has(value) || value.startsWith('application/vnd.openxmlformats-officedocument.'); }
 
 function error(message: string, status: number) {
   return NextResponse.json({ error: message }, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
@@ -58,7 +59,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const objectKey = metadata.object_key;
     const contentType = metadata.content_type;
     const originalName = metadata.original_filename;
-    if (typeof objectKey !== 'string' || typeof contentType !== 'string' || !TYPES.has(contentType) ||
+    if (typeof objectKey !== 'string' || typeof contentType !== 'string' || !supportedType(contentType) ||
         typeof originalName !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(originalName) || originalName.includes('..')) {
       return error('This evidence record does not reference a supported private file.', 404);
     }
