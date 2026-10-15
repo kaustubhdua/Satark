@@ -27,7 +27,7 @@ test('URL evidence redacts credentials, query parameters, and fragments', () => 
   const result = analyzeLocally('http://user:secret@example.invalid/path?token=abc#frag');
   const evidence = JSON.stringify(result.evidence);
   assert.doesNotMatch(evidence, /secret|token|abc|frag/);
-  assert.match(evidence, /example\\.invalid/);
+  assert.ok(evidence.includes('example.invalid'));
 });
 
 test('local model is optional and fallback is deterministic when not configured', async () => {
