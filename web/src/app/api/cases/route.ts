@@ -39,7 +39,7 @@ async function authenticate(token: string, config: NonNullable<ReturnType<typeof
   try {
     const response = await fetch(config.url + '/auth/v1/user', {
       headers: { apikey: config.publishableKey, Authorization: 'Bearer ' + token, Accept: 'application/json' },
-      cache: 'no-store',
+      cache: 'no-store', redirect: 'error',
       signal: controller.signal,
     });
     if (!response.ok) return null;
@@ -68,7 +68,7 @@ async function supabaseRequest(
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...init.headers,
     },
-    cache: 'no-store',
+    cache: 'no-store', redirect: 'error',
     signal: init.signal ?? AbortSignal.timeout(8_000),
   });
 }
