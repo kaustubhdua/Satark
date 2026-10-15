@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 4000);
   let userId: string;
   try {
-    const auth = await fetch(cfg.url + '/auth/v1/user', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + token }, cache: 'no-store', signal: controller.signal });
+    const auth = await fetch(cfg.url + '/auth/v1/user', { headers: { apikey: cfg.key, Authorization: 'Bearer ' + token }, cache: 'no-store', redirect: 'error', signal: controller.signal });
     const value: unknown = auth.ok ? await auth.json() : null;
     if (!value || typeof value !== 'object' || !('id' in value) || typeof value.id !== 'string' || !UUID.test(value.id)) return reply({ error: 'Your session is invalid or expired.' }, 401);
     userId = value.id;
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const response = await fetch(cfg.url + '/rest/v1/satark_evidence', {
       method: 'POST',
       headers: { apikey: cfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ ...record, record_sha256: recordSha }), cache: 'no-store', signal: AbortSignal.timeout(8_000),
+      body: JSON.stringify({ ...record, record_sha256: recordSha }), cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8_000),
     });
     if (response.status === 401 || response.status === 403) return reply({ error: 'You do not have permission to add evidence to this case.' }, 403);
     if (response.status === 409) return reply({ error: 'This evidence record already exists.' }, 409);
