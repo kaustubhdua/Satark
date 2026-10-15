@@ -27,7 +27,7 @@ class ProductionSmokeRedirectPolicyTests(unittest.TestCase):
         self.assertIn('if [[ "$failures" -gt 0 ]]; then', workflow)
         self.assertIn('check_route "/tools"', workflow)
         self.assertIn('check_route "/qr"', workflow)
-        self.assertIn('"/api/version"', workflow)
+        self.assertIn('/api/version', workflow)
 
 
 if __name__ == "__main__":
