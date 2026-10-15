@@ -10,7 +10,8 @@ test('QR page uses bounded local decoding and never fetches decoded URLs', async
   assert.match(source, /createImageBitmap/);
   assert.match(source, /detector\.detect\(bitmap\)/);
   assert.match(source, /did not open the payload|never opened automatically|never open/i);
-  assert.doesNotMatch(source, /fetch\s*\(/, 'QR decoding must not automatically fetch decoded destinations');
+  assert.match(source, /fetch\(['"]\/api\/analyze['"]/, 'URL text may be sent only to SATARK’s own analysis route');
+  assert.doesNotMatch(source, /fetch\(\s*payload|fetch\(\s*new URL/, 'decoded destination must never be fetched');
   assert.doesNotMatch(source, /window\.open|location\.href\s*=/, 'decoded payload must not navigate the browser');
 });
 
