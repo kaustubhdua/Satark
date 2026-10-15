@@ -18,7 +18,6 @@ class ProductionSmokeRedirectPolicyTests(unittest.TestCase):
         self.assertNotIn("--location", route_probe)
         self.assertNotIn("--location-trusted", route_probe)
         self.assertIn("--max-time 20", route_probe)
-        self.assertIn('[["status" != "200"]]', route_probe.replace(" ", "")) if False else None
         self.assertIn('[[ "$status" != "200" ]]', route_probe)
 
     def test_smoke_collects_failures_before_failing(self):
