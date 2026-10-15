@@ -24,7 +24,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return reply({ error: 'Report storage is not configured.' }, 503);
     const query = new URLSearchParams({ select:'id,tenant_id,case_id,title,report_version,snapshot,snapshot_sha256,created_by,created_at',id:'eq.'+id,limit:'1' });
     const response = await fetch(url.origin+'/rest/v1/satark_reports?'+query,{
-      headers:{apikey:key,Authorization:'Bearer '+match[1],Accept:'application/json'},cache:'no-store'
+      headers:{apikey:key,Authorization:'Bearer '+match[1],Accept:'application/json'},cache: 'no-store', redirect: 'error'
     });
     if(response.status===401||response.status===403)return reply({error:'Workspace access denied.'},403);
     if(!response.ok)return reply({error:'Report storage is temporarily unavailable.'},503);
