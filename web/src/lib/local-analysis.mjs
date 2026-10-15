@@ -234,12 +234,17 @@ export async function analyzeWithLocalModel(input, env = process.env, fetchImpl 
     }
     return {
       ...deterministic,
-      summary: result.summary.slice(0, 1200),
-      key_indicators: result.key_indicators.filter(x => typeof x === 'string').slice(0, 8).map(x => x.slice(0, 300)),
-      recommendations: result.recommendations.filter(x => typeof x === 'string').slice(0, 6).map(x => x.slice(0, 300)),
-      model: 'ollama:' + model.slice(0, 80),
+      // Keep deterministic findings authoritative. Model output is advisory and
+      // must never overwrite the evidence-derived summary, signals, or verdict.
+      model_suggestions: {
+        summary: result.summary.slice(0, 1200),
+        key_indicators: result.key_indicators.filter(x => typeof x === 'string').slice(0, 8).map(x => x.slice(0, 300)),
+        recommendations: result.recommendations.filter(x => typeof x === 'string').slice(0, 6).map(x => x.slice(0, 300)),
+      },
+      model: 'deterministic-local-rules',
+      ai_model: 'ollama:' + model.slice(0, 80),
       ai_status: 'local_model_ready',
-      notice: 'Self-hosted local model assisted this triage. No third-party AI or threat-intelligence API was called. Verify every claim against evidence.',
+      notice: 'Deterministic local findings remain authoritative. A self-hosted model supplied separate advisory suggestions; verify each suggestion against evidence. No third-party AI or threat-intelligence API was called.',
     };
   } catch {
     return { ...deterministic, ai_status: 'local_model_unavailable' };
