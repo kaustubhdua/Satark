@@ -42,6 +42,7 @@ const routes = [
   { path: '/qr', heading: /decode first|QR investigation/i },
   { path: '/firstlight', heading: /FIRSTLIGHT/i },
   { path: '/reports', heading: /report/i },
+  { path: '/cases', heading: /incidents accountable|case management/i },
   { path: '/learn', heading: /learn|safety/i },
   { path: '/login', heading: /investigations that|welcome back/i },
 ];
@@ -201,7 +202,7 @@ async function inspectViewport(viewport, label) {
         },
       })));
       await page.reload({ waitUntil: 'networkidle' });
-      await page.getByText('Synthetic browser test summary').waitFor();
+      await page.getByText('Synthetic browser test summary', { exact: true }).waitFor();
       assert.equal(await exportButton.isDisabled(), false, 'analysis-only report should be exportable without notes');
       const analysisOnlyTxtPromise = page.waitForEvent('download');
       await exportButton.click();

@@ -485,3 +485,20 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
   .print-report-disclaimer { font-size: 8.5pt; color: #444; border-top: 1px solid #bbb; padding-top: 10px; margin-top: 26px; }
   .print-report-sheet p, .print-report-sheet li { overflow-wrap: anywhere; }
 }
+
+/* Authenticated case queue: responsive filters, clear record hierarchy, and touch-friendly actions. */
+.case-create-form { display: grid; gap: .65rem; margin-top: 1.4rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.case-create-form h3 { margin: 0 0 .25rem; }
+.case-filters { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(180px, 1fr); gap: 1rem; margin: 1.1rem 0; }
+.case-filters > div { min-width: 0; }
+.case-filters input, .case-filters select { width: 100%; min-width: 0; }
+.case-queue-list { display: grid; gap: .75rem; }
+.case-queue-list .report-history-row { align-items: flex-start; gap: 1rem; min-width: 0; }
+.case-row-main { min-width: 0; flex: 1 1 320px; }
+.case-row-main > strong { display: block; overflow-wrap: anywhere; }
+.case-row-main > small { display: block; margin-top: .35rem; overflow-wrap: anywhere; }
+.case-meta { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }
+.case-row-actions { display: grid; grid-template-columns: minmax(145px, 1fr); gap: .5rem; min-width: min(100%, 190px); }
+.case-row-actions .field-label { margin-bottom: -.2rem; }
+.case-row-actions select, .case-row-actions a { min-height: 44px; }
+@media (max-width: 680px) { .case-filters { grid-template-columns: minmax(0, 1fr); } .case-queue-list .report-history-row { flex-direction: column; } .case-row-actions { width: 100%; min-width: 0; } }

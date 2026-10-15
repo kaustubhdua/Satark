@@ -172,7 +172,7 @@ export default function CasesPage() {
                 <div><label className="field-label" htmlFor="case-status-filter">Status</label><select id="case-status-filter" value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}>{(['all', ...STATUSES] as const).map(item => <option key={item} value={item}>{item === 'all' ? 'All statuses' : pretty(item)}</option>)}</select></div>
               </div>
               {loading ? <p className="empty-state" role="status">Loading workspace cases…</p> : !cases.length ? <div className="empty-state"><strong>No saved cases yet.</strong><p>Create a case above or open FIRSTLIGHT to save an investigation with evidence, findings and an immutable report snapshot.</p><Link className="text-link" href="/firstlight">Open FIRSTLIGHT →</Link></div> : !visibleCases.length ? <p className="empty-state">No cases match these filters.</p> : (
-                <div className="saved-cases" aria-label="Saved cases">
+                <div className="case-queue-list" aria-label="Saved cases">
                   {visibleCases.map(item => (
                     <article className="report-history-row" key={item.id}>
                       <div className="case-row-main">
