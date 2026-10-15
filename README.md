@@ -240,6 +240,8 @@ Model availability depends on the Ollama service, installed local model weights,
 
 ## 10. Run the project locally
 
+For a quick classroom/hackathon presentation, start with the [local demo runbook](docs/LOCAL_DEMO_RUNBOOK.md). It includes the Next.js commands, synthetic live-analysis examples, a five-minute walkthrough, local checks, and troubleshooting. The original Python/Streamlit launch path is also documented below.
+
 ### Requirements
 
 - Python 3.10 or newer
