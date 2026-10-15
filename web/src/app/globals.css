@@ -454,3 +454,34 @@ textarea:focus,input:not([type=file]):focus,select:focus{border-color:rgba(109,2
 @media(max-width:850px){.home-workspace-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.home-hero{padding-top:8px;padding-bottom:32px}.home-workspace-grid{grid-template-columns:1fr}.home-card-actions{display:flex;flex-wrap:wrap}.home-card-actions .text-link{white-space:normal}}
 @media(prefers-reduced-motion:reduce){.home-hero,.home-workspace-grid .workspace-card{animation:none}}
+
+
+/* Print-ready report export. The browser print dialog can save this sheet as PDF. */
+.print-report-sheet { display: none; }
+@media print {
+  @page { size: A4; margin: 16mm; }
+  html, body { background: #fff !important; color: #111 !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .report-print-page { background: #fff !important; min-height: 0 !important; padding: 0 !important; }
+  .report-print-page .topbar,
+  .report-print-page .skip-link,
+  .report-print-page .form-panel,
+  .report-print-page .persistent-reports,
+  .report-print-page .eyebrow,
+  .report-print-page .lead,
+  .report-print-page > .container > h1,
+  .report-print-page > .container > p:not(.print-report-meta),
+  .report-print-page .print-report-sheet ~ * { display: none !important; }
+  .report-print-page > .container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
+  .report-print-page > .container > *:not(.print-report-sheet) { display: none !important; }
+  .report-print-page .print-report-sheet { display: block !important; color: #111 !important; background: #fff !important; font: 10.5pt/1.5 Arial, sans-serif !important; }
+  .print-report-brand { font-size: 9pt; font-weight: 700; letter-spacing: .12em; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 20px; }
+  .print-report-sheet h1 { font-size: 24pt; line-height: 1.15; margin: 0 0 8px; }
+  .print-report-sheet h2 { font-size: 15pt; margin: 22px 0 8px; border-bottom: 1px solid #bbb; padding-bottom: 4px; }
+  .print-report-sheet h3 { font-size: 11pt; margin: 14px 0 4px; }
+  .print-report-meta { color: #555; font-size: 9pt; }
+  .print-report-notes { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
+  .print-report-sheet li { margin-bottom: 3px; break-inside: avoid; }
+  .print-report-disclaimer { font-size: 8.5pt; color: #444; border-top: 1px solid #bbb; padding-top: 10px; margin-top: 26px; }
+  .print-report-sheet p, .print-report-sheet li { overflow-wrap: anywhere; }
+}
