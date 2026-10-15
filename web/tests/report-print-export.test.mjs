@@ -10,6 +10,8 @@ test('reports provide a browser-native print-to-PDF flow', () => {
   assert.match(page, /window\.print\(\)/);
   assert.match(page, /Print \/ Save as PDF/);
   assert.match(page, /print-report-sheet/);
+  assert.match(page, /Prepared for export from the current review session/);
+  assert.doesNotMatch(page, /Generated \{new Date\(\)\.toISOString\(\)\}/);
   assert.match(page, /Triage output is not independently verified evidence/);
 });
 

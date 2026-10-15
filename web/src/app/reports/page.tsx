@@ -152,7 +152,7 @@ export default function ReportsPage() {
         <section className="print-report-sheet" aria-label="Printable SATARK report">
           <div className="print-report-brand">SATARK · DIGITAL THREAT INVESTIGATION</div>
           <h2 className="print-report-title">Investigation review report</h2>
-          <p className="print-report-meta">Generated {new Date().toISOString()} · Local review notes with optional session analysis</p>
+          <p className="print-report-meta">Prepared for export from the current review session · Local review notes with optional session analysis</p>
           <h2>Investigation notes</h2>
           <pre className="print-report-notes">{report.trim() || 'No additional notes supplied.'}</pre>
           {savedAnalysis && <>
