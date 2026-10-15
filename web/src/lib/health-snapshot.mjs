@@ -4,14 +4,25 @@
  */
 const hasValue = value => typeof value === 'string' && value.trim().length > 0;
 
+function isHttpsUrl(value) {
+  if (!hasValue(value)) return false;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 /** @param {Record<string, string | undefined>} [env={}] */
 export function buildHealthSnapshot(env = {}) {
   const localModelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
-  const persistentStorageConfigured = hasValue(env.SUPABASE_URL) && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
-  const redisUrl = hasValue(env.UPSTASH_REDIS_REST_URL);
-  const redisToken = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
-  const sharedLimiterConfigured = redisUrl && redisToken;
-  const limiterMisconfigured = redisUrl !== redisToken;
+  const persistentStorageConfigured = isHttpsUrl(env.SUPABASE_URL) && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
+  const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
+  const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
+  const redisUrlValid = isHttpsUrl(env.UPSTASH_REDIS_REST_URL);
+  const sharedLimiterConfigured = redisUrlValid && redisTokenPresent;
+  const limiterMisconfigured = redisUrlPresent !== redisTokenPresent || (redisUrlPresent && !redisUrlValid);
   const sharedLimiterRequired = env.VERCEL === '1' && !sharedLimiterConfigured && !limiterMisconfigured;
 
   return {
@@ -39,7 +50,7 @@ export function describeRateLimitStatus(rateLimit) {
     case 'shared-required':
       return 'Shared rate limiting is not configured; production analysis is disabled and fails closed until it is.';
     case 'misconfigured':
-      return 'Shared rate limiting configuration is incomplete; production analysis is disabled and fails closed until it is corrected.';
+      return 'Shared rate limiting configuration is incomplete or unsafe; production analysis is disabled and fails closed until it is corrected.';
     case 'in-process':
       return 'Rate limiting is process-local, not shared across instances; configure shared limiting before public exposure.';
     default:
