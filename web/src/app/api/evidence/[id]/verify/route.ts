@@ -25,7 +25,7 @@ async function authenticate(token: string, config: NonNullable<ReturnType<typeof
   try {
     const response = await fetch(config.url + '/auth/v1/user', {
       headers: { apikey: config.publishableKey, Authorization: 'Bearer ' + token },
-      cache: 'no-store', signal: controller.signal,
+      cache: 'no-store', redirect: 'error', signal: controller.signal,
     });
     if (!response.ok) return null;
     const user: unknown = await response.json();
@@ -51,7 +51,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       select: 'id,tenant_id,case_id,source_sha256,record_sha256,created_by,metadata',
       id: 'eq.' + id, limit: '1',
     });
-    const lookup = await fetch(config.url + '/rest/v1/satark_evidence?' + query, { headers, cache: 'no-store', signal: AbortSignal.timeout(8_000) });
+    const lookup = await fetch(config.url + '/rest/v1/satark_evidence?' + query, { headers, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(8_000) });
     if (lookup.status === 401 || lookup.status === 403) return reply({ error: 'You do not have access to this evidence.' }, 403);
     if (!lookup.ok) return reply({ error: 'Evidence metadata is temporarily unavailable.' }, 503);
     const rows: unknown = await lookup.json();
@@ -63,7 +63,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
     const download = await fetch(config.url + '/storage/v1/object/satark-evidence/' + objectKey.split('/').map(encodeURIComponent).join('/'), {
       headers: { apikey: config.publishableKey, Authorization: 'Bearer ' + match[1] },
-      cache: 'no-store',
+      cache: 'no-store', redirect: 'error',
       signal: AbortSignal.timeout(8_000),
     });
     if (download.status === 401 || download.status === 403) return reply({ error: 'You do not have permission to verify this evidence.' }, 403);
