@@ -137,9 +137,14 @@ export default function InvestigatePage() {
             maxLength={12000} placeholder="Paste a suspicious URL or message here…" aria-describedby="content-hint" />
           <div className="form-bottom">
             <span className="hint" id="content-hint" aria-live="polite">{input.length.toLocaleString()} / 12,000 characters</span>
-            <button className="btn btn-primary" onClick={run} disabled={busy || !input.trim()}>
-              {busy ? 'Analyzing…' : 'Analyze content →'}
-            </button>
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => { setInput(''); setError(''); setResult(null); }} disabled={busy || !input}>
+                Clear
+              </button>
+              <button type="button" className="btn btn-primary" onClick={run} disabled={busy || !input.trim()}>
+                {busy ? 'Analyzing…' : 'Analyze content →'}
+              </button>
+            </div>
           </div>
           {busy && <div className="analysis-progress" aria-label="Analysis in progress"><LatticeLoader status="working" label="Analyzing" pattern="orbit" grid={3} color="#c9f36b" showTimer /><ThoughtLine label="Reviewing submitted content" doneLabel="Analysis complete" steps={["Validating input", "Checking local rules", "Using self-hosted model if configured"]} working={busy} color="#c9f36b" fontSize={13} shimmer /></div>}
           {error && <div className="result error" role="alert">{error}</div>}
@@ -178,11 +183,18 @@ export default function InvestigatePage() {
                 </div>
               </div>)}
             </div>}
-            {result.deterministic_signals.length > 0 && <><h3>Deterministic signals</h3><ul>{result.deterministic_signals.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+            <h3>Deterministic signals</h3>
+            {result.deterministic_signals.length > 0
+              ? <ul>{result.deterministic_signals.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              : <div className="analysis-empty-state"><strong>No deterministic signals triggered</strong><p>The current checks did not flag a specific rule. This does not mean the content is safe.</p></div>}
             <h3>Indicators and context</h3>
-            <ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
+            {result.key_indicators.length > 0
+              ? <ul>{result.key_indicators.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              : <p className="field-note">No additional indicators were returned for this analysis.</p>}
             <h3>Recommended next steps</h3>
-            <ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+            {result.recommendations.length > 0
+              ? <ul>{result.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              : <p className="field-note">No automated next steps were returned. Verify the source independently before acting.</p>}
             {result.limitations.length > 0 && <><h3>Limitations</h3><ul>{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
             <p className="hint">{result.notice} · Model: {result.model}</p>
           </section>}
