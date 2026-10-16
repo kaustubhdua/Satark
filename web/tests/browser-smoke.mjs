@@ -335,7 +335,25 @@ async function inspectViewport(viewport, label) {
         mimeType: 'video/webm',
         buffer: Buffer.from(mediaBytes),
       });
-      await page.getByRole('status').filter({ hasText: /video metadata loaded locally/i }).waitFor();
+      const mediaVideo = page.locator('video[aria-label="Locally loaded video preview"]');
+      const metadata = await mediaVideo.evaluate(video => new Promise(resolve => {
+        const target = video as HTMLVideoElement;
+        const finish = () => resolve({
+          duration: target.duration,
+          width: target.videoWidth,
+          height: target.videoHeight,
+          readyState: target.readyState,
+          error: target.error ? { code: target.error.code, message: target.error.message } : null,
+        });
+        if (target.readyState >= 1 || target.error) finish();
+        else {
+          target.addEventListener('loadedmetadata', finish, { once: true });
+          target.addEventListener('error', finish, { once: true });
+          setTimeout(finish, 8000);
+        }
+      }));
+      assert.ok(metadata && Number.isFinite((metadata as any).duration) && (metadata as any).duration > 0,
+        'synthetic WebM should expose valid local metadata: ' + JSON.stringify(metadata));
       await page.getByRole('button', { name: /inspect six representative frames/i }).click();
       await page.getByRole('heading', { name: /sampled frame timeline/i }).waitFor();
       assert.equal(await page.locator('.media-frame-card').count(), 6,
