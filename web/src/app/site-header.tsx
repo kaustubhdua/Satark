@@ -8,15 +8,10 @@ import { Menu, X, ShieldCheck } from 'lucide-react';
 const links = [
   { href: '/investigate', label: 'Investigate' },
   { href: '/tools', label: 'Tools' },
-  { href: '/url', label: 'URL inspector' },
-  { href: '/qr', label: 'QR review' },
-  { href: '/image-review', label: 'Image review' },
   { href: '/firstlight', label: 'FIRSTLIGHT' },
+  { href: '/learn', label: 'Academy' },
   { href: '/cases', label: 'Cases' },
-  { href: '/pdf-review', label: 'Documents' },
-  { href: '/media-review', label: 'Media' },
   { href: '/reports', label: 'Reports' },
-  { href: '/login', label: 'Workspace' },
 ];
 
 export default function SiteHeader({ status = false }: { status?: boolean }) {
