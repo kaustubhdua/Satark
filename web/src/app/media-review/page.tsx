@@ -102,9 +102,16 @@ async function captureFrame(video: HTMLVideoElement, timestamp: number, index: n
     samples++;
   }
 
-  const preview = canvas.toDataURL('image/jpeg', 0.68);
   const encodedFrame = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('The browser could not encode a frame preview.')), 'image/jpeg', 0.8);
+  });
+  const preview = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('The browser could not prepare a local frame preview.'));
+    reader.onload = () => typeof reader.result === 'string'
+      ? resolve(reader.result)
+      : reject(new Error('The browser returned an invalid frame preview.'));
+    reader.readAsDataURL(encodedFrame);
   });
   canvas.width = 0;
   canvas.height = 0;
