@@ -179,3 +179,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .sentinel-workflow-card:hover, .tool-card:hover { transform: none; }
 }
+
+
+/* Analysis workflow finishing details */
+.form-actions { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.form-actions .btn { min-height: 42px; }
+.analysis-result { overflow-wrap: anywhere; }
+.analysis-result > h3 {
+  margin: 24px 0 10px;
+  padding-top: 17px;
+  border-top: 1px solid var(--satark-border);
+  color: #e7f2f0;
+  font-size: 14px;
+  letter-spacing: -.015em;
+}
+.analysis-result > ul { margin: 10px 0 16px; padding-left: 22px; color: #c4d1d7; }
+.analysis-result > ul li { margin: 8px 0; padding-left: 3px; line-height: 1.7; }
+.analysis-result .notice-panel { margin: 16px 0; }
+.analysis-empty-state {
+  margin: 10px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,191,117,.2);
+  border-radius: 12px;
+  background: rgba(255,191,117,.045);
+}
+.analysis-empty-state strong { display: block; color: #f0d5b4; font-size: 12px; }
+.analysis-empty-state p { margin: 6px 0 0; color: #b8c3c9; font-size: 12px; line-height: 1.7; }
+.form-actions .btn-secondary { background: rgba(255,255,255,.025); }
+@media (max-width: 560px) {
+  .form-bottom { align-items: stretch; flex-direction: column; }
+  .form-actions { width: 100%; }
+  .form-actions .btn { flex: 1; }
+}
