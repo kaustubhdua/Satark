@@ -10,13 +10,10 @@ import {
 } from 'lucide-react';
 
 const workflows = [
-  { n: '01', icon: ScanSearch, title: 'Investigate a message or URL', text: 'Run deterministic checks on suspicious text without opening the submitted destination.', href: '/investigate', action: 'Start investigation', tone: 'mint', tag: 'CORE WORKFLOW' },
-  { n: '02', icon: Fingerprint, title: 'Inspect image signals', text: 'Review supported metadata markers and calculate a SHA-256 fingerprint locally.', href: '/image-review', action: 'Review an image', tone: 'violet', tag: 'LOCAL ANALYSIS' },
-  { n: '03', icon: ScanLine, title: 'Decode a QR payload', text: 'Decode QR content locally across supported browsers. The destination is never fetched or opened automatically.', href: '/qr', action: 'Open QR decoder', tone: 'blue', tag: 'LOCAL DECODING' },
-  { n: '04', icon: FileText, title: 'Review a PDF or text document', text: 'Extract supported text locally, fingerprint the source file and review transparent social-engineering cues.', href: '/pdf-review', action: 'Review a document', tone: 'amber', tag: 'LOCAL DOCUMENT REVIEW' },
-  { n: '05', icon: Film, title: 'Inspect video frame samples', text: 'Review browser-decoded metadata and up to six representative frame samples. No audio or deepfake verdict.', href: '/media-review', action: 'Review media', tone: 'violet', tag: 'BOUNDED MEDIA REVIEW' },
-  { n: '06', icon: Activity, title: 'Manage investigation cases', text: 'Create, prioritize, and update tenant-scoped cases in your saved workspace.', href: '/cases', action: 'Open case workspace', tone: 'blue', tag: 'PERSISTENT WORKSPACE' },
-  { n: '07', icon: FileSearch, title: 'Review reports', text: 'Open reports and inspect available findings. Persistent case history needs a configured workspace.', href: '/reports', action: 'View reports', tone: 'mint', tag: 'WORKSPACE' },
+  { n: '01', icon: ScanSearch, title: 'Investigate a message or URL', text: 'Start with a suspicious message or link. Review deterministic signals without opening the destination.', href: '/investigate', action: 'Start investigation', tone: 'mint', tag: 'START HERE' },
+  { n: '02', icon: ShieldCheck, title: 'Explore FIRSTLIGHT', text: 'Walk through a synthetic account-compromise case with a timeline, evidence references, and review checkpoints.', href: '/firstlight', action: 'Open incident command', tone: 'blue', tag: 'GUIDED INVESTIGATION' },
+  { n: '03', icon: ScanLine, title: 'Decode a QR code', text: 'Read a QR payload locally and inspect the destination as text before deciding what to do.', href: '/qr', action: 'Open QR decoder', tone: 'violet', tag: 'LOCAL DECODING' },
+  { n: '04', icon: FileText, title: 'Review a document', text: 'Extract supported PDF or text content locally and inspect explainable social-engineering cues.', href: '/pdf-review', action: 'Review a document', tone: 'amber', tag: 'LOCAL DOCUMENT REVIEW' },
 ];
 
 const tools: Array<[string, string, string, string, string]> = [
@@ -78,8 +75,8 @@ export default function Home() {
 
         <section className="sentinel-workflows" aria-labelledby="workflow-title">
           <div className="sentinel-section-heading">
-            <div><div className="sentinel-overline">YOUR WORKSPACE</div><h2 id="workflow-title">One clear next step.</h2></div>
-            <p>Focused tools for common digital safety questions. Every workflow tells you what it can—and cannot—establish.</p>
+            <div><div className="sentinel-overline">YOUR WORKSPACE</div><h2 id="workflow-title">Choose the right starting point.</h2></div>
+            <p>Start with one focused workflow. Each tool explains what it can check, what it cannot prove, and what to verify next.</p>
           </div>
           <div className="sentinel-workflow-grid">
             {workflows.map((item) => {
@@ -96,10 +93,10 @@ export default function Home() {
         <section className="tools-section home-tools" aria-labelledby="capability-title">
           <div className="sentinel-section-heading">
             <div><div className="sentinel-overline">CAPABILITY MAP</div><h2 id="capability-title">Know what is live—and what is not.</h2></div>
-            <p>Available workflows and incomplete migrations are labelled plainly. A missing signal never proves content is safe.</p>
+            <p>See what is available today, plus the boundaries that matter. A missing signal never proves content is safe.</p>
           </div>
           <details className="tools-disclosure">
-            <summary><span><strong>Browse all eleven capabilities</strong><small>Available tools, current boundaries and migration status</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary>
+            <summary><span><strong>Browse all ten capabilities</strong><small>Available tools, current boundaries and migration status</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary>
             <div className="tool-grid">
               {tools.map(([number, title, description, href, action]) => <article className="tool-card" key={number}>
                 <div className="tool-card-top"><span>{number}</span><span className="tool-arrow" aria-hidden="true">↗</span></div>
