@@ -18,7 +18,7 @@ const workflows = [
 
 const tools: Array<[string, string, string, string, string]> = [
   ['01', 'Text & message triage', 'Spot pressure tactics, impersonation cues and risky requests.', '/investigate', 'OPEN ANALYSIS'],
-  ['02', 'URL review', 'Review a URL as text without automatically visiting it.', '/investigate', 'OPEN ANALYSIS'],
+  ['02', 'URL review', 'Review a URL as text without automatically visiting it.', '/url', 'OPEN URL INSPECTOR'],
   ['03', 'Image metadata & integrity', 'Inspect supported metadata markers and calculate a SHA-256 fingerprint locally. Not an authenticity verdict.', '/image-review', 'OPEN IMAGE REVIEW'],
   ['04', 'QR-code investigation', 'Decode QR payloads locally with the native browser API and bundled fallback decoder. Destinations are never fetched automatically.', '/qr', 'OPEN QR DECODER'],
   ['05', 'PDF & text document review', 'Extract supported PDF and plain-text content locally, calculate a source fingerprint and inspect explainable text cues.', '/pdf-review', 'OPEN DOCUMENT REVIEW'],
@@ -96,7 +96,7 @@ export default function Home() {
             <p>See what is available today, plus the boundaries that matter. A missing signal never proves content is safe.</p>
           </div>
           <details className="tools-disclosure">
-            <summary><span><strong>Browse all ten capabilities</strong><small>Available tools, current boundaries and migration status</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary>
+            <summary><span><strong>Browse the full capability map</strong><small>Available tools, current boundaries and migration status</small></span><span className="disclosure-icon" aria-hidden="true">＋</span></summary>
             <div className="tool-grid">
               {tools.map(([number, title, description, href, action]) => <article className="tool-card" key={number}>
                 <div className="tool-card-top"><span>{number}</span><span className="tool-arrow" aria-hidden="true">↗</span></div>
