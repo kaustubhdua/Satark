@@ -59,6 +59,20 @@ test('tenant RLS blocks cross-tenant reads and writes for two distinct users', {
     assert.equal(read.status, 200, 'RLS should return an empty list instead of leaking foreign rows');
     assert.deepEqual(await read.json(), [], 'a user must not read another tenant’s cases');
 
+    // Tenant isolation applies to every persisted investigation resource, not
+    // only the parent case table. Query each resource directly so this test
+    // exercises database RLS rather than relying on frontend/API filtering.
+    for (const table of ['satark_evidence', 'satark_findings', 'satark_reports']) {
+      const resourceQuery = new URLSearchParams({
+        select: 'id,tenant_id',
+        tenant_id: 'eq.' + foreignTenant,
+        limit: '20',
+      });
+      const resourceRead = await rest(session, table + '?' + resourceQuery);
+      assert.equal(resourceRead.status, 200, table + ' cross-tenant read should be safely filtered by RLS');
+      assert.deepEqual(await resourceRead.json(), [], table + ' must not expose another tenant’s records');
+    }
+
     const write = await rest(session, 'satark_cases', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
@@ -86,6 +100,19 @@ const viewerRequired = [
   'SATARK_TEST_VIEWER_TENANT_ID',
 ];
 const viewerMissing = viewerRequired.filter(key => !env[key]);
+
+// The ordinary unit-test suite may skip live integration checks when no test
+// project is configured. The dedicated integration command must never report a
+// green run with these checks skipped: missing fixtures are a configuration error.
+const requireIntegration = env.SATARK_REQUIRE_INTEGRATION === '1'
+  || env.npm_lifecycle_event === 'test:integration';
+if (requireIntegration && (missing.length || viewerMissing.length)) {
+  throw new Error(
+    'Tenant integration tests require dedicated, non-admin test fixtures. Missing: '
+    + [...new Set([...missing, ...viewerMissing])].join(', '),
+  );
+}
+
 test('viewer role cannot create or update cases', {
   skip: viewerMissing.length ? 'Set up a dedicated viewer test account; missing: ' + viewerMissing.join(', ') : false,
 }, async () => {
@@ -123,3 +150,83 @@ test('viewer role cannot create or update cases', {
   assert.equal(update.status, 200, `viewer update must be denied by authorization/RLS, got HTTP ${update.status}`);
   assert.deepEqual(await update.json(), [], 'viewer update must not return or modify a case');
 });
+
+test('cross-tenant evidence, findings, reports, case updates and deletes are denied', {
+  skip: configured ? false : 'Set up two non-admin Supabase test users and separate tenant IDs; missing: ' + missing.join(', '),
+}, async () => {
+  assert.notEqual(env.SATARK_TEST_TENANT_A_ID, env.SATARK_TEST_TENANT_B_ID, 'test tenants must be distinct');
+  const [a, b] = await Promise.all([
+    login(env.SATARK_TEST_USER_A_EMAIL, env.SATARK_TEST_USER_A_PASSWORD),
+    login(env.SATARK_TEST_USER_B_EMAIL, env.SATARK_TEST_USER_B_PASSWORD),
+  ]);
+  assert.notEqual(a.userId, b.userId, 'test users must be distinct');
+
+  for (const [session, foreignTenant, foreignSession] of [
+    [a, env.SATARK_TEST_TENANT_B_ID, b],
+    [b, env.SATARK_TEST_TENANT_A_ID, a],
+  ]) {
+    const ownCases = await rest(foreignSession, 'satark_cases?' + new URLSearchParams({
+      select: 'id,tenant_id', tenant_id: 'eq.' + foreignTenant, order: 'created_at.asc', limit: '1',
+    }));
+    assert.equal(ownCases.status, 200, 'fixture owner must be able to query its tenant cases');
+    const foreignCases = await ownCases.json();
+    assert.ok(foreignCases.length > 0, 'each tenant fixture must contain one disposable case');
+    const foreignCaseId = foreignCases[0].id;
+
+    const update = await rest(session, 'satark_cases?' + new URLSearchParams({
+      id: 'eq.' + foreignCaseId, tenant_id: 'eq.' + foreignTenant,
+    }), {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ title: 'Cross-tenant mutation must not persist' }),
+    });
+    if ([401, 403].includes(update.status)) {
+      // Explicit database denial is acceptable.
+    } else {
+      assert.equal(update.status, 200, 'RLS-filtered cross-tenant update should return an empty success');
+      assert.deepEqual(await update.json(), [], 'cross-tenant update must not return or modify a row');
+    }
+
+    const remove = await rest(session, 'satark_cases?' + new URLSearchParams({
+      id: 'eq.' + foreignCaseId, tenant_id: 'eq.' + foreignTenant,
+    }), { method: 'DELETE', headers: { Prefer: 'return=representation' } });
+    assert.ok([401, 403].includes(remove.status), 'case deletion must be denied by table grants/RLS');
+
+    const hash = 'a'.repeat(64);
+    const attempts = [
+      ['satark_evidence', {
+        tenant_id: foreignTenant, case_id: foreignCaseId,
+        source_label: 'integration probe', event_kind: 'file',
+        observed_at: new Date().toISOString(), summary: 'Synthetic cross-tenant access probe',
+        source_sha256: hash, record_sha256: 'b'.repeat(64),
+        metadata: { test_probe: true }, created_by: session.userId,
+      }],
+      ['satark_findings', {
+        tenant_id: foreignTenant, case_id: foreignCaseId,
+        finding_key: 'cross-tenant-probe-' + session.userId,
+        title: 'Synthetic cross-tenant probe', severity: 'unknown',
+        detail: 'This record must not be persisted.', evidence_refs: [],
+        source: 'integration test', confidence: null, created_by: session.userId,
+      }],
+      ['satark_reports', {
+        tenant_id: foreignTenant, case_id: foreignCaseId,
+        title: 'Synthetic cross-tenant probe', report_version: 1,
+        snapshot: { test_probe: true }, snapshot_sha256: hash,
+        created_by: session.userId,
+      }],
+    ];
+
+    for (const [table, payload] of attempts) {
+      const response = await rest(session, table, {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(payload),
+      });
+      assert.ok(
+        [401, 403].includes(response.status),
+        table + ' cross-tenant insert must be denied by database authorization/RLS; got HTTP ' + response.status,
+      );
+    }
+  }
+});
+
