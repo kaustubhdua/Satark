@@ -342,7 +342,7 @@ async function inspectViewport(viewport, label) {
           kind: 'error',
           text: await page.getByRole('alert').innerText().catch(() => 'No error text.'),
           video: await videoElement.evaluate(video => {
-            const target = video as HTMLVideoElement;
+            const target = video;
             return {
               readyState: target.readyState,
               networkState: target.networkState,
