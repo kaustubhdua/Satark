@@ -111,6 +111,10 @@ jobs:
             exit 1
           fi
           jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
+          if ! jq -e '.checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == true and .checks.persistentStorage.serverClientMatch == true and .checks.persistentStorage.serverProjectRef == "igqgtlmnwssjaoxkkzbm" and .checks.persistentStorage.clientProjectRef == "igqgtlmnwssjaoxkkzbm"' "$body" >/dev/null; then
+            echo "::error::Production browser/server Supabase configuration is missing or mismatched; expected the verified SATARK project igqgtlmnwssjaoxkkzbm."
+            exit 1
+          fi
           rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
           shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
           echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
