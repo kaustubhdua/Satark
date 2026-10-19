@@ -1,3 +1,30 @@
+-- Ensure the policy helper exists before this migration installs approval RLS
+-- policies. It is deliberately outside the exposed public/PostgREST schema.
+create schema if not exists satark_private;
+revoke all on schema satark_private from public, anon;
+grant usage on schema satark_private to authenticated;
+
+create or replace function satark_private.has_membership(
+  target_tenant uuid,
+  allowed_roles text[] default null
+) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.satark_memberships m
+    where m.tenant_id = target_tenant
+      and m.user_id = (select auth.uid())
+      and (allowed_roles is null or m.role = any(allowed_roles))
+  );
+$$;
+
+revoke all on function satark_private.has_membership(uuid, text[]) from public, anon;
+grant execute on function satark_private.has_membership(uuid, text[]) to authenticated;
+
 -- Harden the durable-approval foundation already present in 202610200001.
 -- This follow-up keeps the original migration immutable and fixes RLS helper ACLs,
 -- server-side payload binding, bounded expiry, and trigger-only function exposure.
