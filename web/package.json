@@ -12,7 +12,8 @@
     "test:integration": "node --test tests/tenant-isolation.integration.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "predev": "node scripts/prepare-pdf-worker.mjs",
-    "prebuild": "node scripts/prepare-pdf-worker.mjs"
+    "prebuild": "node scripts/prepare-pdf-worker.mjs",
+    "evaluate:local-analysis": "node scripts/evaluate-local-analysis.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.14",
