@@ -34,6 +34,37 @@ test('optional model and persistent storage require complete configuration pairs
   assert.equal(buildHealthSnapshot({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'public-key' }).checks.persistentStorage.configured, true);
 });
 
+test('Supabase mapping confirms browser/server project equality without exposing URLs or keys', () => {
+  const snapshot = buildHealthSnapshot({
+    SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'server-publishable-key',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'browser-publishable-key',
+  });
+  assert.equal(snapshot.checks.persistentStorage.configured, true);
+  assert.equal(snapshot.checks.persistentStorage.clientConfigured, true);
+  assert.equal(snapshot.checks.persistentStorage.serverClientMatch, true);
+  assert.equal(snapshot.checks.persistentStorage.serverProjectRef, 'igqgtlmnwssjaoxkkzbm');
+  assert.equal(snapshot.checks.persistentStorage.clientProjectRef, 'igqgtlmnwssjaoxkkzbm');
+  const serialized = JSON.stringify(snapshot);
+  assert.doesNotMatch(serialized, /https:\/\//i);
+  assert.doesNotMatch(serialized, /publishable-key/i);
+});
+
+test('Supabase mapping reports mismatched browser and server projects', () => {
+  const snapshot = buildHealthSnapshot({
+    SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'server-publishable-key',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://ogbanmjokjlxfuktkicj.supabase.co',
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'browser-publishable-key',
+  });
+  assert.equal(snapshot.checks.persistentStorage.configured, true);
+  assert.equal(snapshot.checks.persistentStorage.clientConfigured, true);
+  assert.equal(snapshot.checks.persistentStorage.serverClientMatch, false);
+  assert.equal(snapshot.checks.persistentStorage.serverProjectRef, 'igqgtlmnwssjaoxkkzbm');
+  assert.equal(snapshot.checks.persistentStorage.clientProjectRef, 'ogbanmjokjlxfuktkicj');
+});
+
 test('blank environment values count as missing', () => {
   const snapshot = buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: '  ', SATARK_OLLAMA_MODEL: 'model', SUPABASE_URL: 'url', SUPABASE_PUBLISHABLE_KEY: '' });
   assert.equal(snapshot.checks.localModel.configured, false);
