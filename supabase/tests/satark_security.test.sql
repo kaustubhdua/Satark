@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(22);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
