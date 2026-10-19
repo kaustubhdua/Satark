@@ -1,29 +1,71 @@
-# Release execution checklist
+# SATARK release execution checklist
 
-Candidate: `main` at `51b493d1f945c5d991ded95d57cda4066802c810`.
+Last verified: 2026-10-20 UTC
 
-## Current evidence
-- Frontend CI passed: https://github.com/kaustubhdua/Satark/actions/runs/38114820130
-- Python CI passed: https://github.com/kaustubhdua/Satark/actions/runs/38114820139
-- CodeQL/Python analysis passed: https://github.com/kaustubhdua/Satark/actions/runs/38114820134
-- Vercel deployment rate limit was reported; exact live SHA was not confirmed.
-- Live provider and full deployed workflow testing remain unverified.
+## Current release state
 
-## Release gates
-- [ ] Resolve Vercel rate limit and confirm canonical project is linked to kaustubhdua/Satark and main.
-- [ ] Deploy the exact candidate SHA and record URL, deployment ID, environment, SHA and timestamp.
-- [ ] Confirm production alias points to that exact deployment.
-- [ ] Verify production/preview environment variable names and scopes. Never expose secrets in client-side variables or logs.
-- [ ] Run desktop/mobile browser acceptance for home, /investigate, /firstlight, /reports and /learn.
-- [ ] Exercise FIRSTLIGHT case reset, evidence/tamper detection, findings, timeline, simulated approve/reject, audit validation and JSON/CSV import/export.
-- [ ] Test malformed input, invalid timestamps, duplicate IDs, oversized uploads, repeated exports, loading states and error recovery.
-- [ ] Test provider success, missing/invalid key, malformed response, timeout, rate limit and provider failure using authorized synthetic inputs only.
-- [ ] Test URL scanner defenses for private/reserved addresses, metadata endpoints, redirects, credentials in URLs, HTTPS downgrade and response limits.
-- [ ] Verify hosting-level egress controls, upload/request/concurrency limits and access controls for intended audience.
-- [ ] Review CodeQL and dependency audit annotations, not only the green workflow status.
-- [ ] Attach screenshots, logs and test outcomes; update docs/DEPLOYMENT_SIGNOFF.md only when each gate has evidence.
+**Release is blocked.** Do not label the current `main` revision production-ready until all checks below have passed on one exact SHA and the deployment has been verified against that SHA.
 
-## Known boundary
-SATARK is a prototype and triage aid, not a certified forensic product or antivirus. FIRSTLIGHT uses synthetic incident data and simulated response actions. Its session-based audit chain is not independently anchored chain-of-custody evidence.
+- Current `main` revision at this review: `06cdbb4472c3cc0ef31f658f56efe67f62f01e77`.
+- This is a tracking revision, **not yet a release candidate**: CI, Web CI, and CodeQL runs for this SHA were queued when checked.
+- PR #145 (isolated Supabase migration validation and release gates) is merged.
+- PR #150 (safe browser/server Supabase project-mapping diagnostics) is merged.
+- PR #144 (durable approvals, audit decisions, private membership helper and policy hardening) remains open pending isolated migration and test results.
+- PR #149 (cross-tenant writes and evidence-storage regression coverage) remains open pending CI and isolated migration results.
+- The latest successful main-branch CodeQL/CI runs at `304a837ab34fc610b60d47e68c8789e3d64ffb95` do not prove the newer `06cdbb4...` revision passed.
+- Vercel reported `Deployment rate limited — retry in 24 hours` for the newer revision. The deployment has not been verified against `06cdbb4...`.
+- The Vercel integration currently cannot read deployment details for the SATARK project. Production health checks must provide the authoritative, public-safe Supabase mapping result after a deployment is available.
+- GitHub branch protection could not be read by the connected integration; do not assume required checks are enforced. Configure and verify required checks using an account with repository administration access.
 
-Passing CI does not prove the deployed application is running the approved commit or that live provider flows work.
+## Project and environment findings
+
+- The intended SATARK Supabase project is the `nihdhoom` project, reference `igqgtlmnwssjaoxkkzbm`.
+- The Vercel project has environment-variable entries for `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`. Their values are encrypted and were not inspected or printed.
+- Both Upstash variable names exist for the production target, but the presence of names alone does not prove that their values are valid or that Redis is reachable.
+- The public-safe `/api/health` snapshot and production smoke workflow now check that browser/server Supabase configuration points to `igqgtlmnwssjaoxkkzbm`, without returning URLs or keys.
+- `FIRSTLIGHT_API_URL` and `FIRSTLIGHT_API_TOKEN` are optional; the remote service remains unavailable when unset. Ollama is optional for deterministic analysis.
+- The hosted Supabase project has RLS enabled on SATARK case, evidence, finding, report, membership, tenant and audit tables. The private membership helper is executable by authenticated policy evaluation and not by `anon`. A production query also found that `public.satark_reject_audit_mutation()` still had direct EXECUTE grants at the time of review; the repository ACL-hardening migration must pass isolated validation before it is applied to the hosted database.
+
+## Required release gates
+
+### 1. Source and CI
+- [ ] Resolve PR #144; do not merge until CI, Web CI, CodeQL and isolated Supabase migration validation pass on its exact head.
+- [ ] Resolve PR #149; do not merge until all checks, including tenant/storage pgTAP tests, pass on its exact head.
+- [ ] Confirm all required changes are on `main`, with no required functionality only on an unmerged branch.
+- [ ] Record the exact release SHA.
+- [ ] Review CodeQL alerts/annotations and dependency audit findings, not just workflow success.
+- [ ] Configure and verify required branch protection/status checks with repository-admin access.
+
+### 2. Database and authorization
+- [ ] Run `supabase db reset` and `supabase test db` from a clean checkout on the final release SHA.
+- [ ] Confirm no duplicate migration versions and no dependency on manually applied migrations absent from the repository.
+- [ ] Test tenant isolation for reads, inserts, updates, deletes, storage objects and RPCs.
+- [ ] Test approval expiry, requester/approver separation, exact payload binding, replay prevention, concurrent decisions and audit-chain tamper detection.
+- [ ] Apply production migrations only after isolated tests pass and the intended project is confirmed; verify resulting grants and policies afterward.
+- [ ] Test failures and timeouts so rejected database writes cannot be reported as successful.
+
+### 3. FIRSTLIGHT and scanners
+- [ ] Exercise create/save/reload/reopen case lifecycle with persistent data.
+- [ ] Test evidence MIME/signature validation, size limits, source and record hashes, tamper detection, findings, timeline, evidence gaps and report exports.
+- [ ] Test approval/rejection and ensure decisions create durable audit records. Keep actual response execution disabled until separately reviewed.
+- [ ] Run positive and negative tests for text, URL, image/QR, PDF and video scanners, including private IPs, redirects, malformed files, oversized inputs, timeouts and unavailable dependencies.
+- [ ] Run Ollama success/failure tests when a reachable self-hosted model is available; keep deterministic fallback usable and document unmeasured detection quality.
+
+### 4. Production deployment
+- [ ] Wait for the Vercel deployment-rate limit to clear.
+- [ ] Confirm the Vercel deployment is from the intended repository, branch and exact release SHA.
+- [ ] Confirm the production alias serves that deployment.
+- [ ] Run `/api/health`, `/api/version`, route/security-header checks, unauthenticated API checks and a synthetic analysis request.
+- [ ] Verify shared rate limiting is configured and reachable; analysis must fail closed if it is not.
+- [ ] Test authenticated persistence against the intended database, desktop/mobile UI flows, downloads, loading/error/retry states and accessibility.
+- [ ] Verify request-size, concurrency, timeout and abuse/cost controls, monitoring, log redaction, rollback and backup/recovery procedures.
+
+### 5. Documentation and sign-off
+- [ ] Update the README and environment-variable contract to match the final shipped behavior.
+- [ ] Record supported file formats and size limits, optional services, retention/deletion behavior and known limitations.
+- [ ] Prepare a repeatable synthetic-data demo and capture evidence of the final browser/database workflow.
+- [ ] Update `docs/DEPLOYMENT_SIGNOFF.md` only after each applicable gate has evidence.
+
+## Safety boundary
+
+SATARK is a security-awareness and incident-triage prototype, not a certified forensic product or antivirus. FIRSTLIGHT response actions remain simulated; a passing build does not prove the deployed revision is correct, model detections are calibrated, or chain-of-custody evidence is independently anchored. Use synthetic or non-sensitive data until a separate security and operational review approves broader use.
