@@ -90,16 +90,13 @@ select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111
 select set_config('request.jwt.claims',
   '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 
-select is(
-  (with uploaded as (
-    insert into storage.objects (bucket_id, name, owner, metadata)
+select lives_ok(
+  $insert into storage.objects (bucket_id, name, owner, metadata)
     values ('satark-evidence',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt',
       '11111111-1111-4111-8111-111111111111',
-      '{"mimetype":"text/plain","size":1}'::jsonb)
-    returning id
-  ) select count(*)::integer from uploaded),
-  1, 'a tenant member can upload evidence to their own case'
+      '{"mimetype":"text/plain","size":1}'::jsonb)$,
+  'a tenant member can upload evidence to their own case'
 );
 select is((select count(*)::integer from storage.objects
   where bucket_id='satark-evidence'
