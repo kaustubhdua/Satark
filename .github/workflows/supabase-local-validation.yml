@@ -45,7 +45,7 @@ jobs:
       - name: Apply all migrations to a clean local database
         run: supabase db reset
       - name: Verify migration state
-        run: supabase migration list
+        run: supabase migration list --local
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
