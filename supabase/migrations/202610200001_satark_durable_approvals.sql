@@ -88,6 +88,9 @@ end $$;
 drop trigger if exists satark_approvals_guard_trigger on public.satark_approvals;
 create trigger satark_approvals_guard_trigger before insert or update or delete on public.satark_approvals
  for each row execute function public.satark_approvals_guard();
+-- Trigger functions are invoked by PostgreSQL; they are not RPC endpoints.
+-- Remove the default PUBLIC EXECUTE grant after trigger creation.
+revoke all on function public.satark_approvals_guard() from public, anon, authenticated;
 -- An approval is only usable for the exact payload hash and exact action key.
 -- No application may perform a real response unless this returns true immediately
 -- before execution; absence, expiry, mismatch, consumption, or access failure is false.
