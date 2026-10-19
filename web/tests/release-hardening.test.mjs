@@ -21,6 +21,7 @@ test('AbuseIPDB lookups accept only public IP literals', () => {
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
+const securityHeaders = readFileSync(new URL('../src/lib/security-headers.mjs', import.meta.url), 'utf8');
 const analyze = readFileSync(new URL('../src/app/api/analyze/route.ts', import.meta.url), 'utf8');
 const rateLimit = readFileSync(new URL('../src/lib/rate-limit.mjs', import.meta.url), 'utf8');
 const reports = readFileSync(new URL('../src/app/reports/page.tsx', import.meta.url), 'utf8');
@@ -32,12 +33,26 @@ const investigatePage = readFileSync(new URL('../src/app/investigate/page.tsx', 
 
 test('baseline security headers and CSP directives are configured', () => {
   for (const header of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']) {
-    assert.match(config, new RegExp(header));
+    assert.match(securityHeaders, new RegExp(header));
   }
-  assert.match(config, /base-uri 'none'/);
-  assert.match(config, /object-src 'none'/);
-  assert.match(config, /frame-ancestors 'none'/);
-  assert.match(config, /form-action 'self'/);
+  assert.match(securityHeaders, /base-uri 'none'/);
+  assert.match(securityHeaders, /object-src 'none'/);
+  assert.match(securityHeaders, /frame-ancestors 'none'/);
+  assert.match(securityHeaders, /form-action 'self'/);
+});
+
+test('CSP allows the configured Supabase auth origin without broad external access', async () => {
+  const { buildSecurityHeaders, supabaseConnectOrigin } = await import('../src/lib/security-headers.mjs');
+  const production = buildSecurityHeaders({
+    NODE_ENV: 'production',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
+  }).find(header => header.key === 'Content-Security-Policy').value;
+  assert.match(production, /connect-src 'self' https:\/\/igqgtlmnwssjaoxkkzbm\.supabase\.co/);
+  assert.doesNotMatch(production, /connect-src[^;]*\*/);
+  assert.equal(supabaseConnectOrigin('https://igqgtlmnwssjaoxkkzbm.supabase.co', 'production'), 'https://igqgtlmnwssjaoxkkzbm.supabase.co');
+  assert.equal(supabaseConnectOrigin('https://evil.example', 'production'), '');
+  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'production'), '');
+  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'development'), 'http://127.0.0.1:54321');
 });
 
 test('analysis route uses only local analysis and has no third-party provider calls', () => {
