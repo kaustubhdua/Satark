@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -48,6 +48,15 @@ select is(
   encode(extensions.digest(convert_to((select action_payload::text from public.satark_approvals
     where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),'UTF8'),'sha256'),'hex'),
   'the database derives the immutable payload hash from the stored action payload'
+);
+select throws_ok(
+  $insert into public.satark_approvals
+    (id, tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
+    values ('88888888-8888-4888-8888-888888888888',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      'isolate-host', '{"host_id":"host-3"}'::jsonb, repeat('1',64),
+      '11111111-1111-4111-8111-111111111111', now() + interval '31 minutes')$,
+  'P0001', null, 'approval lifetime cannot be extended beyond thirty minutes'
 );
 select ok(
   (select relrowsecurity from pg_class where oid='public.satark_approvals'::regclass),
