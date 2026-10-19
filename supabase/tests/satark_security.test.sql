@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(21);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -77,6 +77,28 @@ select set_config('request.jwt.claims',
 select is((select count(*)::integer from public.satark_cases
   where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
   'a tenant member can read their own case');
+select is((select count(*)::integer from public.satark_evidence
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
+  'a tenant member can read their own evidence');
+select is((select count(*)::integer from public.satark_findings
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
+  'a tenant member can read their own findings');
+select is((select count(*)::integer from public.satark_reports
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
+  'a tenant member can read their own reports');
+select ok((select count(*) > 0 from public.satark_audit_events
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+  'a tenant member can read their own audit events');
+select is(
+  (with changed as (
+    update public.satark_cases set title='Tenant A updated'
+    where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc' returning id
+  ) select count(*)::integer from changed),
+  1, 'a tenant member can update their own case'
+);
+select is((select count(*)::integer from public.satark_cases
+  where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc' and title='Tenant A updated'),
+  1, 'case updates persist in the database');
 select is((select count(*)::integer from public.satark_cases
   where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'), 0,
   'a tenant member cannot read another tenant case');
@@ -92,6 +114,20 @@ select is((select count(*)::integer from public.satark_reports
 select is((select count(*)::integer from public.satark_audit_events
   where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'), 0,
   'a tenant member cannot read another tenant audit events');
+select is(
+  (with changed as (
+    update public.satark_cases set title='forbidden cross-tenant update'
+    where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' returning id
+  ) select count(*)::integer from changed),
+  0, 'a tenant member cannot update another tenant case'
+);
+select is(
+  (with removed as (
+    delete from public.satark_cases
+    where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' returning id
+  ) select count(*)::integer from removed),
+  0, 'a tenant member cannot delete another tenant case'
+);
 
 select throws_ok(
   $$insert into public.satark_cases (tenant_id, title, created_by)
@@ -101,7 +137,31 @@ select throws_ok(
   'a tenant member cannot create a case in another tenant'
 );
 select throws_ok(
-  $$insert into public.satark_audit_events
+  $insert into public.satark_evidence
+    (tenant_id, case_id, source_label, event_kind, observed_at, summary, record_sha256, created_by)
+    values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'forbidden.txt', 'note', now(),
+      'cross-tenant evidence', repeat('f',64), '11111111-1111-4111-8111-111111111111')$,
+  '42501', null, 'a tenant member cannot insert evidence in another tenant'
+);
+select throws_ok(
+  $insert into public.satark_findings
+    (tenant_id, case_id, finding_key, title, severity, detail, created_by)
+    values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'forbidden-finding', 'Forbidden', 'low',
+      'cross-tenant finding', '11111111-1111-4111-8111-111111111111')$,
+  '42501', null, 'a tenant member cannot insert findings in another tenant'
+);
+select throws_ok(
+  $insert into public.satark_reports
+    (tenant_id, case_id, title, snapshot, snapshot_sha256, created_by)
+    values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'Forbidden report', '{"test":true}'::jsonb,
+      repeat('f',64), '11111111-1111-4111-8111-111111111111')$,
+  '42501', null, 'a tenant member cannot insert reports in another tenant'
+);
+select throws_ok(
+  $insert into public.satark_audit_events
     (tenant_id, case_id, actor_id, action, details, event_hash)
     values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
