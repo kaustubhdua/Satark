@@ -25,7 +25,8 @@ Last verified: 2026-10-20 UTC
 - Both Upstash variable names exist for the production target, but the presence of names alone does not prove that their values are valid or that Redis is reachable.
 - The public-safe `/api/health` snapshot and production smoke workflow now check that browser/server Supabase configuration points to `igqgtlmnwssjaoxkkzbm`, without returning URLs or keys.
 - `FIRSTLIGHT_API_URL` and `FIRSTLIGHT_API_TOKEN` are optional; the remote service remains unavailable when unset. Ollama is optional for deterministic analysis.
-- The hosted Supabase project has RLS enabled on SATARK case, evidence, finding, report, membership, tenant and audit tables. The private membership helper is executable by authenticated policy evaluation and not by `anon`. A production query also found that `public.satark_reject_audit_mutation()` still had direct EXECUTE grants at the time of review; the repository ACL-hardening migration must pass isolated validation before it is applied to the hosted database.
+- The hosted Supabase project has RLS enabled on SATARK case, evidence, finding, report, membership, tenant and audit tables. The private membership helper is executable by authenticated policy evaluation and not by `anon`; the public membership wrapper is not executable by authenticated users. However, the live storage policies still deparse to `satark_has_membership` rather than `satark_private.has_membership`, so evidence upload/download may fail after the wrapper grant was revoked. PR #149 and PR #144 contain the corresponding policy correction; validate them against a clean local stack before applying any hosted migration.
+- A production query also found that `public.satark_reject_audit_mutation()` still had direct EXECUTE grants at the time of review. The repository ACL-hardening migration must pass isolated validation before it is applied to the hosted database.
 
 ## Required release gates
 
