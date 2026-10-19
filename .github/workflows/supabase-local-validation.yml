@@ -1,0 +1,51 @@
+name: Isolated Supabase migration validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase-local-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase-local-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-local-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-database-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Verify migration files are ordered and present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d supabase/migrations
+          count="$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No Supabase SQL migrations found."
+            exit 1
+          fi
+          echo "Found $count SQL migration files."
+          find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort
+      - name: Start isolated local Supabase services
+        run: supabase start
+      - name: Apply all migrations to a clean local database
+        run: supabase db reset
+      - name: Verify migration state
+        run: supabase migration list
+      - name: Stop local Supabase services
+        if: always()
+        run: supabase stop --no-backup
