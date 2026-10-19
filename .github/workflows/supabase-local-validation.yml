@@ -41,7 +41,8 @@ jobs:
           echo "Found $count SQL migration files."
           find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort
       - name: Start isolated local Supabase services
-        run: supabase start
+        # Database, Auth and Storage are sufficient for migrations/pgTAP. Exclude the heavy optional UI/analytics/runtime containers to reduce image pulls and public-registry throttling.
+        run: supabase start --exclude realtime,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       - name: Apply all migrations to a clean local database
         run: supabase db reset
       - name: Verify migration state
