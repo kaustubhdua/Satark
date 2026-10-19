@@ -46,6 +46,8 @@ jobs:
         run: supabase db reset
       - name: Verify migration state
         run: supabase migration list --local
+      - name: Run database security regression tests
+        run: supabase test db
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
