@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(19);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -13,18 +13,28 @@ insert into auth.users (
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
   ('33333333-3333-4333-8333-333333333333', 'authenticated', 'authenticated',
    'satark-approval-viewer@example.test', 'test-only-not-a-password', now(),
+   '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('44444444-4444-4444-8444-444444444444', 'authenticated', 'authenticated',
+   'satark-approval-foreign@example.test', 'test-only-not-a-password', now(),
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now());
 
-insert into public.satark_tenants (id, name)
-values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'SATARK approval test tenant');
+insert into public.satark_tenants (id, name) values
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'SATARK approval test tenant'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'SATARK approval foreign tenant');
 insert into public.satark_memberships (tenant_id, user_id, role) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'analyst'),
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '22222222-2222-4222-8222-222222222222', 'responder'),
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'viewer');
+insert into public.satark_memberships (tenant_id, user_id, role)
+values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '44444444-4444-4444-8444-444444444444', 'owner');
 insert into public.satark_cases (id, tenant_id, title, status, severity, created_by)
 values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Approval test case', 'open', 'low',
   '11111111-1111-4111-8111-111111111111');
+insert into public.satark_cases (id, tenant_id, title, status, severity, created_by)
+values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Foreign approval test case', 'open', 'low',
+  '44444444-4444-4444-8444-444444444444');
 
 insert into public.satark_approvals (
   id, tenant_id, case_id, action_key, action_payload, payload_sha256,
@@ -41,7 +51,11 @@ insert into public.satark_approvals (
   ('99999999-9999-4999-8999-999999999999',
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
    'disable-account', '{"user_id":"user-2"}'::jsonb, repeat('c',64),
-   'pending', '11111111-1111-4111-8111-111111111111', now() + interval '30 minutes');
+   'pending', '11111111-1111-4111-8111-111111111111', now() + interval '30 minutes'),
+  ('77777777-7777-4777-8777-777777777777',
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+   'isolate-host', '{"host_id":"foreign"}'::jsonb, repeat('2',64),
+   'pending', '44444444-4444-4444-8444-444444444444', now() + interval '30 minutes');
 
 select is(
   (select payload_sha256 from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
@@ -111,6 +125,18 @@ select ok(not public.satark_consume_response_approval(
 ), 'replaying a consumed approval is rejected');
 select is((select status from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
   'consumed', 'successful consumption leaves a durable terminal state');
+select is((select count(*)::integer from public.satark_approvals
+  where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'), 0,
+  'a tenant responder cannot read another tenant approval');
+select throws_ok(
+  $insert into public.satark_approvals
+    (tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
+    values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'isolate-host',
+      '{"host_id":"unauthorized"}'::jsonb, repeat('3',64),
+      '22222222-2222-4222-8222-222222222222', now() + interval '30 minutes')$,
+  '42501', null, 'a tenant responder cannot request approval in another tenant'
+);
 select throws_ok(
   $$select public.satark_decide_approval('ffffffff-ffff-4fff-8fff-ffffffffffff', 'approved', 'expired request')$$,
   'P0001', null, 'expired approval requests cannot be approved'
