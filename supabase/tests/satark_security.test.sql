@@ -59,7 +59,7 @@ insert into public.satark_reports (
    '22222222-2222-4222-8222-222222222222');
 
 select ok(
-  (select count(*) = 7 and bool_and(c.relrowsecurity)
+  (select count(*) >= 7 and bool_and(c.relrowsecurity)
    from pg_class c join pg_namespace n on n.oid=c.relnamespace
    where n.nspname='public' and c.relkind='r' and c.relname like 'satark_%'),
   'every existing SATARK table has row-level security enabled'
