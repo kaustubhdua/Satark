@@ -82,3 +82,36 @@ This status describes repository-backed behavior, not planned features or unveri
 - The current priority score is a deterministic triage hint, not a probability or claim of maliciousness.
 - A hash mismatch raises review urgency; it does not prove who changed the record or make the record safe to use.
 - All response actions in the FIRSTLIGHT prototype remain simulated unless a separate, explicitly enabled integration is configured. Do not present them as live actions without a verified test record.
+
+
+## Wazuh connector milestone (branch: feat/firstlight-wazuh-ingestion)
+
+- Added a bounded, read-only Wazuh Indexer/OpenSearch connector using server-side HTTPS configuration, a dedicated Indexer username/password, default TLS certificate verification, a fixed configurable index-pattern allowlist, bounded timeouts, response-byte limits, and a maximum page size of 500.
+- Normalizes alerts to stable event IDs and preserves index/document provenance, source timestamps, rule/agent metadata, and a SHA-256 digest of the source record. Oversized nested alert data is represented by a bounded truncation marker and digest.
+- Added an authenticated endpoint at GET /api/v1/integrations/wazuh/alerts. It requires a separate FIRSTLIGHT_WAZUH_SYNC_TOKEN of at least 32 characters even when the general investigation API token is unset.
+- Added connector normalization, configuration, bounds, authentication, and mocked HTTP tests; wired them into the FIRSTLIGHT API CI workflow.
+- Fixed Dockerfile.firstlight-api to copy firstlight_agents.py, ai_provider.py, and firstlight_wazuh.py. Without these modules, the container could fail at import time or when optional model agents are used.
+- Added docs/FIRSTLIGHT_WAZUH_INTEGRATION.md with configuration and setup guidance.
+
+**Explicitly incomplete:** this connector currently fetches one page only. It does not persist events, maintain durable checkpoints, schedule polling, enqueue jobs, create a case, or complete a Wazuh-to-persisted-case-to-investigation-to-report lifecycle. No live Wazuh credentials or server were available, and CI has not yet been observed for this branch. Do not call this integration production-ready until real lab and end-to-end verification pass.
+
+
+## Persistent Wazuh worker implementation update
+
+- Added firstlight_wazuh_worker.py to run outside Vercel. It validates the configured case/tenant and an owner/responder/analyst actor, reads a durable checkpoint, queries a bounded Wazuh Indexer time window, saves normalized events to the existing SATARK evidence table using duplicate-safe inserts, and advances the checkpoint only after all pages complete.
+- Added a new migration for a service-role-only ingestion checkpoint table and a worker container definition.
+- The worker uses an overlap window for delayed events and refuses to advance the cursor if it reaches the Indexer's 10,000-result pagination cap. It uses HTTPS and rejects redirects for privileged Supabase REST requests.
+- Added mocked worker tests for paging, idempotent persistence behavior, checkpoint advancement/failure handling, and rejection of an unauthorized actor.
+- The API CI workflow now includes connector and worker tests and builds both container images.
+
+**Still not verified:** CI for the latest PR head is pending; the migration has not been applied; the worker has not been run against a real Wazuh Indexer or the intended dedicated SATARK Supabase project; live endpoint enrollment, storage policies, actual audit trigger behavior, tenant isolation, restart recovery and production deployment remain unverified. The Wazuh preview endpoint does not persist data; persistence is done by the separate worker only after its prerequisites are met. Keep PR #155 in draft until checks and review pass.
+
+
+## Wazuh UI and persistence follow-up
+
+- Added an authenticated Next.js server-side proxy for the read-only Wazuh API. It validates the Supabase user session, keeps the connector token server-side, bounds query size and response bytes, rejects redirects, and does not expose Wazuh credentials to the browser.
+- Added a FIRSTLIGHT workspace action to load one bounded page of real Wazuh alerts, preserve source metadata and raw timestamp provenance, and review/save them through the existing persistent case workflow.
+- Updated the persistent case panel and export to preserve evidence metadata and the browser-verifiable digest for worker-ingested Wazuh records.
+- Added a partial unique index to prevent the same Wazuh index/document identity from being inserted twice into one case by the worker and UI paths.
+
+**Still unverified:** all changes remain on draft PR #155. Type-check, frontend tests, Python tests, Docker image builds and clean local migration validation are pending/queued and must pass. The migration has not been applied to a database; no real Wazuh credentials or endpoint were used. A real endpoint must be authorized and reachable, the migration must be reviewed/applied only to the dedicated SATARK database, and end-to-end behavior must be tested before production use.

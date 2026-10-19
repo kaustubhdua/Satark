@@ -5,9 +5,18 @@ on:
     paths:
       - "firstlight_engine.py"
       - "firstlight_api.py"
+      - "firstlight_agents.py"
+      - "firstlight_wazuh.py"
+      - "tests/test_firstlight_wazuh_worker.py"
+      - "firstlight_wazuh_worker.py"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
+      - "supabase/migrations/202610210001_satark_wazuh_ingestion_checkpoints.sql"
+      - "Dockerfile.firstlight-worker"
       - "tests/test_firstlight_api.py"
+      - "tests/test_firstlight_agents.py"
+      - "tests/test_firstlight_api_details.py"
+      - "tests/test_firstlight_wazuh.py"
       - "tests/test_firstlight_engine.py"
       - ".github/workflows/firstlight-api-ci.yml"
   push:
@@ -15,9 +24,18 @@ on:
     paths:
       - "firstlight_engine.py"
       - "firstlight_api.py"
+      - "firstlight_agents.py"
+      - "firstlight_wazuh.py"
+      - "tests/test_firstlight_wazuh_worker.py"
+      - "supabase/migrations/202610210001_satark_wazuh_ingestion_checkpoints.sql"
+      - "Dockerfile.firstlight-worker"
+      - "firstlight_wazuh_worker.py"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "tests/test_firstlight_api.py"
+      - "tests/test_firstlight_api_details.py"
+      - "tests/test_firstlight_agents.py"
+      - "tests/test_firstlight_wazuh.py"
       - "tests/test_firstlight_engine.py"
       - ".github/workflows/firstlight-api-ci.yml"
   workflow_dispatch:
@@ -39,4 +57,9 @@ jobs:
       - name: Install API dependencies and test runner
         run: python -m pip install -r firstlight-api-requirements.txt pytest
       - name: Run shared API and engine tests
-        run: pytest -q tests/test_firstlight_api.py tests/test_firstlight_engine.py
+        run: pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py
+
+      - name: Build FIRSTLIGHT API and worker images
+        run: |
+          docker build -f Dockerfile.firstlight-api -t firstlight-api:ci .
+          docker build -f Dockerfile.firstlight-worker -t firstlight-worker:ci .

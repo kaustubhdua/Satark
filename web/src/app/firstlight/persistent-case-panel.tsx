@@ -7,7 +7,7 @@ import {
   type SatarkSession, type SatarkTenant,
 } from '../../lib/satark-auth';
 
-type EvidenceRow = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean };
+type EvidenceRow = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
 type FindingRow = { title: string; detail: string; severity: string; refs: string[] };
 type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; created_at: string; updated_at: string };
 type AuditRow = { time: string; action: string; detail: string };
@@ -99,13 +99,18 @@ export default function PersistentCasePanel({
       let savedCount = 0;
       let duplicateEvidenceCount = 0;
       for (const item of toSave) {
+        if (caseId === currentCaseId && item.metadata?.persisted_by_worker === true) {
+          if (item.tampered) throw new Error('Worker-ingested source evidence is immutable. Reload the saved case before continuing after a simulated tamper.');
+          duplicateEvidenceCount++;
+          continue;
+        }
         const response = await fetch('/api/evidence/records', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenant_id: tenant.id, case_id: caseId, source_label: item.source, event_kind: item.kind,
             observed_at: item.time, summary: item.summary,
-            metadata: { local_evidence_id: item.id, browser_record_sha256: item.digest, simulated_tamper: Boolean(item.tampered) },
+            metadata: { ...(item.metadata || {}), source_details: item.details || {}, local_evidence_id: item.id, browser_record_sha256: item.digest, browser_event_timestamp: item.time, simulated_tamper: Boolean(item.tampered) },
           }), cache: 'no-store',
         });
         if (response.status === 409) {
@@ -175,7 +180,7 @@ export default function PersistentCasePanel({
         schema_version: 1, generated_at: new Date().toISOString(), case_id: caseId, tenant_id: tenant.id,
         title: title.trim() || (importName ? 'Imported investigation: ' + importName : 'FIRSTLIGHT account-compromise investigation'),
         source_file: importName || null,
-        evidence: evidence.map(e => ({ id: e.id, timestamp: e.time, source: e.source, kind: e.kind, summary: e.summary, browser_digest: e.digest, simulated_tamper: Boolean(e.tampered) })),
+        evidence: evidence.map(e => ({ id: e.id, timestamp: e.time, source: e.source, kind: e.kind, summary: e.summary, details: e.details || {}, browser_digest: e.digest, metadata: e.metadata || {}, simulated_tamper: Boolean(e.tampered) })),
         findings,
         audit_events_visible_in_session: audit.map(event => ({ ...event })),
         simulated_response_decisions: [...actions],
@@ -227,7 +232,7 @@ export default function PersistentCasePanel({
       const rows = await evidenceResponse.json() as {id:string;observed_at:string;source_label:string;event_kind:string;summary:string;record_sha256:string;metadata:Record<string,unknown>}[];
       const mapped = rows.map((row, i) => ({
         id: typeof row.metadata?.local_evidence_id === 'string' ? row.metadata.local_evidence_id : row.id,
-        time: row.observed_at, source: row.source_label, kind: row.event_kind, summary: row.summary,
+        time: typeof row.metadata?.browser_event_timestamp === "string" ? row.metadata.browser_event_timestamp : row.observed_at, source: row.source_label, kind: row.event_kind, summary: row.summary, details: row.metadata?.source_details && typeof row.metadata.source_details === "object" && !Array.isArray(row.metadata.source_details) ? row.metadata.source_details as Record<string, unknown> : {}, metadata: row.metadata,
         // record_sha256 seals the server-side database envelope, not the browser
         // canonical event used by FIRSTLIGHT's integrity verifier. Keep the
         // original browser digest distinct; never substitute a different hash

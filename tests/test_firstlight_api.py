@@ -118,3 +118,55 @@ def test_chunked_oversized_request_is_rejected_without_content_length():
     )
     assert response.status_code == 413
     assert response.json()["detail"] == "Request body is too large"
+
+
+
+def test_wazuh_alert_route_requires_separate_long_sync_token(monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "w" * 40)
+    response = client.get("/api/v1/integrations/wazuh/alerts")
+    assert response.status_code == 401
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
+
+
+def test_wazuh_alert_route_returns_bounded_read_only_events(monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "w" * 40)
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_TENANT_ID", "11111111-1111-4111-8111-111111111111")
+    monkeypatch.setattr(firstlight_api, "fetch_configured_alerts", lambda limit, since, order: [
+        {"event_id": "wazuh-abc", "timestamp": "2026-10-20T08:00:00Z", "source": "wazuh",
+         "kind": "security_alert", "summary": "Test alert", "details": {}, "provenance": {}}
+    ])
+    response = client.get(
+        "/api/v1/integrations/wazuh/alerts?limit=10&tenant_id=11111111-1111-4111-8111-111111111111",
+        headers={"Authorization": "Bearer " + "w" * 40},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "wazuh-indexer"
+    assert payload["persisted"] is False
+    assert payload["count"] == 1
+    assert payload["events"][0]["event_id"] == "wazuh-abc"
+    assert payload["events"][0]["event_id"] == "wazuh-abc"
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_TENANT_ID", raising=False)
+
+
+def test_wazuh_alert_route_rejects_cross_tenant_access(monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "w" * 40)
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_TENANT_ID", "11111111-1111-4111-8111-111111111111")
+    response = client.get(
+        "/api/v1/integrations/wazuh/alerts?tenant_id=22222222-2222-4222-8222-222222222222",
+        headers={"Authorization": "Bearer " + "w" * 40},
+    )
+    assert response.status_code == 403
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_TENANT_ID", raising=False)
+
+
+def test_wazuh_alert_route_rejects_bad_page_size(monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "w" * 40)
+    response = client.get(
+        "/api/v1/integrations/wazuh/alerts?limit=9999",
+        headers={"Authorization": "Bearer " + "w" * 40},
+    )
+    assert response.status_code == 422
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
