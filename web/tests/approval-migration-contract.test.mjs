@@ -17,6 +17,11 @@ test('durable approvals are tenant-scoped and protected by RLS', () => {
   assert.match(migration, /grant select, insert on public\.satark_approvals to authenticated/i);
 });
 
+test('RLS policies use the private membership helper that has the required execution grant', () => {
+  assert.match(migration, /satark_private\.has_membership\(tenant_id\)/i);
+  assert.doesNotMatch(migration, /public\.satark_has_membership/i);
+});
+
 test('approval requests bind immutable action and payload identity', () => {
   assert.match(migration, /action_key text not null/i);
   assert.match(migration, /action_payload jsonb not null/i);
