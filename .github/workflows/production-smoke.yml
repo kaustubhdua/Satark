@@ -21,7 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL }}
+      # Verified Vercel production alias; repository variable can override it after a domain change.
+      SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL || 'https://satark-rose.vercel.app' }}
     steps:
       - name: Check out current production branch revision
         uses: actions/checkout@v4
@@ -32,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${SATARK_PRODUCTION_URL:-}" ]]; then
-            echo "::error::Set the repository Actions variable SATARK_PRODUCTION_URL to the verified SATARK production URL before enabling production smoke checks."
+            echo "::error::Set the repository Actions variable SATARK_PRODUCTION_URL if the verified production domain changes."
             exit 1
           fi
           expected_sha="$(git rev-parse HEAD)"
