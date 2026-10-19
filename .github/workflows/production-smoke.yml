@@ -115,6 +115,18 @@ jobs:
           shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
           echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
 
+          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
+          if [[ "$version_status" != "200" ]]; then
+            echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
+            exit 1
+          fi
+          deployed_sha="$(jq -r '.commit // empty' "$body")"
+          if [[ "$deployed_sha" != "$expected_sha" ]]; then
+            echo "::error::Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
+            exit 1
+          fi
+          echo "PASS /api/version: production serves current main commit $expected_sha."
+
           # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
           # but it is still a release blocker because the primary analysis feature is unavailable.
           analysis_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
