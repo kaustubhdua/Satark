@@ -2,10 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const migration = readFileSync(
+const foundationMigration = readFileSync(
   new URL('../../supabase/migrations/202610200001_satark_durable_approvals.sql', import.meta.url),
   'utf8',
 );
+const hardeningMigration = readFileSync(
+  new URL('../../supabase/migrations/202610200003_satark_approval_security_hardening.sql', import.meta.url),
+  'utf8',
+);
+const migration = foundationMigration + '\\n' + hardeningMigration;
 
 test('durable approvals are tenant-scoped and protected by RLS', () => {
   assert.match(migration, /create table if not exists public\.satark_approvals/i);
