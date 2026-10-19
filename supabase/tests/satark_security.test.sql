@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -64,6 +64,17 @@ select ok(
    where n.nspname='public' and c.relkind='r' and c.relname like 'satark_%'),
   'every existing SATARK table has row-level security enabled'
 );
+select ok(
+  (select count(*) = 2
+     and bool_and((coalesce(qual,'') || coalesce(with_check,'')) like '%satark_private.has_membership%')
+     and bool_and((coalesce(qual,'') || coalesce(with_check,'')) not like '%public.satark_has_membership%')
+   from pg_policies
+   where schemaname='storage' and tablename='objects'
+     and policyname in ('satark_evidence_object_insert','satark_evidence_object_read')),
+  'SATARK evidence storage policies use the executable private membership helper'
+);
+select ok(has_function_privilege('authenticated', 'satark_private.has_membership(uuid,text[])', 'EXECUTE'),
+  'authenticated policies can execute the private membership helper');
 select ok(not has_function_privilege('anon', 'public.satark_reject_audit_mutation()', 'EXECUTE'),
   'anon cannot call the audit trigger function');
 select ok(not has_function_privilege('authenticated', 'public.satark_reject_audit_mutation()', 'EXECUTE'),
