@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(27);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -57,6 +57,11 @@ insert into public.satark_reports (
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
    'Tenant B report', '{"synthetic":true}'::jsonb, repeat('d',64),
    '22222222-2222-4222-8222-222222222222');
+insert into storage.objects (bucket_id, name, owner, metadata) values
+  ('satark-evidence',
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt',
+   '22222222-2222-4222-8222-222222222222',
+   '{"mimetype":"text/plain","size":1}'::jsonb);
 
 select ok(
   (select count(*) >= 7 and bool_and(c.relrowsecurity)
@@ -85,6 +90,29 @@ select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111
 select set_config('request.jwt.claims',
   '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 
+select is(
+  (with uploaded as (
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    values ('satark-evidence',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt',
+      '11111111-1111-4111-8111-111111111111',
+      '{"mimetype":"text/plain","size":1}'::jsonb)
+    returning id
+  ) select count(*)::integer from uploaded),
+  1, 'a tenant member can upload evidence to their own case'
+);
+select is((select count(*)::integer from storage.objects
+  where bucket_id='satark-evidence'
+    and name='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt'),
+  0, 'a tenant member cannot read another tenant storage object');
+select throws_ok(
+  $insert into storage.objects (bucket_id, name, owner, metadata)
+    values ('satark-evidence',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/forbidden.txt',
+      '11111111-1111-4111-8111-111111111111',
+      '{"mimetype":"text/plain","size":1}'::jsonb)$,
+  '42501', null, 'a tenant member cannot upload evidence into another tenant'
+);
 select is((select count(*)::integer from public.satark_cases
   where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
   'a tenant member can read their own case');
