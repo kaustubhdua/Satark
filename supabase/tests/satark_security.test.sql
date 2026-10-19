@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(28);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -101,6 +101,10 @@ select is(
   ) select count(*)::integer from uploaded),
   1, 'a tenant member can upload evidence to their own case'
 );
+select is((select count(*)::integer from storage.objects
+  where bucket_id='satark-evidence'
+    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt'),
+  1, 'a tenant member can read their own evidence object');
 select is((select count(*)::integer from storage.objects
   where bucket_id='satark-evidence'
     and name='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt'),
