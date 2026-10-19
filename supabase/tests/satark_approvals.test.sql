@@ -92,13 +92,13 @@ select ok(public.satark_consume_response_approval(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', repeat('a',64)
+  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'the exact approved action can be consumed once');
 select ok(not public.satark_consume_response_approval(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', repeat('a',64)
+  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'replaying a consumed approval is rejected');
 select is((select status from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
   'consumed', 'successful consumption leaves a durable terminal state');
