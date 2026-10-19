@@ -95,5 +95,28 @@ class InputProcessingTests(unittest.TestCase):
         self.assertEqual(_uploaded_size(upload), 5)
 
 
+
+    def test_pdf_with_readable_text_is_extracted(self):
+        class TextPage:
+            def extract_text(self):
+                return "Synthetic incident note with a readable timestamp."
+
+        class TextReader:
+            pages = [TextPage()]
+
+        upload = BytesIO(b"%PDF-1.7 synthetic fixture")
+        with patch("input_processing.PdfReader", return_value=TextReader()):
+            self.assertEqual(
+                extract_pdf_text(upload),
+                "Synthetic incident note with a readable timestamp.",
+            )
+
+    def test_encrypted_pdf_returns_bounded_user_safe_error(self):
+        upload = BytesIO(b"%PDF-1.7 encrypted fixture")
+        with patch("input_processing.PdfReader", side_effect=RuntimeError("private parser detail")):
+            with self.assertRaisesRegex(ValueError, "corrupted, encrypted, or unsupported") as caught:
+                extract_pdf_text(upload)
+        self.assertNotIn("private parser detail", str(caught.exception))
+
 if __name__ == "__main__":
     unittest.main()
