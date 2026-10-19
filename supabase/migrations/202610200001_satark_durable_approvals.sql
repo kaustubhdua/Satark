@@ -53,6 +53,9 @@ begin
    -- Never trust a client-supplied digest: bind the immutable hash to PostgreSQL's
    -- canonical JSONB representation of the exact action payload being approved.
    new.payload_sha256 := encode(extensions.digest(convert_to(new.action_payload::text,'UTF8'),'sha256'),'hex');
+   if new.expires_at > now() + interval '30 minutes' then
+     raise exception 'approval expiry exceeds maximum lifetime';
+   end if;
    if new.status <> 'pending' or new.decided_by is not null or new.decided_at is not null
       or new.consumed_at is not null then raise exception 'approvals must start pending'; end if;
    return new;
