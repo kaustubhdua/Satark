@@ -12,6 +12,7 @@ Last verified: 2026-10-20 UTC
 - PR #150 (safe browser/server Supabase project-mapping diagnostics) is merged.
 - PR #144 (durable approvals, audit decisions, private membership helper and policy hardening) remains open pending isolated migration and test results.
 - PR #149 (cross-tenant writes and evidence-storage regression coverage) remains open pending CI and isolated migration results.
+- PR #152 adds video/PDF scanner failure-path tests; PR #153 adds the synthetic local-analysis evaluation corpus and refreshes README claims; PR #154 fixes a CSP issue that could block browser Supabase authentication. These changes are not yet merged or verified on production.
 - The latest successful main-branch CodeQL/CI runs at `304a837ab34fc610b60d47e68c8789e3d64ffb95` do not prove the newer `06cdbb4...` revision passed.
 - Vercel reported `Deployment rate limited — retry in 24 hours` for the newer revision. The deployment has not been verified against `06cdbb4...`.
 - Current Vercel production deployment is READY at `dpl_FPJuv6ZYEnzCMs2PwGZJKihdi9ay`, alias `https://satark-rose.vercel.app`, but it serves SHA `5a7486ac28fcc5bebe40e0e627ad26084fa0b092`, not current `main` SHA `06cdbb4472c3cc0ef31f658f56efe67f62f01e77`.
@@ -60,6 +61,7 @@ Last verified: 2026-10-20 UTC
 - [ ] Run `/api/health`, `/api/version`, route/security-header checks, unauthenticated API checks and a synthetic analysis request.
 - [ ] Verify shared rate limiting is configured and reachable; analysis must fail closed if it is not.
 - [ ] Test authenticated persistence against the intended database, desktop/mobile UI flows, downloads, loading/error/retry states and accessibility.
+- [ ] Verify the production CSP permits only the configured Supabase Auth origin; the previous `connect-src 'self'` policy could block browser sign-in and session refresh.
 - [ ] Verify request-size, concurrency, timeout and abuse/cost controls, monitoring, log redaction, rollback and backup/recovery procedures.
 
 ### 5. Documentation and sign-off
