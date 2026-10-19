@@ -31,7 +31,7 @@ create index if not exists satark_approvals_pending_expiry_idx
 alter table public.satark_approvals enable row level security;
 alter table public.satark_approvals force row level security;
 revoke all on public.satark_approvals from anon, authenticated;
-grant select, insert, update on public.satark_approvals to authenticated;
+grant select, insert on public.satark_approvals to authenticated;
 drop policy if exists satark_approvals_member_read on public.satark_approvals;
 create policy satark_approvals_member_read on public.satark_approvals
  for select to authenticated using (satark_private.has_membership(tenant_id));
@@ -99,3 +99,35 @@ exception when others then return false;
 end $$;
 revoke all on function public.satark_authorize_response_action(uuid,uuid,uuid,text,text) from public, anon;
 grant execute on function public.satark_authorize_response_action(uuid,uuid,uuid,text,text) to authenticated;
+
+-- Authenticated decision endpoint: requesters cannot approve their own action;
+-- only tenant owners/responders can decide. Decision and audit append are atomic.
+create or replace function public.satark_decide_approval(
+ p_approval_id uuid, p_decision text, p_reason text default null
+) returns public.satark_approvals language plpgsql security definer set search_path = ''
+as $$
+declare a public.satark_approvals%rowtype; previous text; event_time timestamptz := clock_timestamp();
+ event_details jsonb; payload jsonb; actor uuid := auth.uid();
+begin
+ if actor is null or p_decision not in ('approved','rejected') then raise exception 'unauthorized or invalid decision'; end if;
+ if p_reason is not null and length(p_reason)>2000 then raise exception 'decision reason too long'; end if;
+ select * into a from public.satark_approvals where id=p_approval_id for update;
+ if not found then raise exception 'approval not found'; end if;
+ if a.status <> 'pending' or a.expires_at <= now() then raise exception 'approval is not pending or has expired'; end if;
+ if actor = a.requested_by then raise exception 'requester cannot decide own approval'; end if;
+ if not public.satark_private.has_membership(a.tenant_id, array['owner','responder']::text[]) then raise exception 'insufficient tenant role'; end if;
+ update public.satark_approvals set status=p_decision, decided_by=actor,
+   decision_reason=p_reason, decided_at=event_time where id=a.id returning * into a;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(a.tenant_id::text,0));
+ select event_hash into previous from public.satark_audit_events where tenant_id=a.tenant_id order by id desc limit 1;
+ event_details := jsonb_build_object('approval_id',a.id,'action_key',a.action_key,
+   'payload_sha256',a.payload_sha256,'decision',p_decision,'reason',p_reason);
+ payload := jsonb_build_object('tenant_id',a.tenant_id,'case_id',a.case_id,'actor_id',actor,
+   'action','approval.'||p_decision,'details',event_details,'previous_hash',previous,'created_at',event_time);
+ insert into public.satark_audit_events(tenant_id,case_id,actor_id,action,details,previous_hash,event_hash,created_at)
+ values (a.tenant_id,a.case_id,actor,'approval.'||p_decision,event_details,previous,
+   encode(extensions.digest(convert_to(payload::text,'UTF8'),'sha256'),'hex'),event_time);
+ return a;
+end $$;
+revoke all on function public.satark_decide_approval(uuid,text,text) from public, anon;
+grant execute on function public.satark_decide_approval(uuid,text,text) to authenticated;
