@@ -14,10 +14,29 @@ function isHttpsUrl(value) {
   }
 }
 
+function supabaseProjectRef(value) {
+  if (!isHttpsUrl(value)) return null;
+  try {
+    const hostname = new URL(value.trim()).hostname.toLowerCase();
+    const match = hostname.match(/^([a-z0-9]{20})\.supabase\.co$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 /** @param {Record<string, string | undefined>} [env={}] */
 export function buildHealthSnapshot(env = {}) {
   const localModelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
-  const persistentStorageConfigured = isHttpsUrl(env.SUPABASE_URL) && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
+  const serverSupabaseUrlValid = isHttpsUrl(env.SUPABASE_URL);
+  const clientSupabaseUrlValid = isHttpsUrl(env.NEXT_PUBLIC_SUPABASE_URL);
+  const serverProjectRef = supabaseProjectRef(env.SUPABASE_URL);
+  const clientProjectRef = supabaseProjectRef(env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseClientServerMatch = Boolean(
+    serverProjectRef && clientProjectRef && serverProjectRef === clientProjectRef
+  );
+  const persistentStorageConfigured = serverSupabaseUrlValid && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
+  const clientSupabaseConfigured = clientSupabaseUrlValid && hasValue(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
   const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const redisUrlValid = isHttpsUrl(env.UPSTASH_REDIS_REST_URL);
@@ -36,9 +55,16 @@ export function buildHealthSnapshot(env = {}) {
         sharedAcrossInstances: sharedLimiterConfigured,
         connectivityVerified: false,
       },
-      persistentStorage: { configured: persistentStorageConfigured },
+      persistentStorage: {
+        configured: persistentStorageConfigured,
+        clientConfigured: clientSupabaseConfigured,
+        serverClientMatch: supabaseClientServerMatch,
+        // Project refs are public identifiers, not keys or secrets. Never expose URLs or key values.
+        serverProjectRef,
+        clientProjectRef,
+      },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the browser and server are configured for the same Supabase project without exposing URLs or keys. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
   };
 }
 
