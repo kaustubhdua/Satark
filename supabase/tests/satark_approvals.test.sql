@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -43,6 +43,12 @@ insert into public.satark_approvals (
    'disable-account', '{"user_id":"user-2"}'::jsonb, repeat('c',64),
    'pending', '11111111-1111-4111-8111-111111111111', now() + interval '30 minutes');
 
+select is(
+  (select payload_sha256 from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
+  encode(extensions.digest(convert_to((select action_payload::text from public.satark_approvals
+    where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),'UTF8'),'sha256'),'hex'),
+  'the database derives the immutable payload hash from the stored action payload'
+);
 select ok(
   (select relrowsecurity from pg_class where oid='public.satark_approvals'::regclass),
   'durable approvals enforce row-level security'
@@ -74,7 +80,7 @@ select ok(public.satark_authorize_response_action(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', repeat('a',64)
+  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'authorization accepts the exact tenant, case, action and payload hash');
 select ok(not public.satark_authorize_response_action(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
