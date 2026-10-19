@@ -45,7 +45,7 @@
     {
       "id": "password-training",
       "label": "benign",
-      "input": "Security training explains how to create strong passwords and why employees should never share them."
+      "input": "Security training explains how to create a strong password and why employees should never share it."
     },
     {
       "id": "verification-documentation",
