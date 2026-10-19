@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(21);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -56,6 +56,12 @@ insert into public.satark_approvals (
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
    'isolate-host', '{"host_id":"foreign"}'::jsonb, repeat('2',64),
    'pending', '44444444-4444-4444-8444-444444444444', now() + interval '30 minutes');
+
+select ok(not has_function_privilege('authenticated', 'public.satark_has_membership(uuid,text[])', 'EXECUTE'),
+  'authenticated cannot call the public membership helper');
+select is((select count(*)::integer from pg_policies
+  where (coalesce(qual,'') || coalesce(with_check,'')) like '%public.satark_has_membership%'),
+  0, 'all RLS policies use the private membership helper before public access is revoked');
 
 select is(
   (select payload_sha256 from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
