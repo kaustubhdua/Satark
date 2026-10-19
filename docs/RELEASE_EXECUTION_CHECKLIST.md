@@ -14,7 +14,8 @@ Last verified: 2026-10-20 UTC
 - PR #149 (cross-tenant writes and evidence-storage regression coverage) remains open pending CI and isolated migration results.
 - The latest successful main-branch CodeQL/CI runs at `304a837ab34fc610b60d47e68c8789e3d64ffb95` do not prove the newer `06cdbb4...` revision passed.
 - Vercel reported `Deployment rate limited — retry in 24 hours` for the newer revision. The deployment has not been verified against `06cdbb4...`.
-- The Vercel integration currently cannot read deployment details for the SATARK project. Production health checks must provide the authoritative, public-safe Supabase mapping result after a deployment is available.
+- Current Vercel production deployment is READY at `dpl_FPJuv6ZYEnzCMs2PwGZJKihdi9ay`, alias `https://satark-rose.vercel.app`, but it serves SHA `5a7486ac28fcc5bebe40e0e627ad26084fa0b092`, not current `main` SHA `06cdbb4472c3cc0ef31f658f56efe67f62f01e77`.
+- A deployment for `06cdbb...` was not present in the production deployment list; Vercel's GitHub status reported `Deployment rate limited — retry in 24 hours`. Live HTTP smoke could not be completed through the connected fetch path, so the new `/api/health` Supabase mapping assertion remains unverified in production.
 - GitHub branch protection could not be read by the connected integration; do not assume required checks are enforced. Configure and verify required checks using an account with repository administration access.
 
 ## Project and environment findings
