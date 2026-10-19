@@ -54,7 +54,6 @@ begin
       or new.consumed_at is not null then raise exception 'approvals must start pending'; end if;
    return new;
  end if;
- if old.status <> 'pending' then raise exception 'terminal approval records are immutable'; end if;
  if new.id is distinct from old.id or new.tenant_id is distinct from old.tenant_id
     or new.case_id is distinct from old.case_id or new.action_key is distinct from old.action_key
     or new.action_payload is distinct from old.action_payload or new.payload_sha256 is distinct from old.payload_sha256
@@ -62,6 +61,20 @@ begin
     or new.expires_at is distinct from old.expires_at then
    raise exception 'approval request details are immutable';
  end if;
+ -- A one-time consumption transition is allowed only from an approved record.
+ -- Direct table updates are revoked; the SECURITY DEFINER RPC below enforces actor,
+ -- tenant role, expiry, exact payload binding, and audit append in one transaction.
+ if old.status = 'approved' and new.status = 'consumed' then
+   if new.consumed_at is null
+      or new.decided_by is distinct from old.decided_by
+      or new.decided_at is distinct from old.decided_at
+      or new.decision_reason is distinct from old.decision_reason
+      or not public.satark_has_membership(old.tenant_id, array['owner','responder']::text[]) then
+     raise exception 'invalid approval consumption';
+   end if;
+   return new;
+ end if;
+ if old.status <> 'pending' then raise exception 'terminal approval records are immutable'; end if;
  if new.status not in ('approved','rejected','revoked') or new.decided_by is null or new.decided_at is null then
    raise exception 'only a complete terminal decision is allowed';
  end if;
@@ -131,3 +144,37 @@ begin
 end $$;
 revoke all on function public.satark_decide_approval(uuid,text,text) from public, anon;
 grant execute on function public.satark_decide_approval(uuid,text,text) to authenticated;
+
+ 
+-- Atomically consume an approved authorization before a response executor acts.
+-- This is a one-time gate, not proof that an external action succeeded. An executor
+-- must record its result separately and fail closed if consumption returns false.
+create or replace function public.satark_consume_response_approval(
+ p_approval_id uuid, p_tenant_id uuid, p_case_id uuid, p_action_key text, p_payload_sha256 text
+) returns boolean language plpgsql security definer set search_path = ''
+as $$
+declare a public.satark_approvals%rowtype; previous text; event_time timestamptz := clock_timestamp();
+ event_details jsonb; payload jsonb; actor uuid := auth.uid();
+begin
+ if actor is null or not public.satark_has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
+ select * into a from public.satark_approvals
+  where id=p_approval_id and tenant_id=p_tenant_id and case_id=p_case_id
+  for update;
+ if not found or a.status <> 'approved' or a.expires_at <= event_time
+    or a.action_key <> p_action_key or a.payload_sha256 <> p_payload_sha256
+    or a.decided_by is null or a.decided_by = a.requested_by then return false; end if;
+ update public.satark_approvals set status='consumed', consumed_at=event_time where id=a.id;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(a.tenant_id::text,0));
+ select event_hash into previous from public.satark_audit_events where tenant_id=a.tenant_id order by id desc limit 1;
+ event_details := jsonb_build_object('approval_id',a.id,'action_key',a.action_key,
+   'payload_sha256',a.payload_sha256,'decision','consumed');
+ payload := jsonb_build_object('tenant_id',a.tenant_id,'case_id',a.case_id,'actor_id',actor,
+   'action','approval.consumed','details',event_details,'previous_hash',previous,'created_at',event_time);
+ insert into public.satark_audit_events(tenant_id,case_id,actor_id,action,details,previous_hash,event_hash,created_at)
+ values (a.tenant_id,a.case_id,actor,'approval.consumed',event_details,previous,
+   encode(extensions.digest(convert_to(payload::text,'UTF8'),'sha256'),'hex'),event_time);
+ return true;
+exception when others then return false;
+end $$;
+revoke all on function public.satark_consume_response_approval(uuid,uuid,uuid,text,text) from public, anon;
+grant execute on function public.satark_consume_response_approval(uuid,uuid,uuid,text,text) to authenticated;
