@@ -34,13 +34,13 @@ revoke all on public.satark_approvals from anon, authenticated;
 grant select, insert on public.satark_approvals to authenticated;
 drop policy if exists satark_approvals_member_read on public.satark_approvals;
 create policy satark_approvals_member_read on public.satark_approvals
- for select to authenticated using (public.satark_has_membership(tenant_id));
+ for select to authenticated using (satark_private.has_membership(tenant_id));
 drop policy if exists satark_approvals_request on public.satark_approvals;
 create policy satark_approvals_request on public.satark_approvals
  for insert to authenticated with check (
    requested_by = (select auth.uid())
    and status='pending' and decided_by is null and decided_at is null
-   and public.satark_has_membership(tenant_id, array['owner','responder','analyst']::text[])
+   and satark_private.has_membership(tenant_id, array['owner','responder','analyst']::text[])
  );
 -- Prevent changing who requested or what exact action/payload is being approved,
 -- deleting requests, or changing a terminal decision through direct table writes.
@@ -69,7 +69,7 @@ begin
       or new.decided_by is distinct from old.decided_by
       or new.decided_at is distinct from old.decided_at
       or new.decision_reason is distinct from old.decision_reason
-      or not public.satark_has_membership(old.tenant_id, array['owner','responder']::text[]) then
+      or not satark_private.has_membership(old.tenant_id, array['owner','responder']::text[]) then
      raise exception 'invalid approval consumption';
    end if;
    return new;
@@ -79,7 +79,7 @@ begin
    raise exception 'only a complete terminal decision is allowed';
  end if;
  if new.decided_by = old.requested_by then raise exception 'requester cannot approve own action'; end if;
- if not public.satark_has_membership(old.tenant_id, array['owner','responder']::text[]) then
+ if not satark_private.has_membership(old.tenant_id, array['owner','responder']::text[]) then
    raise exception 'approver lacks required tenant role';
  end if;
  if old.expires_at <= now() then raise exception 'approval request expired'; end if;
@@ -101,7 +101,7 @@ as $$
 declare a public.satark_approvals%rowtype;
 begin
  if auth.uid() is null then return false; end if;
- if not public.satark_has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
+ if not satark_private.has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
  select * into a from public.satark_approvals
   where id=p_approval_id and tenant_id=p_tenant_id and case_id=p_case_id
   for update;
@@ -131,7 +131,7 @@ begin
  if not found then raise exception 'approval not found'; end if;
  if a.status <> 'pending' or a.expires_at <= now() then raise exception 'approval is not pending or has expired'; end if;
  if actor = a.requested_by then raise exception 'requester cannot decide own approval'; end if;
- if not public.satark_has_membership(a.tenant_id, array['owner','responder']::text[]) then raise exception 'insufficient tenant role'; end if;
+ if not satark_private.has_membership(a.tenant_id, array['owner','responder']::text[]) then raise exception 'insufficient tenant role'; end if;
  update public.satark_approvals set status=p_decision, decided_by=actor,
    decision_reason=p_reason, decided_at=event_time where id=a.id returning * into a;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(a.tenant_id::text,0));
@@ -159,7 +159,7 @@ as $$
 declare a public.satark_approvals%rowtype; previous text; event_time timestamptz := clock_timestamp();
  event_details jsonb; payload jsonb; actor uuid := auth.uid();
 begin
- if actor is null or not public.satark_has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
+ if actor is null or not satark_private.has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
  select * into a from public.satark_approvals
   where id=p_approval_id and tenant_id=p_tenant_id and case_id=p_case_id
   for update;
