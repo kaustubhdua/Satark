@@ -23,8 +23,8 @@ test('durable approvals are tenant-scoped and protected by RLS', () => {
 });
 
 test('RLS policies use the private membership helper that has the required execution grant', () => {
-  assert.match(migration, /satark_private\.has_membership\(tenant_id\)/i);
-  assert.doesNotMatch(migration, /public\.satark_has_membership/i);
+  assert.match(hardeningMigration, /satark_private\.has_membership\(tenant_id\)/i);
+  assert.doesNotMatch(hardeningMigration, /public\.satark_has_membership/i);
 });
 
 test('approval requests bind immutable action and payload identity', () => {
