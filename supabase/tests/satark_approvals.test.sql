@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -125,6 +125,26 @@ select throws_ok(
 );
 select ok((select chain_valid from public.satark_verify_audit_chain('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')),
   'approval decisions and consumption preserve the audit hash chain');
+
+-- Simulate storage-level tampering in this isolated test transaction only.
+-- Disable the immutability trigger as the local database owner, corrupt one hash,
+-- re-enable the trigger, and prove the verifier detects the altered record.
+reset role;
+alter table public.satark_audit_events disable trigger satark_audit_no_update_delete;
+update public.satark_audit_events
+  set event_hash = repeat('f',64)
+  where id = (
+    select max(id) from public.satark_audit_events
+    where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  );
+alter table public.satark_audit_events enable trigger satark_audit_no_update_delete;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-4333-8333-333333333333', true);
+select set_config('request.jwt.claims',
+  '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated"}', true);
+select ok(not (select chain_valid from public.satark_verify_audit_chain('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')),
+  'audit-chain verification detects an altered stored event hash');
 
 reset role;
 select * from finish();
