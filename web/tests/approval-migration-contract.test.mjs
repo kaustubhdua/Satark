@@ -26,6 +26,7 @@ test('approval requests bind immutable action and payload identity', () => {
   assert.match(migration, /action_key text not null/i);
   assert.match(migration, /action_payload jsonb not null/i);
   assert.match(migration, /payload_sha256 text not null check \(payload_sha256 ~ '\^\[0-9a-f\]\{64\}\$'\)/i);
+  assert.match(migration, /new\.payload_sha256 := encode\(extensions\.digest/i);
   assert.match(migration, /approval request details are immutable/i);
   assert.match(migration, /requester cannot approve own action/i);
 });
