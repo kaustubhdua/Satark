@@ -85,8 +85,8 @@ class FirstlightAgentContractTests(unittest.TestCase):
             time.sleep(0.05)
             raise RuntimeError("simulated provider timeout")
 
-        with patch.dict(os.environ, {"FIRSTLIGHT_MODEL_AGENTS_ENABLED": "true"}), \\
-             patch("firstlight_agents._run_one", side_effect=slow_agent), \\
+        with patch.dict(os.environ, {"FIRSTLIGHT_MODEL_AGENTS_ENABLED": "true"}), \
+             patch("firstlight_agents._run_one", side_effect=slow_agent), \
              patch("firstlight_agents.wait", side_effect=lambda futures, timeout: (set(), set(futures))):
             result = run_independent_agents([{"id": "EV-1"}])
         self.assertEqual(result["mode"], "independent_local_model_agents")
