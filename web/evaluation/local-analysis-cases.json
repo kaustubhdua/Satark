@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "scope": "small synthetic smoke corpus; not representative of real-world prevalence",
+  "cases": [
+    {
+      "id": "phish-otp-urgent",
+      "label": "suspicious",
+      "input": "URGENT: Your account is suspended. Verify your account now and send the one-time code to restore access."
+    },
+    {
+      "id": "payment-prize",
+      "label": "suspicious",
+      "input": "You won a prize. A processing fee is required today by gift card before the refund can be released."
+    },
+    {
+      "id": "shortened-link",
+      "label": "suspicious",
+      "input": "Please open https://bit.ly/secure-reset to review the unexpected sign-in."
+    },
+    {
+      "id": "url-credentials",
+      "label": "suspicious",
+      "input": "Investigate this link: https://analyst:secret@example.com/login"
+    },
+    {
+      "id": "http-executable",
+      "label": "suspicious",
+      "input": "The attachment is at http://example.com/install.exe; do not run it until checked."
+    },
+    {
+      "id": "recovery-phrase",
+      "label": "suspicious",
+      "input": "Support needs your recovery phrase and private key immediately to verify your account."
+    },
+    {
+      "id": "ordinary-status",
+      "label": "benign",
+      "input": "The weekly operations meeting has moved to 3 PM. Please read the updated agenda."
+    },
+    {
+      "id": "safe-public-status-url",
+      "label": "benign",
+      "input": "Please review https://example.com/status for the published uptime report."
+    },
+    {
+      "id": "password-training",
+      "label": "benign",
+      "input": "Security training explains how to create strong passwords and why employees should never share them."
+    },
+    {
+      "id": "verification-documentation",
+      "label": "benign",
+      "input": "The account verification documentation will be updated during the next maintenance window."
+    },
+    {
+      "id": "paid-invoice",
+      "label": "benign",
+      "input": "The invoice was paid through the usual bank transfer yesterday and the receipt is archived."
+    },
+    {
+      "id": "internal-change",
+      "label": "benign",
+      "input": "The engineering team deployed a routine change to the internal dashboard and confirmed the service is healthy."
+    }
+  ]
+}
