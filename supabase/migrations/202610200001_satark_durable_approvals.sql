@@ -66,7 +66,7 @@ begin
    raise exception 'only a complete terminal decision is allowed';
  end if;
  if new.decided_by = old.requested_by then raise exception 'requester cannot approve own action'; end if;
- if not public.public.satark_has_membership(old.tenant_id, array['owner','responder']::text[]) then
+ if not public.satark_has_membership(old.tenant_id, array['owner','responder']::text[]) then
    raise exception 'approver lacks required tenant role';
  end if;
  if old.expires_at <= now() then raise exception 'approval request expired'; end if;
@@ -85,7 +85,7 @@ as $$
 declare a public.satark_approvals%rowtype;
 begin
  if auth.uid() is null then return false; end if;
- if not public.public.satark_has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
+ if not public.satark_has_membership(p_tenant_id, array['owner','responder']::text[]) then return false; end if;
  select * into a from public.satark_approvals
   where id=p_approval_id and tenant_id=p_tenant_id and case_id=p_case_id
   for update;
@@ -115,7 +115,7 @@ begin
  if not found then raise exception 'approval not found'; end if;
  if a.status <> 'pending' or a.expires_at <= now() then raise exception 'approval is not pending or has expired'; end if;
  if actor = a.requested_by then raise exception 'requester cannot decide own approval'; end if;
- if not public.public.satark_has_membership(a.tenant_id, array['owner','responder']::text[]) then raise exception 'insufficient tenant role'; end if;
+ if not public.satark_has_membership(a.tenant_id, array['owner','responder']::text[]) then raise exception 'insufficient tenant role'; end if;
  update public.satark_approvals set status=p_decision, decided_by=actor,
    decision_reason=p_reason, decided_at=event_time where id=a.id returning * into a;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(a.tenant_id::text,0));
