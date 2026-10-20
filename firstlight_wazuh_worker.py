@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -117,6 +118,31 @@ class SupabaseServiceRest:
         except (URLError, TimeoutError, OSError) as exc:
             raise SupabaseRestError("Supabase Storage is unreachable or the TLS connection failed") from exc
         return path
+
+    def verify_source_snapshot(self, *, tenant_id: str, case_id: str, path: str, digest: str) -> bool:
+        """Fetch a tenant/case-bound private source object and verify its exact bytes."""
+        expected_path = f"{tenant_id}/{case_id}/wazuh/{digest}.json"
+        if path != expected_path or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise SupabaseRestError("Source snapshot path or digest is invalid")
+        url = self.base_url + "/storage/v1/object/satark-evidence/" + quote(path, safe="/")
+        request = Request(url, headers={
+            "apikey": self.key,
+            "Authorization": "Bearer " + self.key,
+            "Accept": "application/json",
+        }, method="GET")
+        try:
+            with _open_url(request, timeout=self.timeout) as response:
+                raw = response.read(4 * 1024 * 1024 + 1)
+                if len(raw) > 4 * 1024 * 1024:
+                    raise SupabaseRestError("Source snapshot exceeded the private bucket limit")
+        except HTTPError as exc:
+            if exc.code in (401, 403, 404):
+                raise SupabaseRestError("Source snapshot could not be read with the worker's scoped path") from exc
+            raise SupabaseRestError(f"Supabase Storage returned HTTP {exc.code}") from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            raise SupabaseRestError("Supabase Storage is unreachable or the TLS connection failed") from exc
+        actual = hashlib.sha256(raw).hexdigest()
+        return hmac.compare_digest(actual, digest)
 
     def request(self, method: str, table: str, *, query: dict[str, str] | None = None,
                 body: dict[str, Any] | None = None, prefer: str | None = None) -> Any:
