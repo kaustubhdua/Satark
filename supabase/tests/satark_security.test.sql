@@ -51,6 +51,7 @@ select ok((
   select position('satark_private.has_membership' in coalesce(qual, '')) > 0
     and position('satark_has_membership' in coalesce(qual, '')) = 0
     and position('satark_cases' in coalesce(qual, '')) > 0
+    and position('analyst' in coalesce(qual, '')) > 0
   from pg_policies
   where schemaname = 'storage' and tablename = 'objects'
     and policyname = 'satark_evidence_object_read'
