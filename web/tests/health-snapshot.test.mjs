@@ -13,7 +13,7 @@ test('health snapshot never claims full readiness and exposes non-shared rate li
   assert.equal(snapshot.checks.rateLimit.mode, 'in-process');
   assert.equal(snapshot.checks.rateLimit.configured, true);
   assert.equal(snapshot.checks.rateLimit.connectivityVerified, false);
-  assert.match(snapshot.note, /does not probe model, database, or Redis connectivity/i);
+  assert.match(snapshot.note, /does not probe model, database, Redis, or FIRSTLIGHT API connectivity/i);
 });
 
 test('production health accurately marks shared limiting as a hard requirement', () => {
