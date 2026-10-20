@@ -181,6 +181,120 @@ async def get_wazuh_alerts(authorization: str | None = Header(default=None), lim
     return {"source": "wazuh-indexer", "mode": "read_only_fetch", "persisted": False, "count": len(events), "events": events,
             "limitations": ["One bounded page only; no durable checkpoint or persistence.", "Requires a dedicated read-only Wazuh Indexer account.", "Source digest alone does not prove authenticity."]}
 
+@app.post("/api/v1/integrations/wazuh/investigate")
+async def investigate_wazuh_alerts(
+    authorization: str | None = Header(default=None),
+    limit: int = 100,
+    since: str | None = None,
+    tenant_id: str = "",
+):
+    """Fetch genuine configured Wazuh alerts and investigate them read-only.
+
+    This endpoint does not persist cases or execute containment. Digests are
+    computed after retrieval to bind the normalized snapshot; they do not prove
+    that the upstream Wazuh source was authentic or independently immutable.
+    """
+    if limit < 1 or limit > min(100, MAX_EVIDENCE):
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    expected = os.getenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "")
+    if len(expected) < 32:
+        raise HTTPException(status_code=503, detail="Wazuh connector is not enabled or token configuration is invalid")
+    supplied = authorization or ""
+    if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    configured_tenant = os.getenv("FIRSTLIGHT_WAZUH_TENANT_ID", "").strip().lower()
+    tenant_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    if not re.fullmatch(tenant_pattern, configured_tenant):
+        raise HTTPException(status_code=503, detail="Wazuh connector tenant is not configured")
+    if not re.fullmatch(tenant_pattern, tenant_id, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="A valid tenant_id is required")
+    if not hmac.compare_digest(tenant_id.lower(), configured_tenant):
+        raise HTTPException(status_code=403, detail="Wazuh source is not configured for this tenant")
+    try:
+        events = fetch_configured_alerts(limit=limit, since=since, order="desc")
+    except WazuhConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except WazuhConnectorError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if not events:
+        return {
+            "schema_version": "1.0",
+            "source": "wazuh-indexer",
+            "mode": "live_read_only_investigation",
+            "fetched_count": 0,
+            "integrity_summary": {"total": 0, "verified": 0, "mismatched": 0},
+            "investigation": None,
+            "agent_analysis": {"enabled": False, "mode": "not_run_empty_input", "agents": []},
+            "limitations": ["No matching Wazuh alerts were returned for this query.", "No case was persisted and no response action was executed."],
+        }
+
+    envelopes: list[dict[str, Any]] = []
+    model_events: list[dict[str, Any]] = []
+    source_ids: list[str] = []
+    for event in events:
+        record = {
+            "event_id": event["event_id"],
+            "timestamp": event["timestamp"],
+            "source": event["source"],
+            "kind": event["kind"],
+            "summary": event["summary"],
+            "details": event.get("details", {}),
+        }
+        digest = sha256_record(record)
+        source_ids.append(event["event_id"])
+        envelopes.append({
+            "evidence_id": event["event_id"],
+            "record": record,
+            "sha256": digest,
+            "collected_at": "",
+            "integrity_status": "verified",
+        })
+        model_events.append({
+            "id": event["event_id"],
+            "time": event["timestamp"],
+            "source": event["source"],
+            "kind": event["kind"],
+            "summary": event["summary"],
+            "details": event.get("details", {}),
+            "integrity": "verified",
+        })
+    case_fingerprint = hashlib.sha256("\\n".join(source_ids).encode("utf-8")).hexdigest()[:20]
+    case_id = "WAZUH-" + case_fingerprint
+    result = investigate_case(
+        {"case_id": case_id, "title": "Read-only Wazuh alert investigation"},
+        envelopes,
+    )
+    try:
+        agent_analysis = run_independent_agents(model_events)
+    except Exception:
+        agent_analysis = {
+            "enabled": os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"},
+            "mode": "agent_error",
+            "agents": [],
+            "limitations": ["Agent orchestration failed; deterministic findings remain authoritative."],
+        }
+    return {
+        "schema_version": "1.0",
+        "source": "wazuh-indexer",
+        "mode": "live_read_only_investigation",
+        "persisted": False,
+        "case_id": case_id,
+        "fetched_count": len(events),
+        "integrity_summary": {"total": len(envelopes), "verified": len(envelopes), "mismatched": 0},
+        "evidence": [{"evidence_id": item["evidence_id"], "sha256": item["sha256"], "record": item["record"]} for item in envelopes],
+        "investigation": result,
+        "agent_analysis": agent_analysis,
+        "limitations": [
+            "Events were fetched from the configured Wazuh Indexer over the read-only connector; this endpoint did not independently verify the upstream source.",
+            "Evidence digests bind the normalized snapshot after retrieval and do not prove authenticity or upstream immutability.",
+            "This endpoint does not persist a case, create a durable checkpoint, or execute a response action.",
+            "Deterministic findings are triage leads and require analyst validation; optional model-agent output is advisory only.",
+        ],
+    }
+
+
 @app.post("/api/v1/cases/investigate")
 async def run_investigation(
     request: Request,
