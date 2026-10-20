@@ -30,7 +30,19 @@ Read-only queries against the shared Supabase project `nihdhoom` (`igqgtlmnwssja
 - Authenticated cannot execute the audit-trigger function as an RPC.
 - SATARK currently has zero tenants, cases, memberships, and evidence records. No synthetic production records were created.
 
-The live migration history records `20261020042449` and `20261020044018`, but not `202610200004`, `20261020042000`, or `20261020043000`. The canonical storage-policy rebind was applied under `20261020044018` after isolated validation and then verified read-only: both insert/read policies use `satark_private.has_membership`, neither references the public wrapper, authenticated users can execute the private helper, and authenticated/anon cannot execute the public wrapper. No evidence rows were modified. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile the exact missing history versions with the Supabase CLI before any future linked `db push`; do not run a broad push as a shortcut.
+The live migration history records `20261020042449` and `20261020044018`, but not `202610200004` or `20261020042000`. The canonical storage-policy rebind was applied under `20261020044018` after isolated validation and then verified read-only: both insert/read policies use `satark_private.has_membership`, neither references the public wrapper, authenticated users can execute the private helper, and authenticated/anon cannot execute the public wrapper. No evidence rows were modified. A trusted operator must reconcile the exact missing history versions before any future linked `db push`; do not run a broad push as a shortcut.
+
+### Migration-history repair
+
+Only after verifying the linked project and the live policy definitions, run this from the trusted checkout:
+
+```sh
+supabase migration list --linked
+supabase migration repair --status applied 202610200004 20261020042000 --linked
+supabase migration list --linked
+```
+
+This marks the two superseded versions as applied without executing their historical SQL. Do not repair `20261020042449` or `20261020044018` again, and do not repair any other versions as part of this task. Confirm both missing versions are now listed before the next migration push.
 
 ## Release gates
 
