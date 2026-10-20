@@ -15,7 +15,7 @@ test('SATARK audit trigger function is not callable as a public RPC', () => {
 });
 
 const approvalGuard = readFileSync(
-  new URL('../../supabase/migrations/202610200003_satark_approval_security_hardening.sql', import.meta.url),
+  new URL('../../supabase/migrations/20261020040028_satark_approval_trigger_acl.sql', import.meta.url),
   'utf8',
 );
 
