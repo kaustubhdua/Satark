@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+WORKDIR /app
+
+COPY firstlight-api-requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY firstlight_engine.py ./firstlight_engine.py
+COPY firstlight_rules.py ./firstlight_rules.py
+COPY firstlight_wazuh.py ./firstlight_wazuh.py
+COPY firstlight_wazuh_worker.py ./firstlight_wazuh_worker.py
+COPY firstlight_investigation_worker.py ./firstlight_investigation_worker.py
+RUN useradd --system --uid 10001 --create-home firstlight
+USER 10001:10001
+CMD ["python", "firstlight_investigation_worker.py"]
