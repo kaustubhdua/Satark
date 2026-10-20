@@ -43,7 +43,7 @@ test('marks private network targets without contacting them', () => {
   const result = inspectUrl('http://192.168.1.10/admin');
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.ok(result.findings.some(item => item.title === 'Local or private-network address'));
+  assert.ok(result.findings.some(item => item.title === 'Non-public or special-use address'));
 });
 
 test('flags IPv6 local, unique-local, link-local and mapped private destinations', () => {
@@ -59,7 +59,7 @@ test('flags IPv6 local, unique-local, link-local and mapped private destinations
     const result = inspectUrl('http://' + host + '/admin');
     assert.equal(result.ok, true, host);
     if (!result.ok) continue;
-    assert.ok(result.findings.some(item => item.title === 'Local or private-network address'), host);
+    assert.ok(result.findings.some(item => item.title === 'Non-public or special-use address'), host);
   }
 });
 
@@ -67,7 +67,43 @@ test('does not flag a public IPv6 address as a local/private destination', () =>
   const result = inspectUrl('https://[2606:4700:4700::1111]/');
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.findings.some(item => item.title === 'Local or private-network address'), false);
+  assert.equal(result.findings.some(item => item.title === 'Non-public or special-use address'), false);
+});
+
+test('flags non-public and special-use IPv4 ranges without network access', () => {
+  for (const host of [
+    '0.0.0.1',
+    '10.20.30.40',
+    '100.64.0.1',
+    '100.127.255.254',
+    '127.0.0.1',
+    '169.254.10.20',
+    '172.16.0.1',
+    '172.31.255.254',
+    '192.0.0.8',
+    '192.0.2.10',
+    '192.88.99.1',
+    '192.168.1.10',
+    '198.18.0.1',
+    '198.19.255.254',
+    '198.51.100.20',
+    '203.0.113.25',
+    '224.0.0.1',
+    '240.0.0.1',
+    '255.255.255.255',
+  ]) {
+    const result = inspectUrl('http://' + host + '/');
+    assert.equal(result.ok, true, host);
+    if (!result.ok) continue;
+    assert.ok(result.findings.some(item => item.title === 'Non-public or special-use address'), host);
+  }
+});
+
+test('does not classify an ordinary public IPv4 address as non-public', () => {
+  const result = inspectUrl('https://93.184.216.34/');
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.findings.some(item => item.title === 'Non-public or special-use address'), false);
 });
 
 test('does not label an ordinary HTTPS URL as safe or malicious', () => {
