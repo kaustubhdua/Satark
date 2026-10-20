@@ -9,7 +9,9 @@ import {
 
 type EvidenceRow = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
 type FindingRow = { title: string; detail: string; severity: string; refs: string[] };
-type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; created_at: string; updated_at: string };
+type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; assigned_to?: string | null; created_at: string; updated_at: string };
+type MemberRow = { user_id: string; role: string };
+type CaseNote = { id: string; tenant_id: string; case_id: string; body: string; created_by: string; created_at: string };
 type AuditRow = { time: string; action: string; detail: string };
 
 export default function PersistentCasePanel({
@@ -35,6 +37,10 @@ export default function PersistentCasePanel({
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [jobStatus, setJobStatus] = useState('');
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState('');
+  const [notes, setNotes] = useState<CaseNote[]>([]);
+  const [noteDraft, setNoteDraft] = useState('');
   const [requestedCaseId, setRequestedCaseId] = useState('');
   const [caseListLoaded, setCaseListLoaded] = useState(false);
 
@@ -57,8 +63,23 @@ export default function PersistentCasePanel({
     }
     const selected = memberships.find(x => x.id === active) || null;
     setTenant(selected);
-    if (selected) setCases(await listCases(selected.id));
-    else setCases([]);
+    if (selected) {
+      setCases(await listCases(selected.id));
+      try {
+        const memberQuery = new URLSearchParams({
+          select: 'user_id,role', tenant_id: 'eq.' + selected.id,
+          role: 'in.(owner,responder,analyst)', order: 'role.asc', limit: '100',
+        });
+        const memberResponse = await authenticatedFetch('/rest/v1/satark_memberships?' + memberQuery);
+        const memberRows: unknown = memberResponse.ok ? await memberResponse.json() : [];
+        setMembers(Array.isArray(memberRows) ? memberRows.filter((row): row is MemberRow =>
+          !!row && typeof row === 'object' && 'user_id' in row && typeof row.user_id === 'string' &&
+          'role' in row && typeof row.role === 'string') : []);
+      } catch { setMembers([]); }
+    } else {
+      setCases([]);
+      setMembers([]);
+    }
     setCaseListLoaded(true);
   }
   useEffect(() => {
@@ -247,6 +268,14 @@ export default function PersistentCasePanel({
         time:a.created_at, action:a.action, detail:JSON.stringify(a.details),
       })) : [];
       onLoaded(item.id, mapped, audit);
+      setSelectedAssignee(item.assigned_to || '');
+      try {
+        const notesResponse = await fetch('/api/cases/notes?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(item.id), {
+          headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+        });
+        const notesPayload = await notesResponse.json().catch(() => ({}));
+        setNotes(notesResponse.ok && Array.isArray(notesPayload.notes) ? notesPayload.notes as CaseNote[] : []);
+      } catch { setNotes([]); }
       setMessage('Loaded ' + item.title + ' from persistent storage. ' + mapped.length + ' evidence records recovered.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not load saved case.'); }
     finally { setBusy(false); }
@@ -298,6 +327,57 @@ export default function PersistentCasePanel({
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Durable investigation failed.');
     } finally { setBusy(false); }
+  }
+
+  async function assignCase() {
+    if (!tenant || !session || !currentCaseId || !cases.some(c => c.id === currentCaseId)) {
+      setError('Load a saved case before assigning it.');
+      return;
+    }
+    if (!['owner', 'responder'].includes(tenant.role)) {
+      setError('Only workspace owners and responders can assign cases.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await fetch('/api/cases', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentCaseId, tenant_id: tenant.id, assigned_to: selectedAssignee || null }),
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Case assignment failed.');
+      setCases(prev => prev.map(item => item.id === currentCaseId ? { ...item, assigned_to: result.case.assigned_to ?? null } : item));
+      setMessage(selectedAssignee ? 'Case assigned. The assignment change was added to the audit chain.' : 'Case unassigned. The change was added to the audit chain.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Case assignment failed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function addCaseNote() {
+    if (!tenant || !session || !currentCaseId || !cases.some(c => c.id === currentCaseId)) {
+      setError('Load a saved case before adding an analyst note.');
+      return;
+    }
+    if (!noteDraft.trim() || noteDraft.trim().length > 4000) {
+      setError('Notes must contain 1–4000 characters.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await fetch('/api/cases/notes', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, case_id: currentCaseId, body: noteDraft.trim() }),
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.note) throw new Error(typeof result.error === 'string' ? result.error : 'Note could not be saved.');
+      setNotes(prev => [...prev, result.note as CaseNote]);
+      setNoteDraft('');
+      setMessage('Analyst note saved as an immutable record and added to the audit chain.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Note could not be saved.'); }
+    finally { setBusy(false); }
   }
 
   async function uploadOriginal() {
@@ -352,6 +432,24 @@ export default function PersistentCasePanel({
         <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
       </div>
       {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
+      {currentCaseId && cases.some(c => c.id === currentCaseId) && <>
+        <div className="private-upload">
+          <label className="field-label" htmlFor="case-assignee">Assign case (owner/responder only)</label>
+          <select id="case-assignee" value={selectedAssignee} disabled={busy || !['owner','responder'].includes(tenant.role)} onChange={e=>setSelectedAssignee(e.target.value)}>
+            <option value="">Unassigned</option>
+            {members.map(member=><option key={member.user_id} value={member.user_id}>{member.role} · {member.user_id.slice(0,8)}</option>)}
+          </select>
+          <button className="btn btn-secondary" type="button" disabled={busy || !['owner','responder'].includes(tenant.role)} onClick={()=>void assignCase()}>Save assignment</button>
+        </div>
+        <div className="private-upload">
+          <strong>Immutable analyst notes</strong>
+          <div className="case-notes-list">{notes.length ? notes.map(note=><article className="case-note" key={note.id}><p>{note.body}</p><small>{new Date(note.created_at).toLocaleString()} · {note.created_by.slice(0,8)}</small></article>) : <p className="empty-state">No notes yet.</p>}</div>
+          <label className="field-label" htmlFor="case-note-draft">Add note</label>
+          <textarea id="case-note-draft" maxLength={4000} rows={3} value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} disabled={busy} placeholder="Record an observation, decision, or evidence limitation." />
+          <button className="btn btn-secondary" type="button" disabled={busy || !noteDraft.trim() || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void addCaseNote()}>Add immutable note</button>
+          <p className="hint">Notes cannot be edited or deleted through the application. Their digest and author are recorded in the tenant audit chain.</p>
+        </div>
+      </>}
       <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><div className="saved-case-row" key={item.id}><button type="button" className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button><label className="sr-only" htmlFor={'status-'+item.id}>Update status for {item.title}</label><select id={'status-'+item.id} value={item.status} disabled={busy} onChange={e=>void updateCaseStatus(item,e.target.value)}><option value="open">Open</option><option value="contained">Contained</option><option value="resolved">Resolved</option><option value="archived">Archived</option></select></div>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
       <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
