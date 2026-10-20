@@ -148,3 +148,16 @@ def test_worker_rejects_missing_authorized_tenant_membership():
         assert False, "expected configuration failure"
     except ValueError as exc:
         assert "actor" in str(exc)
+
+
+def test_source_snapshot_verifier_rejects_cross_case_paths_before_network_io():
+    client = SupabaseServiceRest(
+        base_url="https://example.supabase.co",
+        service_role_key="x" * 40,
+    )
+    with pytest.raises(SupabaseRestError, match="path or digest is invalid"):
+        client.verify_source_snapshot(
+            tenant_id=TENANT, case_id=CASE,
+            path=f"{TENANT}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/wazuh/{'a' * 64}.json",
+            digest="a" * 64,
+        )
