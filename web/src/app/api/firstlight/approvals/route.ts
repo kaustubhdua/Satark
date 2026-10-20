@@ -5,7 +5,7 @@ import { readBoundedJson } from '@/lib/read-bounded-json';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ACTION = /^simulation\\.[a-z0-9][a-z0-9._-]{0,110}$/;
+const ACTION = /^simulation\.[a-z0-9][a-z0-9._-]{0,110}$/;
 function reply(body: unknown, status = 200) { return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } }); }
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
