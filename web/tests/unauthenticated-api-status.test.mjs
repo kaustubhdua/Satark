@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const routes = [
-  ['cases', '../src/app/api/cases/route.ts', /bearer\(request\)/],
-  ['findings', '../src/app/api/findings/route.ts', /hasBearer\(request\)/],
-  ['reports', '../src/app/api/reports/route.ts', /hasBearer\(request\)/],
+  ['cases', '../src/app/api/cases/route.ts', /bearer\(request\)/, ['GET', 'POST', 'PATCH']],
+  ['findings', '../src/app/api/findings/route.ts', /hasBearer\(request\)/, ['GET', 'POST']],
+  ['reports', '../src/app/api/reports/route.ts', /hasBearer\(request\)/, ['GET', 'POST']],
 ];
 
-for (const [name, relativePath, guard] of routes) {
+for (const [name, relativePath, guard, methods] of routes) {
   test(`${name} API rejects requests without bearer credentials before checking storage configuration`, async () => {
     const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
-    for (const method of ['GET', 'POST']) {
+    for (const method of methods) {
       const start = source.indexOf(`export async function ${method}(request: Request)`);
       assert.notEqual(start, -1, `${name} must implement ${method}`);
       const next = source.indexOf('\nexport async function ', start + 1);
