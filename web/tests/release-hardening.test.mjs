@@ -199,7 +199,7 @@ const approvalMigration = readFileSync(new URL('../../supabase/migrations/202610
 const approvalAclMigration = readFileSync(new URL('../../supabase/migrations/20261020040028_satark_approval_trigger_acl.sql', import.meta.url), 'utf8');
 
 test('response approval API and database remain simulation-only and caller-inaccessible at trigger level', () => {
-  assert.match(approvalsRoute, /\^simulation\\\\\./);
+  assert.match(approvalsRoute, /\^simulation\\\./);
   assert.match(approvalsRoute, /mode!==['"]simulation['"]/);
   assert.match(approvalsRoute, /rpc\/satark_decide_approval/);
   assert.match(approvalMigration, /action_key like 'simulation\.%'/);
