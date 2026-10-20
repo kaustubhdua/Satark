@@ -8,12 +8,13 @@ The shared Supabase project `nihdhoom` (`igqgtlmnwssjaoxkkzbm`) hosts SATARK alo
 
 A read-only `list_migrations` check on 2026-10-20 showed:
 
+- `202610200004` — `satark_storage_policy_membership_hardening`: **not recorded**; its helper/policy effects are superseded by the later private-helper and dual-path policy migrations.
 - `20261020042449` — `satark_evidence_storage_dual_path_policy`: recorded.
 - `20261020044018` — `satark_storage_policy_private_helper_rebind`: recorded.
 - `20261020042000` — `satark_storage_policy_private_helper_rebind`: **not recorded**.
 - `20261020043000` — `satark_storage_insert_policy_private_helper_rebind`: **not recorded**.
 
-The canonical policy SQL is already recorded as `20261020044018`. The repository files for `20261020042000` and `20261020043000` are no-ops because they are superseded and older than the canonical applied migration. This keeps fresh resets deterministic and prevents an intermediate policy from replacing the canonical one.
+The canonical policy SQL is already recorded as `20261020044018`. The repository files for `20261020042000` and `20261020043000` are no-ops because they are superseded and older than the canonical applied migration. Version `202610200004` is also absent remotely; its helper/policy effects are superseded by migrations `202610200003`, `20261020042449`, and `20261020044018`. The live schema was verified to have the intended final policies, so the history repair should mark `202610200004` as applied without executing its older policy SQL. This keeps the final policy from being weakened by an out-of-order push.
 
 ## Required operator procedure
 
@@ -21,20 +22,20 @@ Run this only from the trusted project checkout after confirming the linked proj
 
 ```sh
 supabase migration list --linked
-supabase migration repair --status applied 20261020042000 20261020043000 --linked
+supabase migration repair --status applied 202610200004 20261020042000 20261020043000 --linked
 supabase migration list --linked
 ```
 
-The repair command records the two already-superseded versions as applied; it must not execute their historical SQL. Do not mark `20261020044018` applied again and do not repair any other versions as part of this task.
+The repair command records the three already-superseded/missing versions as applied; it must not execute the historical SQL for `202610200004`, `20261020042000`, or `20261020043000`. Do not mark `20261020042449` or `20261020044018` applied again and do not repair any other versions as part of this task.
 
-After the repair, confirm that all three versions are recorded, then run the isolated migration validation workflow from the repository. Re-run the read-only policy query below and confirm both policies call `satark_private.has_membership`, the read policy permits `viewer` only for generic evidence, and raw `wazuh/<sha256>.json` objects require owner/responder/analyst membership.
+After the repair, confirm that `202610200004`, `20261020042000`, `20261020042449`, `20261020043000`, and `20261020044018` are recorded, then run the isolated migration validation workflow from the repository. Re-run the read-only policy query below and confirm both policies call `satark_private.has_membership`, the read policy permits `viewer` only for generic evidence, and raw `wazuh/<sha256>.json` objects require owner/responder/analyst membership.
 
 ## Read-only post-repair verification
 
 ```sql
 select version, name
 from supabase_migrations.schema_migrations
-where version in ('20261020042000', '20261020042449', '20261020043000', '20261020044018')
+where version in ('202610200004', '20261020042000', '20261020042449', '20261020043000', '20261020044018')
 order by version;
 
 select policyname, cmd, roles, qual, with_check
