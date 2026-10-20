@@ -29,6 +29,12 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - [ ] Do not run a broad `supabase db push` before the migration history is reconciled.
 - [ ] Review dependency/security findings and ensure the current main revision is covered by the intended CI checks.
 
+### Supabase security and performance advisor
+- [x] Confirm the checkpoint-table no-policy INFO finding is intentional: forced RLS, no anon/authenticated table privileges, service-role-only worker access.
+- [x] Review the four SATARK SECURITY DEFINER RPCs flagged by the advisor; they use an empty search path and explicit auth/tenant-role/approval checks. Keep regression coverage for those guards.
+- [ ] After the documented migration-history repair and approved migration push, re-run the advisor and confirm the five SATARK foreign-key index findings from PR #168 are cleared.
+- [ ] Do not change Nirdhoom/Saathi functions or remove unused indexes as part of SATARK cleanup.
+
 ### Deployment
 - [ ] Have the Vercel account/plan owner resolve the deployment quota block.
 - [ ] Deploy the exact current main SHA to preview; record deployment ID, URL, environment, source SHA and timestamp.
