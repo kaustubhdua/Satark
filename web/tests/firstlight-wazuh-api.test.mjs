@@ -51,3 +51,12 @@ test('shared investigation proxy requires a strong backend token even for local 
   assert.match(investigateRoute, /if \(!raw \|\| !token \|\| token\.length < 32\) return null/);
   assert.doesNotMatch(investigateRoute, /url\.protocol === 'https:' && \(!token/);
 });
+
+test('raw source Storage policy enforces case scope and analyst-capable roles directly', async () => {
+  const migration = await readFile(new URL('../../supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql', import.meta.url), 'utf8');
+  assert.match(migration, /create policy satark_evidence_object_read/);
+  assert.match(migration, /array\['owner', 'responder', 'analyst'\]::text\[\]/);
+  assert.match(migration, /lower\(c\.id::text\) = lower\(split_part\(objects\.name, '\/', 2\)\)/);
+  assert.match(migration, /lower\(c\.tenant_id::text\) = lower\(split_part\(objects\.name, '\/', 1\)\)/);
+  assert.doesNotMatch(migration, /satark_has_membership\(split_part\(name, '\/', 1\)::uuid\)/);
+});
