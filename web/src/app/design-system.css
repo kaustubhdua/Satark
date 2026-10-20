@@ -765,3 +765,13 @@ label.btn { margin: 0; }
 .evidence-table td small { overflow-wrap: normal; word-break: normal; }
 .evidence-table th:nth-child(2), .evidence-table td:nth-child(2) { min-width: 170px; }
 .evidence-table td:first-child { min-width: 110px; }
+
+
+/* FIRSTLIGHT durable case assignment and append-only notes */
+.case-notes-list { display: grid; gap: 10px; margin: 12px 0; }
+.case-note { padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); overflow-wrap: anywhere; }
+.case-note p { margin: 0; white-space: pre-wrap; line-height: 1.55; }
+.case-note small { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.persistent-case-panel select,
+.persistent-case-panel textarea { width: 100%; max-width: 100%; }
+.persistent-case-panel textarea { min-height: 88px; resize: vertical; }
