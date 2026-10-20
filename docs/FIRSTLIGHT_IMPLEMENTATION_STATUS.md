@@ -10,7 +10,7 @@ This status describes repository-backed behavior, not planned features or unveri
 - The live project currently has zero SATARK tenants, cases, memberships, evidence records, and ingestion checkpoints. The private `satark-evidence` bucket exists with a 4 MiB object limit. Do not create fake production tenant/case/user records to bypass this gate.
 - The investigation API now fails closed when `FIRSTLIGHT_API_TOKEN` is missing or shorter than 32 characters. The Next.js proxy requires the strong token even for local HTTP. The worker and authenticated source-download route enforce the bucket's 4 MiB object limit.
 - Added a versioned deterministic rule registry (`firstlight_rules.py`, version `1.0.0`) with stable rule IDs, cautious candidate ATT&CK mappings and rule limitations. Its API container copy and CI path triggers were updated.
-- Latest FIRSTLIGHT API tests passed on an earlier security-hardening commit; the latest rule-registry/container changes have fresh CI runs in progress and must not be called green until they finish.
+- FIRSTLIGHT API CI passed on code commit `f70652e538aa1cb2a07b02ac3162b75f53963db3`, including the versioned rule-registry tests and both API/worker Docker image builds. Full CI, CodeQL, Web CI and isolated migration validation are still running; the real Supabase tenant-isolation job is skipped because dedicated test identities are not configured.
 - Vercel currently reports a build-rate-limit failure. No preview/production deployment of the latest branch SHA has been verified. The real Wazuh endpoint/credentials and authorized SATARK tenant/case/actor are not configured, so the end-to-end ingestion smoke test and real tenant-isolation integration test remain blocked.
 
 ## Implemented in the prototype
