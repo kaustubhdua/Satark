@@ -8,10 +8,10 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 
 - PR #160 persistent Wazuh ingestion and investigation workflow merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL and isolated migration validation passed on its PR head.
 - PR #159 evidence-storage policy fix merged; CI, CodeQL, isolated migration validation, tenant-isolation integration and browser/accessibility smoke passed on its PR head.
-- PR #161 migration-history reconciliation merged; CI, CodeQL and isolated migration validation passed on its PR head.
+- PR #161 migration-history reconciliation and PR #164 duplicate-migration removal are merged; CI, CodeQL, Web CI and isolated migration validation passed on their respective PR heads.
 - PR #165 makes the superseded storage insert migration inert and documents the operator repair procedure. Its exact-head CI, CodeQL and isolated migration checks must pass before merge.
 - The live SATARK storage policies and helper ACLs were verified read-only. The shared project has zero SATARK tenants, cases, memberships and evidence records.
-- Live migration history records `20261020042449` and `20261020044018`; versions `20261020042000` and `20261020043000` are missing. Follow [the migration repair runbook](SUPABASE_MIGRATION_HISTORY_REPAIR.md) and use the linked Supabase CLI from a trusted environment.
+- Live migration history records `20261018114039`, `20261020042449` and `20261020044018`; versions `202610200004` and `20261020042000` are missing. The unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired. Follow [the migration repair runbook](SUPABASE_MIGRATION_HISTORY_REPAIR.md) and use the linked Supabase CLI from a trusted environment.
 - Latest production deployment is `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; current main is newer. A READY preview exists for branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, but it is not production.
 - Vercel rejected a new deployment with HTTP 402 `api-deployments-free-per-day` and a retry-after of 86400 seconds. Resolve this through the account/plan owner; do not bypass limits or change billing/security settings automatically.
 - The connected Vercel runtime-error API returned 403. Production runtime error inspection remains unavailable.
@@ -24,7 +24,7 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - [ ] PR #165 exact-head CI, CodeQL and isolated migration validation all pass.
 - [ ] Review and merge #165 only after those checks pass.
 - [ ] Run `supabase migration list --linked` from the trusted, correctly linked checkout.
-- [ ] Repair only versions `20261020042000` and `20261020043000` as applied, following the runbook; verify the linked list afterward.
+- [ ] Repair only versions `202610200004` and `20261020042000` as applied, following the runbook; verify the linked list afterward.
 - [ ] Confirm the canonical `20261020044018` policy remains present and both policies still use `satark_private.has_membership`.
 - [ ] Do not run a broad `supabase db push` before the migration history is reconciled.
 - [ ] Review dependency/security findings and ensure the current main revision is covered by the intended CI checks.
