@@ -4,7 +4,7 @@
 
 - Repository: `kaustubhdua/Satark`
 - Candidate branch: `main`
-- Code baseline at this review: `1acf9e1392f3d0110f01cf1a2eed7a4a70946894` (PR #180, Wazuh worker membership revalidation). Current `main` is `ac602e537c4571e7c56a828c4b3038905140a883`, a docs-only release-evidence refresh on top of that code. Re-check the SHA after any later merge before release.
+- Code baseline at this review: `1acf9e1392f3d0110f01cf1a2eed7a4a70946894` (PR #180, Wazuh worker membership revalidation). Current `main` is `1e959f97d81441d80c4515709bfe5233738db804`, after documentation-only PR #182. Re-check the SHA after any later merge before release.
 - Source pull request: https://github.com/kaustubhdua/Satark/pull/180
 - Decision: **NO-GO for production until the outstanding checks below are evidenced.**
 
