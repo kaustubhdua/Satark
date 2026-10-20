@@ -11,6 +11,8 @@ The shared Supabase project `nihdhoom` (`igqgtlmnwssjaoxkkzbm`) hosts SATARK alo
 A read-only migration-list check on 2026-10-20 found these relevant entries:
 
 - `20261018114039` — `isolate_satark_membership_helper`: recorded.
+- `20261018114205` — `harden_satark_audit_verification_rpc`: recorded in the live ledger and now included in the repository migration history by the RPC-hardening PR. The migration keeps the public audit-verification function as a `SECURITY INVOKER` wrapper.
+- `20261018114247` — `harden_satark_tenant_creation_rpc`: recorded in the live ledger and now included in the repository migration history by the RPC-hardening PR. The migration keeps the public tenant-creation function as a `SECURITY INVOKER` wrapper.
 - `202610200004` — `satark_storage_policy_membership_hardening`: not recorded.
 - `20261020042000` — `satark_storage_policy_private_helper_rebind`: not recorded (repository file is a no-op; canonical policy was applied under `20261020044018`).
 - `20261020042449` — `satark_evidence_storage_dual_path_policy`: recorded.
