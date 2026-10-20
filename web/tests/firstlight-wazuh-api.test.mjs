@@ -56,6 +56,9 @@ test('raw source Storage policy enforces case scope and analyst-capable roles di
   const migration = await readFile(new URL('../../supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql', import.meta.url), 'utf8');
   assert.match(migration, /create policy satark_evidence_object_read/);
   assert.match(migration, /array\['owner', 'responder', 'analyst'\]::text\[\]/);
+  assert.match(migration, /array\['owner', 'responder', 'analyst', 'viewer'\]::text\[\]/);
+  assert.match(migration, /array_length\(string_to_array\(name, '\/'\), 1\) = 3/);
+  assert.match(migration, /array_length\(string_to_array\(name, '\/'\), 1\) = 4/);
   assert.match(migration, /lower\(c\.id::text\) = lower\(split_part\(objects\.name, '\/', 2\)\)/);
   assert.match(migration, /lower\(c\.tenant_id::text\) = lower\(split_part\(objects\.name, '\/', 1\)\)/);
   assert.doesNotMatch(migration, /satark_has_membership\(split_part\(name, '\/', 1\)::uuid\)/);
