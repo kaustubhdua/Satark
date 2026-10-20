@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 import time
@@ -110,7 +111,7 @@ class InvestigationJobWorker:
         if not memberships:
             raise ValueError("requester_not_member")
         rows = self.rest.request("GET", "satark_evidence", query={
-            "select": "id,tenant_id,case_id,source_label,event_kind,observed_at,summary,source_sha256,record_sha256,metadata,created_at",
+            "select": "id,tenant_id,case_id,source_label,event_kind,observed_at,summary,source_sha256,record_sha256,metadata,created_by,created_at",
             "tenant_id": "eq." + tenant_id, "case_id": "eq." + case_id,
             "order": "observed_at.asc", "limit": str(MAX_CASE_EVIDENCE + 1),
         }) or []
@@ -125,30 +126,88 @@ class InvestigationJobWorker:
             observed_at = row.get("observed_at")
             if not event_id or not isinstance(observed_at, str) or not observed_at:
                 raise ValueError("evidence_shape_invalid")
+            browser_timestamp = str(metadata.get("browser_event_timestamp") or observed_at)
             record = {
                 "event_id": event_id,
-                "timestamp": observed_at,
+                "timestamp": browser_timestamp,
                 "source": str(row.get("source_label") or "unknown")[:160],
                 "kind": str(row.get("event_kind") or "observation")[:100],
                 "summary": str(row.get("summary") or "")[:4096],
                 "details": details,
             }
-            # Recompute from the exact normalized record passed to the engine.
-            # This validates the worker's deterministic envelope; it is not
-            # represented as independent proof that the original source was true.
             normalized_digest = sha256_record(record)
+            expected_browser_digest = str(metadata.get("browser_record_sha256") or "")
+            browser_digest_valid = bool(
+                len(expected_browser_digest) == 64
+                and hmac.compare_digest(normalized_digest, expected_browser_digest)
+            )
+
+            # Version-2 database envelopes use sorted-key canonical JSON. Legacy
+            # rows are not falsely labelled corrupt merely because they predate it.
+            stored_envelope_valid: bool | None = None
+            if metadata.get("record_hash_version") == 2:
+                from datetime import datetime, timezone
+                try:
+                    parsed_time = datetime.fromisoformat(str(observed_at).replace("Z", "+00:00"))
+                    if parsed_time.tzinfo is None:
+                        raise ValueError("naive timestamp")
+                    canonical_time = parsed_time.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+                    stored_record = {
+                        "tenant_id": tenant_id,
+                        "case_id": case_id,
+                        "source_label": str(row.get("source_label") or ""),
+                        "event_kind": str(row.get("event_kind") or ""),
+                        "observed_at": canonical_time,
+                        "summary": str(row.get("summary") or ""),
+                        "metadata": metadata,
+                        "created_by": str(row.get("created_by") or ""),
+                    }
+                    actual_envelope_digest = _digest(stored_record)
+                    stored_envelope_valid = hmac.compare_digest(actual_envelope_digest, str(row.get("record_sha256") or ""))
+                except (TypeError, ValueError, OverflowError):
+                    stored_envelope_valid = False
+
+            source_snapshot_status = "not_applicable"
+            if metadata.get("persisted_by_worker") is True:
+                source_path = str(metadata.get("source_object_path") or "")
+                source_digest = str(row.get("source_sha256") or "")
+                verifier = getattr(self.rest, "verify_source_snapshot", None)
+                if callable(verifier):
+                    try:
+                        source_snapshot_status = "verified" if verifier(
+                            tenant_id=tenant_id, case_id=case_id, path=source_path, digest=source_digest,
+                        ) else "mismatch"
+                    except Exception:
+                        source_snapshot_status = "unavailable"
+                else:
+                    source_snapshot_status = "unverified"
+
+            integrity_ok = browser_digest_valid and stored_envelope_valid is not False
+            if source_snapshot_status == "mismatch":
+                integrity_ok = False
+            # If a source object cannot be fetched right now, retain a valid
+            # normalized event but explicitly disclose that source verification
+            # is unavailable. Never claim the raw source object was verified.
             envelopes.append({
                 "evidence_id": event_id,
                 "record": record,
-                "sha256": normalized_digest,
+                "sha256": expected_browser_digest if integrity_ok else "",
                 "collected_at": str(row.get("created_at") or ""),
-                "integrity_status": "verified",
+                "integrity_status": "verified" if integrity_ok else "mismatch",
             })
             source_records.append({
                 "id": str(row.get("id")),
                 "event_id": event_id,
                 "stored_record_sha256": row.get("record_sha256"),
+                "stored_record_hash_status": (
+                    "verified" if stored_envelope_valid is True
+                    else "mismatch" if stored_envelope_valid is False
+                    else "legacy_not_recomputed"
+                ),
+                "browser_record_sha256": expected_browser_digest or None,
+                "browser_record_hash_status": "verified" if browser_digest_valid else "mismatch_or_missing",
                 "source_sha256": row.get("source_sha256"),
+                "source_snapshot_status": source_snapshot_status,
                 "normalized_sha256": normalized_digest,
             })
         case = cases[0]
@@ -173,6 +232,17 @@ class InvestigationJobWorker:
                 "This worker performs no live response actions.",
             ],
         }
+        for source_record in source_records:
+            if source_record.get("source_snapshot_status") in {"mismatch", "unavailable", "unverified"}:
+                investigation.setdefault("gaps", []).append(
+                    "Source snapshot verification is " + str(source_record["source_snapshot_status"]) +
+                    " for evidence " + str(source_record.get("event_id", "unknown")) + "."
+                )
+            if source_record.get("browser_record_hash_status") != "verified":
+                investigation.setdefault("gaps", []).append(
+                    "Normalized evidence digest is missing or mismatched for evidence " +
+                    str(source_record.get("event_id", "unknown")) + "."
+                )
         self._persist_findings(job, result, investigation)
         self._persist_report(job, result)
         return result
