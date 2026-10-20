@@ -13,6 +13,7 @@ Last reviewed: 2026-10-20 UTC
 - Deployment attempt for current main was rejected by Vercel with HTTP 402 `api-deployments-free-per-day`, retry-after 86400 seconds. Do not bypass billing/rate limits or change project settings automatically.
 - The connected Vercel runtime-error endpoint returned 403 for this project; current production runtime errors could not be independently inspected.
 - Production alias: [https://satark-rose.vercel.app](https://satark-rose.vercel.app). Alias-to-current-main identity is not established.
+- Vercel environment inventory (names/targets only; secret values were not decrypted) lists eight variables: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `SATARK_OLLAMA_BASE_URL`, `SATARK_OLLAMA_MODEL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_URL`. No `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN`, Wazuh Indexer URL/credentials, or worker service-role configuration appeared in this inventory. The production connector/worker therefore cannot be assumed configured; values of existing variables were intentionally not inspected.
 
 ## Verified repository checks
 
