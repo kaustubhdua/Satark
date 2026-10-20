@@ -58,4 +58,4 @@ Expected privilege values are `true, false, false, false`. The read policy must 
 
 ## Boundary
 
-This is an operator-run history repair, not a live migration. The connected tools can inspect migrations and run read-only SQL but do not expose the Supabase CLI `migration repair` command. The repair must be run from a trusted CLI environment with the project explicitly linked. No hosted migration or history mutation has been performed by this review.
+This is an operator-run history repair, not a live migration. Migration `20261020044018` was applied after isolated validation and verified read-only; no migration-history repair has been performed. The connected tools can inspect migrations and run read-only SQL but do not expose the Supabase CLI `migration repair` command. The repair must be run from a trusted CLI environment with the project explicitly linked.
