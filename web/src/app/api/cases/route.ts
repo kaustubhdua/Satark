@@ -121,7 +121,7 @@ export async function GET(request: Request) {
 
   try {
     const query = new URLSearchParams({
-      select: 'id,tenant_id,title,status,severity,created_by,created_at,updated_at,metadata',
+      select: 'id,tenant_id,title,status,severity,assigned_to,created_by,created_at,updated_at,metadata',
       tenant_id: 'eq.' + tenantId,
       order: 'updated_at.desc',
       limit: '100',
@@ -219,10 +219,35 @@ export async function PATCH(request: Request) {
     }
     updates.metadata = input.metadata;
   }
+  if (input.assigned_to !== undefined) {
+    if (input.assigned_to !== null && (typeof input.assigned_to !== 'string' || !UUID.test(input.assigned_to))) {
+      return jsonError('assigned_to must be a valid user UUID or null.', 400);
+    }
+    const currentRoleQuery = new URLSearchParams({
+      select: 'role', tenant_id: 'eq.' + tenantId, user_id: 'eq.' + user.id,
+      role: 'in.(owner,responder)', limit: '1',
+    });
+    const currentRoleResponse = await supabaseRequest(config, token, 'satark_memberships?' + currentRoleQuery.toString());
+    if (!currentRoleResponse.ok) return jsonError('Assignment permissions could not be verified.', 503);
+    const currentRoles: unknown = await currentRoleResponse.json();
+    if (!Array.isArray(currentRoles) || currentRoles.length === 0) return jsonError('Only workspace owners or responders can assign cases.', 403);
+    if (typeof input.assigned_to === 'string') {
+      const targetResponse = await supabaseRequest(config, token, 'rpc/satark_list_assignable_members', {
+        method: 'POST', body: JSON.stringify({ p_tenant_id: tenantId }),
+      });
+      if (targetResponse.status === 401 || targetResponse.status === 403) return jsonError('Only owners or responders may assign cases.', 403);
+      if (!targetResponse.ok) return jsonError('Assignee membership could not be verified.', 503);
+      const targetRows: unknown = await targetResponse.json();
+      if (!Array.isArray(targetRows) || !targetRows.some(row => !!row && typeof row === 'object' && 'user_id' in row && row.user_id === input.assigned_to)) {
+        return jsonError('Assignee must be an owner, responder, or analyst in this workspace.', 400);
+      }
+    }
+    updates.assigned_to = input.assigned_to;
+  }
   if (!Object.keys(updates).length) return jsonError('At least one case field must be provided for update.', 400);
 
   try {
-    const query = new URLSearchParams({ id: 'eq.' + id, tenant_id: 'eq.' + tenantId, select: 'id,tenant_id,title,status,severity,created_by,created_at,updated_at,metadata' });
+    const query = new URLSearchParams({ id: 'eq.' + id, tenant_id: 'eq.' + tenantId, select: 'id,tenant_id,title,status,severity,assigned_to,created_by,created_at,updated_at,metadata' });
     const response = await supabaseRequest(config, token, 'satark_cases?' + query.toString(), {
       method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(updates),
     });

@@ -10,6 +10,7 @@ services:
       SATARK_OLLAMA_MODEL: ${SATARK_OLLAMA_MODEL:-qwen2.5:3b}
       FIRSTLIGHT_API_URL: http://firstlight-api:8788
       FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:-}
+      FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:-}
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
@@ -31,6 +32,17 @@ services:
       dockerfile: Dockerfile.firstlight-api
     environment:
       FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:-}
+      FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:-}
+      FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
+      FIRSTLIGHT_WAZUH_INDEXER_URL: ${FIRSTLIGHT_WAZUH_INDEXER_URL:-}
+      FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ${FIRSTLIGHT_WAZUH_INDEXER_USERNAME:-}
+      FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: ${FIRSTLIGHT_WAZUH_INDEXER_PASSWORD:-}
+      FIRSTLIGHT_WAZUH_INDEX_PATTERN: ${FIRSTLIGHT_WAZUH_INDEX_PATTERN:-wazuh-alerts-*}
+      FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: ${FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS:-}
+      FIRSTLIGHT_WAZUH_ALLOW_HTTP: ${FIRSTLIGHT_WAZUH_ALLOW_HTTP:-false}
+      OLLAMA_BASE_URL: http://ollama:11434
+      FIRSTLIGHT_OLLAMA_MODEL: ${FIRSTLIGHT_OLLAMA_MODEL:-qwen2.5:3b}
+      FIRSTLIGHT_MODEL_AGENTS_ENABLED: ${FIRSTLIGHT_MODEL_AGENTS_ENABLED:-false}
     expose:
       - "8788"
     healthcheck:
@@ -43,6 +55,55 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+
+  firstlight-wazuh-worker:
+    profiles: ["wazuh-worker"]
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-worker
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
+      FIRSTLIGHT_WAZUH_CASE_ID: ${FIRSTLIGHT_WAZUH_CASE_ID:-}
+      FIRSTLIGHT_WAZUH_ACTOR_ID: ${FIRSTLIGHT_WAZUH_ACTOR_ID:-}
+      FIRSTLIGHT_WAZUH_INITIAL_SINCE: ${FIRSTLIGHT_WAZUH_INITIAL_SINCE:-}
+      FIRSTLIGHT_WAZUH_INDEXER_URL: ${FIRSTLIGHT_WAZUH_INDEXER_URL:-}
+      FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ${FIRSTLIGHT_WAZUH_INDEXER_USERNAME:-}
+      FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: ${FIRSTLIGHT_WAZUH_INDEXER_PASSWORD:-}
+      FIRSTLIGHT_WAZUH_INDEX_PATTERN: ${FIRSTLIGHT_WAZUH_INDEX_PATTERN:-wazuh-alerts-*}
+      FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: ${FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS:-}
+      FIRSTLIGHT_WAZUH_ALLOW_HTTP: ${FIRSTLIGHT_WAZUH_ALLOW_HTTP:-false}
+      FIRSTLIGHT_WAZUH_PAGE_SIZE: ${FIRSTLIGHT_WAZUH_PAGE_SIZE:-100}
+      FIRSTLIGHT_WAZUH_OVERLAP_SECONDS: ${FIRSTLIGHT_WAZUH_OVERLAP_SECONDS:-300}
+      FIRSTLIGHT_WAZUH_POLL_SECONDS: ${FIRSTLIGHT_WAZUH_POLL_SECONDS:-60}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+
+  firstlight-investigation-worker:
+    profiles: ["investigation-worker"]
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-investigation-worker
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      FIRSTLIGHT_JOB_POLL_SECONDS: ${FIRSTLIGHT_JOB_POLL_SECONDS:-5}
+      FIRSTLIGHT_JOB_LEASE_SECONDS: ${FIRSTLIGHT_JOB_LEASE_SECONDS:-120}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
 

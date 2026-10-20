@@ -13,6 +13,8 @@ import json
 import uuid
 from typing import Any
 
+from firstlight_rules import RULE_VERSION, rule_metadata
+
 
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -141,7 +143,8 @@ def prioritize_evidence(evidence: list[dict[str, Any]], now: datetime | None = N
         kind = str(record.get("kind", "")).lower()
         source = str(record.get("source", "")).lower()
         summary = str(record.get("summary", "")).lower()
-        searchable = " ".join((kind, source, summary))
+        details = record.get("details", {}) if isinstance(record.get("details"), dict) else {}
+        searchable = " ".join((kind, source, summary, str(details.get("rule_id", "")), " ".join(str(group) for group in details.get("rule_groups", []) if isinstance(group, (str, int)))))
         integrity = verify_evidence(item)
         reasons = []
 
@@ -154,6 +157,15 @@ def prioritize_evidence(evidence: list[dict[str, Any]], now: datetime | None = N
         )
 
         relevance_score = 20 if any(term in searchable for term in relevance_terms) else 8
+        source_level = details.get("rule_level")
+        if details.get("provider") == "wazuh-indexer" and isinstance(source_level, (int, str)) and not isinstance(source_level, bool):
+            try:
+                parsed_level = int(source_level)
+            except (TypeError, ValueError):
+                parsed_level = -1
+            if 0 <= parsed_level <= 16:
+                relevance_score = max(relevance_score, 25 if parsed_level >= 12 else 20 if parsed_level >= 10 else 15 if parsed_level >= 7 else 8)
+                reasons.append(f"Wazuh source rule level {parsed_level} (vendor severity context, not a probability)")
         reasons.append(f"Investigation relevance heuristic (+{relevance_score})")
 
         if integrity["valid"]:
@@ -307,6 +319,7 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
     def add_rule_finding(title: str, explanation: str, severity: str, refs: list[str], confidence: str) -> None:
         nonlocal next_finding
         finding(f"F-{next_finding:03d}", title, explanation, severity, refs, confidence)
+        findings[-1].update(rule_metadata(title))
         next_finding += 1
 
     records = [(eid, record) for eid, record in valid_records.items()]
@@ -316,8 +329,24 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
         summary = str(record.get("summary", "")).lower()
         details = record.get("details", {})
         details = details if isinstance(details, dict) else {}
-        searchable = " ".join((kind, source, summary, str(details.get("rule", "")).lower()))
+        groups = details.get("rule_groups", [])
+        groups_text = " ".join(str(group).lower() for group in groups if isinstance(group, (str, int))) if isinstance(groups, list) else ""
+        searchable = " ".join((kind, source, summary, str(details.get("rule", "")).lower(), str(details.get("rule_id", "")).lower(), groups_text))
         success = str(details.get("result", "")).lower() in {"success", "successful", "succeeded"}
+
+        raw_wazuh_level = details.get("rule_level")
+        if details.get("provider") == "wazuh-indexer" and isinstance(raw_wazuh_level, (int, str)) and not isinstance(raw_wazuh_level, bool):
+            try:
+                wazuh_level = int(raw_wazuh_level)
+            except (TypeError, ValueError):
+                wazuh_level = -1
+            if 7 <= wazuh_level <= 16:
+                severity = "critical" if wazuh_level >= 12 else "high" if wazuh_level >= 10 else "medium"
+                add_rule_finding(
+                    "Wazuh source detection alert",
+                    f"The Wazuh Indexer record carries source rule level {wazuh_level}. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+                    severity, [evidence_id], "medium" if wazuh_level >= 10 else "low",
+                )
 
         if (kind in {"authentication", "login", "sign_in"} or "login" in searchable or "sign-in" in searchable) and (
             details.get("novel_source") is True
@@ -436,6 +465,12 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
             "evidence_available": False,
             "confidence": "low",
             "state": "unverified",
+            "rule_id": "FL-GENERIC-000",
+            "rule_version": RULE_VERSION,
+            "rule_source": "FIRSTLIGHT",
+            "attack_techniques": [],
+            "logic_type": "no_rule_match",
+            "rule_limitations": ["No detection rule matched; this is not a clearance that the system or case is safe."],
         })
 
     timeline = []

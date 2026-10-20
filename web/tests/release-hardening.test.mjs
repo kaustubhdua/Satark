@@ -207,3 +207,16 @@ test('local analysis rate limits include a standards-based retry hint without en
   assert.match(analyze, /Too many requests\. Wait a minute and retry\.', 429, \{ 'Retry-After': '60' \}\)/);
   assert.match(analyze, /headers: \{ 'Cache-Control': 'no-store', \.\.\.extraHeaders \}/);
 });
+
+const approvalsRoute = readFileSync(new URL('../src/app/api/firstlight/approvals/route.ts', import.meta.url), 'utf8');
+const approvalMigration = readFileSync(new URL('../../supabase/migrations/20261020035832_satark_simulation_only_approvals.sql', import.meta.url), 'utf8');
+const approvalAclMigration = readFileSync(new URL('../../supabase/migrations/20261020040028_satark_approval_trigger_acl.sql', import.meta.url), 'utf8');
+
+test('response approval API and database remain simulation-only and caller-inaccessible at trigger level', () => {
+  assert.match(approvalsRoute, /\^simulation\\\./);
+  assert.match(approvalsRoute, /mode!==['"]simulation['"]/);
+  assert.match(approvalsRoute, /rpc\/satark_decide_approval/);
+  assert.match(approvalMigration, /action_key like 'simulation\.%'/);
+  assert.match(approvalMigration, /action_payload->>'mode' = 'simulation'/);
+  assert.match(approvalAclMigration, /revoke all on function public\.satark_approvals_guard\(\) from public, anon, authenticated, service_role/i);
+});

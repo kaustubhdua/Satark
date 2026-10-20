@@ -6,7 +6,8 @@ import time
 import unittest
 from unittest.mock import patch
 
-from firstlight_agents import AgentFinding, AgentResult, _parse_json, _run_one, run_independent_agents
+from firstlight_agents import AgentFinding, AgentResult, _parse_json, _run_one, _safe_details, run_independent_agents
+from ai_provider import LocalOllamaClient
 
 
 class FirstlightAgentContractTests(unittest.TestCase):
@@ -37,6 +38,19 @@ class FirstlightAgentContractTests(unittest.TestCase):
                 "agent_id": "arbitrary-agent", "status": "ok", "summary": "x",
                 "findings": [], "limitations": [],
             })
+
+    def test_agent_details_are_allowlisted_and_bounded(self):
+        details = _safe_details({
+            "rule_id": "5710",
+            "agent_name": "lab-host",
+            "command": "must not be passed to the model",
+            "data": {"srcip": "192.0.2.10", "password": "never include"},
+        })
+        self.assertEqual(details["rule_id"], "5710")
+        self.assertEqual(details["agent_name"], "lab-host")
+        self.assertNotIn("command", details)
+        self.assertNotIn("password", details.get("data", {}))
+        self.assertEqual(details["data"]["srcip"], "192.0.2.10")
 
     def test_agent_evidence_bound_is_enforced_before_provider_calls(self):
         with patch.dict(os.environ, {"FIRSTLIGHT_MODEL_AGENTS_ENABLED": "true"}):
@@ -91,6 +105,24 @@ class FirstlightAgentContractTests(unittest.TestCase):
             result = run_independent_agents([{"id": "EV-1"}])
         self.assertEqual(result["mode"], "independent_local_model_agents")
         self.assertEqual({agent["status"] for agent in result["agents"]}, {"timeout"})
+
+
+class OllamaStructuredOutputTests(unittest.TestCase):
+    def test_native_client_passes_json_schema_to_ollama_format(self):
+        client = LocalOllamaClient(base_url="http://localhost:11434", timeout=1)
+        schema = {"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"]}
+        captured = {}
+        def fake_request(path, payload=None, timeout=None):
+            captured["path"] = path
+            captured["payload"] = payload
+            return {"message":{"content":'{"summary":"ok"}'}}
+        with patch.object(client, "_request_json", side_effect=fake_request):
+            client.chat.completions.create(
+                model="test-model", messages=[{"role":"user","content":"test"}],
+                response_format={"type":"json_schema","json_schema":{"name":"test","schema":schema}},
+            )
+        self.assertEqual(captured["path"], "/api/chat")
+        self.assertEqual(captured["payload"]["format"], schema)
 
 
 if __name__ == "__main__":

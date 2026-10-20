@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(34);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -12,6 +12,9 @@ insert into auth.users (
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
   ('22222222-2222-4222-8222-222222222222', 'authenticated', 'authenticated',
    'satark-rls-b@example.test', 'test-only-not-a-password', now(),
+   '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('33333333-3333-4333-8333-333333333333', 'authenticated', 'authenticated',
+   'satark-rls-viewer@example.test', 'test-only-not-a-password', now(),
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now());
 
 insert into public.satark_tenants (id, name) values
@@ -20,7 +23,8 @@ insert into public.satark_tenants (id, name) values
 
 insert into public.satark_memberships (tenant_id, user_id, role) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'owner'),
-  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-4222-8222-222222222222', 'owner');
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-4222-8222-222222222222', 'owner'),
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '33333333-3333-4333-8333-333333333333', 'viewer');
 
 insert into public.satark_cases (id, tenant_id, title, status, severity, created_by) values
   ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -37,6 +41,26 @@ insert into public.satark_evidence (
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
    'tenant-b.txt', 'note', now(), 'synthetic evidence B', repeat('b',64),
    '22222222-2222-4222-8222-222222222222');
+
+select ok((
+  select position('satark_private.has_membership' in coalesce(with_check, '')) > 0
+    and position('satark_has_membership' in coalesce(with_check, '')) = 0
+    and position('satark_cases' in coalesce(with_check, '')) > 0
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'satark_evidence_object_insert'
+), 'evidence upload policy uses private membership helper and checks the owning case');
+
+select ok((
+  select position('satark_private.has_membership' in coalesce(qual, '')) > 0
+    and position('satark_has_membership' in coalesce(qual, '')) = 0
+    and position('satark_cases' in coalesce(qual, '')) > 0
+    and position('analyst' in coalesce(qual, '')) > 0
+    and position('wazuh' in coalesce(qual, '')) > 0
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'satark_evidence_object_read'
+), 'evidence read policy uses private membership helper and checks the owning case');
 
 insert into public.satark_findings (
   tenant_id, case_id, finding_key, title, severity, detail, created_by
@@ -59,9 +83,13 @@ insert into public.satark_reports (
    '22222222-2222-4222-8222-222222222222');
 insert into storage.objects (bucket_id, name, owner, metadata) values
   ('satark-evidence',
-   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt',
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/22222222-2222-4222-8222-222222222222_foreign.txt',
    '22222222-2222-4222-8222-222222222222',
-   '{"mimetype":"text/plain","size":1}'::jsonb);
+   '{"mimetype":"text/plain","size":1}'::jsonb),
+  ('satark-evidence',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/wazuh/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json',
+   '11111111-1111-4111-8111-111111111111',
+   '{"mimetype":"application/json","size":64}'::jsonb);
 
 select ok(
   (select count(*) >= 7 and bool_and(c.relrowsecurity)
@@ -93,23 +121,23 @@ select set_config('request.jwt.claims',
 select lives_ok(
   $insert$ insert into storage.objects (bucket_id, name, owner, metadata)
     values ('satark-evidence',
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/11111111-1111-4111-8111-111111111111_own.txt',
       '11111111-1111-4111-8111-111111111111',
       '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
   'a tenant member can upload evidence to their own case'
 );
 select is((select count(*)::integer from storage.objects
   where bucket_id='satark-evidence'
-    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt'),
+    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/11111111-1111-4111-8111-111111111111_own.txt'),
   1, 'a tenant member can read their own evidence object');
 select is((select count(*)::integer from storage.objects
   where bucket_id='satark-evidence'
-    and name='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt'),
+    and name='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/22222222-2222-4222-8222-222222222222_foreign.txt'),
   0, 'a tenant member cannot read another tenant storage object');
 select throws_ok(
   $insert$ insert into storage.objects (bucket_id, name, owner, metadata)
     values ('satark-evidence',
-      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/forbidden.txt',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/11111111-1111-4111-8111-111111111111_forbidden.txt',
       '11111111-1111-4111-8111-111111111111',
       '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
   '42501', null, 'a tenant member cannot upload evidence into another tenant'
@@ -212,6 +240,22 @@ select throws_ok(
   '42501', null,
   'a tenant member cannot forge audit events'
 );
+
+select is((select count(*)::integer from storage.objects
+  where bucket_id='satark-evidence'
+    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/wazuh/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json'),
+  1, 'analyst-capable members can read their case Wazuh source snapshot');
+select set_config('request.jwt.claim.sub', '33333333-3333-4333-8333-333333333333', true);
+select set_config('request.jwt.claims',
+  '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated"}', true);
+select is((select count(*)::integer from storage.objects
+  where bucket_id='satark-evidence'
+    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/11111111-1111-4111-8111-111111111111_own.txt'),
+  1, 'viewers can read generic evidence in their own case');
+select is((select count(*)::integer from storage.objects
+  where bucket_id='satark-evidence'
+    and name='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/wazuh/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json'),
+  0, 'viewers cannot read raw Wazuh source snapshots');
 
 reset role;
 select * from finish();

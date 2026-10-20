@@ -41,13 +41,12 @@ async function authenticate(token: string, config: NonNullable<ReturnType<typeof
 function backendConfig() {
   const raw = process.env.FIRSTLIGHT_API_URL?.trim();
   const token = process.env.FIRSTLIGHT_API_TOKEN?.trim();
-  if (!raw) return null;
+  if (!raw || !token || token.length < 32) return null;
   try {
     const url = new URL(raw);
     const localHosts = new Set(['localhost', '127.0.0.1', '::1', 'firstlight-api']);
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && localHosts.has(url.hostname))) return null;
     if (url.username || url.password || url.search || url.hash) return null;
-    if (url.protocol === 'https:' && (!token || token.length < 32)) return null;
     return { baseUrl: url.origin, token };
   } catch {
     return null;

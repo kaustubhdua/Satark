@@ -1,8 +1,17 @@
 # FIRSTLIGHT implementation status
 
-Last reviewed: 2026-10-19
+Last reviewed: 2026-10-20
 
 This status describes repository-backed behavior, not planned features or unverified live integrations.
+
+## Current verified release-gate status (2026-10-20)
+
+- The Wazuh checkpoint migration is applied to the approved shared Supabase project `nihdhoom` after inspecting the existing SATARK schema, migration history, foreign keys, existing Wazuh evidence, and index conflicts. The checkpoint table has forced RLS with no `anon`/`authenticated` privileges; the duplicate-protection index is present. No Nirdhoom or Saathi tables/data were modified.
+- The live project currently has zero SATARK tenants, cases, memberships, evidence records, and ingestion checkpoints. The private `satark-evidence` bucket exists with a 4 MiB object limit. Do not create fake production tenant/case/user records to bypass this gate.
+- The investigation API now fails closed when `FIRSTLIGHT_API_TOKEN` is missing or shorter than 32 characters. The Next.js proxy requires the strong token even for local HTTP. The worker and authenticated source-download route enforce the bucket's 4 MiB object limit.
+- Added a versioned deterministic rule registry (`firstlight_rules.py`, version `1.0.0`) with stable rule IDs, cautious candidate ATT&CK mappings and rule limitations. Its API container copy and CI path triggers were updated.
+- FIRSTLIGHT API CI and CodeQL passed on the prior fully tested Wazuh-integration head; the broader CI and browser/accessibility smoke also passed there. An isolated database run then exposed a stale contract test that read the live migration-history no-op file instead of the canonical durable-approval schema. The test now targets `202610200001_satark_durable_approvals.sql`; a fresh isolated migration run is required on the current head before merge.
+- Vercel deployment status cannot currently be verified through the connected Vercel API (deployment-list access returned 403 and the previously recorded deployment ID was not found). The prior build-rate-limit report remains unresolved. The real Wazuh endpoint/credentials and authorized SATARK tenant/case/actor are not configured; the live SATARK tables currently have zero tenants, memberships, cases, evidence records, checkpoints and approvals, so real end-to-end ingestion remains blocked.
 
 ## Implemented in the prototype
 
@@ -82,3 +91,60 @@ This status describes repository-backed behavior, not planned features or unveri
 - The current priority score is a deterministic triage hint, not a probability or claim of maliciousness.
 - A hash mismatch raises review urgency; it does not prove who changed the record or make the record safe to use.
 - All response actions in the FIRSTLIGHT prototype remain simulated unless a separate, explicitly enabled integration is configured. Do not present them as live actions without a verified test record.
+
+
+## Wazuh connector milestone (branch: feat/firstlight-wazuh-ingestion)
+
+- Added a bounded, read-only Wazuh Indexer/OpenSearch connector using server-side HTTPS configuration, a dedicated Indexer username/password, default TLS certificate verification, a fixed configurable index-pattern allowlist, bounded timeouts, response-byte limits, and a maximum page size of 500.
+- Normalizes alerts to stable event IDs and preserves index/document provenance, source timestamps, rule/agent metadata, and a SHA-256 digest of the source record. Oversized nested alert data is represented by a bounded truncation marker and digest.
+- Added an authenticated endpoint at GET /api/v1/integrations/wazuh/alerts. It requires a separate FIRSTLIGHT_WAZUH_SYNC_TOKEN of at least 32 characters even when the general investigation API token is unset.
+- Added connector normalization, configuration, bounds, authentication, and mocked HTTP tests; wired them into the FIRSTLIGHT API CI workflow.
+- Fixed Dockerfile.firstlight-api to copy firstlight_agents.py, ai_provider.py, and firstlight_wazuh.py. Without these modules, the container could fail at import time or when optional model agents are used.
+- Added docs/FIRSTLIGHT_WAZUH_INTEGRATION.md with configuration and setup guidance.
+
+**Explicitly incomplete:** this connector currently fetches one page only. It does not persist events, maintain durable checkpoints, schedule polling, enqueue jobs, create a case, or complete a Wazuh-to-persisted-case-to-investigation-to-report lifecycle. No live Wazuh credentials or server were available, and CI has not yet been observed for this branch. Do not call this integration production-ready until real lab and end-to-end verification pass.
+
+
+## Persistent Wazuh worker implementation update
+
+- Added firstlight_wazuh_worker.py to run outside Vercel. It validates the configured case/tenant and an owner/responder/analyst actor, reads a durable checkpoint, queries a bounded Wazuh Indexer time window, saves normalized events to the existing SATARK evidence table using duplicate-safe inserts, and advances the checkpoint only after all pages complete.
+- Added a new migration for a service-role-only ingestion checkpoint table and a worker container definition.
+- The worker uses an overlap window for delayed events and refuses to advance the cursor if it reaches the Indexer's 10,000-result pagination cap. It uses HTTPS and rejects redirects for privileged Supabase REST requests.
+- Added mocked worker tests for paging, idempotent persistence behavior, checkpoint advancement/failure handling, and rejection of an unauthorized actor.
+- The API CI workflow now includes connector and worker tests and builds both container images.
+
+**Still not verified:** the worker has not been run against a real Wazuh Indexer; live endpoint enrollment, real tenant isolation, restart recovery and production deployment remain unverified. The migration is applied to the approved shared `nihdhoom` project, not a dedicated database. The Wazuh preview endpoint does not persist data; persistence is done by the separate worker only after its prerequisites are met. Keep the PR unmerged until checks and review pass.
+
+
+## Wazuh UI and persistence follow-up
+
+- Added an authenticated Next.js server-side proxy for the read-only Wazuh API. It validates the Supabase user session, keeps the connector token server-side, bounds query size and response bytes, rejects redirects, and does not expose Wazuh credentials to the browser.
+- Added a FIRSTLIGHT workspace action to load one bounded page of real Wazuh alerts, preserve source metadata and raw timestamp provenance, and review/save them through the existing persistent case workflow.
+- Updated the persistent case panel and export to preserve evidence metadata and the browser-verifiable digest for worker-ingested Wazuh records.
+- Added a partial unique index to prevent the same Wazuh index/document identity from being inserted twice into one case by the worker and UI paths.
+
+**Still unverified:** no real Wazuh credentials or endpoint were used. The migration has been applied to the approved shared SATARK/Nirdhoom/Saathi Supabase project with SATARK-only changes; a dedicated SATARK database was not created. Latest rule-registry/container CI is pending, Vercel is blocked by its build-rate limit, and end-to-end behavior must be tested with a real authorized lab endpoint and SATARK case before production use.
+
+
+## Durable investigation queue milestone (2026-10-20)
+
+- Added a SATARK-only Postgres job table with tenant/case foreign keys, requester identity, idempotency key, retry ceiling, lease, versioned result, and SHA-256 result digest. Authenticated analysts/responders/owners may enqueue/read jobs through RLS; only the trusted service-role worker can claim or finish jobs.
+- Added atomic `FOR UPDATE SKIP LOCKED` claiming, lease expiry/reclaim, retry limits, and terminal failure when a worker's final lease expires. Completion rejects oversized results and malformed digests.
+- Applied the additive migration to the existing shared `nihdhoom` Supabase project after checking its SATARK-only scope. The live table has RLS and FORCE RLS enabled, and the expected member-read/analyst-enqueue policies are present. Migration version recorded by Supabase is `20261020031055`; the repository migration path matches it. The queue currently contains zero jobs.
+- Added `firstlight_investigation_worker.py`, a non-root worker image, and an opt-in Docker Compose profile. The worker rechecks the case and requester membership, loads bounded persisted evidence, runs deterministic investigation, writes idempotent finding/report snapshots, and marks the job successful only after persistence. It does not execute response actions and does not require Ollama for deterministic results.
+- Added authenticated Next.js `POST/GET /api/firstlight/jobs` routes. Enqueue uses a caller-provided stable idempotency key and Supabase user JWT/RLS; status reads are also user-scoped. The persistent case workspace now exposes a **Run durable investigation** action and polls the durable job state for up to one minute.
+- Added Python and web contract tests and extended FIRSTLIGHT API CI to test the job worker and build its container.
+
+**Not yet release-verified:** the new code still needs the latest GitHub Actions runs to complete. No authorized SATARK tenant/case/membership exists in the connected project, so no real job can be queued safely yet. The worker has not been deployed to a private persistent host. Live Wazuh, Ollama readiness, backup restoration, and end-to-end tenant-isolation checks remain blocked by missing authorized test infrastructure. This milestone is repository implementation plus live schema validation, not a claim of production readiness.
+
+
+## Follow-up hardening (2026-10-20)
+
+- Applied the previously missing durable approval schema to the approved shared Supabase project, then enforced a database CHECK constraint that permits only `simulation.*` action keys with `action_payload.mode = 'simulation'`. The table has RLS and FORCE RLS enabled, member-read/request policies, immutable action parameters, non-self-approval, expiry checks, one-time consumption RPC, and transactional hash-chain audit entries. Live verification found zero approval rows and zero non-simulation rows.
+- Reconciled the approval migration filenames with the exact versions recorded in live Supabase migration history (`20261020035814`, `20261020035832`, `20261020035848`, `20261020040028`). Added an explicit ACL migration revoking direct execution of the approval trigger function from API roles; live ACL inspection confirmed the trigger-only function no longer grants EXECUTE to anon/authenticated/service_role.
+- Tightened the approval API to accept only the explicit simulation action namespace and require a simulation-mode payload before it attempts persistence. Live response remains disabled; approval records do not execute endpoint actions.
+- Fixed the Wazuh worker container to include the deterministic engine and versioned rule registry that its runtime imports. Docker image build success alone had not caught this runtime-import omission.
+- Wired the optional FIRSTLIGHT API Ollama configuration to the local Compose service using `OLLAMA_BASE_URL`, `FIRSTLIGHT_OLLAMA_MODEL`, and an opt-in `FIRSTLIGHT_MODEL_AGENTS_ENABLED=false` default. The model remains advisory and deterministic findings do not depend on it.
+- Redacted Wazuh worker error output to stable error categories so provider exception text, URLs, or credentials cannot be copied into logs/checkpoints. Added a regression test for secret-bearing exceptions.
+
+**Still blocked from a genuine end-to-end release:** no authorized Wazuh Indexer endpoint/credentials or enrolled lab agent is configured; the live shared project has no SATARK tenant/case/member/actor records; real Supabase tenant-isolation tests need dedicated least-privilege test identities; Vercel reports a build-rate-limit failure and the deployed commit for this branch is not verified. No evidence-object backup/restore drill, real Wazuh-to-UI smoke test, or real response executor has been verified. Keep live response disabled and do not mark this branch production-ready.

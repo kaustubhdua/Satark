@@ -6,6 +6,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BODY = 24 * 1024;
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return '{' + Object.keys(obj).sort().map(key => JSON.stringify(key) + ':' + canonical(obj[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
 function reply(body: unknown, status = 200) { return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } }); }
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -44,11 +52,11 @@ export async function POST(request: Request) {
   const record = {
     tenant_id: tenantId, case_id: caseId, source_label: source, event_kind: kind,
     observed_at: new Date(observedAt).toISOString(), summary,
-    metadata: { ...metadata as Record<string, unknown>, source: 'FIRSTLIGHT event record' },
+    metadata: { ...metadata as Record<string, unknown>, source: 'FIRSTLIGHT event record', record_hash_version: 2 },
     created_by: userId,
   };
-  const canonical = JSON.stringify(record);
-  const recordSha = createHash('sha256').update(canonical).digest('hex');
+  const canonicalRecord = canonical(record);
+  const recordSha = createHash('sha256').update(canonicalRecord).digest('hex');
   try {
     const response = await fetch(cfg.url + '/rest/v1/satark_evidence', {
       method: 'POST',

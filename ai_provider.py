@@ -116,7 +116,17 @@ class LocalOllamaClient:
             "stream": False,
             "options": options,
         }
-        if kwargs.get("response_format"):
+        response_format = kwargs.get("response_format")
+        if isinstance(response_format, dict) and response_format.get("type") == "json_schema":
+            schema_wrapper = response_format.get("json_schema")
+            schema = schema_wrapper.get("schema") if isinstance(schema_wrapper, dict) else None
+            if isinstance(schema, dict):
+                # Ollama's native /api/chat accepts the JSON Schema itself in
+                # the format field; validation still happens locally afterward.
+                payload["format"] = schema
+            else:
+                payload["format"] = "json"
+        elif response_format:
             payload["format"] = "json"
         result = self._request_json("/api/chat", payload)
         message = result.get("message", {}) if isinstance(result, dict) else {}

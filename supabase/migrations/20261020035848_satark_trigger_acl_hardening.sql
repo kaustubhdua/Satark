@@ -1,0 +1,4 @@
+-- Migration-history reconciliation only.
+-- The trigger ACL revocation is defined in 202610200002_satark_trigger_acl_hardening.sql.
+-- The live shared project recorded that same revocation under version 20261020035848.
+-- Keep this no-op file so the recorded version is represented without duplicate DDL.
