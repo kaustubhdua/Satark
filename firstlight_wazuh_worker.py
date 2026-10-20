@@ -358,7 +358,6 @@ class WazuhSupabaseWorker:
         until = _iso_utc(until_dt)
         offset = 0
         count = 0
-        latest = cursor
         try:
             while True:
                 page = self.wazuh.fetch_alerts(
@@ -366,9 +365,6 @@ class WazuhSupabaseWorker:
                 )
                 for event in page:
                     self._save_event(event)
-                    event_time = _parse_timestamp(str(event["timestamp"]), "event timestamp")
-                    if event_time > latest:
-                        latest = event_time
                 count += len(page)
                 if len(page) < self.page_size:
                     break
@@ -377,9 +373,11 @@ class WazuhSupabaseWorker:
                     raise WazuhConnectorError(
                         "The time window contains at least 10,000 alerts; reduce the polling interval or backfill window"
                     )
-            # A checkpoint advances only after every page was persisted successfully.
-            self._save_checkpoint(latest, count)
-            return {"status": "ok", "fetched": count, "cursor": _iso_utc(latest)}
+            # Advance to the fully drained query window, not the latest event timestamp.
+            # This is essential when a successful poll returns no events; otherwise the
+            # checkpoint stalls forever and the queried time window grows without bound.
+            self._save_checkpoint(until_dt, count)
+            return {"status": "ok", "fetched": count, "cursor": until}
         except Exception as exc:
             # Leave the cursor unchanged; all event writes are duplicate-safe on retry.
             try:
