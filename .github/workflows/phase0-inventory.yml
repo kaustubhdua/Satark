@@ -1,0 +1,51 @@
+name: Phase 0 inventory
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate source inventory
+        run: node scripts/generate-phase0-inventory.mjs docs/generated/phase0-inventory.json
+      - name: Validate inventory completeness and conservative statuses
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const inventory = JSON.parse(await readFile('docs/generated/phase0-inventory.json', 'utf8'));
+          const required = ['pages', 'apis', 'migrations', 'databaseTests', 'workflows', 'workers', 'providerAdapters', 'tests', 'uiActionMap'];
+          for (const key of required) {
+            if (!Array.isArray(inventory[key])) throw new Error('Missing inventory collection: ' + key);
+          }
+          if (!inventory.counts.pages || !inventory.counts.apiRoutes || !inventory.counts.migrations) {
+            throw new Error('Expected page, API and migration inventory to be non-empty.');
+          }
+          if (inventory.migrationSafety.sharedSupabaseWrites !== 'FROZEN') {
+            throw new Error('Shared Supabase write freeze must remain active until reconciliation.');
+          }
+          for (const group of required) {
+            for (const item of inventory[group]) {
+              if (item.status && !['live','partially wired','mock/simulated','unconfigured','unverified'].includes(item.status)) {
+                throw new Error('Unexpected optimistic status in ' + group + ': ' + item.status);
+              }
+            }
+          }
+          console.log(JSON.stringify(inventory.counts, null, 2));
+          NODE
+      - name: Upload inventory artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: satark-phase0-inventory
+          path: docs/generated/phase0-inventory.json
+          if-no-files-found: error
+          retention-days: 30
