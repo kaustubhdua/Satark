@@ -7,6 +7,8 @@ on:
       - "firstlight_rules.py"
       - "firstlight_api.py"
       - "firstlight_agents.py"
+      - "ai_provider.py"
+      - "ai_provider.py"
       - "firstlight_wazuh.py"
       - "tests/test_firstlight_wazuh_worker.py"
       - "firstlight_wazuh_worker.py"
