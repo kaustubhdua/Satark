@@ -119,3 +119,28 @@ The worker is optional and will not start in the default profile. Never commit t
 ## Deterministic rule registry
 
 Investigation findings include stable FIRSTLIGHT rule IDs, registry version `1.0.0`, rule logic type, candidate ATT&CK mappings and explicit limitations. These are triage heuristics, not proof of compromise. See [`docs/FIRSTLIGHT_DETECTION_RULES.md`](FIRSTLIGHT_DETECTION_RULES.md) for the registry and change-control expectations.
+
+
+## Durable investigation jobs (new; not yet live-exercised)
+
+The Next.js workspace can enqueue a persistent investigation through `POST /api/firstlight/jobs` after a case is saved or loaded. The authenticated route uses the user's Supabase JWT and database RLS; it never receives a service-role key. Supply a stable idempotency key when calling the API directly:
+
+```json
+{"tenant_id":"<authorized-tenant-uuid>","case_id":"<authorized-case-uuid>","idempotency_key":"<stable-request-id>"}
+```
+
+The job row is durably stored in `public.satark_investigation_jobs`. A private worker claims one job at a time through a `FOR UPDATE SKIP LOCKED` RPC, leases it, rechecks that the requesting actor still has an analyst/responder/owner membership, loads at most 500 persisted evidence rows, runs the deterministic engine, writes finding rows and a hash-bound report snapshot, and then stores the bounded result and result digest. Failed attempts are retried up to the database-defined limit. A crashed final attempt is marked failed after its lease expires. Repeated finding/report writes use unique conflict targets and ignore duplicates; they do not overwrite prior content.
+
+Deploy the worker on a private persistent host with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set only in its secret environment. Example with the opt-in Compose profile:
+
+```sh
+docker compose -f docker-compose.local.yml --profile investigation-worker up -d --build firstlight-investigation-worker
+```
+
+The worker can be run once for a controlled test with:
+
+```sh
+docker compose -f docker-compose.local.yml --profile investigation-worker run --rm firstlight-investigation-worker python firstlight_investigation_worker.py --once
+```
+
+The connected Supabase project currently has no SATARK tenants, cases, or memberships. Do not create fake production records to make the worker appear healthy. Provision a legitimate test tenant/case and actor, then verify a job through enqueue → claim → persisted findings/report → result hash → reload after worker restart. The job API and worker have code/contract tests, but a real authorized job has not yet been executed.
