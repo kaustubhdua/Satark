@@ -1,75 +1,64 @@
-# SATARK release execution checklist
+# SATARK / FIRSTLIGHT release execution checklist
 
-Last verified: 2026-10-20 UTC
+Candidate repository: `kaustubhdua/Satark`, branch `main`.
 
-## Current release state
+**Current decision: NO-GO for production readiness.** Use this as an evidence checklist. A blank or blocked item is not a pass.
 
-**Release is blocked.** Do not label the current `main` revision production-ready until all checks below have passed on one exact SHA and the deployment has been verified against that SHA.
+## Current evidence (2026-10-20 UTC)
 
-- Current `main` revision at this review: `83874ec9744f38eeda815772e1227516bcb50bda`.
-- This is a tracking revision, **not yet a release candidate**. PR #158's checks passed on its exact head before merge; a full post-merge check set and deployment source-SHA verification remain required.
-- PR #145 (isolated Supabase migration validation and release gates) is merged.
-- PR #150 (safe browser/server Supabase project-mapping diagnostics) is merged.
-- PR #144 (durable approvals and private membership helper/policy hardening) is merged; its isolated migration validation, CI, Web CI and CodeQL passed.
-- PR #149 (cross-tenant writes and evidence-storage regression coverage) is merged; its isolated migration validation, CI, tenant-isolation/browser checks and CodeQL passed.
-- PR #152 (video/PDF edge tests), PR #153 (synthetic local-analysis evaluation and README corrections), PR #154 (Supabase auth CSP fix), and PR #158 (simulation-only approval fixtures) are merged. These are repository/CI results, not production deployment proof.
-- PR #155 adds FIRSTLIGHT/Wazuh ingestion and persistent workflows; its exact-head checks are still running. A live Wazuh endpoint/credential round-trip has not been proven.
-- The latest Vercel project metadata reports a READY production-target deployment `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V` created at `2026-10-20T04:05:35Z`, alias candidates include `https://satark-rose.vercel.app`; its exact source SHA could not be retrieved through the connected deployment-detail/list endpoints.
-- An earlier Vercel deployment-rate-limit failure was reported at `03:56Z`, but the later READY deployment means the current rate-limit state is unknown. Do not claim it is either active or cleared without a fresh deploy/status check.
-- Live HTTP smoke through the connected fetch path was inaccessible; the new `/api/health` Supabase mapping assertion, browser authentication and production persistence remain unverified.
-- GitHub branch protection could not be read by the connected integration; do not assume required checks are enforced. Configure and verify required checks using an account with repository administration access.
+- PR #160 persistent Wazuh ingestion and investigation workflow merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL and isolated migration validation passed on its PR head.
+- PR #159 evidence-storage policy fix merged; CI, CodeQL, isolated migration validation, tenant-isolation integration and browser/accessibility smoke passed on its PR head.
+- PR #161 migration-history reconciliation merged; CI, CodeQL and isolated migration validation passed on its PR head.
+- PR #165 makes the superseded storage insert migration inert and documents the operator repair procedure. Its exact-head CI, CodeQL and isolated migration checks must pass before merge.
+- The live SATARK storage policies and helper ACLs were verified read-only. The shared project has zero SATARK tenants, cases, memberships and evidence records.
+- Live migration history records `20261020042449` and `20261020044018`; versions `20261020042000` and `20261020043000` are missing. Follow [the migration repair runbook](SUPABASE_MIGRATION_HISTORY_REPAIR.md) and use the linked Supabase CLI from a trusted environment.
+- Latest production deployment is `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; current main is newer. A READY preview exists for branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, but it is not production.
+- Vercel rejected a new deployment with HTTP 402 `api-deployments-free-per-day` and a retry-after of 86400 seconds. Resolve this through the account/plan owner; do not bypass limits or change billing/security settings automatically.
+- The connected Vercel runtime-error API returned 403. Production runtime error inspection remains unavailable.
+- No authorized Wazuh endpoint/credentials, SATARK test tenant/case/actor, or private persistent worker host is configured. Real end-to-end ingestion and recovery are therefore not verified.
 
-## Project and environment findings
+## Release gates
 
-- The intended SATARK Supabase project is the `nihdhoom` project, reference `igqgtlmnwssjaoxkkzbm`.
-- The Vercel project has environment-variable entries for `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`. Their values are encrypted and were not inspected or printed.
-- Both Upstash variable names exist for the production target, but the presence of names alone does not prove that their values are valid or that Redis is reachable.
-- The public-safe `/api/health` snapshot and production smoke workflow now check that browser/server Supabase configuration points to `igqgtlmnwssjaoxkkzbm`, without returning URLs or keys.
-- `FIRSTLIGHT_API_URL` and `FIRSTLIGHT_API_TOKEN` are optional; the remote service remains unavailable when unset. Ollama is optional for deterministic analysis.
-- Repository migrations now rebind storage policies to `satark_private.has_membership`, and the merged isolated migration tests passed. The hosted schema has not been re-queried after the merge or migrated; evidence upload/download remains unverified in production.
-- A prior production query found direct EXECUTE grants on `public.satark_reject_audit_mutation()`. Repository ACL-hardening tests passed, but the hosted grant state has not been re-queried and no hosted migration was applied.
+### Source and migrations
+- [ ] PR #165 exact-head CI, CodeQL and isolated migration validation all pass.
+- [ ] Review and merge #165 only after those checks pass.
+- [ ] Run `supabase migration list --linked` from the trusted, correctly linked checkout.
+- [ ] Repair only versions `20261020042000` and `20261020043000` as applied, following the runbook; verify the linked list afterward.
+- [ ] Confirm the canonical `20261020044018` policy remains present and both policies still use `satark_private.has_membership`.
+- [ ] Do not run a broad `supabase db push` before the migration history is reconciled.
+- [ ] Review dependency/security findings and ensure the current main revision is covered by the intended CI checks.
 
-## Required release gates
+### Deployment
+- [ ] Have the Vercel account/plan owner resolve the deployment quota block.
+- [ ] Deploy the exact current main SHA to preview; record deployment ID, URL, environment, source SHA and timestamp.
+- [ ] Run desktop/mobile browser and accessibility smoke on that exact preview.
+- [ ] Promote to production only after preview validation and explicit release approval.
+- [ ] Verify the production alias maps to the deployment containing the exact approved SHA.
+- [ ] Inspect runtime errors and request logs using authorized project access.
+- [ ] Verify environment-variable names and scopes without printing secrets; ensure server-only tokens are never exposed via `NEXT_PUBLIC_*` variables.
 
-### 1. Source and CI
-- [x] Merge PR #144 after CI, Web CI, CodeQL and isolated Supabase migration validation passed; still verify the hosted schema before rollout.
-- [x] Merge PR #149 after tenant/storage pgTAP and required checks passed; still verify the hosted schema before rollout.
-- [ ] Confirm PR #155 and any follow-up fixes are merged, with no required functionality only on an unmerged branch.
-- [ ] Record the exact release SHA.
-- [ ] Review CodeQL alerts/annotations and dependency audit findings, not just workflow success.
-- [ ] Configure and verify required branch protection/status checks with repository-admin access.
+### Real Wazuh integration and persistence
+- [ ] Provision an authorized Wazuh lab/indexer endpoint and dedicated least-privilege credentials with TLS verification.
+- [ ] Provision a separate approved SATARK test tenant, case and owner/responder/analyst actor; do not create synthetic records in the shared project just to pass a test.
+- [ ] Verify one bounded page of real alerts through the authenticated connector.
+- [ ] Verify worker paging, duplicate suppression, durable checkpoint advancement, overlap window, 10,000-result ceiling behavior and safe error redaction.
+- [ ] Kill/restart the worker during ingestion and verify retry, idempotency and checkpoint recovery.
+- [ ] Verify raw source evidence digest/provenance and role-scoped download; viewers must not access raw Wazuh snapshots.
+- [ ] Queue a durable investigation and verify findings, evidence references, timeline, gaps, report digest and persisted status.
+- [ ] Verify cross-tenant read/write attempts are denied with dedicated test identities.
 
-### 2. Database and authorization
-- [ ] Run `supabase db reset` and `supabase test db` from a clean checkout on the final release SHA.
-- [ ] Confirm no duplicate migration versions and no dependency on manually applied migrations absent from the repository.
-- [ ] Test tenant isolation for reads, inserts, updates, deletes, storage objects and RPCs.
-- [ ] Test approval expiry, requester/approver separation, exact payload binding, replay prevention, concurrent decisions and audit-chain tamper detection.
-- [ ] Apply production migrations only after isolated tests pass and the intended project is confirmed; verify resulting grants and policies afterward.
-- [ ] Test failures and timeouts so rejected database writes cannot be reported as successful.
+### Operations and response safety
+- [ ] Deploy the Wazuh and investigation workers to a private persistent host; do not rely on Vercel request lifetimes for workers.
+- [ ] Configure health monitoring, structured redacted logs, alerting and restart policy.
+- [ ] Run backup and restore drills for case/evidence metadata, audit records, checkpoints and job state.
+- [ ] Keep model agents opt-in and advisory; verify deterministic mode works when Ollama is absent or fails.
+- [ ] Keep response actions simulation-only. Do not enable real containment until durable approval, independent authorization, one-time consumption, audit, rollback and lab recovery are reviewed and tested.
 
-### 3. FIRSTLIGHT and scanners
-- [ ] Exercise create/save/reload/reopen case lifecycle with persistent data.
-- [ ] Test evidence MIME/signature validation, size limits, source and record hashes, tamper detection, findings, timeline, evidence gaps and report exports.
-- [ ] Test approval/rejection and ensure decisions create durable audit records. Keep actual response execution disabled until separately reviewed.
-- [ ] Run positive and negative tests for text, URL, image/QR, PDF and video scanners, including private IPs, redirects, malformed files, oversized inputs, timeouts and unavailable dependencies.
-- [ ] Run Ollama success/failure tests when a reachable self-hosted model is available; keep deterministic fallback usable and document unmeasured detection quality.
+### Final acceptance
+- [ ] Record all test commands, outcomes, artifact links and timestamps.
+- [ ] Update `docs/DEPLOYMENT_SIGNOFF.md` only with evidence observed on the exact candidate/deployment.
+- [ ] Have the deployment owner explicitly sign off or document the remaining blockers.
 
-### 4. Production deployment
-- [ ] Wait for the Vercel deployment-rate limit to clear.
-- [ ] Confirm the Vercel deployment is from the intended repository, branch and exact release SHA.
-- [ ] Confirm the production alias serves that deployment.
-- [ ] Run `/api/health`, `/api/version`, route/security-header checks, unauthenticated API checks and a synthetic analysis request.
-- [ ] Verify shared rate limiting is configured and reachable; analysis must fail closed if it is not.
-- [ ] Test authenticated persistence against the intended database, desktop/mobile UI flows, downloads, loading/error/retry states and accessibility.
-- [x] Merge the CSP fix (PR #154); [ ] verify browser sign-in/session refresh on the exact deployed SHA.
-- [ ] Verify request-size, concurrency, timeout and abuse/cost controls, monitoring, log redaction, rollback and backup/recovery procedures.
+## Product boundary
 
-### 5. Documentation and sign-off
-- [ ] Update the README and environment-variable contract to match the final shipped behavior.
-- [ ] Record supported file formats and size limits, optional services, retention/deletion behavior and known limitations.
-- [ ] Prepare a repeatable synthetic-data demo and capture evidence of the final browser/database workflow.
-- [ ] Update `docs/DEPLOYMENT_SIGNOFF.md` only after each applicable gate has evidence.
-
-## Safety boundary
-
-SATARK is a security-awareness and incident-triage prototype, not a certified forensic product or antivirus. FIRSTLIGHT response actions remain simulated; a passing build does not prove the deployed revision is correct, model detections are calibrated, or chain-of-custody evidence is independently anchored. Use synthetic or non-sensitive data until a separate security and operational review approves broader use.
+SATARK/FIRSTLIGHT is an evidence-led incident investigation and triage prototype, not a certified forensic product, EDR replacement, or autonomous containment system. Hashes detect changes relative to a stored digest but do not independently prove collector identity or chain of custody. A green CI run is not a substitute for a verified deployment SHA, real provider integration, tenant isolation, and operational recovery.
