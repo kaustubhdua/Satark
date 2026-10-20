@@ -247,6 +247,7 @@ class WazuhSupabaseWorker:
         metadata["browser_event_timestamp"] = event_time
         metadata["persisted_by_worker"] = True
         metadata["source"] = "FIRSTLIGHT event record"
+        metadata["record_hash_version"] = 2
         return {
             "tenant_id": self.tenant_id,
             "case_id": self.case_id,
