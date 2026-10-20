@@ -83,7 +83,7 @@ export function buildHealthSnapshot(env = {}) {
         clientProjectRef,
       },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model, database, or Redis connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the browser and server are configured for the same Supabase project without exposing URLs or keys. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, Redis, or FIRSTLIGHT API connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the browser and server are configured for the same Supabase project without exposing URLs or keys. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
   };
 }
 
