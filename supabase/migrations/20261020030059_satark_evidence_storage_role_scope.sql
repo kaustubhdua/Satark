@@ -19,7 +19,7 @@ using (
     from public.satark_cases c
     where lower(c.id::text) = lower(split_part(objects.name, '/', 2))
       and lower(c.tenant_id::text) = lower(split_part(objects.name, '/', 1))
-      and public.satark_has_membership(
+      and satark_private.has_membership(
         c.tenant_id,
         array['owner', 'responder', 'analyst']::text[]
       )
