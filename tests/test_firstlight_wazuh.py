@@ -64,7 +64,6 @@ def test_normalize_alert_rejects_naive_or_missing_timestamp():
         wazuh.normalize_alert(hit(timestamp="2026-10-20T08:00:00"))
     malformed = hit()
     del malformed["_source"]["@timestamp"]
-    del malformed["_source"]["timestamp"]
     with pytest.raises(ValueError, match="timestamp"):
         wazuh.normalize_alert(malformed)
 
