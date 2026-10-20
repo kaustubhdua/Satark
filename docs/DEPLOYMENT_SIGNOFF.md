@@ -7,7 +7,7 @@ Last reviewed: 2026-10-20 UTC
 ## Candidate and deployment identity
 
 - Canonical repository: [kaustubhdua/Satark](https://github.com/kaustubhdua/Satark)
-- Latest main revision observed during this review: `d6acf5656129e78322aa5691cc74b7a77b3b1f96` (migration-history reconciliation PR #161). A follow-up to make superseded migration `20261020043000` inert is in PR #165 and is not yet merged.
+- Latest main revision observed during this review: `a48869941d5ca277a4499a86e93907fdfa1b18e8` (PR #164 removed the unrecorded duplicate storage-policy migration). PR #164's CI, Web CI, CodeQL and isolated migration validation passed on its head.
 - Production deployment: `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`, target `production`, URL `satark-r5lhz4upy-jyc-website.vercel.app`. This is older than current main.
 - Latest available preview: `dpl_FwE4x7KHmi6awKAzLCCXUE5rq3nW`, branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, state READY, target `null`. This is a preview, not proof that main is deployed.
 - Deployment attempt for current main was rejected by Vercel with HTTP 402 `api-deployments-free-per-day`, retry-after 86400 seconds. Do not bypass billing/rate limits or change project settings automatically.
@@ -20,7 +20,7 @@ Last reviewed: 2026-10-20 UTC
 - PR #160 (persistent Wazuh ingestion and investigation workflows): merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL, and isolated Supabase migration validation passed on its PR head.
 - PR #159 (SATARK evidence-storage policy helper): merged; CI, CodeQL, isolated migration validation, tenant-isolation integration, and browser/accessibility smoke passed on its PR head.
 - PR #161 (storage migration history): merged; CI, CodeQL, and isolated migration validation passed on its validated head.
-- PR #165 (make superseded storage insert migration inert and document history repair): checks were still running at the time of review. Do not merge until its exact-head CI, CodeQL, and isolated migration validation all pass.
+- PR #164 (remove unrecorded storage-policy migration duplicate and strengthen object-key regression coverage): CI, Web CI, CodeQL, and isolated migration validation passed on its exact head.
 - These are PR-head checks, not proof that the current production deployment runs that SHA.
 
 ## Verified hosted database facts
@@ -31,7 +31,7 @@ Read-only queries against the shared Supabase project `nihdhoom` (`igqgtlmnwssja
 - Authenticated cannot execute the audit-trigger function as an RPC.
 - SATARK currently has zero tenants, cases, memberships, and evidence records. No synthetic production records were created.
 
-The live migration history records `20261020042449` and `20261020044018`, but not `20261020042000` or `20261020043000`. The canonical policy is already recorded under `20261020044018`. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile the exact missing history versions with the Supabase CLI before any future linked `db push`. No hosted migration was applied by this review.
+The live migration history records `20261018114039`, `20261020042449` and `20261020044018`, but not `202610200004` or `20261020042000`. The canonical policy is already recorded under `20261020044018`; the unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired as a local migration. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile only versions `202610200004` and `20261020042000` with the Supabase CLI before any future linked `db push`. No hosted migration was applied by this review.
 
 ## Release gates
 
@@ -41,7 +41,7 @@ The live migration history records `20261020042449` and `20261020044018`, but no
 | Production alias points to that deployment | NOT VERIFIED | Alias metadata tied to deployment ID and exact SHA |
 | Current production runtime errors inspected | BLOCKED | Vercel runtime-error access restored or another authorized source used |
 | Storage policy ACL and tenant/case scope | PASS (read-only inspection) | Current live policy definitions and function grants queried |
-| Migration history reconciled | BLOCKED | CLI repair for versions 20261020042000 and 20261020043000, followed by linked migration-list verification |
+| Migration history reconciled | BLOCKED | CLI repair for versions 202610200004 and 20261020042000, followed by linked migration-list verification |
 | Isolated database migrations and RLS tests | PASS on PR #159/#160/#161 heads; PR #165 pending | Exact-head workflow result for #165 |
 | Real Wazuh Indexer connection | NOT RUN | Authorized lab endpoint, dedicated least-privilege credentials, verified TLS, bounded query and real alert fixture |
 | Persisted Wazuh-to-case-to-investigation-to-report workflow | BLOCKED | Authorized SATARK tenant/case/actor and successful end-to-end run with checkpoint/restart/idempotency verification |
