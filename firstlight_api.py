@@ -10,6 +10,7 @@ import hmac
 import json
 import os
 import re
+import time
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -100,8 +101,10 @@ async def bounded_request(request: Request, call_next):
 
 def _ollama_readiness() -> dict[str, Any]:
     enabled = os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"}
+    configured = os.getenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b").strip() or "qwen2.5:3b"
     if not enabled:
-        return {"status": "disabled", "model_available": False}
+        return {"status": "disabled", "model_available": False, "configured_model": configured}
+    started = time.monotonic()
     try:
         from ai_provider import LocalOllamaClient
         client = LocalOllamaClient(timeout=5)
@@ -111,13 +114,23 @@ def _ollama_readiness() -> dict[str, Any]:
             for item in getattr(listing, "data", [])
             if getattr(item, "id", None)
         }
-        configured = os.getenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b").strip()
-        available = configured in installed or (configured + ":latest") in installed
-        return {"status": "ready" if available else "model_missing", "model_available": available}
+        actual = next((name for name in installed if name == configured or name == configured + ":latest"), None)
+        return {
+            "status": "ready" if actual else "model_missing",
+            "model_available": actual is not None,
+            "configured_model": configured,
+            "installed_model": actual,
+            "latency_ms": max(0, round((time.monotonic() - started) * 1000)),
+        }
     except Exception:
         # Never return endpoint URLs, model server errors, or configuration
         # values through the health endpoint. Deterministic analysis remains usable.
-        return {"status": "unavailable", "model_available": False}
+        return {
+            "status": "unavailable",
+            "model_available": False,
+            "configured_model": configured,
+            "latency_ms": max(0, round((time.monotonic() - started) * 1000)),
+        }
 
 
 @app.get("/health")
