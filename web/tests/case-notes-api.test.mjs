@@ -6,6 +6,7 @@ const notesRoute = await readFile(new URL('../src/app/api/cases/notes/route.ts',
 const casesRoute = await readFile(new URL('../src/app/api/cases/route.ts', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../../supabase/migrations/20261020032710_satark_case_assignment_notes.sql', import.meta.url), 'utf8');
+const assignmentRpc = await readFile(new URL('../../supabase/migrations/20261020033104_satark_assignable_members_rpc.sql', import.meta.url), 'utf8');
 
 test('case assignment requires owner/responder and verifies assignee tenant membership', () => {
   assert.match(casesRoute, /role: 'in\.\(owner,responder\)'/);
@@ -27,4 +28,12 @@ test('analyst notes are authenticated, bounded, immutable and audit-linked', () 
   assert.match(panel, /Run durable investigation/);
   assert.match(panel, /Add immutable note/);
   assert.match(panel, /Save assignment/);
+});
+
+test('assignable member discovery is limited to owners/responders and omits profile data', () => {
+  assert.match(assignmentRpc, /satark_list_assignable_members/);
+  assert.match(assignmentRpc, /array\['owner','responder'\]::text\[\]/);
+  assert.match(assignmentRpc, /returns table\(user_id uuid, role text\)/);
+  assert.match(assignmentRpc, /revoke all on function public\.satark_list_assignable_members\(uuid\) from public,anon/i);
+  assert.doesNotMatch(assignmentRpc, /email|phone|profile_name/i);
 });
