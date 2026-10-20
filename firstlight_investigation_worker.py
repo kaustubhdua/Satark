@@ -207,7 +207,7 @@ class InvestigationJobWorker:
             self.rest.request("POST", "satark_findings", body=body, prefer="return=minimal")
 
     def _persist_report(self, job: dict[str, Any], result: dict[str, Any]) -> None:
-        snapshot = {**result, "report_type": "investigation_run"}
+        snapshot = result
         digest = _digest(snapshot)
         body = {
             "tenant_id": job["tenant_id"], "case_id": job["case_id"],
