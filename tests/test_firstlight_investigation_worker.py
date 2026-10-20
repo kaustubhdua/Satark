@@ -12,6 +12,15 @@ JOB = "44444444-4444-4444-8444-444444444444"
 
 
 def _event():
+    record = {
+        "event_id": "wazuh-alert-1",
+        "timestamp": "2026-10-20T08:00:00Z",
+        "source": "Wazuh",
+        "kind": "authentication",
+        "summary": "Successful login from a new source",
+        "details": {"account": "analyst@example.test", "source_ip": "192.0.2.10", "result": "success", "novel_source": True},
+    }
+    browser_digest = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     return {
         "id": "55555555-5555-4555-8555-555555555555",
         "tenant_id": TENANT, "case_id": CASE,
@@ -20,7 +29,8 @@ def _event():
         "summary": "Successful login from a new source",
         "source_sha256": "a" * 64, "record_sha256": "b" * 64,
         "metadata": {
-            "local_evidence_id": "wazuh-alert-1",
+            "local_evidence_id": "wazuh-alert-1", "browser_event_timestamp": "2026-10-20T08:00:00Z",
+            "browser_record_sha256": browser_digest,
             "source_details": {"account": "analyst@example.test", "source_ip": "192.0.2.10", "result": "success", "novel_source": True},
         },
         "created_at": "2026-10-20T08:01:00Z",
