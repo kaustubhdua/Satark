@@ -1,2 +1,0 @@
--- Superseded duplicate of 202610200001_satark_durable_approvals.sql.
--- The canonical approval foundation is applied once at its original migration version.
