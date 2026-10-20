@@ -136,11 +136,18 @@ def _ollama_readiness() -> dict[str, Any]:
 @app.get("/health")
 async def health():
     model_agents_enabled = os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"}
+    readiness = _ollama_readiness()
+    # Keep internal diagnostics useful without disclosing configured/installed
+    # model names or timing details through the public health endpoint.
+    public_ollama = {
+        "status": readiness.get("status", "unavailable"),
+        "model_available": readiness.get("model_available") is True,
+    }
     return {
         "status": "ok",
         "engine": "firstlight_engine.investigate_case",
         "model_agents_enabled": model_agents_enabled,
-        "ollama": _ollama_readiness(),
+        "ollama": public_ollama,
         "production_ready": False,
     }
 
