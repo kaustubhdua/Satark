@@ -115,7 +115,7 @@ class OllamaStructuredOutputTests(unittest.TestCase):
         def fake_request(path, payload=None, timeout=None):
             captured["path"] = path
             captured["payload"] = payload
-            return {"message":{"content":"{\\"summary\\":\\"ok\\"}"}}
+            return {"message":{"content":'{"summary":"ok"}'}}
         with patch.object(client, "_request_json", side_effect=fake_request):
             client.chat.completions.create(
                 model="test-model", messages=[{"role":"user","content":"test"}],
