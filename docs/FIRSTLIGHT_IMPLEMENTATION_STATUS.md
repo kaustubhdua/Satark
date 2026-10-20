@@ -2,12 +2,22 @@
 
 Last reviewed: 2026-10-20
 
+## Fresh deployment check (2026-10-20 05:13 UTC)
+
+- Current main: `e7dd7deceb4eebd7d538ed70b6a083383a8b069b` (local Compose Supabase-auth configuration fix).
+- Latest observed production deployment: `dpl_5YfZ4vrLfMw9XYjbayKZkJwubrAL`, READY, target `production`, source SHA `08983cd9c88b1cab91ea800577b2ddc291549250`. Production is one commit behind current main.
+- Attempting to deploy current main through the connected Vercel integration returned HTTP 403 because production-deployment permission is not available. Do not try to bypass this permission boundary.
+- Runtime-error inspection returned 403; direct browser smoke could not access the protected app. Deployment readiness does not establish live API or investigation workflow behavior.
+- The last known environment inventory lacked the FIRSTLIGHT API URL/token, Wazuh sync token/Indexer credentials, and private worker configuration. The current inventory could not be re-read. No authorized Wazuh lab endpoint or SATARK tenant/case/actor is available, so live ingestion and worker recovery remain unverified.
+- **Release decision remains NO-GO** until production configuration, identity, provider, worker-recovery, and evidence-verification gates pass. No hosted migration or synthetic production data was applied.
+
+
 ## Current source and release status (updated after PR #170)
 
 - PR #160, **FIRSTLIGHT: persistent Wazuh ingestion and case investigation workflows**, is merged to `main`. Its latest observed pull-request checks passed: FIRSTLIGHT API CI, general CI, Web CI, CodeQL, and isolated Supabase migration validation.
 - PR #159's SATARK storage-policy helper fix is also merged, and its CI, CodeQL, isolated migration reset, tenant-isolation integration, and browser/accessibility smoke jobs passed on that PR head.
 - PR #161 and PR #164 are merged. The live history records `20261018114039`, `20261020042449` and `20261020044018`, but is missing `202610200004`, `20261020042000`, and `20261020050000`. PR #164 removed the duplicate `20261020043000` file. Read-only checks also found the five indexes from `20261020050000_satark_foreign_key_support_indexes.sql` absent from the live schema. PR #171 updates the guarded operator runbook; do not push until the two superseded versions are repaired and a dry-run proves the index migration is the sole pending migration.
-- The merged code is **not yet a fully verified production deployment**. The latest deployment lookup found a READY preview for branch `feat/firstlight-wazuh-rebased` at commit `a6ad65ea910c40362bb9005febb447893776002f`; it was not a production-target deployment and is not proof that the latest `main` SHA is live.
+- The latest project-scoped Vercel deployment listing shows a READY production deployment at SHA `08983cd9c88b1cab91ea800577b2ddc291549250` (deployment `dpl_5YfZ4vrLfMw9XYjbayKZkJwubrAL`). Current `main` is now `e7dd7deceb4eebd7d538ed70b6a083383a8b069b`, one commit ahead; the connected integration denied permission to deploy that current SHA. Runtime-error inspection and direct browser smoke are blocked, so production functionality is not verified.
 - No real Wazuh endpoint/credentials or authorized SATARK tenant/case/member/actor is configured. The worker, durable job queue, and simulation-only approval schema exist in code, but real Wazuh-to-persisted-case-to-investigation-to-report execution, worker hosting/restart recovery, backup restoration, and production smoke verification remain blocked.
 - Keep real response actions disabled. A passing CI suite proves the checked code paths only; it does not establish live-provider, tenant-isolation, operational recovery, or production readiness.
 
