@@ -36,6 +36,12 @@ Read-only queries against the shared Supabase project `nihdhoom` (`igqgtlmnwssja
 
 The live migration history records `20261018114039`, `20261020042449` and `20261020044018`, but not `202610200004` or `20261020042000`. The canonical policy is already recorded under `20261020044018`; the unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired as a local migration. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile only versions `202610200004` and `20261020042000` with the Supabase CLI before any future linked `db push`. Migration `20261020044018` was applied after isolated validation and verified read-only; no migration-history repair has been performed.
 
+## Supabase advisor review
+
+A read-only advisor run on 2026-10-20 reported one INFO finding for `satark_ingestion_checkpoints` (RLS enabled without policies). This is intentional: the table is forced-RLS and has no `anon` or `authenticated` table privileges; the persistent worker uses the server-side service role. The advisor also reported SECURITY DEFINER RPC warnings across the shared project. The four SATARK RPCs inspected (`satark_authorize_response_action`, `satark_consume_response_approval`, `satark_decide_approval`, and `satark_list_assignable_members`) have an empty search path and explicit authentication/tenant-role/approval checks; retain the regression tests and review these guards whenever the functions change. Other warnings include Nirdhoom/Saathi functions and were not modified in this SATARK task.
+
+The performance advisor identified five SATARK foreign-key columns without covering indexes. PR #168 added those indexes to the repository and passed isolated migration validation, but the migration has not been applied to the shared project because migration-history repair is still pending. Re-run the advisor after the approved linked migration push; do not remove unused indexes solely because the current SATARK tables have zero rows.
+
 ## Release gates
 
 | Gate | Status | Required evidence |
