@@ -74,7 +74,7 @@ class FakeWazuh:
 
 def test_source_snapshot_upload_rejects_objects_over_bucket_limit_before_network_io():
     client = SupabaseServiceRest(
-        supabase_url="https://example.supabase.co",
+        base_url="https://example.supabase.co",
         service_role_key="x" * 40,
     )
     snapshot = "x" * (4 * 1024 * 1024 + 1)
