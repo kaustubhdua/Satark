@@ -1,6 +1,6 @@
 # SATARK Supabase migration-history repair
 
-Last verified: 2026-10-20 UTC
+Last verified: 2026-10-20 UTC (read-only migration and index checks refreshed)
 
 ## Scope and evidence
 
@@ -12,9 +12,10 @@ A read-only migration-list check on 2026-10-20 found these relevant entries:
 
 - `20261018114039` — `isolate_satark_membership_helper`: recorded.
 - `202610200004` — `satark_storage_policy_membership_hardening`: not recorded.
-- `20261020042000` — `satark_storage_policy_private_helper_rebind`: not recorded.
+- `20261020042000` — `satark_storage_policy_private_helper_rebind`: not recorded (repository file is a no-op; canonical policy was applied under `20261020044018`).
 - `20261020042449` — `satark_evidence_storage_dual_path_policy`: recorded.
 - `20261020044018` — `satark_storage_policy_private_helper_rebind`: recorded.
+- `20261020050000` — `satark_foreign_key_support_indexes`: not recorded. A read-only `pg_indexes` check also found the five SATARK support indexes from this migration absent in the live database.
 
 The live private helper, ACLs, and final storage policies have been verified read-only. The later recorded migrations establish the intended final policy. The repository migration `202610200004` remains available for clean database resets; do not change it to a no-op. The repository migration `20261020042000` is already a no-op because the canonical policy was applied under `20261020044018`. The duplicate version `20261020043000` was removed from the repository in PR #164 and is not part of the repair command.
 
@@ -32,7 +33,21 @@ supabase migration list --linked
 
 This records only the two already-superseded/missing versions as applied; it does not execute their SQL. Do not repair any other versions, and do not re-mark `20261020042449` or `20261020044018`. If the linked migration list differs from the evidence above, stop and re-review before changing history.
 
-After repair, confirm that versions `202610200004`, `20261018114039`, `20261020042000`, `20261020042449`, and `20261020044018` are recorded, then run the isolated migration validation workflow.
+After repair, confirm that versions `202610200004`, `20261018114039`, `20261020042000`, `20261020042449`, and `20261020044018` are recorded. Then preview pending migrations before changing the live schema:
+
+```sh
+supabase db push --dry-run --linked
+```
+
+**Expected dry-run:** the only pending repository migration is `20261020050000_satark_foreign_key_support_indexes.sql`. It adds indexes to SATARK-owned tables only. If any other migration is listed, stop and reconcile the migration set before applying anything. If the dry-run matches exactly, apply the pending SATARK-only index migration:
+
+```sh
+supabase db push --linked
+supabase migration list --linked
+```
+
+Then verify all five index names exist in `pg_indexes`:
+`satark_approvals_requested_by_idx`, `satark_approvals_decided_by_idx`, `satark_case_notes_created_by_idx`, `satark_cases_assigned_to_idx`, and `satark_investigation_jobs_requested_by_idx`. Finally run the isolated migration validation workflow. Do not run a broad push if the dry-run differs from the expected single migration.
 
 ## Read-only policy and ACL verification
 
