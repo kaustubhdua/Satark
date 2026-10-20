@@ -126,7 +126,7 @@ def _run_one(agent_id: str, model: str, evidence: list[dict[str, Any]], known_id
         model=model,
         temperature=0.0,
         max_tokens=1000,
-        response_format={"type": "json_object"},
+        response_format={"type": "json_schema", "json_schema": {"name": "firstlight_agent_result", "schema": AgentResult.model_json_schema()}},
         messages=[
             {"role": "system", "content": PROMPTS[agent_id] + (
                 ' Output exactly this JSON shape: {"agent_id":"'
