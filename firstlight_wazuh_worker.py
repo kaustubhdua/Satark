@@ -364,9 +364,13 @@ class WazuhSupabaseWorker:
         count = 0
         try:
             while True:
+                self._validate_target()
                 page = self.wazuh.fetch_alerts(
                     limit=self.page_size, since=since, until=until, offset=offset, include_source_snapshot=True,
                 )
+                # A long Indexer request can overlap with a membership revocation.
+                # Recheck before writing the returned page with the service-role key.
+                self._validate_target()
                 for event in page:
                     self._save_event(event)
                 count += len(page)
@@ -380,11 +384,15 @@ class WazuhSupabaseWorker:
             # Advance to the fully drained query window, not the latest event timestamp.
             # This is essential when a successful poll returns no events; otherwise the
             # checkpoint stalls forever and the queried time window grows without bound.
+            self._validate_target()
             self._save_checkpoint(until_dt, count)
             return {"status": "ok", "fetched": count, "cursor": until}
         except Exception as exc:
             # Leave the cursor unchanged; all event writes are duplicate-safe on retry.
+            # If membership was revoked or the target is no longer valid, do not write
+            # even an error checkpoint using the privileged service-role credential.
             try:
+                self._validate_target()
                 self._save_checkpoint(cursor, count, status="error", error=_safe_error_code(exc))
             except Exception:
                 pass
