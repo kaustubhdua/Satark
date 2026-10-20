@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const route = await readFile(new URL('../src/app/api/firstlight/jobs/route.ts', import.meta.url), 'utf8');
-const migration = await readFile(new URL('../../supabase/migrations/20261020040000_satark_investigation_jobs.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../../supabase/migrations/20261020031055_satark_investigation_jobs.sql', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../../firstlight_investigation_worker.py', import.meta.url), 'utf8');
 
 test('durable job API authenticates users and validates tenant/case/idempotency inputs', () => {
