@@ -5,6 +5,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function reply(body: unknown, status = 200) { return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } }); }
+function hasBearer(request: Request) {
+  return /^Bearer [A-Za-z0-9._~-]+$/.test(request.headers.get('authorization') || '');
+}
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!raw || !key) return null;
@@ -34,6 +37,7 @@ function canonical(value: unknown): string {
 
 const SEVERITIES = new Set(['info','low','medium','high','critical','review','unknown']);
 export async function GET(request: Request) {
+  if (!hasBearer(request)) return reply({ error: 'Sign in is required.' }, 401);
   const cfg = config(); if (!cfg) return reply({ error: 'Finding storage is not configured.' }, 503);
   const a = await auth(request, cfg); if (a.error || !a.token) return a.error ?? reply({ error: 'Sign in is required.' }, 401);
   const params = new URL(request.url).searchParams;
@@ -48,6 +52,7 @@ export async function GET(request: Request) {
   } catch { return reply({ error: 'Finding storage is temporarily unavailable.' }, 503); }
 }
 export async function POST(request: Request) {
+  if (!hasBearer(request)) return reply({ error: 'Sign in is required.' }, 401);
   const cfg = config(); if (!cfg) return reply({ error: 'Finding storage is not configured.' }, 503);
   const a = await auth(request, cfg); if (a.error || !a.token || !a.userId) return a.error ?? reply({ error: 'Sign in is required.' }, 401);
   const parsed = await readBoundedJson(request, 24 * 1024);
