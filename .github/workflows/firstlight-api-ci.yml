@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "firstlight_engine.py"
+      - "firstlight_rules.py"
       - "firstlight_api.py"
       - "firstlight_agents.py"
       - "firstlight_wazuh.py"
@@ -18,6 +19,7 @@ on:
       - "tests/test_firstlight_api_details.py"
       - "tests/test_firstlight_wazuh.py"
       - "tests/test_firstlight_engine.py"
+      - "tests/test_firstlight_rules.py"
       - ".github/workflows/firstlight-api-ci.yml"
   push:
     branches: [main]
