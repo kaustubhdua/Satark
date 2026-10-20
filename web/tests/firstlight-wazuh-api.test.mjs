@@ -52,14 +52,19 @@ test('shared investigation proxy requires a strong backend token even for local 
   assert.doesNotMatch(investigateRoute, /url\.protocol === 'https:' && \(!token/);
 });
 
-test('raw source Storage policy enforces case scope and analyst-capable roles directly', async () => {
+test('raw Wazuh source reads stay analyst-only while normal evidence retains its own path policy', async () => {
   const migration = await readFile(new URL('../../supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql', import.meta.url), 'utf8');
+  const dualPathMigration = await readFile(new URL('../../supabase/migrations/20261020042449_satark_evidence_storage_dual_path_policy.sql', import.meta.url), 'utf8');
   assert.match(migration, /create policy satark_evidence_object_read/);
+  assert.match(migration, /split_part\(name, '\/', 3\) = 'wazuh'/);
   assert.match(migration, /array\['owner', 'responder', 'analyst'\]::text\[\]/);
-  assert.match(migration, /array\['owner', 'responder', 'analyst', 'viewer'\]::text\[\]/);
-  assert.match(migration, /array_length\(string_to_array\(name, '\/'\), 1\) = 3/);
   assert.match(migration, /array_length\(string_to_array\(name, '\/'\), 1\) = 4/);
+  assert.doesNotMatch(migration, /array\['owner', 'responder', 'analyst', 'viewer'\]::text\[\]/);
   assert.match(migration, /lower\(c\.id::text\) = lower\(split_part\(objects\.name, '\/', 2\)\)/);
   assert.match(migration, /lower\(c\.tenant_id::text\) = lower\(split_part\(objects\.name, '\/', 1\)\)/);
-  assert.doesNotMatch(migration, /satark_has_membership\(split_part\(name, '\/', 1\)::uuid\)/);
+  assert.match(dualPathMigration, /array\['owner', 'responder', 'analyst', 'viewer'\]::text\[\]/);
+  assert.match(dualPathMigration, /array_length\(string_to_array\(name, '\/'\), 1\) = 3/);
+  assert.match(dualPathMigration, /array_length\(string_to_array\(name, '\/'\), 1\) = 4/);
+  assert.match(dualPathMigration, /split_part\(name, '\/', 3\) = 'wazuh'/);
+  assert.match(dualPathMigration, /satark_private\.has_membership/);
 });
