@@ -66,11 +66,9 @@ export default function PersistentCasePanel({
     if (selected) {
       setCases(await listCases(selected.id));
       try {
-        const memberQuery = new URLSearchParams({
-          select: 'user_id,role', tenant_id: 'eq.' + selected.id,
-          role: 'in.(owner,responder,analyst)', order: 'role.asc', limit: '100',
+        const memberResponse = await authenticatedFetch('/rest/v1/rpc/satark_list_assignable_members', {
+          method: 'POST', body: JSON.stringify({ p_tenant_id: selected.id }),
         });
-        const memberResponse = await authenticatedFetch('/rest/v1/satark_memberships?' + memberQuery);
         const memberRows: unknown = memberResponse.ok ? await memberResponse.json() : [];
         setMembers(Array.isArray(memberRows) ? memberRows.filter((row): row is MemberRow =>
           !!row && typeof row === 'object' && 'user_id' in row && typeof row.user_id === 'string' &&
