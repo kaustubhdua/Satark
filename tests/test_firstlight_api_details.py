@@ -225,5 +225,8 @@ def test_wazuh_source_rule_level_becomes_a_cautious_evidence_linked_finding():
     payload = response.json()
     finding = next(row for row in payload["investigation"]["findings"] if row["title"] == "Wazuh source detection alert")
     assert finding["severity"] == "critical"
+    assert finding["rule_id"] == "FL-WAZUH-001"
+    assert finding["rule_version"] == "1.0.0"
+    assert finding["attack_techniques"] == []
     assert finding["evidence_ids"] == ["wazuh-alert-12"]
     assert "not an independently calibrated probability" in finding["explanation"]
