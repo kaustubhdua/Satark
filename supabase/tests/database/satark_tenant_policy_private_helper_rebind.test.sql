@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(13);
 
 select ok(
   has_function_privilege('authenticated', 'satark_private.has_membership(uuid,text[])', 'EXECUTE'),
@@ -51,6 +51,17 @@ select ok(
   (select qual like '%satark_private.has_membership%' and qual not like '%public.satark_has_membership%'
    from pg_policies where schemaname='public' and tablename='satark_investigation_jobs' and policyname='satark_investigation_jobs_member_read'),
   'investigation read policy uses private helper'
+);
+
+select ok(
+  (select count(*) = 2
+      and bool_and((coalesce(qual,'') || ' ' || coalesce(with_check,'')) like '%satark_private.has_membership%')
+      and bool_and((coalesce(qual,'') || ' ' || coalesce(with_check,'')) not like '%public.satark_has_membership%')
+   from pg_policies
+   where schemaname='storage'
+     and tablename='objects'
+     and policyname in ('satark_evidence_object_read','satark_evidence_object_insert')),
+  'evidence storage policies use private membership helper'
 );
 
 select is(
