@@ -265,7 +265,7 @@ class InvestigationJobWorker:
             envelopes.append({
                 "evidence_id": event_id,
                 "record": record,
-                "sha256": expected_browser_digest if integrity_ok else "",
+                "sha256": normalized_digest if integrity_ok else "",
                 "collected_at": str(row.get("created_at") or ""),
                 "integrity_status": "verified" if integrity_ok else "mismatch",
             })
