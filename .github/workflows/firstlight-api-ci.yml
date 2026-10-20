@@ -97,4 +97,9 @@ jobs:
         run: |
           docker build -f Dockerfile.firstlight-api -t firstlight-api:ci .
           docker build -f Dockerfile.firstlight-worker -t firstlight-worker:ci .
-          docker build -f Dockerfile.firstlight-investigation-worker -t firstlight-investigation-worker:ci .
+          docker build -f Dockerfile.firstlight-investigation-worker -t firstlight-investigation-worker:ci
+      - name: Smoke-test runtime imports inside built images
+        run: |
+          docker run --rm --entrypoint python firstlight-api:ci -c "import firstlight_api, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider"
+          docker run --rm --entrypoint python firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
+          docker run --rm --entrypoint python firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_wazuh_worker"
