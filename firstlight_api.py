@@ -72,10 +72,10 @@ class InvestigationRequest(BaseModel):
 
 def _authorize(authorization: str | None) -> None:
     expected = os.getenv("FIRSTLIGHT_API_TOKEN", "")
-    if not expected:
-        return
+    # Fail closed: an absent secret must never silently turn the investigation
+    # endpoint into a public API. Local/demo deployments need an explicit token too.
     if len(expected) < 32:
-        raise HTTPException(status_code=503, detail="FIRSTLIGHT API token configuration is invalid")
+        raise HTTPException(status_code=503, detail="FIRSTLIGHT API token is not configured or is invalid")
     supplied = authorization or ""
     if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], expected):
         raise HTTPException(status_code=401, detail="Unauthorized")
