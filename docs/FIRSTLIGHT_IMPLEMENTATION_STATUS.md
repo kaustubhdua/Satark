@@ -1,6 +1,6 @@
 # FIRSTLIGHT implementation status
 
-Last reviewed: 2026-10-19
+Last reviewed: 2026-10-20
 
 This status describes repository-backed behavior, not planned features or unverified live integrations.
 
@@ -31,17 +31,25 @@ This status describes repository-backed behavior, not planned features or unveri
 - Added `firstlight_agents.py`: opt-in independent local Ollama calls for integrity review, timeline analysis and detection analysis. Each gets a bounded read-only evidence projection, has no executable tools, must return a strict Pydantic schema, and has evidence IDs checked against the current case. Agent findings are advisory; deterministic results remain authoritative.
 - Integrated the optional agent output into the shared API response. The default remains deterministic-only. Set `FIRSTLIGHT_MODEL_AGENTS_ENABLED=true` and configure a reachable private/local Ollama endpoint plus `FIRSTLIGHT_OLLAMA_MODEL` to opt in. This is not an independent-model ensemble: the specialist calls use the same configured model, and there are no live collection or response tools.
 - Added Python agent-contract tests and CI coverage for the agent module. Added browser-source contract tests for duplicate handling and agent guardrails.
-- These are code and test changes, not verified test results. No local repository runtime is available in this session to execute the Python/npm suites. The GitHub status wrapper currently returns no workflow runs for these push commits, so it does not establish that CI passed.
-- The most recent production deployment lookup still reports an earlier SHA than the latest source changes. Exact latest-commit deployment, tenant-isolation credentials/results, browser/accessibility results and production smoke checks remain unverified.
-- Durable authenticated approval records and a safe, audited response-execution adapter remain incomplete. Existing session decisions must not be treated as durable approval or as proof that a live action occurred.
+- PR #160 (FIRSTLIGHT/Wazuh ingestion) and PR #161 (migration-history reconciliation) passed CI, Web CI, CodeQL and isolated migration validation on their exact heads. PR #164 (invalid object-key regression and canonical storage-policy contract test) is merged as `a48869941d5ca277a4499a86e93907fdfa1b18e8`; its exact-head checks passed. Current-main production deployment remains blocked by Vercel's HTTP 402 `api-deployments-free-per-day` limit, so do not equate PR-head CI with a production release.
+- The latest production deployment remains older than current `main` (recorded source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`). Vercel rejected a deployment attempt with HTTP 402 `api-deployments-free-per-day` and a 24-hour retry window. Exact-main deployment, production alias mapping, browser/accessibility smoke and live tenant-isolation credentials/results remain unverified.
+- Durable approval records and simulation-only action constraints are implemented in the merged migrations. Live response execution remains intentionally disabled; session or simulation decisions are not proof that a live action occurred.
 
 ## Latest hardening update (2026-10-20)
 
 - Added a shared streaming JSON parser at `web/src/lib/read-bounded-json.ts`. It checks declared lengths as an early rejection, counts actual streamed bytes, cancels oversized streams, rejects invalid UTF-8/JSON, and only parses after the limit is satisfied.
 - Applied it to evidence-record, finding, and report write APIs, which previously relied on `Content-Length` plus `request.json()`; chunked requests now have an actual byte cap in these routes too.
 - Added a source-contract regression test covering the shared parser and all three route integrations.
-- These changes are committed to `main`; the latest source-contract tests and full CI/build results have **not** yet been observed. A source-contract test is not a substitute for runtime tests.
-- Latest Vercel status observed for the write-route changes was still `pending` on their individual commits; the newest test commit had no reported combined status yet. Production deployment SHA and browser behavior remain unverified.
+- The bounded JSON parser and route integration are in `main`; exact PR-head CI for the later hardening and storage changes passed, but the current `main` production build/deployment has not been verified because Vercel returned the quota error above. A source-contract test is not a substitute for runtime tests.
+- Latest production deployment source SHA remains older than `main`; Vercel's deployment attempt returned HTTP 402 `api-deployments-free-per-day`. Production browser behavior and alias mapping remain unverified.
+
+## Verified live storage-policy status (2026-10-20)
+
+- Applied migration `20261020044018_satark_storage_policy_private_helper_rebind` after isolated migration validation.
+- Read-only post-apply queries confirm both `satark_evidence_object_insert` and `satark_evidence_object_read` use `satark_private.has_membership`; neither references the public wrapper.
+- Authenticated can execute the private helper; authenticated and anon cannot execute the public wrapper; authenticated cannot execute the audit-trigger function as an RPC.
+- No evidence rows or synthetic tenant/case/member records were created. The shared project currently has zero SATARK tenants, cases, memberships and evidence records.
+- The live migration history is missing versions `202610200004` and `20261020042000`; follow the migration-history repair instructions in `docs/DEPLOYMENT_SIGNOFF.md` before any future linked migration push.
 
 ## Partially implemented
 
