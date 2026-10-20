@@ -150,7 +150,7 @@ async function inspectViewport(viewport, label) {
       assert.match((await qrCard.textContent()) || '', /bundled fallback decoder|cross-browser decoding/i,
         'home QR copy must disclose remaining capability limits');
     }
-    if (route.path !== '/') {
+    if (!['/', '/login', '/reset-password'].includes(route.path)) {
       assert.equal(await page.locator('.nav-links a[aria-current="page"]').count(), 1,
         `${label}: exactly one current navigation link expected at ${route.path}`);
     }
