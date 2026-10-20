@@ -74,7 +74,7 @@ The worker is intended to run on a persistent private host, separate from Vercel
 Before enabling it:
 
 1. The approved target is Supabase project `nihdhoom` (project ref `igqgtlmnwssjaoxkkzbm`), a shared project. The migration was applied only after inspecting the SATARK schema, migration history, foreign keys, existing Wazuh evidence and index-name conflicts. No Nirdhoom or Saathi tables were altered.
-2. The migration `supabase/migrations/202610210001_satark_wazuh_ingestion_checkpoints.sql` is applied and verified. The checkpoint table has forced RLS, no policies, and no `anon` or `authenticated` privileges; it is intentionally service-role-only. Supabase's RLS-without-policy lint finding is expected for this private table.
+2. The migration `supabase/migrations/20261020023851_satark_wazuh_ingestion_checkpoints.sql` is applied and verified. The checkpoint table has forced RLS, no policies, and no `anon` or `authenticated` privileges; it is intentionally service-role-only. Supabase's RLS-without-policy lint finding is expected for this private table.
 3. Create or select an existing case in the target tenant, and verify the configured actor is an owner, responder or analyst in that tenant.
 4. Supply the following private environment variables to the persistent worker:
    - SUPABASE_URL
