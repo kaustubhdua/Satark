@@ -352,6 +352,10 @@ class WazuhSupabaseWorker:
         )
 
     def run_once(self) -> dict[str, Any]:
+        # This process uses service_role and can outlive the actor's session.
+        # Recheck case ownership and membership on every poll so a revoked actor
+        # cannot keep authorizing privileged writes through a long-running worker.
+        self._validate_target()
         cursor = self._load_checkpoint()
         since = _iso_utc(cursor - self.overlap)
         until_dt = datetime.now(timezone.utc)
