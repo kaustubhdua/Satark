@@ -50,7 +50,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Run FIRSTLIGHT API and engine regression tests
-        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py
+        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_investigation_api.py
 
       - name: Install browser test tooling and deterministic video fixture encoder
         run: |
