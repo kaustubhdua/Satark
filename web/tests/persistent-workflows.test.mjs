@@ -18,7 +18,7 @@ const [auth, evidence, verify, records, findings, reports, audit, tenantMigratio
   read('../../supabase/migrations/202610140009_satark_evidence_upload_limit.sql'),
   read('../src/app/api/firstlight/approvals/route.ts'),
   read('../src/app/firstlight/persistent-case-panel.tsx'),
-  read('../../supabase/migrations/20261020035814_satark_durable_approvals.sql'),
+  read('../../supabase/migrations/202610200001_satark_durable_approvals.sql'),
 ]);
 
 test('browser auth uses publishable key and refreshes sessions without privileged keys', () => {
