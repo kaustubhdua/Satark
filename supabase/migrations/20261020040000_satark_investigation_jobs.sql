@@ -71,6 +71,11 @@ begin
  if p_lease_seconds < 15 or p_lease_seconds > 600 then
    raise exception 'lease duration must be between 15 and 600 seconds';
  end if;
+ update public.satark_investigation_jobs
+ set status='failed', error_code='lease_expired_max_attempts', finished_at=now(),
+     lease_until=null, updated_at=now()
+ where status='running' and lease_until < now() and attempts >= max_attempts;
+
  select * into selected
  from public.satark_investigation_jobs j
  where (
@@ -79,8 +84,8 @@ begin
  )
  and j.attempts < j.max_attempts
  order by j.created_at
- for update skip locked
- limit 1;
+ limit 1
+ for update skip locked;
  if not found then return; end if;
  update public.satark_investigation_jobs
  set status='running', attempts=attempts+1, started_at=coalesce(started_at,now()),
