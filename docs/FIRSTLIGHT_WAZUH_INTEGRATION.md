@@ -12,7 +12,7 @@ and persistent case lifecycle are complete.
 4. Alerts are normalized to stable event IDs and include source/index/document provenance plus a SHA-256 digest of the indexed source record.
 5. The authenticated FIRSTLIGHT endpoint returns one bounded page for integration testing.
 
-The API preview endpoint itself **does not persist events or maintain a checkpoint**. A separate persistent worker now writes normalized alerts into an existing authorized SATARK case and records a durable cursor, provided the checkpoint migration is applied and the worker is configured. The migration has now been applied and verified on the approved nihdhoom project, which is shared with Nirdhoom and Saathi; only SATARK tables, indexes and grants were changed. The worker and live integration remain unverified against a real Wazuh server.
+The API preview endpoint itself **does not persist events or maintain a checkpoint**. A separate persistent worker now writes normalized alerts into an existing authorized SATARK case and records a durable cursor, provided the checkpoint migration is applied and the worker is configured. The migration has now been applied and verified on the approved nihdhoom project, which is shared with Nirdhoom and Saathi; only SATARK tables, indexes and grants were changed. The worker and live integration remain unverified against a real Wazuh server. The current private `satark-evidence` bucket has a 4 MiB per-object limit; the worker and authenticated source-download route enforce the same bound.
 
 ## Server-side configuration
 
@@ -88,7 +88,7 @@ Before enabling it:
 5. Run one controlled poll first with python firstlight_wazuh_worker.py --once. Inspect the case evidence and server-generated audit event before enabling recurring polling.
 6. Run the worker continuously under a service supervisor/container on the private host. Keep the Indexer and Supabase service-role credentials out of logs and source control.
 
-The worker explicitly verifies the target case/tenant and the actor's membership before writing. The connector also filters every index query to FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS, and its durable cursor is namespaced by the allowlist hash so changing the scope does not reuse another scope's checkpoint. Its Supabase service-role credential bypasses RLS, so the worker must remain a trusted, private component. The workspace UI also offers a bounded alert preview, but that preview intentionally does not include or preserve the full indexed source snapshot; use the persistent worker when source-object preservation is required. Never use this pattern in browser code or a public endpoint.
+The worker explicitly verifies the target case/tenant and the actor's membership before writing. The connector also filters every index query to FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS, and its durable cursor is namespaced by the allowlist hash so changing the scope does not reuse another scope's checkpoint. Its Supabase service-role credential bypasses RLS, so the worker must remain a trusted, private component. The workspace UI also offers a bounded alert preview, but that preview intentionally does not include or preserve the full indexed source snapshot; use the persistent worker when source-object preservation is required. The private bucket currently limits each source object to 4 MiB. Never use this pattern in browser code or a public endpoint.
 
 ## What remains unverified
 
