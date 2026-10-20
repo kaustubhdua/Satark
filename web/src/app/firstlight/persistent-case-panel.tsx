@@ -12,6 +12,7 @@ type FindingRow = { title: string; detail: string; severity: string; refs: strin
 type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; assigned_to?: string | null; created_at: string; updated_at: string };
 type MemberRow = { user_id: string; role: string };
 type CaseNote = { id: string; tenant_id: string; case_id: string; body: string; created_by: string; created_at: string };
+type ApprovalRow = { id: string; action_key: string; action_payload: Record<string, unknown>; payload_sha256: string; status: string; requested_by: string; decided_by?: string | null; decision_reason?: string | null; created_at: string; expires_at: string };
 type AuditRow = { time: string; action: string; detail: string };
 
 export default function PersistentCasePanel({
@@ -43,6 +44,10 @@ export default function PersistentCasePanel({
   const [noteDraft, setNoteDraft] = useState('');
   const [requestedCaseId, setRequestedCaseId] = useState('');
   const [caseListLoaded, setCaseListLoaded] = useState(false);
+  const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
+  const [approvalReason, setApprovalReason] = useState('');
+  const [approvalDecisionReason, setApprovalDecisionReason] = useState('');
+  const [approvalMessage, setApprovalMessage] = useState('');
 
   async function refresh() {
     setCaseListLoaded(false);
@@ -239,6 +244,74 @@ export default function PersistentCasePanel({
     finally { setBusy(false); }
   }
 
+  async function refreshApprovals(caseId: string) {
+    if (!tenant || !session) return;
+    try {
+      const response = await fetch('/api/firstlight/approvals?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(caseId), {
+        headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      setApprovals(response.ok && Array.isArray(payload.approvals) ? payload.approvals as ApprovalRow[] : []);
+      if (!response.ok) setApprovalMessage(typeof payload.error === 'string' ? payload.error : 'Approval history is unavailable.');
+      else setApprovalMessage('');
+    } catch {
+      setApprovals([]);
+      setApprovalMessage('Approval history is unavailable.');
+    }
+  }
+
+  async function requestSimulatedApproval() {
+    if (!tenant || !session || !currentCaseId || !cases.some(c => c.id === currentCaseId)) {
+      setError('Save or load a persistent case before requesting approval.');
+      return;
+    }
+    const reason = approvalReason.trim();
+    if (reason.length < 8 || reason.length > 1000) {
+      setError('Describe the simulated action in 8–1000 characters.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage(''); setApprovalMessage('');
+    try {
+      const response = await fetch('/api/firstlight/approvals', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenant.id, case_id: currentCaseId, action_key: 'simulation.mark_case_contained',
+          action_payload: { mode: 'simulation', operation: 'mark_case_contained', target: { tenant_id: tenant.id, case_id: currentCaseId }, reason },
+        }),
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.approval) throw new Error(typeof payload.error === 'string' ? payload.error : 'Simulation approval request could not be saved.');
+      setApprovalReason('');
+      setMessage('Simulation-only approval request saved. No endpoint or account action was executed.');
+      await refreshApprovals(currentCaseId);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Simulation approval request failed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function decideSimulatedApproval(approvalId: string, decision: 'approved' | 'rejected') {
+    if (!tenant || !session || !['owner','responder'].includes(tenant.role)) {
+      setError('Only a different workspace owner or responder may decide an approval.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage(''); setApprovalMessage('');
+    try {
+      const response = await fetch('/api/firstlight/approvals', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_id: approvalId, decision, reason: approvalDecisionReason.trim() || null }),
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.approval) throw new Error(typeof payload.error === 'string' ? payload.error : 'Approval decision could not be saved.');
+      setApprovalDecisionReason('');
+      setMessage('Approval decision recorded in the audit chain. This records a simulated decision only; no live response action ran.');
+      if (currentCaseId) await refreshApprovals(currentCaseId);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Approval decision failed.'); }
+    finally { setBusy(false); }
+  }
+
   async function loadSavedCase(item: CaseRow) {
     if (!tenant || !session) return;
     setBusy(true); setError(''); setMessage('');
@@ -274,6 +347,7 @@ export default function PersistentCasePanel({
         const notesPayload = await notesResponse.json().catch(() => ({}));
         setNotes(notesResponse.ok && Array.isArray(notesPayload.notes) ? notesPayload.notes as CaseNote[] : []);
       } catch { setNotes([]); }
+      await refreshApprovals(item.id);
       setMessage('Loaded ' + item.title + ' from persistent storage. ' + mapped.length + ' evidence records recovered.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not load saved case.'); }
     finally { setBusy(false); }
@@ -438,6 +512,26 @@ export default function PersistentCasePanel({
             {members.map(member=><option key={member.user_id} value={member.user_id}>{member.role} · {member.user_id.slice(0,8)}</option>)}
           </select>
           <button className="btn btn-secondary" type="button" disabled={busy || !['owner','responder'].includes(tenant.role)} onClick={()=>void assignCase()}>Save assignment</button>
+        </div>
+        <div className="private-upload" aria-labelledby="simulation-approvals-heading">
+          <strong id="simulation-approvals-heading">Simulation-only response approvals</strong>
+          <p className="hint">Approval records are bound to the exact action payload and audited in Postgres. They never execute endpoint isolation, account changes, or other live response.</p>
+          <label className="field-label" htmlFor="simulation-approval-reason">Proposed simulated action and rationale</label>
+          <textarea id="simulation-approval-reason" maxLength={1000} rows={2} value={approvalReason} onChange={e=>setApprovalReason(e.target.value)} disabled={busy} placeholder="Explain why the case should be marked contained in the simulation." />
+          <button className="btn btn-secondary" type="button" disabled={busy || approvalReason.trim().length < 8 || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void requestSimulatedApproval()}>Request simulated approval</button>
+          <label className="field-label" htmlFor="simulation-approval-decision-reason">Decision rationale (optional)</label>
+          <input id="simulation-approval-decision-reason" maxLength={2000} value={approvalDecisionReason} onChange={e=>setApprovalDecisionReason(e.target.value)} disabled={busy} placeholder="Why approve or reject this request?" />
+          {approvalMessage && <p className="hint" role="status">{approvalMessage}</p>}
+          <div className="case-notes-list">{approvals.length ? approvals.map(approval=><article className="case-note" key={approval.id}>
+            <p><strong>{approval.action_key}</strong> · {approval.status}</p>
+            <small>Requested {new Date(approval.created_at).toLocaleString()} · expires {new Date(approval.expires_at).toLocaleString()} · requester {approval.requested_by.slice(0,8)}</small>
+            <p>{typeof approval.action_payload.reason === 'string' ? approval.action_payload.reason : 'Simulation payload saved.'}</p>
+            {approval.status === 'pending' && approval.requested_by !== session.user.id && ['owner','responder'].includes(tenant.role) && <div className="actions">
+              <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>void decideSimulatedApproval(approval.id,'approved')}>Approve simulation</button>
+              <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>void decideSimulatedApproval(approval.id,'rejected')}>Reject simulation</button>
+            </div>}
+            {approval.decided_by && <small>Decision by {approval.decided_by.slice(0,8)}{approval.decision_reason ? ' · ' + approval.decision_reason : ''}</small>}
+          </article>) : <p className="empty-state">No durable approval requests for this case.</p>}</div>
         </div>
         <div className="private-upload">
           <strong>Immutable analyst notes</strong>
