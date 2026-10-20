@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(35);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -125,6 +125,14 @@ select lives_ok(
       '11111111-1111-4111-8111-111111111111',
       '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
   'a tenant member can upload evidence to their own case'
+);
+select throws_ok(
+  $insert$ insert into storage.objects (bucket_id, name, owner, metadata)
+    values ('satark-evidence',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/not-a-valid-object-key.txt',
+      '11111111-1111-4111-8111-111111111111',
+      '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
+  '42501', null, 'evidence uploads reject unsupported object-key formats'
 );
 select is((select count(*)::integer from storage.objects
   where bucket_id='satark-evidence'
