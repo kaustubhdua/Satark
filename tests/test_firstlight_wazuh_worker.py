@@ -94,7 +94,7 @@ def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     assert len(rest.evidence) == 2
     assert rest.checkpoint["last_status"] == "ok"
     assert rest.checkpoint["last_event_timestamp"] == "2026-10-20T08:01:00.000Z"
-    assert [call["offset"] for call in wazuh.calls] == [0, 2]
+    assert [call["offset"] for call in wazuh.calls] == [0, 2, 0, 2]
 
 
 def test_worker_does_not_advance_checkpoint_when_a_page_fails():
