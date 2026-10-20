@@ -105,6 +105,9 @@ def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     assert len(first_record["metadata"]["browser_record_sha256"]) == 64
     assert first_record["metadata"]["browser_event_timestamp"].endswith("Z")
     assert first_record["metadata"]["source_object_path"].endswith(".json")
+    assert first_record["metadata"]["source_provider"] == "wazuh-indexer"
+    assert first_record["metadata"]["source_index"] == "wazuh-alerts-*"
+    assert first_record["metadata"]["source_document_id"] in {"one", "two"}
     second = worker.run_once()
     assert second["status"] == "ok"
     assert len(rest.evidence) == 2
