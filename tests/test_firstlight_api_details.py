@@ -129,13 +129,15 @@ def test_wazuh_alert_route_requires_separate_long_sync_token(monkeypatch):
 
 
 def test_wazuh_alert_route_returns_bounded_read_only_events(monkeypatch):
+    tenant_id = "123e4567-e89b-42d3-a456-426614174000"
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", "w" * 40)
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_TENANT_ID", tenant_id)
     monkeypatch.setattr(firstlight_api, "fetch_configured_alerts", lambda limit, since, order: [
         {"event_id": "wazuh-abc", "timestamp": "2026-10-20T08:00:00Z", "source": "wazuh",
          "kind": "security_alert", "summary": "Test alert", "details": {}, "provenance": {}}
     ])
     response = client.get(
-        "/api/v1/integrations/wazuh/alerts?limit=10",
+        f"/api/v1/integrations/wazuh/alerts?limit=10&tenant_id={tenant_id}",
         headers={"Authorization": "Bearer " + "w" * 40},
     )
     assert response.status_code == 200
@@ -146,6 +148,7 @@ def test_wazuh_alert_route_returns_bounded_read_only_events(monkeypatch):
     assert payload["events"][0]["event_id"] == "wazuh-abc"
     assert payload["events"][0]["event_id"] == "wazuh-abc"
     monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
+    monkeypatch.delenv("FIRSTLIGHT_WAZUH_TENANT_ID", raising=False)
 
 
 def test_wazuh_alert_route_rejects_bad_page_size(monkeypatch):
