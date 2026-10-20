@@ -40,6 +40,14 @@ This is an evidence-based release gate, not a presentation document. It delibera
 7. **Repeatable evaluation:** run the local analysis evaluation and report the corpus size, labels, precision/recall/F1, false positives, latency, and limitations. Current synthetic-corpus metrics are regression diagnostics, not evidence of real-world accuracy.
 8. **Clean reproducibility:** run the repository's Python tests, FIRSTLIGHT API/engine tests, web typecheck/tests/build, CodeQL, and browser smoke on the same candidate commit; archive the run URLs and outcomes.
 
+## Additional implementation delivered in this audit branch
+
+The branch now adds a server-side `POST /api/v1/integrations/wazuh/investigate` path. It reads a bounded page from the configured Wazuh Indexer, requires a dedicated integration bearer token and exact tenant binding, preserves source provenance fields, computes a digest over each normalized event, and passes the records through the canonical deterministic FIRSTLIGHT investigation engine. The path is read-only and explicitly returns `persisted: false`; it does not fabricate an event when the query is empty, and it does not claim upstream authenticity based on a digest generated after retrieval.
+
+Added regression coverage for the integration endpoint's response contract, missing authentication, cross-tenant denial, empty results, and page-size bounds. The CI command now includes the existing Wazuh connector tests and the new endpoint tests. Added `docs/FIRSTLIGHT_WAZUH.md` with server-side environment setup, least-privilege guidance, endpoint usage, and limitations.
+
+These are source changes and regression tests, **not evidence of a live Wazuh connection**. The tests use a mocked connector response only to validate the API contract; live acceptance still requires the owner's real Wazuh test environment and sanitized source event IDs. The integration remains read-only, non-persistent, and without live containment.
+
 ## Environment-dependent items that cannot be completed from source changes alone
 
 The audit session has no supplied Wazuh endpoint/credentials, disposable Microsoft tenant credentials, dedicated Supabase tenant test secrets, or confirmation of production deployment access. These must be supplied/configured by the repository owner in the appropriate secret stores and test environments. Never commit those credentials.
