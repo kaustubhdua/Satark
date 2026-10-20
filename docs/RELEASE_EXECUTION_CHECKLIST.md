@@ -9,7 +9,7 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - PR #160 persistent Wazuh ingestion and investigation workflow merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL and isolated migration validation passed on its PR head.
 - PR #159 evidence-storage policy fix merged; CI, CodeQL, isolated migration validation, tenant-isolation integration and browser/accessibility smoke passed on its PR head.
 - PR #161 migration-history reconciliation and PR #164 duplicate-migration removal are merged; CI, CodeQL, Web CI and isolated migration validation passed on their respective PR heads.
-- PR #165 makes the superseded storage insert migration inert and documents the operator repair procedure. Its exact-head CI, CodeQL and isolated migration checks must pass before merge.
+- PR #164 removed the unrecorded duplicate `20261020043000` migration and merged strict object-key regression coverage. PR #165 is stale after that merge and must not be merged as-is.
 - The live SATARK storage policies and helper ACLs were verified read-only. The shared project has zero SATARK tenants, cases, memberships and evidence records.
 - Live migration history records `20261018114039`, `20261020042449` and `20261020044018`; versions `202610200004` and `20261020042000` are missing. The unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired. Follow [the migration repair runbook](SUPABASE_MIGRATION_HISTORY_REPAIR.md) and use the linked Supabase CLI from a trusted environment.
 - Latest production deployment is `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; current main is newer. A READY preview exists for branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, but it is not production.
@@ -21,8 +21,8 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 ## Release gates
 
 ### Source and migrations
-- [ ] PR #165 exact-head CI, CodeQL and isolated migration validation all pass.
-- [ ] Review and merge #165 only after those checks pass.
+- [x] PR #164 object-key contract and regression tests are merged with required checks passing.
+- [ ] Do not merge stale PR #165; use the migration-history repair steps below for the two actual missing versions.
 - [ ] Run `supabase migration list --linked` from the trusted, correctly linked checkout.
 - [ ] Repair only versions `202610200004` and `20261020042000` as applied, following the runbook; verify the linked list afterward.
 - [ ] Confirm the canonical `20261020044018` policy remains present and both policies still use `satark_private.has_membership`.
