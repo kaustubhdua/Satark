@@ -261,7 +261,7 @@ async def investigate_wazuh_alerts(
             "details": event.get("details", {}),
             "integrity": "verified",
         })
-    case_fingerprint = hashlib.sha256("\\n".join(source_ids).encode("utf-8")).hexdigest()[:20]
+    case_fingerprint = hashlib.sha256("\n".join(source_ids).encode("utf-8")).hexdigest()[:20]
     case_id = "WAZUH-" + case_fingerprint
     result = investigate_case(
         {"case_id": case_id, "title": "Read-only Wazuh alert investigation"},
