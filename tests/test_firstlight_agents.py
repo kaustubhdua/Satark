@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from firstlight_agents import AgentFinding, AgentResult, _parse_json, _run_one, _safe_details, run_independent_agents
+from ai_provider import LocalOllamaClient
 
 
 class FirstlightAgentContractTests(unittest.TestCase):
@@ -108,3 +109,21 @@ class FirstlightAgentContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OllamaStructuredOutputTests(unittest.TestCase):
+    def test_native_client_passes_json_schema_to_ollama_format(self):
+        client = LocalOllamaClient(base_url="http://localhost:11434", timeout=1)
+        schema = {"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"]}
+        captured = {}
+        def fake_request(path, payload=None, timeout=None):
+            captured["path"] = path
+            captured["payload"] = payload
+            return {"message":{"content":"{\\"summary\\":\\"ok\\"}"}}
+        with patch.object(client, "_request_json", side_effect=fake_request):
+            client.chat.completions.create(
+                model="test-model", messages=[{"role":"user","content":"test"}],
+                response_format={"type":"json_schema","json_schema":{"name":"test","schema":schema}},
+            )
+        self.assertEqual(captured["path"], "/api/chat")
+        self.assertEqual(captured["payload"]["format"], schema)
