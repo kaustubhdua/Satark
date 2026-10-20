@@ -1,14 +1,26 @@
 const SHORTENERS = new Set(['bit.ly', 'tinyurl.com', 't.co', 'is.gd', 'ow.ly', 'cutt.ly', 'rb.gy', 'rebrand.ly', 'tiny.cc']);
 const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
-function isPrivateIpv4(host) {
+function isNonPublicIpv4(host) {
   if (!IPV4.test(host)) return false;
   const octets = host.split('.').map(Number);
-  if (octets.some(value => value < 0 || value > 255)) return false;
-  return octets[0] === 10 || octets[0] === 127 || octets[0] === 0 ||
-    (octets[0] === 169 && octets[1] === 254) ||
-    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
-    (octets[0] === 192 && octets[1] === 168);
+  if (octets.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return false;
+  const [first, second, third] = octets;
+
+  // Conservative local-only classification: include private/local ranges and
+  // special-use blocks that should not be mistaken for ordinary public hosts.
+  // This page never connects to any destination; these are review cues only.
+  return first === 0 || first === 10 || first === 127 || first >= 224 ||
+    (first === 100 && second >= 64 && second <= 127) || // shared address space (100.64.0.0/10)
+    (first === 169 && second === 254) || // link-local
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 0 && third === 0) || // protocol assignments
+    (first === 192 && second === 0 && third === 2) || // documentation
+    (first === 192 && second === 88 && third === 99) || // deprecated 6to4 relay anycast
+    (first === 192 && second === 168) ||
+    (first === 198 && (second === 18 || second === 19)) || // benchmarking
+    (first === 198 && second === 51 && third === 100) || // documentation
+    (first === 203 && second === 0 && third === 113); // documentation
 }
 
 function ipv6Groups(host) {
@@ -45,7 +57,7 @@ function isPrivateIpv6(host) {
   if ((first & 0xff00) === 0xff00) return true; // multicast
   if (groups.slice(0, 5).every(group => group === 0) && groups[5] === 0xffff) {
     const octets = [groups[6] >> 8, groups[6] & 255, groups[7] >> 8, groups[7] & 255];
-    return isPrivateIpv4(octets.join('.'));
+    return isNonPublicIpv4(octets.join('.'));
   }
   return false;
 }
@@ -86,8 +98,8 @@ export function inspectUrl(input) {
   }
   const isIp = IPV4.test(hostname) || hostname.includes(':');
   if (isIp) add('low', 'IP-address destination', 'The hostname is an IP address rather than a conventional domain. This is not malicious by itself.');
-  if (isPrivateIpv4(hostname) || isPrivateIpv6(hostname) || hostname === 'localhost' || hostname.endsWith('.localhost')) {
-    add('info', 'Local or private-network address', 'This appears to target a local/private address. SATARK does not connect to it.');
+  if (isNonPublicIpv4(hostname) || isPrivateIpv6(hostname) || hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    add('info', 'Non-public or special-use address', 'This address belongs to a local, reserved, or special-use range. SATARK does not connect to it.');
   }
   const labels = hostname.split('.').filter(Boolean);
   if (labels.length >= 5) add('low', 'Deeply nested hostname', 'The hostname has many subdomain labels. Confirm the registered domain rather than trusting a familiar-looking subdomain.');
