@@ -67,6 +67,15 @@ jobs:
           # This does not disable project-wide protection or expose the secret in output.
           protection_args=()
           if [[ -n "${SATARK_VERCEL_PROTECTION_BYPASS:-}" ]]; then
+            target_host="$(python -c 'import sys; from urllib.parse import urlsplit; print((urlsplit(sys.argv[1]).hostname or "").lower())' "$base")"
+            # Never forward the secret to an arbitrary SATARK_PRODUCTION_URL override.
+            case "$target_host" in
+              satark-rose.vercel.app|satark-jyc-website.vercel.app) ;;
+              *)
+                echo "::error::The Vercel protection bypass secret may only be sent to the verified SATARK Vercel aliases."
+                exit 1
+                ;;
+            esac
             protection_args+=(--header "x-vercel-protection-bypass: ${SATARK_VERCEL_PROTECTION_BYPASS}")
           fi
 
