@@ -2,11 +2,11 @@
 
 Last reviewed: 2026-10-20
 
-## Current source and release status (updated after PR #160)
+## Current source and release status (updated after PR #168)
 
 - PR #160, **FIRSTLIGHT: persistent Wazuh ingestion and case investigation workflows**, is merged to `main`. Its latest observed pull-request checks passed: FIRSTLIGHT API CI, general CI, Web CI, CodeQL, and isolated Supabase migration validation.
 - PR #159's SATARK storage-policy helper fix is also merged, and its CI, CodeQL, isolated migration reset, tenant-isolation integration, and browser/accessibility smoke jobs passed on that PR head.
-- Follow-up storage migration history is still being reconciled in draft PRs #161 and #162. Do not run a broad hosted `supabase db push` while the recorded live history and repository migration files disagree; verify the final migration order and repair plan first.
+- PR #161 and PR #164 are merged. The live history still lacks `202610200004` and `20261020042000` while recording `20261018114039`, `20261020042449` and `20261020044018`; PR #164 removed the duplicate `20261020043000` migration file. The CLI history repair for only the two missing local versions remains an operator action; see `docs/SUPABASE_MIGRATION_HISTORY_REPAIR.md`. Do not run a broad hosted `supabase db push` before reconciling the exact versions.
 - The merged code is **not yet a fully verified production deployment**. The latest deployment lookup found a READY preview for branch `feat/firstlight-wazuh-rebased` at commit `a6ad65ea910c40362bb9005febb447893776002f`; it was not a production-target deployment and is not proof that the latest `main` SHA is live.
 - No real Wazuh endpoint/credentials or authorized SATARK tenant/case/member/actor is configured. The worker, durable job queue, and simulation-only approval schema exist in code, but real Wazuh-to-persisted-case-to-investigation-to-report execution, worker hosting/restart recovery, backup restoration, and production smoke verification remain blocked.
 - Keep real response actions disabled. A passing CI suite proves the checked code paths only; it does not establish live-provider, tenant-isolation, operational recovery, or production readiness.
@@ -20,8 +20,8 @@ This status describes repository-backed behavior, not planned features or unveri
 - The live project currently has zero SATARK tenants, cases, memberships, evidence records, and ingestion checkpoints. The private `satark-evidence` bucket exists with a 4 MiB object limit. Do not create fake production tenant/case/user records to bypass this gate.
 - The investigation API now fails closed when `FIRSTLIGHT_API_TOKEN` is missing or shorter than 32 characters. The Next.js proxy requires the strong token even for local HTTP. The worker and authenticated source-download route enforce the bucket's 4 MiB object limit.
 - Added a versioned deterministic rule registry (`firstlight_rules.py`, version `1.0.0`) with stable rule IDs, cautious candidate ATT&CK mappings and rule limitations. Its API container copy and CI path triggers were updated.
-- The Wazuh integration has since been merged in PR #160 after FIRSTLIGHT API CI, CodeQL, general CI, Web CI, and isolated migration validation passed on that pull-request head. The latest storage-policy migration-history follow-ups remain separately gated by PRs #161 and #162.
-- Vercel deployment status cannot currently be verified through the connected Vercel API (deployment-list access returned 403 and the previously recorded deployment ID was not found). The prior build-rate-limit report remains unresolved. The real Wazuh endpoint/credentials and authorized SATARK tenant/case/actor are not configured; the live SATARK tables currently have zero tenants, memberships, cases, evidence records, checkpoints and approvals, so real end-to-end ingestion remains blocked.
+- The Wazuh integration is merged in PR #160; its FIRSTLIGHT API CI, CodeQL, general CI, Web CI, and isolated migration validation passed on that PR head. PR #161 and PR #164 storage-policy cleanup checks passed; PR #167's object-key regression test and PR #168's SATARK foreign-key indexes also passed their exact-head CI, Web CI, CodeQL and isolated migration checks.
+- Vercel currently has an older production deployment at SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; the latest available deployment is a READY preview for branch `feat/firstlight-wazuh-rebased` at SHA `a6ad65ea910c40362bb9005febb447893776002f`. A new deployment attempt was blocked by HTTP 402 `api-deployments-free-per-day` with a 24-hour retry window; the runtime-error API returned 403. The production environment inventory lacks `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN` and Wazuh Indexer configuration. No authorized Wazuh endpoint/credentials or SATARK test tenant/case/actor exists; all 11 SATARK data tables currently contain zero rows, so real end-to-end ingestion remains blocked.
 
 ## Implemented in the prototype
 
@@ -60,7 +60,7 @@ This status describes repository-backed behavior, not planned features or unveri
 - Applied it to evidence-record, finding, and report write APIs, which previously relied on `Content-Length` plus `request.json()`; chunked requests now have an actual byte cap in these routes too.
 - Added a source-contract regression test covering the shared parser and all three route integrations.
 - These changes are committed to `main`; the latest source-contract tests and full CI/build results have **not** yet been observed. A source-contract test is not a substitute for runtime tests.
-- Latest Vercel status observed for the write-route changes was still `pending` on their individual commits; the newest test commit had no reported combined status yet. Production deployment SHA and browser behavior remain unverified.
+- Current main is not deployed to production. Vercel's current deployment quota block prevents a fresh exact-SHA deployment; production browser behavior remains unverified.
 
 ## Partially implemented
 
@@ -157,4 +157,4 @@ This status describes repository-backed behavior, not planned features or unveri
 - Wired the optional FIRSTLIGHT API Ollama configuration to the local Compose service using `OLLAMA_BASE_URL`, `FIRSTLIGHT_OLLAMA_MODEL`, and an opt-in `FIRSTLIGHT_MODEL_AGENTS_ENABLED=false` default. The model remains advisory and deterministic findings do not depend on it.
 - Redacted Wazuh worker error output to stable error categories so provider exception text, URLs, or credentials cannot be copied into logs/checkpoints. Added a regression test for secret-bearing exceptions.
 
-**Still blocked from a genuine end-to-end release:** no authorized Wazuh Indexer endpoint/credentials or enrolled lab agent is configured; the live shared project has no SATARK tenant/case/member/actor records; real Supabase tenant-isolation tests need dedicated least-privilege test identities; Vercel reports a build-rate-limit failure and the deployed commit for this branch is not verified. No evidence-object backup/restore drill, real Wazuh-to-UI smoke test, or real response executor has been verified. Keep live response disabled and do not mark this branch production-ready.
+**Still blocked from a genuine end-to-end release:** no authorized Wazuh Indexer endpoint/credentials or enrolled lab agent is configured; the live shared project has no SATARK tenant/case/member/actor records; real Supabase tenant-isolation tests need dedicated least-privilege test identities; Vercel's deployment quota currently blocks a fresh deploy and the production SHA is older than main. No evidence-object backup/restore drill, real Wazuh-to-UI smoke test, or real response executor has been verified. Keep live response disabled and do not mark this branch production-ready.
