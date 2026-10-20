@@ -109,10 +109,10 @@ async function supabaseRequest(
 }
 
 export async function GET(request: Request) {
-  const config = configuration();
-  if (!config) return jsonError('Case storage is not configured.', 503);
   const token = bearer(request);
   if (!token) return jsonError('Sign in is required.', 401);
+  const config = configuration();
+  if (!config) return jsonError('Case storage is not configured.', 503);
   const user = await authenticate(token, config);
   if (!user) return jsonError('Your session is invalid or expired.', 401);
 
@@ -138,10 +138,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const config = configuration();
-  if (!config) return jsonError('Case storage is not configured.', 503);
   const token = bearer(request);
   if (!token) return jsonError('Sign in is required.', 401);
+  const config = configuration();
+  if (!config) return jsonError('Case storage is not configured.', 503);
   const user = await authenticate(token, config);
   if (!user) return jsonError('Your session is invalid or expired.', 401);
 
@@ -183,10 +183,10 @@ export async function POST(request: Request) {
 
 
 export async function PATCH(request: Request) {
-  const config = configuration();
-  if (!config) return jsonError('Case storage is not configured.', 503);
   const token = bearer(request);
   if (!token) return jsonError('Sign in is required.', 401);
+  const config = configuration();
+  if (!config) return jsonError('Case storage is not configured.', 503);
   const user = await authenticate(token, config);
   if (!user) return jsonError('Your session is invalid or expired.', 401);
 
