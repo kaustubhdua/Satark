@@ -1,5 +1,5 @@
 begin;
-select plan(37);
+select plan(43);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -131,6 +131,44 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
 select set_config('request.jwt.claims',
   '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
+select lives_ok(
+  $insert$ insert into public.satark_case_notes (tenant_id,case_id,body,created_by)
+    values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'cccccccc-cccc-4ccc-8ccc-cccccccccccc','Synthetic regression note',
+      '11111111-1111-4111-8111-111111111111') $insert$,
+  'an authorized member can create a case note through the private-helper policy'
+);
+select is((select count(*)::integer from public.satark_case_notes
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
+  'an authorized member can read case notes through the private-helper policy');
+
+select lives_ok(
+  $insert$ insert into public.satark_investigation_jobs
+    (tenant_id,case_id,requested_by,idempotency_key)
+    values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      '11111111-1111-4111-8111-111111111111','rls-policy-test-job-0001') $insert$,
+  'an authorized analyst can enqueue a durable investigation job'
+);
+select is((select count(*)::integer from public.satark_investigation_jobs
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    and idempotency_key='rls-policy-test-job-0001'), 1,
+  'an authorized member can read the queued investigation job');
+
+select lives_ok(
+  $insert$ insert into public.satark_approvals
+    (tenant_id,case_id,action_key,action_payload,payload_sha256,requested_by)
+    values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'cccccccc-cccc-4ccc-8ccc-cccccccccccc','simulation.policy_test',
+      '{"mode":"simulation"}'::jsonb,repeat('0',64),
+      '11111111-1111-4111-8111-111111111111') $insert$,
+  'an authorized analyst can request a simulation-only approval'
+);
+select is((select count(*)::integer from public.satark_approvals
+  where tenant_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    and action_key='simulation.policy_test'), 1,
+  'an authorized member can read the approval request');
+
 
 select lives_ok(
   $insert$ insert into storage.objects (bucket_id, name, owner, metadata)
