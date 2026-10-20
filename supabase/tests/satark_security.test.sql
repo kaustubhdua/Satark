@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(31);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -37,6 +37,24 @@ insert into public.satark_evidence (
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
    'tenant-b.txt', 'note', now(), 'synthetic evidence B', repeat('b',64),
    '22222222-2222-4222-8222-222222222222');
+
+select ok((
+  select position('satark_private.has_membership' in coalesce(with_check, '')) > 0
+    and position('satark_has_membership' in coalesce(with_check, '')) = 0
+    and position('satark_cases' in coalesce(with_check, '')) > 0
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'satark_evidence_object_insert'
+), 'evidence upload policy uses private membership helper and checks the owning case');
+
+select ok((
+  select position('satark_private.has_membership' in coalesce(qual, '')) > 0
+    and position('satark_has_membership' in coalesce(qual, '')) = 0
+    and position('satark_cases' in coalesce(qual, '')) > 0
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'satark_evidence_object_read'
+), 'evidence read policy uses private membership helper and checks the owning case');
 
 insert into public.satark_findings (
   tenant_id, case_id, finding_key, title, severity, detail, created_by
