@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const route = await readFile(new URL('../src/app/api/firstlight/jobs/route.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../../supabase/migrations/20261020031055_satark_investigation_jobs.sql', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../../firstlight_investigation_worker.py', import.meta.url), 'utf8');
+const auditMigration = await readFile(new URL('../../supabase/migrations/20261020031618_satark_investigation_job_audit.sql', import.meta.url), 'utf8');
 
 test('durable job API authenticates users and validates tenant/case/idempotency inputs', () => {
   assert.match(route, /\/auth\/v1\/user/);
@@ -32,4 +33,12 @@ test('worker persists findings and report before marking a deterministic job suc
   assert.match(worker, /satark_finish_investigation_job/);
   assert.match(worker, /No response actions are executed here/);
   assert.match(worker, /MAX_CASE_EVIDENCE = 500/);
+});
+
+test('job state transitions append to the existing tenant audit hash chain', () => {
+  assert.match(auditMigration, /after insert or update on public\.satark_investigation_jobs/i);
+  assert.match(auditMigration, /public\.satark_audit_events/);
+  assert.match(auditMigration, /extensions\.digest/);
+  assert.match(auditMigration, /investigation_job\.status_changed/);
+  assert.match(auditMigration, /revoke all on function public\.satark_audit_investigation_job\(\) from public, anon, authenticated/i);
 });
