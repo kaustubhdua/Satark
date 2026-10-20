@@ -5,7 +5,7 @@ import { readBoundedJson } from '@/lib/read-bounded-json';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ACTION = /^[a-zA-Z0-9._:-]{1,120}$/;
+const ACTION = /^simulation\\.[a-z0-9][a-z0-9._-]{0,110}$/;
 function reply(body: unknown, status = 200) { return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } }); }
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   if(!parsed.value||typeof parsed.value!=='object'||Array.isArray(parsed.value))return reply({error:'A JSON object is required.'},400);
   const v=parsed.value as Record<string,unknown>,tenantId=typeof v.tenant_id==='string'?v.tenant_id:'',caseId=typeof v.case_id==='string'?v.case_id:'',actionKey=typeof v.action_key==='string'?v.action_key.trim():'',payload=v.action_payload;
   if(!UUID.test(tenantId)||!UUID.test(caseId)||!ACTION.test(actionKey))return reply({error:'Valid tenant_id, case_id and action_key are required.'},400);
-  if(!payload||typeof payload!=='object'||Array.isArray(payload))return reply({error:'action_payload must be a JSON object.'},400);
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||(payload as Record<string,unknown>).mode!=='simulation')return reply({error:'Response approvals are simulation-only; action_payload.mode must be simulation.'},400);
   const payloadText=canonical(payload);
   if(Buffer.byteLength(payloadText,'utf8')>16*1024)return reply({error:'Action payload exceeds 16 KiB.'},413);
   const digest=createHash('sha256').update(payloadText).digest('hex');
