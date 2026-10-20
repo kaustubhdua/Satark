@@ -55,7 +55,7 @@ test('shared investigation proxy requires a strong backend token even for local 
 test('raw Wazuh source reads stay analyst-only while normal evidence retains its own path policy', async () => {
   const migration = await readFile(new URL('../../supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql', import.meta.url), 'utf8');
   const dualPathMigration = await readFile(new URL('../../supabase/migrations/20261020042449_satark_evidence_storage_dual_path_policy.sql', import.meta.url), 'utf8');
-  const insertMigration = await readFile(new URL('../../supabase/migrations/20261020043000_satark_storage_insert_policy_private_helper_rebind.sql', import.meta.url), 'utf8');
+  const insertMigration = await readFile(new URL('../../supabase/migrations/20261020045000_satark_storage_insert_policy_rebind.sql', import.meta.url), 'utf8');
   assert.match(migration, /create policy satark_evidence_object_read/);
   assert.match(migration, /split_part\(name, '\/', 3\) = 'wazuh'/);
   assert.match(migration, /array\['owner', 'responder', 'analyst'\]::text\[\]/);
