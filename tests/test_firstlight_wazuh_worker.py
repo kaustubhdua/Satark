@@ -35,10 +35,12 @@ class FakeRest:
     def __init__(self):
         self.evidence = {}
         self.checkpoint = None
+        self.uploaded_snapshots = 0
 
     def upload_source_snapshot(self, *, tenant_id, case_id, digest, snapshot):
         import hashlib
         assert hashlib.sha256(snapshot.encode("utf-8")).hexdigest() == digest
+        self.uploaded_snapshots += 1
         return f"{tenant_id}/{case_id}/wazuh/{digest}.json"
 
     def request(self, method, table, *, query=None, body=None, prefer=None):
@@ -83,6 +85,20 @@ def test_source_snapshot_upload_rejects_objects_over_bucket_limit_before_network
         client.upload_source_snapshot(
             tenant_id=TENANT, case_id=CASE, digest=digest, snapshot=snapshot,
         )
+
+
+def test_worker_rejects_invalid_event_before_uploading_source_snapshot():
+    rest = FakeRest()
+    malformed = event("empty-summary", "2026-10-20T07:00:00Z")
+    malformed["summary"] = ""
+    worker = WazuhSupabaseWorker(
+        rest=rest, wazuh=FakeWazuh([]), tenant_id=TENANT, case_id=CASE, actor_id=ACTOR,
+        initial_since="2026-10-20T07:00:00Z",
+    )
+    with pytest.raises(SupabaseRestError, match="no usable summary"):
+        worker._save_event(malformed)
+    assert rest.uploaded_snapshots == 0
+    assert rest.evidence == {}
 
 
 def test_worker_persists_pages_idempotently_and_advances_checkpoint():
