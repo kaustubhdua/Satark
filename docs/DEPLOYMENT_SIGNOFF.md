@@ -31,7 +31,7 @@ Read-only queries against the shared Supabase project `nihdhoom` (`igqgtlmnwssja
 - Authenticated cannot execute the audit-trigger function as an RPC.
 - SATARK currently has zero tenants, cases, memberships, and evidence records. No synthetic production records were created.
 
-The live migration history records `20261018114039`, `20261020042449` and `20261020044018`, but not `202610200004` or `20261020042000`. The canonical policy is already recorded under `20261020044018`; the unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired as a local migration. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile only versions `202610200004` and `20261020042000` with the Supabase CLI before any future linked `db push`. No hosted migration was applied by this review.
+The live migration history records `20261018114039`, `20261020042449` and `20261020044018`, but not `202610200004` or `20261020042000`. The canonical policy is already recorded under `20261020044018`; the unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired as a local migration. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile only versions `202610200004` and `20261020042000` with the Supabase CLI before any future linked `db push`. Migration `20261020044018` was applied after isolated validation and verified read-only; no migration-history repair has been performed.
 
 ## Release gates
 
@@ -42,7 +42,7 @@ The live migration history records `20261018114039`, `20261020042449` and `20261
 | Current production runtime errors inspected | BLOCKED | Vercel runtime-error access restored or another authorized source used |
 | Storage policy ACL and tenant/case scope | PASS (read-only inspection) | Current live policy definitions and function grants queried |
 | Migration history reconciled | BLOCKED | CLI repair for versions 202610200004 and 20261020042000, followed by linked migration-list verification |
-| Isolated database migrations and RLS tests | PASS on PR #159/#160/#161 heads; PR #165 pending | Exact-head workflow result for #165 |
+| Isolated database migrations and RLS tests | PASS on PR #159/#160/#161/#164 heads | Exact-head workflow results on the merged PRs |
 | Real Wazuh Indexer connection | NOT RUN | Authorized lab endpoint, dedicated least-privilege credentials, verified TLS, bounded query and real alert fixture |
 | Persisted Wazuh-to-case-to-investigation-to-report workflow | BLOCKED | Authorized SATARK tenant/case/actor and successful end-to-end run with checkpoint/restart/idempotency verification |
 | Worker operational recovery | NOT RUN | Private persistent host, restart/retry test, monitoring and backup/restore drill |
@@ -51,8 +51,8 @@ The live migration history records `20261018114039`, `20261020042449` and `20261
 
 ## Required next steps
 
-1. Finish PR #165 checks and merge only if CI, CodeQL, and isolated migration validation all pass.
-2. In a trusted CLI environment, run the exact migration-history repair documented in `docs/SUPABASE_MIGRATION_HISTORY_REPAIR.md`; do not alter other migration versions.
+1. Do not merge stale PR #165 as-is; PR #164 removed the duplicate `20261020043000` migration and merged the strict object-key regression tests.
+2. In a trusted CLI environment, run the migration-history repair documented in `docs/SUPABASE_MIGRATION_HISTORY_REPAIR.md` for versions `202610200004` and `20261020042000`; do not execute their historical SQL.
 3. Resolve Vercel's deployment quota through the account/plan owner, then deploy current main to preview, smoke-test it, and only then promote to production with explicit approval.
 4. Provision an authorized Wazuh lab endpoint and a separate SATARK test tenant/case/actor; validate real ingestion, checkpoint advancement, restart recovery, deduplication, source downloads, durable investigation, reports and tenant isolation.
 5. Deploy the workers to a private persistent runtime and complete monitoring, backup/restore and recovery drills.
