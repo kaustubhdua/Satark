@@ -98,9 +98,38 @@ async def bounded_request(request: Request, call_next):
     return response
 
 
+def _ollama_readiness() -> dict[str, Any]:
+    enabled = os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"}
+    if not enabled:
+        return {"status": "disabled", "model_available": False}
+    try:
+        from ai_provider import LocalOllamaClient
+        client = LocalOllamaClient(timeout=5)
+        listing = client.models.list()
+        installed = {
+            str(getattr(item, "id", ""))
+            for item in getattr(listing, "data", [])
+            if getattr(item, "id", None)
+        }
+        configured = os.getenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b").strip()
+        available = configured in installed or (configured + ":latest") in installed
+        return {"status": "ready" if available else "model_missing", "model_available": available}
+    except Exception:
+        # Never return endpoint URLs, model server errors, or configuration
+        # values through the health endpoint. Deterministic analysis remains usable.
+        return {"status": "unavailable", "model_available": False}
+
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "engine": "firstlight_engine.investigate_case", "model_agents_enabled": False, "production_ready": False}
+    model_agents_enabled = os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"}
+    return {
+        "status": "ok",
+        "engine": "firstlight_engine.investigate_case",
+        "model_agents_enabled": model_agents_enabled,
+        "ollama": _ollama_readiness(),
+        "production_ready": False,
+    }
 
 
 @app.get("/api/v1/integrations/wazuh/alerts")
