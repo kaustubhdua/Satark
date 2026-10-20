@@ -6,17 +6,17 @@ Last verified: 2026-10-20 UTC
 
 **Release is blocked.** Do not label the current `main` revision production-ready until all checks below have passed on one exact SHA and the deployment has been verified against that SHA.
 
-- Current `main` revision at this review: `06cdbb4472c3cc0ef31f658f56efe67f62f01e77`.
-- This is a tracking revision, **not yet a release candidate**: CI, Web CI, and CodeQL runs for this SHA were queued when checked.
+- Current `main` revision at this review: `83874ec9744f38eeda815772e1227516bcb50bda`.
+- This is a tracking revision, **not yet a release candidate**. PR #158's checks passed on its exact head before merge; a full post-merge check set and deployment source-SHA verification remain required.
 - PR #145 (isolated Supabase migration validation and release gates) is merged.
 - PR #150 (safe browser/server Supabase project-mapping diagnostics) is merged.
-- PR #144 (durable approvals, audit decisions, private membership helper and policy hardening) remains open pending isolated migration and test results.
-- PR #149 (cross-tenant writes and evidence-storage regression coverage) remains open pending CI and isolated migration results.
-- PR #152 adds video/PDF scanner failure-path tests; PR #153 adds the synthetic local-analysis evaluation corpus and refreshes README claims; PR #154 fixes a CSP issue that could block browser Supabase authentication. These changes are not yet merged or verified on production.
-- The latest successful main-branch CodeQL/CI runs at `304a837ab34fc610b60d47e68c8789e3d64ffb95` do not prove the newer `06cdbb4...` revision passed.
-- Vercel reported `Deployment rate limited — retry in 24 hours` for the newer revision. The deployment has not been verified against `06cdbb4...`.
-- Current Vercel production deployment is READY at `dpl_FPJuv6ZYEnzCMs2PwGZJKihdi9ay`, alias `https://satark-rose.vercel.app`, but it serves SHA `5a7486ac28fcc5bebe40e0e627ad26084fa0b092`, not current `main` SHA `06cdbb4472c3cc0ef31f658f56efe67f62f01e77`.
-- A deployment for `06cdbb...` was not present in the production deployment list; Vercel's GitHub status reported `Deployment rate limited — retry in 24 hours`. Live HTTP smoke could not be completed through the connected fetch path, so the new `/api/health` Supabase mapping assertion remains unverified in production.
+- PR #144 (durable approvals and private membership helper/policy hardening) is merged; its isolated migration validation, CI, Web CI and CodeQL passed.
+- PR #149 (cross-tenant writes and evidence-storage regression coverage) is merged; its isolated migration validation, CI, tenant-isolation/browser checks and CodeQL passed.
+- PR #152 (video/PDF edge tests), PR #153 (synthetic local-analysis evaluation and README corrections), PR #154 (Supabase auth CSP fix), and PR #158 (simulation-only approval fixtures) are merged. These are repository/CI results, not production deployment proof.
+- PR #155 adds FIRSTLIGHT/Wazuh ingestion and persistent workflows; its exact-head checks are still running. A live Wazuh endpoint/credential round-trip has not been proven.
+- The latest Vercel project metadata reports a READY production-target deployment `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V` created at `2026-10-20T04:05:35Z`, alias candidates include `https://satark-rose.vercel.app`; its exact source SHA could not be retrieved through the connected deployment-detail/list endpoints.
+- An earlier Vercel deployment-rate-limit failure was reported at `03:56Z`, but the later READY deployment means the current rate-limit state is unknown. Do not claim it is either active or cleared without a fresh deploy/status check.
+- Live HTTP smoke through the connected fetch path was inaccessible; the new `/api/health` Supabase mapping assertion, browser authentication and production persistence remain unverified.
 - GitHub branch protection could not be read by the connected integration; do not assume required checks are enforced. Configure and verify required checks using an account with repository administration access.
 
 ## Project and environment findings
@@ -26,15 +26,15 @@ Last verified: 2026-10-20 UTC
 - Both Upstash variable names exist for the production target, but the presence of names alone does not prove that their values are valid or that Redis is reachable.
 - The public-safe `/api/health` snapshot and production smoke workflow now check that browser/server Supabase configuration points to `igqgtlmnwssjaoxkkzbm`, without returning URLs or keys.
 - `FIRSTLIGHT_API_URL` and `FIRSTLIGHT_API_TOKEN` are optional; the remote service remains unavailable when unset. Ollama is optional for deterministic analysis.
-- The hosted Supabase project has RLS enabled on SATARK case, evidence, finding, report, membership, tenant and audit tables. The private membership helper is executable by authenticated policy evaluation and not by `anon`; the public membership wrapper is not executable by authenticated users. However, the live storage policies still deparse to `satark_has_membership` rather than `satark_private.has_membership`, so evidence upload/download may fail after the wrapper grant was revoked. PR #149 and PR #144 contain the corresponding policy correction; validate them against a clean local stack before applying any hosted migration.
-- A production query also found that `public.satark_reject_audit_mutation()` still had direct EXECUTE grants at the time of review. The repository ACL-hardening migration must pass isolated validation before it is applied to the hosted database.
+- Repository migrations now rebind storage policies to `satark_private.has_membership`, and the merged isolated migration tests passed. The hosted schema has not been re-queried after the merge or migrated; evidence upload/download remains unverified in production.
+- A prior production query found direct EXECUTE grants on `public.satark_reject_audit_mutation()`. Repository ACL-hardening tests passed, but the hosted grant state has not been re-queried and no hosted migration was applied.
 
 ## Required release gates
 
 ### 1. Source and CI
-- [ ] Resolve PR #144; do not merge until CI, Web CI, CodeQL and isolated Supabase migration validation pass on its exact head.
-- [ ] Resolve PR #149; do not merge until all checks, including tenant/storage pgTAP tests, pass on its exact head.
-- [ ] Confirm all required changes are on `main`, with no required functionality only on an unmerged branch.
+- [x] Merge PR #144 after CI, Web CI, CodeQL and isolated Supabase migration validation passed; still verify the hosted schema before rollout.
+- [x] Merge PR #149 after tenant/storage pgTAP and required checks passed; still verify the hosted schema before rollout.
+- [ ] Confirm PR #155 and any follow-up fixes are merged, with no required functionality only on an unmerged branch.
 - [ ] Record the exact release SHA.
 - [ ] Review CodeQL alerts/annotations and dependency audit findings, not just workflow success.
 - [ ] Configure and verify required branch protection/status checks with repository-admin access.
@@ -61,7 +61,7 @@ Last verified: 2026-10-20 UTC
 - [ ] Run `/api/health`, `/api/version`, route/security-header checks, unauthenticated API checks and a synthetic analysis request.
 - [ ] Verify shared rate limiting is configured and reachable; analysis must fail closed if it is not.
 - [ ] Test authenticated persistence against the intended database, desktop/mobile UI flows, downloads, loading/error/retry states and accessibility.
-- [ ] Verify the production CSP permits only the configured Supabase Auth origin; the previous `connect-src 'self'` policy could block browser sign-in and session refresh.
+- [x] Merge the CSP fix (PR #154); [ ] verify browser sign-in/session refresh on the exact deployed SHA.
 - [ ] Verify request-size, concurrency, timeout and abuse/cost controls, monitoring, log redaction, rollback and backup/recovery procedures.
 
 ### 5. Documentation and sign-off
