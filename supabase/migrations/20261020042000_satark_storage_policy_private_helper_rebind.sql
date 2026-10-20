@@ -26,9 +26,11 @@ create policy satark_evidence_object_read on storage.objects
   for select to authenticated
   using (
     bucket_id = 'satark-evidence'
-    and split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+    and length(split_part(name, '/', 1)) = 36
+    and split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
 
-    and split_part(name, '/', 2) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+    and length(split_part(name, '/', 2)) = 36
+    and split_part(name, '/', 2) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
 
     and exists (
       select 1 from public.satark_cases c
@@ -38,7 +40,8 @@ create policy satark_evidence_object_read on storage.objects
           (
             array_length(string_to_array(objects.name, '/'), 1) = 4
             and split_part(objects.name, '/', 3) = 'wazuh'
-            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\\.json
+            and length(split_part(objects.name, '/', 4)) = 69
+            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\\.json'
 
             and satark_private.has_membership(
               c.tenant_id, array['owner','responder','analyst']::text[]
