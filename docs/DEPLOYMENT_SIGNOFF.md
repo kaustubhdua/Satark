@@ -7,7 +7,7 @@ Last reviewed: 2026-10-20 UTC
 ## Candidate and deployment identity
 
 - Canonical repository: [kaustubhdua/Satark](https://github.com/kaustubhdua/Satark)
-- Latest main revision observed during this review: `d6acf5656129e78322aa5691cc74b7a77b3b1f96` (migration-history reconciliation PR #161). A follow-up to make superseded migration `20261020043000` inert is in PR #165 and is not yet merged.
+- Latest main revision observed during this review: `a48869941d5ca277a4499a86e93907fdfa1b18e8` (PR #164 storage-key regression tests). PR #164 is merged; PR #165 is stale/non-mergeable after that merge and should not be merged as-is.
 - Production deployment: `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`, target `production`, URL `satark-r5lhz4upy-jyc-website.vercel.app`. This is older than current main.
 - Latest available preview: `dpl_FwE4x7KHmi6awKAzLCCXUE5rq3nW`, branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, state READY, target `null`. This is a preview, not proof that main is deployed.
 - Deployment attempt for current main was rejected by Vercel with HTTP 402 `api-deployments-free-per-day`, retry-after 86400 seconds. Do not bypass billing/rate limits or change project settings automatically.
@@ -19,7 +19,8 @@ Last reviewed: 2026-10-20 UTC
 - PR #160 (persistent Wazuh ingestion and investigation workflows): merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL, and isolated Supabase migration validation passed on its PR head.
 - PR #159 (SATARK evidence-storage policy helper): merged; CI, CodeQL, isolated migration validation, tenant-isolation integration, and browser/accessibility smoke passed on its PR head.
 - PR #161 (storage migration history): merged; CI, CodeQL, and isolated migration validation passed on its validated head.
-- PR #165 (make superseded storage insert migration inert and document history repair): checks were still running at the time of review. Do not merge until its exact-head CI, CodeQL, and isolated migration validation all pass.
+- PR #164 (invalid object-key regression and canonical storage-policy contract test): merged; its required checks passed on the PR head.
+- PR #165 is stale after PR #164 removed the redundant `20261020043000` migration; do not merge it as-is. The migration-history repair steps are recorded below.
 - These are PR-head checks, not proof that the current production deployment runs that SHA.
 
 ## Verified hosted database facts
@@ -52,7 +53,7 @@ This marks the two superseded versions as applied without executing their histor
 | Production alias points to that deployment | NOT VERIFIED | Alias metadata tied to deployment ID and exact SHA |
 | Current production runtime errors inspected | BLOCKED | Vercel runtime-error access restored or another authorized source used |
 | Storage policy ACL and tenant/case scope | PASS (read-only inspection) | Current live policy definitions and function grants queried |
-| Migration history reconciled | BLOCKED | CLI repair for versions 20261020042000 and 20261020043000, followed by linked migration-list verification |
+| Migration history reconciled | BLOCKED | CLI repair for versions 202610200004 and 20261020042000, followed by linked migration-list verification |
 | Isolated database migrations and RLS tests | PASS on PR #159/#160/#161 heads; PR #165 pending | Exact-head workflow result for #165 |
 | Real Wazuh Indexer connection | NOT RUN | Authorized lab endpoint, dedicated least-privilege credentials, verified TLS, bounded query and real alert fixture |
 | Persisted Wazuh-to-case-to-investigation-to-report workflow | BLOCKED | Authorized SATARK tenant/case/actor and successful end-to-end run with checkpoint/restart/idempotency verification |
@@ -62,8 +63,8 @@ This marks the two superseded versions as applied without executing their histor
 
 ## Required next steps
 
-1. Finish PR #165 checks and merge only if CI, CodeQL, and isolated migration validation all pass.
-2. In a trusted CLI environment, run the exact migration-history repair documented in `docs/SUPABASE_MIGRATION_HISTORY_REPAIR.md`; do not alter other migration versions.
+1. Do not merge stale PR #165 as-is; PR #164 already merged the relevant regression coverage.
+2. In a trusted CLI environment, run the migration-history repair command in the section above for versions `202610200004` and `20261020042000`; verify the linked migration list afterward.
 3. Resolve Vercel's deployment quota through the account/plan owner, then deploy current main to preview, smoke-test it, and only then promote to production with explicit approval.
 4. Provision an authorized Wazuh lab endpoint and a separate SATARK test tenant/case/actor; validate real ingestion, checkpoint advancement, restart recovery, deduplication, source downloads, durable investigation, reports and tenant isolation.
 5. Deploy the workers to a private persistent runtime and complete monitoring, backup/restore and recovery drills.
