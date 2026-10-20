@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(37);
 
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
@@ -108,6 +108,20 @@ select ok(
 );
 select ok(has_function_privilege('authenticated', 'satark_private.has_membership(uuid,text[])', 'EXECUTE'),
   'authenticated policies can execute the private membership helper');
+select ok((
+  select count(*) = 6
+    and bool_and(position('satark_private.has_membership' in (coalesce(qual,'') || coalesce(with_check,''))) > 0)
+    and bool_and(position('satark_has_membership' in (coalesce(qual,'') || coalesce(with_check,''))) = 0)
+  from pg_policies
+  where schemaname = 'public'
+    and (
+      (tablename = 'satark_approvals' and policyname in ('satark_approvals_member_read','satark_approvals_request'))
+      or (tablename = 'satark_case_notes' and policyname in ('satark_case_notes_member_read','satark_case_notes_analyst_insert'))
+      or (tablename = 'satark_investigation_jobs' and policyname in ('satark_investigation_jobs_member_read','satark_investigation_jobs_member_enqueue'))
+    )
+), 'approval, case-note, and investigation-job policies use the executable private membership helper');
+select ok(not has_function_privilege('authenticated', 'public.satark_has_membership(uuid,text[])', 'EXECUTE'),
+  'the public membership wrapper remains non-executable by authenticated users');
 select ok(not has_function_privilege('anon', 'public.satark_reject_audit_mutation()', 'EXECUTE'),
   'anon cannot call the audit trigger function');
 select ok(not has_function_privilege('authenticated', 'public.satark_reject_audit_mutation()', 'EXECUTE'),
