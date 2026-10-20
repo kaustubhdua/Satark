@@ -32,6 +32,10 @@ jobs:
           set -euo pipefail
           grep -Fq "Every second matters. Every piece of evidence counts." web/src/app/page.tsx
           grep -Fq 'check_route "/" "Every second matters\. Every piece of evidence counts\."' .github/workflows/production-smoke.yml
+          grep -Fq 'SATARK_VERCEL_PROTECTION_BYPASS' .github/workflows/production-smoke.yml
+          grep -Fq 'x-vercel-protection-bypass' .github/workflows/production-smoke.yml
+          grep -Fq 'satark-rose.vercel.app|satark-jyc-website.vercel.app' .github/workflows/production-smoke.yml
+          grep -Fq 'curl "${protection_args[@]}"' .github/workflows/production-smoke.yml
 
   smoke:
     if: github.event_name != 'pull_request' && (github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'production')))
