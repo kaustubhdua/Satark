@@ -1,4 +1,4 @@
--- Restrict direct reads of raw Wazuh source snapshots to analyst-capable roles.
+-- Keep generic evidence case-scoped and restrict raw Wazuh snapshots to analyst-capable roles.
 -- The Next.js route enforces the same roles; Storage RLS must enforce them too
 -- because authenticated users can call the Storage API directly.
 drop policy if exists satark_evidence_object_read on storage.objects;
