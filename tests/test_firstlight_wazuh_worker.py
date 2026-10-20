@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import hashlib
 import pytest
@@ -87,9 +87,10 @@ def test_source_snapshot_upload_rejects_objects_over_bucket_limit_before_network
 
 def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     rest = FakeRest()
+    now = datetime.now(timezone.utc)
     alerts = [
-        event("one", "2026-10-20T08:00:00.000Z"),
-        event("two", "2026-10-20T08:01:00.000Z"),
+        event("one", (now - timedelta(seconds=40)).isoformat(timespec="milliseconds").replace("+00:00", "Z")),
+        event("two", (now - timedelta(seconds=20)).isoformat(timespec="milliseconds").replace("+00:00", "Z")),
     ]
     wazuh = FakeWazuh(alerts)
     worker = WazuhSupabaseWorker(
@@ -112,8 +113,23 @@ def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     assert second["status"] == "ok"
     assert len(rest.evidence) == 2
     assert rest.checkpoint["last_status"] == "ok"
-    assert rest.checkpoint["last_event_timestamp"] == "2026-10-20T08:01:00.000Z"
+    assert rest.checkpoint["last_event_timestamp"] == wazuh.calls[-1]["until"]
+    assert rest.checkpoint["last_event_timestamp"] > alerts[-1]["timestamp"]
     assert [call["offset"] for call in wazuh.calls] == [0, 2, 0, 2]
+
+
+def test_worker_advances_checkpoint_after_a_successful_empty_window():
+    rest = FakeRest()
+    wazuh = FakeWazuh([])
+    worker = WazuhSupabaseWorker(
+        rest=rest, wazuh=wazuh, tenant_id=TENANT, case_id=CASE, actor_id=ACTOR,
+        page_size=10, overlap_seconds=60, initial_since="2026-10-20T07:00:00Z",
+    )
+    result = worker.run_once()
+    assert result["status"] == "ok"
+    assert result["fetched"] == 0
+    assert rest.checkpoint["last_event_timestamp"] == wazuh.calls[0]["until"]
+    assert rest.checkpoint["last_event_timestamp"] > "2026-10-20T07:00:00.000Z"
 
 
 def test_worker_does_not_advance_checkpoint_when_a_page_fails():
