@@ -131,7 +131,6 @@ create policy satark_evidence_object_insert on storage.objects
     )
   );
 
-revoke all on function public.satark_has_membership(uuid, text[]) from public, anon, authenticated;
 
 
 -- Harden the durable-approval foundation already present in 202610200001.
