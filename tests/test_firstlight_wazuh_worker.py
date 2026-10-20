@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import pytest
 
-from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WazuhSupabaseWorker
+from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WazuhSupabaseWorker, _safe_error_code
 
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -161,3 +161,12 @@ def test_source_snapshot_verifier_rejects_cross_case_paths_before_network_io():
             path=f"{TENANT}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/wazuh/{'a' * 64}.json",
             digest="a" * 64,
         )
+
+
+
+def test_worker_error_logging_uses_categories_not_exception_text():
+    error = SupabaseRestError("credential=super-secret-token endpoint=https://private.example")
+    code = _safe_error_code(error)
+    assert code == "supabase_request_error"
+    assert "super-secret-token" not in code
+    assert "private.example" not in code
