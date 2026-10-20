@@ -13,6 +13,8 @@ import json
 import uuid
 from typing import Any
 
+from firstlight_rules import RULE_VERSION, rule_metadata
+
 
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -317,6 +319,7 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
     def add_rule_finding(title: str, explanation: str, severity: str, refs: list[str], confidence: str) -> None:
         nonlocal next_finding
         finding(f"F-{next_finding:03d}", title, explanation, severity, refs, confidence)
+        findings[-1].update(rule_metadata(title))
         next_finding += 1
 
     records = [(eid, record) for eid, record in valid_records.items()]
@@ -462,6 +465,12 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
             "evidence_available": False,
             "confidence": "low",
             "state": "unverified",
+            "rule_id": "FL-GENERIC-000",
+            "rule_version": RULE_VERSION,
+            "rule_source": "FIRSTLIGHT",
+            "attack_techniques": [],
+            "logic_type": "no_rule_match",
+            "rule_limitations": ["No detection rule matched; this is not a clearance that the system or case is safe."],
         })
 
     timeline = []
