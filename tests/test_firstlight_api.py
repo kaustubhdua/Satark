@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import os
 
+import pytest
 from fastapi.testclient import TestClient
 
 import firstlight_api
 from firstlight_engine import sha256_record
 
 client = TestClient(firstlight_api.app)
+
+
+@pytest.fixture(autouse=True)
+def require_api_token(monkeypatch):
+    # All ordinary endpoint tests exercise the same fail-closed auth posture as deployment.
+    monkeypatch.setenv("FIRSTLIGHT_API_TOKEN", "test-only-token-" + "x" * 40)
 
 
 def evidence(event_id: str, summary: str = "Routine application notice", kind: str = "notice") -> dict:
@@ -91,6 +98,15 @@ def test_api_token_is_enforced_when_configured(monkeypatch):
     )
     assert allowed.status_code == 200
     monkeypatch.delenv("FIRSTLIGHT_API_TOKEN", raising=False)
+
+
+def test_missing_api_token_fails_closed(monkeypatch):
+    monkeypatch.delenv("FIRSTLIGHT_API_TOKEN", raising=False)
+    response = client.post(
+        "/api/v1/cases/investigate",
+        json={"case_id": "CASE-AUTH", "evidence": []},
+    )
+    assert response.status_code == 503
 
 
 def test_short_api_token_fails_closed(monkeypatch):
