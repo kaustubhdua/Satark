@@ -55,7 +55,6 @@ test('shared investigation proxy requires a strong backend token even for local 
 test('raw Wazuh source reads stay analyst-only while normal evidence retains its own path policy', async () => {
   const migration = await readFile(new URL('../../supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql', import.meta.url), 'utf8');
   const dualPathMigration = await readFile(new URL('../../supabase/migrations/20261020042449_satark_evidence_storage_dual_path_policy.sql', import.meta.url), 'utf8');
-  const uploadPolicyMigration = await readFile(new URL('../../supabase/migrations/20261020044018_satark_storage_policy_private_helper_rebind.sql', import.meta.url), 'utf8');
   assert.match(migration, /create policy satark_evidence_object_read/);
   assert.match(migration, /split_part\(name, '\/', 3\) = 'wazuh'/);
   assert.match(migration, /array\['owner', 'responder', 'analyst'\]::text\[\]/);
@@ -68,10 +67,14 @@ test('raw Wazuh source reads stay analyst-only while normal evidence retains its
   assert.match(dualPathMigration, /array_length\(string_to_array\(name, '\/'\), 1\) = 4/);
   assert.match(dualPathMigration, /split_part\(name, '\/', 3\) = 'wazuh'/);
   assert.match(dualPathMigration, /satark_private\.has_membership/);
-  assert.match(uploadPolicyMigration, /create policy satark_evidence_object_insert/);
-  assert.match(uploadPolicyMigration, /satark_private\.has_membership/);
-  assert.ok(uploadPolicyMigration.includes("array_length(string_to_array(name, '/'), 1) = 3"));
-  assert.ok(uploadPolicyMigration.includes("split_part(name, '/', 3) = 'wazuh'"));
-  assert.ok(uploadPolicyMigration.includes('[A-Za-z0-9._-]{1,100}'));
-  assert.ok(uploadPolicyMigration.includes('^[0-9a-f]{64}'));
+});
+
+test('storage insert policy enforces the private helper and the two supported object-key formats', async () => {
+  const insertMigration = await readFile(new URL('../../supabase/migrations/20261020044018_satark_storage_policy_private_helper_rebind.sql', import.meta.url), 'utf8');
+  assert.ok(insertMigration.includes('create policy satark_evidence_object_insert'));
+  assert.ok(insertMigration.includes('satark_private.has_membership'));
+  assert.ok(insertMigration.includes("array_length(string_to_array(name, '/'), 1) = 3"));
+  assert.ok(insertMigration.includes("split_part(name, '/', 3) = 'wazuh'"));
+  assert.ok(insertMigration.includes('[A-Za-z0-9._-]{1,100}'));
+  assert.ok(insertMigration.includes('\\.json\\Z'));
 });
