@@ -418,7 +418,7 @@ def main() -> None:
             result = worker.run_once()
             print(json.dumps({"component": "firstlight-wazuh-worker", **result}, separators=(",", ":")))
         except Exception as exc:
-            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error_code": _safe_error_code(exc)}, separators=(",", ":"))
+            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error_code": _safe_error_code(exc)}, separators=(",", ":")))
             if args.once:
                 raise SystemExit(1) from exc
         if args.once:
