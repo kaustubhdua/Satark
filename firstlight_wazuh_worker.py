@@ -87,8 +87,8 @@ class SupabaseServiceRest:
 
     def upload_source_snapshot(self, *, tenant_id: str, case_id: str, digest: str, snapshot: str) -> str:
         raw = snapshot.encode("utf-8")
-        if len(raw) > 10 * 1024 * 1024:
-            raise SupabaseRestError("Wazuh source snapshot exceeds the private bucket's 10 MiB object limit")
+        if len(raw) > 4 * 1024 * 1024:
+            raise SupabaseRestError("Wazuh source snapshot exceeds the satark-evidence bucket's 4 MiB object limit")
         if hashlib.sha256(raw).hexdigest() != digest:
             raise SupabaseRestError("Wazuh source snapshot digest did not match its provenance digest")
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
