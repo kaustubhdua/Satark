@@ -16,7 +16,7 @@ import time
 from typing import Any
 
 from firstlight_engine import investigate_case, sha256_record
-from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WorkerConfigurationError
+from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WorkerConfigurationError, _retry_delay, _safe_error_code
 
 
 MAX_CASE_EVIDENCE = 500
@@ -387,13 +387,26 @@ def main() -> int:
         os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
     )
     worker = InvestigationJobWorker(rest, lease_seconds=args.lease_seconds)
+    failures = 0
     while True:
-        outcome = worker.run_once()
-        print(json.dumps(outcome, separators=(",", ":")), flush=True)
-        if args.once:
-            return 0 if outcome["status"] in {"idle", "succeeded"} else 1
-        if outcome["status"] == "idle":
-            time.sleep(args.poll_seconds)
+        try:
+            outcome = worker.run_once()
+            if outcome["status"] in {"idle", "succeeded"}:
+                failures = 0
+                delay = args.poll_seconds
+            else:
+                failures += 1
+                delay = _retry_delay(args.poll_seconds, failures, maximum=60)
+            print(json.dumps(outcome, separators=(",", ":")), flush=True)
+            if args.once:
+                return 0 if outcome["status"] in {"idle", "succeeded"} else 1
+        except Exception as exc:
+            failures += 1
+            delay = _retry_delay(args.poll_seconds, failures, maximum=60)
+            print(json.dumps({"status":"error","error_code":_safe_error_code(exc),"retry_in_seconds":delay}, separators=(",", ":")), flush=True)
+            if args.once:
+                return 1
+        time.sleep(delay)
 
 
 if __name__ == "__main__":
