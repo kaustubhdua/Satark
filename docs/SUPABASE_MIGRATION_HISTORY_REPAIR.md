@@ -16,6 +16,7 @@ A read-only migration-list check on 2026-10-20 found these relevant entries:
 - `20261020042449` — `satark_evidence_storage_dual_path_policy`: recorded.
 - `20261020044018` — `satark_storage_policy_private_helper_rebind`: recorded.
 - `20261020050000` — `satark_foreign_key_support_indexes`: not recorded. A read-only `pg_indexes` check also found the five SATARK support indexes from this migration absent in the live database.
+- `20261020051000` — `satark_rebind_membership_policies`: merged in PR #174 after a read-only policy audit found six authenticated SATARK policies still calling the revoked `public.satark_has_membership` wrapper. The migration rebinds approval, case-note, and investigation-job policies to `satark_private.has_membership`; it has not yet been applied to the hosted database.
 
 The live private helper, ACLs, and final storage policies have been verified read-only. The later recorded migrations establish the intended final policy. The repository migration `202610200004` remains available for clean database resets; do not change it to a no-op. The repository migration `20261020042000` is already a no-op because the canonical policy was applied under `20261020044018`. The duplicate version `20261020043000` was removed from the repository in PR #164 and is not part of the repair command.
 
@@ -39,7 +40,9 @@ After repair, confirm that versions `202610200004`, `20261018114039`, `202610200
 supabase db push --dry-run --linked
 ```
 
-**Expected dry-run:** the only pending repository migration is `20261020050000_satark_foreign_key_support_indexes.sql`. It adds indexes to SATARK-owned tables only. If any other migration is listed, stop and reconcile the migration set before applying anything. If the dry-run matches exactly, apply the pending SATARK-only index migration:
+**Expected dry-run after PR #174 is merged:** the pending SATARK-only migrations are `20261020050000_satark_foreign_key_support_indexes.sql` and `20261020051000_satark_rebind_membership_policies.sql`. The first adds five indexes; the second rebinds six policies to the executable private helper. If any other migration is listed, stop and reconcile the migration set before applying anything. Do not run a broad push if the dry-run differs from these two expected migrations.
+
+If the dry-run matches exactly, apply the pending SATARK-only migrations:
 
 ```sh
 supabase db push --linked
@@ -47,7 +50,7 @@ supabase migration list --linked
 ```
 
 Then verify all five index names exist in `pg_indexes`:
-`satark_approvals_requested_by_idx`, `satark_approvals_decided_by_idx`, `satark_case_notes_created_by_idx`, `satark_cases_assigned_to_idx`, and `satark_investigation_jobs_requested_by_idx`. Finally run the isolated migration validation workflow. Do not run a broad push if the dry-run differs from the expected single migration.
+`satark_approvals_requested_by_idx`, `satark_approvals_decided_by_idx`, `satark_case_notes_created_by_idx`, `satark_cases_assigned_to_idx`, and `satark_investigation_jobs_requested_by_idx`. Also verify the six approval/case-note/investigation-job policies reference `satark_private.has_membership`, not `public.satark_has_membership`, and run the isolated migration validation workflow.
 
 ## Read-only policy and ACL verification
 
