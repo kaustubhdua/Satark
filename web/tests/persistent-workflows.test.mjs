@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
-const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration, auditMigration, uploadLimitMigration, approvalsRoute, approvalsPanel, approvalsMigration] = await Promise.all([
+const [auth, evidence, verify, records, findings, reports, audit, tenantMigration, storageMigration, workflowMigration, auditMigration, uploadLimitMigration, approvalsRoute, approvalsPanel, approvalsMigration, simulationApprovalsMigration] = await Promise.all([
   read('../src/lib/satark-auth.ts'),
   read('../src/app/api/evidence/route.ts'),
   read('../src/app/api/evidence/[id]/verify/route.ts'),
@@ -19,6 +19,7 @@ const [auth, evidence, verify, records, findings, reports, audit, tenantMigratio
   read('../src/app/api/firstlight/approvals/route.ts'),
   read('../src/app/firstlight/persistent-case-panel.tsx'),
   read('../../supabase/migrations/202610200001_satark_durable_approvals.sql'),
+  read('../../supabase/migrations/20261020035832_satark_simulation_only_approvals.sql'),
 ]);
 
 test('browser auth uses publishable key and refreshes sessions without privileged keys', () => {
@@ -89,4 +90,6 @@ test('durable approval UI and API are simulation-only and keep decisions server-
   assert.match(approvalsPanel, /No endpoint or account action was executed/);
   assert.match(approvalsMigration, /satark_approvals_not_self_approved/);
   assert.match(approvalsMigration, /satark_consume_response_approval/);
+  assert.match(simulationApprovalsMigration, /satark_approvals_simulation_only/);
+  assert.match(simulationApprovalsMigration, /action_payload->>'mode' = 'simulation'/);
 });
