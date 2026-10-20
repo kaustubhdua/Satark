@@ -59,6 +59,15 @@ test('FIRSTLIGHT proxy readiness requires safe backend URL and strong server-sid
   assert.equal(localCompose.checks.firstlight.investigationProxyConfigured, true);
   assert.equal(localCompose.checks.firstlight.wazuhProxyConfigured, true);
 
+  const productionLocalHttp = buildHealthSnapshot({
+    VERCEL: '1',
+    FIRSTLIGHT_API_URL: 'http://firstlight-api:8788',
+    FIRSTLIGHT_API_TOKEN: 'a'.repeat(32),
+    FIRSTLIGHT_WAZUH_SYNC_TOKEN: 'b'.repeat(32),
+  });
+  assert.equal(productionLocalHttp.checks.firstlight.investigationProxyConfigured, false);
+  assert.equal(productionLocalHttp.checks.firstlight.wazuhProxyConfigured, false);
+
   for (const url of ['http://firstlight.example.com', 'https://user:pass@firstlight.example.com', 'https://firstlight.example.com?token=leak']) {
     const unsafe = buildHealthSnapshot({
       FIRSTLIGHT_API_URL: url,
