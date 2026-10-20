@@ -264,7 +264,7 @@ class InvestigationJobWorker:
             if not isinstance(refs, list):
                 refs = []
             safe_refs = [str(ref)[:100] for ref in refs[:50] if isinstance(ref, (str, int))]
-            detail = str(finding.get("rationale") or finding.get("detail") or finding.get("description") or "")[:8192]
+            detail = str(finding.get("explanation") or finding.get("rationale") or finding.get("detail") or finding.get("description") or "")[:8192]
             key = ("fljob-" + str(job.get("id", ""))[:36] + "-" + str(index))[:160]
             body = {
                 "tenant_id": job["tenant_id"], "case_id": job["case_id"],
