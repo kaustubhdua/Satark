@@ -2,6 +2,15 @@
 
 Last reviewed: 2026-10-20
 
+## Fresh deployment re-check (2026-10-20)
+
+- Latest source commit in the current production deployment listing: `08983cd9c88b1cab91ea800577b2ddc291549250` on `main`; deployment `dpl_5YfZ4vrLfMw9XYjbayKZkJwubrAL` is `READY` with production target.
+- This supersedes earlier notes in this document that the deployed SHA was stale or that the latest main commit had no production deployment.
+- This is deployment metadata only. The connected Vercel runtime-error endpoint returned HTTP 403, and direct browser smoke was not accessible, so no claim is made that production login, API calls, investigation jobs, or exports have passed.
+- The latest known environment inventory did not contain the FIRSTLIGHT API token/URL, Wazuh sync token/Indexer credentials, or private worker configuration. The current environment inventory could not be re-read through the connected Vercel API. No real Wazuh endpoint or authorized SATARK tenant/case/actor is available for end-to-end verification.
+- **Decision remains NO-GO for production readiness** until those runtime, identity, provider, worker-recovery, and evidence-verification gates pass. Do not create synthetic tenant or actor rows in the shared production database to bypass the gate.
+
+
 ## Current source and release status (updated after PR #168)
 
 - PR #160, **FIRSTLIGHT: persistent Wazuh ingestion and case investigation workflows**, is merged to `main`. Its latest observed pull-request checks passed: FIRSTLIGHT API CI, general CI, Web CI, CodeQL, and isolated Supabase migration validation.
