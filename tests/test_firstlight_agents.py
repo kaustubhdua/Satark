@@ -107,10 +107,6 @@ class FirstlightAgentContractTests(unittest.TestCase):
         self.assertEqual({agent["status"] for agent in result["agents"]}, {"timeout"})
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class OllamaStructuredOutputTests(unittest.TestCase):
     def test_native_client_passes_json_schema_to_ollama_format(self):
         client = LocalOllamaClient(base_url="http://localhost:11434", timeout=1)
@@ -127,3 +123,7 @@ class OllamaStructuredOutputTests(unittest.TestCase):
             )
         self.assertEqual(captured["path"], "/api/chat")
         self.assertEqual(captured["payload"]["format"], schema)
+
+
+if __name__ == "__main__":
+    unittest.main()
