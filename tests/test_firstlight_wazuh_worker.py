@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import pytest
 
-from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WazuhSupabaseWorker, _safe_error_code
+from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WazuhSupabaseWorker, _retry_delay, _safe_error_code
 
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -170,3 +170,13 @@ def test_worker_error_logging_uses_categories_not_exception_text():
     assert code == "supabase_request_error"
     assert "super-secret-token" not in code
     assert "private.example" not in code
+
+
+
+def test_wazuh_retry_backoff_is_exponential_and_capped():
+    assert [_retry_delay(30, attempt) for attempt in (1, 2, 3, 4)] == [30, 60, 120, 240]
+    assert _retry_delay(3600, 3) == 900
+    with pytest.raises(ValueError):
+        _retry_delay(0, 1)
+    with pytest.raises(ValueError):
+        _retry_delay(30, 0)
