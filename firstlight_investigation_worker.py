@@ -204,7 +204,7 @@ class InvestigationJobWorker:
                 "confidence": finding.get("confidence") if isinstance(finding.get("confidence"), (int, float)) else None,
                 "created_by": job["requested_by"],
             }
-            self.rest.request("POST", "satark_findings", body=body, prefer="return=minimal")
+            self.rest.request("POST", "satark_findings", query={"on_conflict": "case_id,finding_key"}, body=body, prefer="resolution=ignore-duplicates,return=minimal")
 
     def _persist_report(self, job: dict[str, Any], result: dict[str, Any]) -> None:
         snapshot = result
@@ -218,7 +218,7 @@ class InvestigationJobWorker:
         # A report insert failure fails the job; retrying uses the same content
         # digest and the unique constraint prevents duplicate snapshots.
         try:
-            self.rest.request("POST", "satark_reports", body=body, prefer="return=minimal")
+            self.rest.request("POST", "satark_reports", query={"on_conflict": "case_id,snapshot_sha256"}, body=body, prefer="resolution=ignore-duplicates,return=minimal")
         except SupabaseRestError as exc:
             if "HTTP 409" not in str(exc):
                 raise
