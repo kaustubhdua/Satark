@@ -232,14 +232,15 @@ export async function PATCH(request: Request) {
     const currentRoles: unknown = await currentRoleResponse.json();
     if (!Array.isArray(currentRoles) || currentRoles.length === 0) return jsonError('Only workspace owners or responders can assign cases.', 403);
     if (typeof input.assigned_to === 'string') {
-      const targetQuery = new URLSearchParams({
-        select: 'user_id,role', tenant_id: 'eq.' + tenantId,
-        user_id: 'eq.' + input.assigned_to, role: 'in.(owner,responder,analyst)', limit: '1',
+      const targetResponse = await supabaseRequest(config, token, 'rpc/satark_list_assignable_members', {
+        method: 'POST', body: JSON.stringify({ p_tenant_id: tenantId }),
       });
-      const targetResponse = await supabaseRequest(config, token, 'satark_memberships?' + targetQuery.toString());
+      if (targetResponse.status === 401 || targetResponse.status === 403) return jsonError('Only owners or responders may assign cases.', 403);
       if (!targetResponse.ok) return jsonError('Assignee membership could not be verified.', 503);
       const targetRows: unknown = await targetResponse.json();
-      if (!Array.isArray(targetRows) || targetRows.length === 0) return jsonError('Assignee must be an owner, responder, or analyst in this workspace.', 400);
+      if (!Array.isArray(targetRows) || !targetRows.some(row => !!row && typeof row === 'object' && 'user_id' in row && row.user_id === input.assigned_to)) {
+        return jsonError('Assignee must be an owner, responder, or analyst in this workspace.', 400);
+      }
     }
     updates.assigned_to = input.assigned_to;
   }
