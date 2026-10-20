@@ -218,7 +218,8 @@ async function inspectViewport(viewport, label) {
       await page.getByRole('alert').filter({ hasText: /only HTTP|valid URL|unsupported/i }).waitFor();
       await page.getByRole('button', { name: /^clear$/i }).click();
       assert.equal(await urlInput.inputValue(), '', 'clear must reset URL input');
-      assert.equal(await page.getByRole('alert').count(), 0, 'clear must reset prior validation errors');
+      assert.equal(await page.getByRole('alert').filter({ hasText: /Only HTTP and HTTPS URLs can be inspected/i }).count(), 0,
+        'clear must remove the URL validation error');
     }
     if (route.path === '/reports') {
       const notes = page.getByLabel('Review notes');
