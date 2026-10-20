@@ -114,3 +114,8 @@ docker compose -f docker-compose.local.yml --profile wazuh-worker up -d firstlig
 ```
 
 The worker is optional and will not start in the default profile. Never commit the .env file or service-role credentials.
+
+
+## Deterministic rule registry
+
+Investigation findings include stable FIRSTLIGHT rule IDs, registry version `1.0.0`, rule logic type, candidate ATT&CK mappings and explicit limitations. These are triage heuristics, not proof of compromise. See [`docs/FIRSTLIGHT_DETECTION_RULES.md`](FIRSTLIGHT_DETECTION_RULES.md) for the registry and change-control expectations.
