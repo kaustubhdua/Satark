@@ -8,7 +8,18 @@ create policy satark_evidence_object_insert on storage.objects
     bucket_id = 'satark-evidence'
     and split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     and split_part(name, '/', 2) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-    and array_length(string_to_array(name, '/'), 1) >= 3
+    and (
+      (
+        array_length(string_to_array(name, '/'), 1) = 3
+        and split_part(name, '/', 3) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}_[A-Za-z0-9._-]{1,100}\Z'
+      )
+      or (
+        array_length(string_to_array(name, '/'), 1) = 4
+        and split_part(name, '/', 3) = 'wazuh'
+        and length(split_part(name, '/', 4)) = 69
+        and split_part(name, '/', 4) ~* '^[0-9a-f]{64}\.json\Z'
+      )
+    )
     and satark_private.has_membership(
       split_part(name, '/', 1)::uuid, array['owner','responder','analyst']::text[]
     )
@@ -29,7 +40,18 @@ create policy satark_evidence_object_read on storage.objects
     bucket_id = 'satark-evidence'
     and split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     and split_part(name, '/', 2) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-    and array_length(string_to_array(name, '/'), 1) >= 3
+    and (
+      (
+        array_length(string_to_array(name, '/'), 1) = 3
+        and split_part(name, '/', 3) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}_[A-Za-z0-9._-]{1,100}\Z'
+      )
+      or (
+        array_length(string_to_array(name, '/'), 1) = 4
+        and split_part(name, '/', 3) = 'wazuh'
+        and length(split_part(name, '/', 4)) = 69
+        and split_part(name, '/', 4) ~* '^[0-9a-f]{64}\.json\Z'
+      )
+    )
     and satark_private.has_membership(
       split_part(name, '/', 1)::uuid, array['owner','responder','analyst','viewer']::text[]
     )
@@ -42,7 +64,7 @@ create policy satark_evidence_object_read on storage.objects
             array_length(string_to_array(objects.name, '/'), 1) = 4
             and split_part(objects.name, '/', 3) = 'wazuh'
             and length(split_part(objects.name, '/', 4)) = 69
-            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\.json'
+            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\.json\Z'
             and satark_private.has_membership(
               c.tenant_id, array['owner','responder','analyst']::text[]
             )
@@ -50,6 +72,7 @@ create policy satark_evidence_object_read on storage.objects
           or (
             array_length(string_to_array(objects.name, '/'), 1) = 3
             and split_part(objects.name, '/', 3) <> 'wazuh'
+            and split_part(objects.name, '/', 3) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}_[A-Za-z0-9._-]{1,100}\Z'
             and satark_private.has_membership(
               c.tenant_id, array['owner','responder','analyst','viewer']::text[]
             )
