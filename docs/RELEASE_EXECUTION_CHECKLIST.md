@@ -9,7 +9,8 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - PR #160 persistent Wazuh ingestion and investigation workflow merged; FIRSTLIGHT API CI, CI, Web CI, CodeQL and isolated migration validation passed on its PR head.
 - PR #159 evidence-storage policy fix merged; CI, CodeQL, isolated migration validation, tenant-isolation integration and browser/accessibility smoke passed on its PR head.
 - PR #161 migration-history reconciliation merged; CI, CodeQL and isolated migration validation passed on its PR head.
-- PR #165 makes the superseded storage insert migration inert and documents the operator repair procedure. Its exact-head CI, CodeQL and isolated migration checks must pass before merge.
+- PR #164 invalid-object-key regression and canonical storage-policy contract test merged; required checks passed on its PR head.
+- PR #165 is stale/non-mergeable after PR #164 removed the redundant `20261020043000` migration; do not merge it as-is.
 - The live SATARK storage policies and helper ACLs were verified read-only. The shared project has zero SATARK tenants, cases, memberships and evidence records.
 - Live migration history records `20261020042449` and `20261020044018`; versions `202610200004` and `20261020042000` are missing. Migration `20261020044018` has been applied and verified read-only: both storage policies use `satark_private.has_membership`, and the public wrapper remains non-executable. Follow the [migration-history repair steps](DEPLOYMENT_SIGNOFF.md#migration-history-repair) from a trusted environment.
 - Latest production deployment is `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; current main is newer. A READY preview exists for branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, but it is not production.
