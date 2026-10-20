@@ -9,8 +9,9 @@ const migration = await readFile(new URL('../../supabase/migrations/202610200327
 const assignmentRpc = await readFile(new URL('../../supabase/migrations/20261020033104_satark_assignable_members_rpc.sql', import.meta.url), 'utf8');
 
 test('case assignment requires owner/responder and verifies assignee tenant membership', () => {
-  assert.match(casesRoute, /role: 'in\.\(owner,responder\)'/);
-  assert.match(casesRoute, /role: 'in\.\(owner,responder,analyst\)'/);
+  assert.match(casesRoute, /rpc\/satark_list_assignable_members/);
+  assert.match(casesRoute, /Only owners or responders may assign cases/);
+  assert.match(casesRoute, /row\.user_id === input\.assigned_to/);
   assert.match(casesRoute, /assigned_to/);
   assert.match(migration, /satark_validate_case_assignee/);
   assert.match(migration, /m\.tenant_id=new\.tenant_id and m\.user_id=new\.assigned_to/);
