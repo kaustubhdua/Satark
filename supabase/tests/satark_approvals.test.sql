@@ -70,12 +70,12 @@ select is(
   'the database derives the immutable payload hash from the stored action payload'
 );
 select throws_ok(
-  $insert into public.satark_approvals
+  $insert$ insert into public.satark_approvals
     (id, tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
     values ('88888888-8888-4888-8888-888888888888',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       'isolate-host', '{"host_id":"host-3"}'::jsonb, repeat('1',64),
-      '11111111-1111-4111-8111-111111111111', now() + interval '31 minutes')$,
+      '11111111-1111-4111-8111-111111111111', now() + interval '31 minutes')$insert$,
   'P0001', null, 'approval lifetime cannot be extended beyond thirty minutes'
 );
 select ok(
@@ -135,12 +135,12 @@ select is((select count(*)::integer from public.satark_approvals
   where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'), 0,
   'a tenant responder cannot read another tenant approval');
 select throws_ok(
-  $insert into public.satark_approvals
+  $insert$ insert into public.satark_approvals
     (tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'isolate-host',
       '{"host_id":"unauthorized"}'::jsonb, repeat('3',64),
-      '22222222-2222-4222-8222-222222222222', now() + interval '30 minutes')$,
+      '22222222-2222-4222-8222-222222222222', now() + interval '30 minutes')$insert$,
   '42501', null, 'a tenant responder cannot request approval in another tenant'
 );
 select throws_ok(
