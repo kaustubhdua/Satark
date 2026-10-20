@@ -41,7 +41,7 @@ create policy satark_evidence_object_read on storage.objects
             array_length(string_to_array(objects.name, '/'), 1) = 4
             and split_part(objects.name, '/', 3) = 'wazuh'
             and length(split_part(objects.name, '/', 4)) = 69
-            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\\.json'
+            and split_part(objects.name, '/', 4) ~* '^[0-9a-f]{64}\.json'
 
             and satark_private.has_membership(
               c.tenant_id, array['owner','responder','analyst']::text[]
