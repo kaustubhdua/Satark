@@ -34,6 +34,7 @@ export default function PersistentCasePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [jobStatus, setJobStatus] = useState('');
   const [requestedCaseId, setRequestedCaseId] = useState('');
   const [caseListLoaded, setCaseListLoaded] = useState(false);
 
@@ -251,6 +252,54 @@ export default function PersistentCasePanel({
     finally { setBusy(false); }
   }
 
+  async function runDurableInvestigation() {
+    if (!tenant || !session || !currentCaseId) {
+      setError('Save or load a persistent case before queueing a durable investigation.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage(''); setJobStatus('Queueing investigation…');
+    try {
+      const queuedResponse = await fetch('/api/firstlight/jobs', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenant.id, case_id: currentCaseId,
+          idempotency_key: crypto.randomUUID(),
+        }),
+        cache: 'no-store',
+      });
+      const queued = await queuedResponse.json().catch(() => ({}));
+      if (!queuedResponse.ok || !queued.job?.id) {
+        throw new Error(typeof queued.error === 'string' ? queued.error : 'The durable investigation could not be queued.');
+      }
+      const jobId = String(queued.job.id);
+      setJobStatus('Job ' + jobId.slice(0, 8) + ' · ' + String(queued.job.status || 'queued'));
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const statusResponse = await fetch('/api/firstlight/jobs?tenant_id=' + encodeURIComponent(tenant.id) + '&job_id=' + encodeURIComponent(jobId), {
+          headers: { Authorization: 'Bearer ' + session.access_token },
+          cache: 'no-store',
+        });
+        const statusPayload = await statusResponse.json().catch(() => ({}));
+        if (!statusResponse.ok || !statusPayload.job) {
+          throw new Error(typeof statusPayload.error === 'string' ? statusPayload.error : 'Job status could not be read.');
+        }
+        const job = statusPayload.job;
+        setJobStatus('Job ' + jobId.slice(0, 8) + ' · ' + String(job.status) + ' · attempt ' + String(job.attempts || 0));
+        if (job.status === 'succeeded') {
+          setMessage('Durable investigation completed. Result and report hashes are persisted; reload the case to review saved findings.');
+          return;
+        }
+        if (job.status === 'failed' || job.status === 'cancelled') {
+          throw new Error('Durable investigation ' + job.status + (job.error_code ? ': ' + job.error_code : '.'));
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      setMessage('The job remains queued or running. Its status is durable; check again after the private worker processes it.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Durable investigation failed.');
+    } finally { setBusy(false); }
+  }
+
   async function uploadOriginal() {
     if (!tenant || !session || !currentCaseId || !file) { setError('Select a workspace, load a saved case, and choose a file first.'); return; }
     setBusy(true); setError(''); setMessage('');
@@ -300,7 +349,9 @@ export default function PersistentCasePanel({
         <label className="field-label" htmlFor="persistent-case-title">Incident title</label>
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
         <button className="btn btn-primary" type="button" disabled={busy || !evidence.length} onClick={()=>void persistIncident()}>{busy?'Saving…':'Save case, evidence, findings & report'}</button>
+        <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
       </div>
+      {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
       <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><div className="saved-case-row" key={item.id}><button type="button" className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button><label className="sr-only" htmlFor={'status-'+item.id}>Update status for {item.title}</label><select id={'status-'+item.id} value={item.status} disabled={busy} onChange={e=>void updateCaseStatus(item,e.target.value)}><option value="open">Open</option><option value="contained">Contained</option><option value="resolved">Resolved</option><option value="archived">Archived</option></select></div>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
       <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
