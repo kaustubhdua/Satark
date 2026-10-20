@@ -30,7 +30,7 @@ Read-only queries against the shared Supabase project `nihdhoom` (`igqgtlmnwssja
 - Authenticated cannot execute the audit-trigger function as an RPC.
 - SATARK currently has zero tenants, cases, memberships, and evidence records. No synthetic production records were created.
 
-The live migration history records `20261020042449` and `20261020044018`, but not `20261020042000` or `20261020043000`. The canonical policy is already recorded under `20261020044018`. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile the exact missing history versions with the Supabase CLI before any future linked `db push`. No hosted migration was applied by this review.
+The live migration history records `20261020042449` and `20261020044018`, but not `202610200004`, `20261020042000`, or `20261020043000`. The canonical storage-policy rebind was applied under `20261020044018` after isolated validation and then verified read-only: both insert/read policies use `satark_private.has_membership`, neither references the public wrapper, authenticated users can execute the private helper, and authenticated/anon cannot execute the public wrapper. No evidence rows were modified. See [SUPABASE_MIGRATION_HISTORY_REPAIR.md](SUPABASE_MIGRATION_HISTORY_REPAIR.md). A trusted operator must reconcile the exact missing history versions with the Supabase CLI before any future linked `db push`; do not run a broad push as a shortcut.
 
 ## Release gates
 
