@@ -15,6 +15,7 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - Latest production deployment is `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; current main is newer. A READY preview exists for branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, but it is not production.
 - Vercel rejected a new deployment with HTTP 402 `api-deployments-free-per-day` and a retry-after of 86400 seconds. Resolve this through the account/plan owner; do not bypass limits or change billing/security settings automatically.
 - The connected Vercel runtime-error API returned 403. Production runtime error inspection remains unavailable.
+- A names/targets-only Vercel environment inventory found no `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN`, Wazuh Indexer endpoint/credentials, or worker service-role configuration. Existing secret values were not decrypted. Provision the required server-side configuration through the project owner before attempting live connector tests.
 - No authorized Wazuh endpoint/credentials, SATARK test tenant/case/actor, or private persistent worker host is configured. Real end-to-end ingestion and recovery are therefore not verified.
 
 ## Release gates
