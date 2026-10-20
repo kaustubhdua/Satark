@@ -70,8 +70,8 @@ test('raw Wazuh source reads stay analyst-only while normal evidence retains its
   assert.match(dualPathMigration, /satark_private\.has_membership/);
   assert.match(uploadPolicyMigration, /create policy satark_evidence_object_insert/);
   assert.match(uploadPolicyMigration, /satark_private\.has_membership/);
-  assert.match(uploadPolicyMigration, /array_length\(string_to_array\(name, '\\/'\), 1\) = 3/);
-  assert.match(uploadPolicyMigration, /split_part\(name, '\\/', 3\) = 'wazuh'/);
-  assert.match(uploadPolicyMigration, /\[A-Za-z0-9\._-\]\{1,100\}/);
-  assert.match(uploadPolicyMigration, /\\\\\.json/);
+  assert.ok(uploadPolicyMigration.includes("array_length(string_to_array(name, '/'), 1) = 3"));
+  assert.ok(uploadPolicyMigration.includes("split_part(name, '/', 3) = 'wazuh'"));
+  assert.ok(uploadPolicyMigration.includes('[A-Za-z0-9._-]{1,100}'));
+  assert.ok(uploadPolicyMigration.includes('^[0-9a-f]{64}'));
 });
