@@ -4,6 +4,8 @@ Last verified: 2026-10-20 UTC
 
 ## Scope and evidence
 
+Official CLI reference: [Supabase database migrations](https://supabase.com/docs/guides/deployment/database-migrations).
+
 The shared Supabase project `nihdhoom` (`igqgtlmnwssjaoxkkzbm`) hosts SATARK alongside Nirdhoom and Saathi. Do not reset it or run a broad `supabase db push` to resolve this mismatch.
 
 A read-only migration-list check on 2026-10-20 found these relevant entries:
@@ -24,7 +26,7 @@ From a trusted checkout, explicitly confirm that the linked project is `igqgtlmn
 
 ```sh
 supabase migration list --linked
-supabase migration repair --status applied 202610200004 20261020042000 --linked
+supabase migration repair 202610200004 20261020042000 --status applied --linked
 supabase migration list --linked
 ```
 
