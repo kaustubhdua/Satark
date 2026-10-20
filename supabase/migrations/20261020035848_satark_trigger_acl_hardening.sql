@@ -1,2 +1,0 @@
--- Superseded duplicate of 202610200002_satark_trigger_acl_hardening.sql.
--- Keep the canonical trigger ACL migration at its original version.
