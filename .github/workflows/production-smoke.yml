@@ -35,7 +35,7 @@ jobs:
           grep -Fq 'SATARK_VERCEL_PROTECTION_BYPASS' .github/workflows/production-smoke.yml
           grep -Fq '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' .github/workflows/production-smoke.yml
           grep -Fq 'x-vercel-protection-bypass' .github/workflows/production-smoke.yml
-          grep -Fq 'satark-rose.vercel.app|satark-jyc-website.vercel.app' .github/workflows/production-smoke.yml
+          grep -Fq 'satark-jyc-website.vercel.app|satark-git-main-jyc-website.vercel.app' .github/workflows/production-smoke.yml
           grep -Fq 'curl "${protection_args[@]}"' .github/workflows/production-smoke.yml
 
   smoke:
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 5
     env:
       # Verified Vercel production alias; repository variable can override it after a domain change.
-      SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL || 'https://satark-rose.vercel.app' }}
+      SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL || 'https://satark-jyc-website.vercel.app' }}
       # Optional Vercel deployment-protection bypass scoped to this smoke workflow.
       # Never disable SSO globally; leave empty when using a public custom domain.
       SATARK_VERCEL_PROTECTION_BYPASS: ${{ secrets.SATARK_VERCEL_PROTECTION_BYPASS }}
