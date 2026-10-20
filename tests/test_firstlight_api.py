@@ -186,3 +186,33 @@ def test_wazuh_alert_route_rejects_bad_page_size(monkeypatch):
     )
     assert response.status_code == 422
     monkeypatch.delenv("FIRSTLIGHT_WAZUH_SYNC_TOKEN", raising=False)
+
+
+def test_health_reports_ollama_disabled_without_blocking_deterministic_mode(monkeypatch):
+    monkeypatch.delenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", raising=False)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["ollama"] == {"status": "disabled", "model_available": False}
+    assert response.json()["model_agents_enabled"] is False
+
+
+def test_health_reports_model_missing_without_exposing_runtime_configuration(monkeypatch):
+    from types import SimpleNamespace
+    import ai_provider
+
+    class FakeClient:
+        def __init__(self, timeout):
+            assert timeout == 5
+        class Models:
+            @staticmethod
+            def list():
+                return SimpleNamespace(data=[SimpleNamespace(id="different-model:latest")])
+        models = Models()
+
+    monkeypatch.setenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "true")
+    monkeypatch.setenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b")
+    monkeypatch.setattr(ai_provider, "LocalOllamaClient", FakeClient)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["ollama"] == {"status": "model_missing", "model_available": False}
+    assert "qwen2.5:3b" not in response.text
