@@ -88,6 +88,7 @@ def test_source_snapshot_upload_rejects_objects_over_bucket_limit_before_network
 def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     rest = FakeRest()
     now = datetime.now(timezone.utc)
+    initial_since = (now - timedelta(minutes=5)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     alerts = [
         event("one", (now - timedelta(seconds=40)).isoformat(timespec="milliseconds").replace("+00:00", "Z")),
         event("two", (now - timedelta(seconds=20)).isoformat(timespec="milliseconds").replace("+00:00", "Z")),
@@ -95,7 +96,7 @@ def test_worker_persists_pages_idempotently_and_advances_checkpoint():
     wazuh = FakeWazuh(alerts)
     worker = WazuhSupabaseWorker(
         rest=rest, wazuh=wazuh, tenant_id=TENANT, case_id=CASE, actor_id=ACTOR,
-        page_size=2, overlap_seconds=60, initial_since="2026-10-20T07:00:00Z",
+        page_size=2, overlap_seconds=60, initial_since=initial_since,
     )
     result = worker.run_once()
     assert result["status"] == "ok"
@@ -121,15 +122,16 @@ def test_worker_persists_pages_idempotently_and_advances_checkpoint():
 def test_worker_advances_checkpoint_after_a_successful_empty_window():
     rest = FakeRest()
     wazuh = FakeWazuh([])
+    initial_since = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     worker = WazuhSupabaseWorker(
         rest=rest, wazuh=wazuh, tenant_id=TENANT, case_id=CASE, actor_id=ACTOR,
-        page_size=10, overlap_seconds=60, initial_since="2026-10-20T07:00:00Z",
+        page_size=10, overlap_seconds=60, initial_since=initial_since,
     )
     result = worker.run_once()
     assert result["status"] == "ok"
     assert result["fetched"] == 0
     assert rest.checkpoint["last_event_timestamp"] == wazuh.calls[0]["until"]
-    assert rest.checkpoint["last_event_timestamp"] > "2026-10-20T07:00:00.000Z"
+    assert rest.checkpoint["last_event_timestamp"] > initial_since
 
 
 def test_worker_does_not_advance_checkpoint_when_a_page_fails():
