@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 import firstlight_api
 from firstlight_engine import sha256_record
 
-client = TestClient(firstlight_api.app)
+client = TestClient(firstlight_api.app, headers={"Authorization": "Bearer test-only-token-" + "x" * 40})
 
 
 @pytest.fixture(autouse=True)
