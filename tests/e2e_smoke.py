@@ -64,13 +64,16 @@ def choose_workspace(page, steps_down):
     combobox = page.get_by_role("combobox", name="Investigation workspace")
     combobox.wait_for(state="visible", timeout=10_000)
     combobox.click()
-    # Clicking the combobox only focuses it in Streamlit's React-Aria widget;
-    # ArrowDown opens the popup. Force the option click to avoid a stability
-    # retry racing the popup's immediate rerender.
+    # Open the React-Aria popup, then navigate from a known first option. Using
+    # the current selection as the starting point is flaky after a prior rerun:
+    # ArrowDown can move the selection before the option click lands.
     combobox.press("ArrowDown")
-    option = page.get_by_role("option", name=options[steps_down], exact=True)
-    option.wait_for(state="visible", timeout=10_000)
-    option.click(force=True, timeout=10_000)
+    listbox = page.get_by_role("listbox")
+    listbox.wait_for(state="visible", timeout=10_000)
+    page.keyboard.press("Home")
+    for _ in range(steps_down):
+        page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
     page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
 
 
