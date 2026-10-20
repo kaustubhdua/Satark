@@ -45,3 +45,9 @@ test('source evidence download is tenant-scoped and verifies the object digest',
   assert.match(sourceRoute, /X-Content-SHA256/);
   assert.match(page, /downloadWazuhSource/);
 });
+
+test('shared investigation proxy requires a strong backend token even for local HTTP', async () => {
+  const investigateRoute = await readFile(new URL('../src/app/api/firstlight/investigate/route.ts', import.meta.url), 'utf8');
+  assert.match(investigateRoute, /if \(!raw \|\| !token \|\| token\.length < 32\) return null/);
+  assert.doesNotMatch(investigateRoute, /url\.protocol === 'https:' && \(!token/);
+});
