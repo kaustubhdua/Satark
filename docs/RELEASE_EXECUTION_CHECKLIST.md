@@ -40,7 +40,7 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 
 ### Deployment
 - [ ] Have the Vercel account/plan owner resolve the `api-deployments-free-per-day` quota block; the direct deployment API also returned HTTP 403, so use only the authorized Git integration after the quota clears.
-- [ ] Deploy the exact current main SHA `ac602e537c4571e7c56a828c4b3038905140a883` to preview after quota clearance; record deployment ID, URL, environment, source SHA and timestamp.
+- [ ] Deploy the exact current main SHA `1e959f97d81441d80c4515709bfe5233738db804` to preview after quota clearance; record deployment ID, URL, environment, source SHA and timestamp.
 - [ ] Run desktop/mobile browser and accessibility smoke on that exact preview.
 - [ ] Promote to production only after preview validation and explicit release approval.
 - [ ] Verify the production alias maps to the deployment containing the exact approved SHA `ac602e537c4571e7c56a828c4b3038905140a883`.
