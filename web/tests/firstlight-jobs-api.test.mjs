@@ -30,6 +30,6 @@ test('worker persists findings and report before marking a deterministic job suc
   assert.match(worker, /satark_findings/);
   assert.match(worker, /satark_reports/);
   assert.match(worker, /satark_finish_investigation_job/);
-  assert.match(worker, /No live response actions are executed here/);
+  assert.match(worker, /No response actions are executed here/);
   assert.match(worker, /MAX_CASE_EVIDENCE = 500/);
 });
