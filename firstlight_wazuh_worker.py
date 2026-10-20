@@ -45,6 +45,21 @@ class SupabaseRestError(RuntimeError):
     pass
 
 
+def _safe_error_code(exc: BaseException) -> str:
+    """Return a bounded diagnostic category without logging exception payloads."""
+    if isinstance(exc, WorkerConfigurationError):
+        return "configuration_error"
+    if isinstance(exc, WazuhConnectorError):
+        return "wazuh_connector_error"
+    if isinstance(exc, SupabaseRestError):
+        return "supabase_request_error"
+    if isinstance(exc, (TimeoutError, URLError)):
+        return "network_timeout_or_unavailable"
+    if isinstance(exc, HTTPError):
+        return "http_error"
+    return "worker_error"
+
+
 def _uuid_env(name: str) -> str:
     value = os.getenv(name, "").strip().lower()
     if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", value):
@@ -361,7 +376,7 @@ class WazuhSupabaseWorker:
         except Exception as exc:
             # Leave the cursor unchanged; all event writes are duplicate-safe on retry.
             try:
-                self._save_checkpoint(cursor, count, status="error", error=str(exc))
+                self._save_checkpoint(cursor, count, status="error", error=_safe_error_code(exc))
             except Exception:
                 pass
             raise
@@ -403,7 +418,7 @@ def main() -> None:
             result = worker.run_once()
             print(json.dumps({"component": "firstlight-wazuh-worker", **result}, separators=(",", ":")))
         except Exception as exc:
-            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error": str(exc)[:1000]}, separators=(",", ":")))
+            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error_code": _safe_error_code(exc)}, separators=(",", ":")) )
             if args.once:
                 raise SystemExit(1) from exc
         if args.once:
