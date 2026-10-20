@@ -40,6 +40,9 @@ jobs:
     env:
       # Verified Vercel production alias; repository variable can override it after a domain change.
       SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL || 'https://satark-rose.vercel.app' }}
+      # Optional Vercel deployment-protection bypass scoped to this smoke workflow.
+      # Never disable SSO globally; leave empty when using a public custom domain.
+      SATARK_VERCEL_PROTECTION_BYPASS: ${{ secrets.SATARK_VERCEL_PROTECTION_BYPASS }}
     steps:
       - name: Check out current production branch revision
         uses: actions/checkout@v4
@@ -59,11 +62,19 @@ jobs:
           headers="$(mktemp)"
           trap 'rm -f "$body" "$headers"' EXIT
 
+          # Vercel can protect every *.vercel.app alias with SSO. When the owner
+          # configures a scoped bypass secret, send it only to the target smoke URL.
+          # This does not disable project-wide protection or expose the secret in output.
+          protection_args=()
+          if [[ -n "${SATARK_VERCEL_PROTECTION_BYPASS:-}" ]]; then
+            protection_args+=(--header "x-vercel-protection-bypass: ${SATARK_VERCEL_PROTECTION_BYPASS}")
+          fi
+
           check_route() {
             local route="$1"
             local marker="$2"
             local status
-            status="$(curl --silent --show-error --location --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            status="$(curl "${protection_args[@]}" --silent --show-error --location --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
             if [[ "$status" != "200" ]]; then
               echo "::error::Production route $route returned HTTP $status (expected 200)."
               exit 1
@@ -100,7 +111,7 @@ jobs:
           check_unauthenticated_api() {
             local route="$1"
             local status
-            status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+            status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
             if [[ "$status" != "401" ]]; then
               echo "::error::Unauthenticated $route returned HTTP $status (expected 401)."
               exit 1
@@ -116,7 +127,7 @@ jobs:
           check_unauthenticated_api "/api/findings"
           check_unauthenticated_api "/api/reports"
 
-          api_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
+          api_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
           if [[ "$api_status" != "405" ]]; then
             echo "::error::GET /api/analyze returned HTTP $api_status (expected 405)."
             exit 1
@@ -128,7 +139,7 @@ jobs:
           echo "PASS /api/analyze: unsupported GET rejected with 405 and no-store."
 
           # Health is a public-safe configuration snapshot, not a claim of live dependency readiness.
-          health_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/health")"
+          health_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/health")"
           if [[ "$health_status" != "200" ]]; then
             echo "::error::Production /api/health returned HTTP $health_status (expected 200)."
             exit 1
@@ -142,7 +153,7 @@ jobs:
           shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
           echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
 
-          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
+          version_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
           if [[ "$version_status" != "200" ]]; then
             echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
             exit 1
@@ -156,7 +167,7 @@ jobs:
 
           # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
           # but it is still a release blocker because the primary analysis feature is unavailable.
-          analysis_status="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
+          analysis_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
             -X POST "$base/api/analyze" -H 'Content-Type: application/json' \
             --data '{"input":"Synthetic release smoke test: an ordinary internal status update."}')"
           if [[ "$rate_mode" == "shared-upstash" && "$shared_limiter_ok" == "true" ]]; then
