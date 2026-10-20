@@ -157,10 +157,10 @@ select lives_ok(
     where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' $update$,
   'a tenant member cannot update another tenant case'
 );
-select lives_ok(
+select throws_ok(
   $delete$ delete from public.satark_cases
     where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' $delete$,
-  'a tenant member cannot delete another tenant case'
+  '42501', null, 'a tenant member cannot delete another tenant case'
 );
 select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
 select set_config('request.jwt.claims',
