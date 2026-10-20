@@ -124,3 +124,15 @@ This status describes repository-backed behavior, not planned features or unveri
 - Added a partial unique index to prevent the same Wazuh index/document identity from being inserted twice into one case by the worker and UI paths.
 
 **Still unverified:** no real Wazuh credentials or endpoint were used. The migration has been applied to the approved shared SATARK/Nirdhoom/Saathi Supabase project with SATARK-only changes; a dedicated SATARK database was not created. Latest rule-registry/container CI is pending, Vercel is blocked by its build-rate limit, and end-to-end behavior must be tested with a real authorized lab endpoint and SATARK case before production use.
+
+
+## Durable investigation queue milestone (2026-10-20)
+
+- Added a SATARK-only Postgres job table with tenant/case foreign keys, requester identity, idempotency key, retry ceiling, lease, versioned result, and SHA-256 result digest. Authenticated analysts/responders/owners may enqueue/read jobs through RLS; only the trusted service-role worker can claim or finish jobs.
+- Added atomic `FOR UPDATE SKIP LOCKED` claiming, lease expiry/reclaim, retry limits, and terminal failure when a worker's final lease expires. Completion rejects oversized results and malformed digests.
+- Applied the additive migration to the existing shared `nihdhoom` Supabase project after checking its SATARK-only scope. The live table has RLS and FORCE RLS enabled, and the expected member-read/analyst-enqueue policies are present. Migration version recorded by Supabase is `20261020031055`; the repository migration path matches it. The queue currently contains zero jobs.
+- Added `firstlight_investigation_worker.py`, a non-root worker image, and an opt-in Docker Compose profile. The worker rechecks the case and requester membership, loads bounded persisted evidence, runs deterministic investigation, writes idempotent finding/report snapshots, and marks the job successful only after persistence. It does not execute response actions and does not require Ollama for deterministic results.
+- Added authenticated Next.js `POST/GET /api/firstlight/jobs` routes. Enqueue uses a caller-provided stable idempotency key and Supabase user JWT/RLS; status reads are also user-scoped. The persistent case workspace now exposes a **Run durable investigation** action and polls the durable job state for up to one minute.
+- Added Python and web contract tests and extended FIRSTLIGHT API CI to test the job worker and build its container.
+
+**Not yet release-verified:** the new code still needs the latest GitHub Actions runs to complete. No authorized SATARK tenant/case/membership exists in the connected project, so no real job can be queued safely yet. The worker has not been deployed to a private persistent host. Live Wazuh, Ollama readiness, backup restoration, and end-to-end tenant-isolation checks remain blocked by missing authorized test infrastructure. This milestone is repository implementation plus live schema validation, not a claim of production readiness.
