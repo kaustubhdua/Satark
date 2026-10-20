@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from firstlight_wazuh_worker import WazuhSupabaseWorker
+import hashlib
+import pytest
+
+from firstlight_wazuh_worker import SupabaseRestError, SupabaseServiceRest, WazuhSupabaseWorker
 
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -67,6 +70,19 @@ class FakeWazuh:
     def fetch_alerts(self, *, limit, since, until, offset, include_source_snapshot=False):
         self.calls.append({"limit": limit, "since": since, "until": until, "offset": offset})
         return self.events[offset:offset + limit]
+
+
+def test_source_snapshot_upload_rejects_objects_over_bucket_limit_before_network_io():
+    client = SupabaseServiceRest(
+        supabase_url="https://example.supabase.co",
+        service_role_key="x" * 40,
+    )
+    snapshot = "x" * (4 * 1024 * 1024 + 1)
+    digest = hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
+    with pytest.raises(SupabaseRestError, match="4 MiB object limit"):
+        client.upload_source_snapshot(
+            tenant_id=TENANT, case_id=CASE, digest=digest, snapshot=snapshot,
+        )
 
 
 def test_worker_persists_pages_idempotently_and_advances_checkpoint():
