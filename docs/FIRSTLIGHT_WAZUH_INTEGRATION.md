@@ -14,6 +14,21 @@ and persistent case lifecycle are complete.
 
 The API preview endpoint itself **does not persist events or maintain a checkpoint**. A separate persistent worker now writes normalized alerts into an existing authorized SATARK case and records a durable cursor, provided the checkpoint migration is applied and the worker is configured. The migration has now been applied and verified on the approved nihdhoom project, which is shared with Nirdhoom and Saathi; only SATARK tables, indexes and grants were changed. The worker and live integration remain unverified against a real Wazuh server. The current private `satark-evidence` bucket has a 4 MiB per-object limit; the worker and authenticated source-download route enforce the same bound.
 
+## Local Docker Compose authentication prerequisites
+
+The local web container needs both build-time public Supabase settings and server-side settings for its authenticated API proxies. Put these in the root `.env` file before building `docker-compose.local.yml`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `FIRSTLIGHT_API_TOKEN` (generate a strong local-only token, at least 32 characters)
+- `FIRSTLIGHT_WAZUH_SYNC_TOKEN` (generate a separate strong local-only token, at least 32 characters)
+
+The Compose file supplies `FIRSTLIGHT_API_URL=http://firstlight-api:8788` on the internal network. For example, generate local-only tokens with `openssl rand -hex 32` and place their values in the root `.env`; never commit that file. The publishable Supabase key is intended for client use, but service-role credentials must remain private and must never be passed to the web container.
+
+The persistent worker profiles also require `SUPABASE_SERVICE_ROLE_KEY`, an authorized tenant/case/actor, a first-run `FIRSTLIGHT_WAZUH_INITIAL_SINCE`, and the least-privilege Wazuh Indexer settings. Leave those profiles disabled until a dedicated test tenant/case and authorized lab endpoint are ready.
+
 ## Server-side configuration
 
 Set these only in the private runtime that hosts firstlight_api.py (never in a NEXT_PUBLIC_* variable):
