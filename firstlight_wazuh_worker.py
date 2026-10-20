@@ -45,6 +45,13 @@ class SupabaseRestError(RuntimeError):
     pass
 
 
+def _retry_delay(base_seconds: int, attempt: int, maximum: int = 900) -> int:
+    """Bounded exponential retry delay; attempt numbers are one-based."""
+    if not 1 <= base_seconds <= 3600 or attempt < 1 or maximum < 1:
+        raise ValueError("retry delay inputs are out of range")
+    return min(maximum, base_seconds * (2 ** min(attempt - 1, 20)))
+
+
 def _safe_error_code(exc: BaseException) -> str:
     """Return a bounded diagnostic category without logging exception payloads."""
     if isinstance(exc, WorkerConfigurationError):
@@ -413,17 +420,22 @@ def main() -> None:
     if not 15 <= interval <= 3600:
         raise SystemExit("FIRSTLIGHT_WAZUH_POLL_SECONDS must be between 15 and 3600")
     worker = WazuhSupabaseWorker.from_env()
+    failures = 0
     while True:
         try:
             result = worker.run_once()
+            failures = 0
             print(json.dumps({"component": "firstlight-wazuh-worker", **result}, separators=(",", ":")))
+            delay = interval
         except Exception as exc:
-            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error_code": _safe_error_code(exc)}, separators=(",", ":")))
+            failures += 1
+            delay = _retry_delay(interval, failures)
+            print(json.dumps({"component": "firstlight-wazuh-worker", "status": "error", "error_code": _safe_error_code(exc), "retry_in_seconds": delay}, separators=(",", ":")))
             if args.once:
                 raise SystemExit(1) from exc
         if args.once:
             return
-        time.sleep(interval)
+        time.sleep(delay)
 
 
 if __name__ == "__main__":
