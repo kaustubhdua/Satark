@@ -21,7 +21,7 @@ Set these only in the private runtime that hosts firstlight_api.py (never in a N
 - FIRSTLIGHT_WAZUH_INDEXER_URL: HTTPS URL of the Wazuh Indexer/OpenSearch REST API, reachable from the API runtime.
 - FIRSTLIGHT_WAZUH_INDEXER_USERNAME: dedicated read-only Indexer username.
 - FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: corresponding secret.
-- FIRSTLIGHT_WAZUH_SYNC_TOKEN: independently generated random bearer token of at least 32 characters for the FIRSTLIGHT endpoint.
+- FIRSTLIGHT_WAZUH_SYNC_TOKEN: independently generated random bearer token of at least 32 characters for the FIRSTLIGHT endpoint. Set FIRSTLIGHT_API_TOKEN (also at least 32 characters) for the investigation API in every environment, including local HTTP/Docker; the web proxy fails closed if it is missing.
 - FIRSTLIGHT_WAZUH_INDEX_PATTERN: optional index pattern, default wazuh-alerts-*.
 - FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: required comma-separated allowlist of 1–100 authorized Wazuh agent IDs. Both the preview API and worker filter on this list; do not leave it empty or use a broad all-tenant agent list in a multi-tenant deployment.
 - FIRSTLIGHT_WAZUH_TIMEOUT_SECONDS: optional timeout from 1 to 30 seconds, default 8.
