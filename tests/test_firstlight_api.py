@@ -216,3 +216,28 @@ def test_health_reports_model_missing_without_exposing_runtime_configuration(mon
     assert response.status_code == 200
     assert response.json()["ollama"] == {"status": "model_missing", "model_available": False}
     assert "qwen2.5:3b" not in response.text
+
+
+
+def test_ollama_readiness_reports_configured_model_without_claiming_availability(monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "false")
+    monkeypatch.setenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b")
+    status = firstlight_api._ollama_readiness()
+    assert status["status"] == "disabled"
+    assert status["model_available"] is False
+    assert status["configured_model"] == "qwen2.5:3b"
+    assert "latency_ms" not in status
+
+
+def test_ollama_readiness_reports_installed_model_and_latency(monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "true")
+    monkeypatch.setenv("FIRSTLIGHT_OLLAMA_MODEL", "qwen2.5:3b")
+    fake = SimpleNamespace(models=SimpleNamespace(list=lambda: SimpleNamespace(data=[SimpleNamespace(id="qwen2.5:3b")])))
+    monkeypatch.setattr("ai_provider.LocalOllamaClient", lambda timeout: fake)
+    status = firstlight_api._ollama_readiness()
+    assert status["status"] == "ready"
+    assert status["model_available"] is True
+    assert status["installed_model"] == "qwen2.5:3b"
+    assert isinstance(status["latency_ms"], int)
+    assert status["latency_ms"] >= 0
