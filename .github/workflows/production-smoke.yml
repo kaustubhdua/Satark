@@ -32,6 +32,8 @@ jobs:
           set -euo pipefail
           grep -Fq "Every second matters. Every piece of evidence counts." web/src/app/page.tsx
           grep -Fq 'check_route "/" "Every second matters\. Every piece of evidence counts\."' .github/workflows/production-smoke.yml
+          grep -Fq 'Checking your secure session' web/src/app/firstlight/page.tsx
+          grep -Fq 'check_route "/firstlight" "Checking your secure session"' .github/workflows/production-smoke.yml
           grep -Fq 'SATARK_VERCEL_PROTECTION_BYPASS' .github/workflows/production-smoke.yml
           grep -Fq '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' .github/workflows/production-smoke.yml
           grep -Fq 'x-vercel-protection-bypass' .github/workflows/production-smoke.yml
@@ -115,7 +117,8 @@ jobs:
           # Match route-specific body content rather than navigation labels shared by every page.
           check_route "/" "Every second matters\. Every piece of evidence counts\."
           check_route "/investigate" "Suspicious URL or message"
-          check_route "/firstlight" "Sign in securely"
+          # FIRSTLIGHT is a client-authenticated route; SSR renders the secure-session status before browser auth redirects.
+          check_route "/firstlight" "Checking your secure session"
           check_route "/reports" "Review notes"
           check_route "/learn" "Check answers"
           check_route "/login" "Sign in securely"
