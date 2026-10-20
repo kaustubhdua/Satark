@@ -1,0 +1,4 @@
+-- Migration-history reconciliation only.
+-- The durable approval schema is defined in 202610200001_satark_durable_approvals.sql.
+-- The live shared project recorded that same schema under version 20261020035814.
+-- Keep this no-op file so the recorded version is represented without reapplying DDL.
