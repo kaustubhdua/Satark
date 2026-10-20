@@ -55,7 +55,7 @@ These results establish that the listed workflows passed on their exact PR heads
 
 Use only authorized, non-sensitive test inputs. Never paste private, signed, customer, or credential-bearing URLs into a third-party reputation provider.
 
-- [ ] Groq: one benign synthetic message; validate schema, timeout, 401/403, 429, and 5xx behavior.
+- [ ] Optional local Ollama: run one benign synthetic event with model assistance enabled; validate schema rejection, timeout, unavailable-model behavior, and safe fallback. Confirm deterministic findings still work with model agents disabled; do not add a hosted AI API-key dependency.
 - [ ] URLhaus: explicitly opted-in known test URL or safe provider-documented test fixture; verify no-match and provider unavailable behavior. Confirm the disclosure is visible before sharing.
 - [ ] AbuseIPDB: explicitly opted-in public test IP approved for this purpose; verify no-match, provider unavailable, and malformed response behavior.
 - [ ] Offline/unconfigured: confirm the UI/API reports unavailable clearly and does not imply successful verification.
