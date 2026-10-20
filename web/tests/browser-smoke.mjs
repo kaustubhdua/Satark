@@ -43,6 +43,7 @@ const browser = await chromium.launch({ headless: true });
 const routes = [
   { path: '/', heading: /SATARK|SENTINEL/i },
   { path: '/investigate', heading: /investigate|analysis|suspicious/i },
+  { path: '/url', heading: /inspect the link|URL structure review/i },
   { path: '/image-review', heading: /image review|inspect the image|image metadata/i },
   { path: '/tools', heading: /every tool|capability directory/i },
   { path: '/qr', heading: /decode first|QR investigation/i },
@@ -53,6 +54,7 @@ const routes = [
   { path: '/cases', heading: /manage saved cases|case management/i },
   { path: '/learn', heading: /learn|safety|social-engineering|pause\. verify\. then act/i },
   { path: '/login', heading: /investigations that|welcome back/i },
+  { path: '/reset-password', heading: /secure access|restored/i },
 ];
 
 async function inspectViewport(viewport, label) {
@@ -193,6 +195,30 @@ async function inspectViewport(viewport, label) {
       assert.equal(await page.getByLabel('Email address').isVisible(), true, 'workspace sign-in email must be labelled and visible');
       assert.equal(await page.getByLabel('Password').isVisible(), true, 'workspace sign-in password must be labelled and visible');
       assert.equal(await page.getByRole('button', { name: 'Sign in securely' }).isVisible(), true, 'workspace sign-in action must be accessible');
+    }
+    if (route.path === '/reset-password') {
+      await page.getByRole('alert').filter({ hasText: /recovery link is missing or expired/i }).waitFor();
+      assert.equal(new URL(page.url()).hash, '', 'invalid recovery links must not remain in the visible URL');
+      assert.equal(await page.getByRole('link', { name: /sign in/i }).count() > 0, true,
+        'password recovery must provide a route back to sign-in');
+    }
+    if (route.path === '/url') {
+      const urlInput = page.getByLabel('URL or hostname');
+      const inspectButton = page.getByRole('button', { name: /inspect URL locally/i });
+      assert.equal(await inspectButton.isDisabled(), true, 'URL inspection should be disabled for empty input');
+      await urlInput.fill('https://example.com/account?token=synthetic-secret');
+      assert.equal(await inspectButton.isDisabled(), false, 'URL inspection should enable for non-empty input');
+      await inspectButton.click();
+      await page.getByText(/not a verdict/i).waitFor();
+      const resultText = await page.locator('[aria-labelledby="url-result-heading"]').innerText();
+      assert.match(resultText, /example\.com/i);
+      assert.equal(resultText.includes('synthetic-secret'), false, 'URL query values must not be rendered in findings');
+      await urlInput.fill('javascript:alert(1)');
+      await inspectButton.click();
+      await page.getByRole('alert').filter({ hasText: /only HTTP|valid URL|unsupported/i }).waitFor();
+      await page.getByRole('button', { name: /^clear$/i }).click();
+      assert.equal(await urlInput.inputValue(), '', 'clear must reset URL input');
+      assert.equal(await page.getByRole('alert').count(), 0, 'clear must reset prior validation errors');
     }
     if (route.path === '/reports') {
       const notes = page.getByLabel('Review notes');
@@ -462,6 +488,25 @@ try {
   await inspectViewport({ width: 1440, height: 900 }, 'desktop');
   await inspectViewport({ width: 390, height: 844 }, 'mobile');
   await inspectViewport({ width: 320, height: 720 }, 'small-mobile');
+
+  // URL inspection must remain local and must never fetch submitted destinations.
+  {
+    const urlPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const externalRequests = [];
+    const origin = new URL(baseURL).origin;
+    urlPage.on('request', request => {
+      const url = new URL(request.url());
+      if (url.protocol.startsWith('http') && url.origin !== origin) externalRequests.push(url.origin);
+    });
+    await urlPage.goto(baseURL + '/url', { waitUntil: 'networkidle' });
+    await urlPage.getByLabel('URL or hostname').fill('https://example.com/login?token=synthetic-secret');
+    await urlPage.getByRole('button', { name: /inspect URL locally/i }).click();
+    await urlPage.getByText(/not a verdict/i).waitFor();
+    assert.deepEqual(externalRequests, [], 'URL inspection must not fetch or transmit submitted destinations');
+    const resultText = await urlPage.locator('[aria-labelledby="url-result-heading"]').innerText();
+    assert.equal(resultText.includes('synthetic-secret'), false, 'URL query values must not appear in visible findings');
+    await urlPage.close();
+  }
 
   // Image inspection must stay in-browser and produce a reproducible SHA-256.
   {
