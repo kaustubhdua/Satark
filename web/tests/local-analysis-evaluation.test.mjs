@@ -30,7 +30,8 @@ test('local-analysis evaluation reports confusion matrix, latency and evidence g
   assert.equal(report.metrics.evidence_grounding_ratio, 1);
   assert.deepEqual(report.false_positives, ['password-training', 'verification-documentation']);
   assert.deepEqual(report.false_negatives, []);
-  assert.ok(report.limitations.some(value => value.includes('not representative of real-world prevalence')));
+  assert.match(report.corpus_scope, /not representative of real-world prevalence/);
+  assert.ok(report.limitations.some(value => value.includes('must not be represented as production detection rates')));
 });
 
 test('evaluation rejects malformed or duplicate case definitions', () => {
