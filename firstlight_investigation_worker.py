@@ -31,6 +31,77 @@ def _digest(value: Any) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
 
 
+def _bounded_details(value: Any, max_bytes: int = 8192) -> tuple[dict[str, Any], bool]:
+    """Keep useful primitive evidence fields bounded before engine/output expansion."""
+    if not isinstance(value, dict):
+        return {}, value not in ({}, None)
+    safe: dict[str, Any] = {}
+    truncated = False
+    for key in sorted(value)[:40]:
+        item = value[key]
+        name = str(key)[:80]
+        if isinstance(item, str):
+            safe[name] = item[:512]
+            truncated = truncated or len(item) > 512
+        elif isinstance(item, bool) or isinstance(item, int):
+            safe[name] = item
+        elif isinstance(item, float):
+            import math
+            if math.isfinite(item):
+                safe[name] = item
+            else:
+                truncated = True
+        elif isinstance(item, list):
+            entries = []
+            for entry in item[:20]:
+                if isinstance(entry, str):
+                    entries.append(entry[:128])
+                    truncated = truncated or len(entry) > 128
+                elif isinstance(entry, (bool, int)):
+                    entries.append(entry)
+                elif isinstance(entry, float):
+                    import math
+                    if math.isfinite(entry):
+                        entries.append(entry)
+                else:
+                    truncated = True
+            safe[name] = entries
+            truncated = truncated or len(item) > 20
+        elif isinstance(item, dict):
+            nested: dict[str, Any] = {}
+            for child_key in sorted(item)[:30]:
+                child = item[child_key]
+                child_name = str(child_key)[:80]
+                if isinstance(child, str):
+                    nested[child_name] = child[:256]
+                    truncated = truncated or len(child) > 256
+                elif isinstance(child, (bool, int)):
+                    nested[child_name] = child
+                elif isinstance(child, float):
+                    import math
+                    if math.isfinite(child):
+                        nested[child_name] = child
+                    else:
+                        truncated = True
+                elif isinstance(child, list):
+                    nested[child_name] = [x[:128] if isinstance(x, str) else x for x in child[:20]
+                                          if isinstance(x, (str, int, bool))]
+                    truncated = True
+                else:
+                    truncated = True
+            safe[name] = nested
+            truncated = truncated or len(item) > 30
+        else:
+            truncated = True
+    truncated = truncated or len(value) > 40
+    while safe and len(_canonical(safe)) > max_bytes:
+        safe.pop(next(reversed(safe)))
+        truncated = True
+    if len(_canonical(safe)) > max_bytes:
+        return {}, True
+    return safe, truncated
+
+
 class InvestigationJobWorker:
     def __init__(self, rest: Any, lease_seconds: int = 120):
         if not 15 <= lease_seconds <= 600:
@@ -127,7 +198,7 @@ class InvestigationJobWorker:
             if not event_id or not isinstance(observed_at, str) or not observed_at:
                 raise ValueError("evidence_shape_invalid")
             browser_timestamp = str(metadata.get("browser_event_timestamp") or observed_at)
-            record = {
+            original_record = {
                 "event_id": event_id,
                 "timestamp": browser_timestamp,
                 "source": str(row.get("source_label") or "unknown")[:160],
@@ -135,12 +206,15 @@ class InvestigationJobWorker:
                 "summary": str(row.get("summary") or "")[:4096],
                 "details": details,
             }
-            normalized_digest = sha256_record(record)
+            original_digest = sha256_record(original_record)
             expected_browser_digest = str(metadata.get("browser_record_sha256") or "")
             browser_digest_valid = bool(
                 len(expected_browser_digest) == 64
-                and hmac.compare_digest(normalized_digest, expected_browser_digest)
+                and hmac.compare_digest(original_digest, expected_browser_digest)
             )
+            bounded_details, details_truncated = _bounded_details(details)
+            record = {**original_record, "details": bounded_details}
+            normalized_digest = sha256_record(record)
 
             # Version-2 database envelopes use sorted-key canonical JSON. Legacy
             # rows are not falsely labelled corrupt merely because they predate it.
@@ -209,6 +283,7 @@ class InvestigationJobWorker:
                 "source_sha256": row.get("source_sha256"),
                 "source_snapshot_status": source_snapshot_status,
                 "normalized_sha256": normalized_digest,
+                "details_truncated": details_truncated,
             })
         case = cases[0]
         investigation = investigate_case(
@@ -237,6 +312,11 @@ class InvestigationJobWorker:
                 investigation.setdefault("gaps", []).append(
                     "Source snapshot verification is " + str(source_record["source_snapshot_status"]) +
                     " for evidence " + str(source_record.get("event_id", "unknown")) + "."
+                )
+            if source_record.get("details_truncated"):
+                investigation.setdefault("gaps", []).append(
+                    "Some evidence fields were bounded before deterministic analysis for evidence " +
+                    str(source_record.get("event_id", "unknown")) + "."
                 )
             if source_record.get("browser_record_hash_status") != "verified":
                 investigation.setdefault("gaps", []).append(
