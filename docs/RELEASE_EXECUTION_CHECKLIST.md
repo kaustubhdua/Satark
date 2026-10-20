@@ -10,11 +10,12 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 - PR #159 evidence-storage policy fix merged; CI, CodeQL, isolated migration validation, tenant-isolation integration and browser/accessibility smoke passed on its PR head.
 - PR #161 migration-history reconciliation, PR #164 duplicate-migration removal, PR #167 object-key regression coverage, PR #168 SATARK foreign-key support indexes, and PR #170 local Compose Supabase auth configuration are merged; recorded checks passed on their respective PR heads. On PR #170, the tenant-isolation job succeeded but skipped the live-account test step.
 - PR #164 removed the unrecorded duplicate `20261020043000` migration. PR #173 fixed empty-window checkpoint advancement; PR #174 added the SATARK policy-rebind migration `20261020051000`; PR #177 added cross-tenant read/write tests; PR #178 added policy contract tests and the production-smoke marker guard; PR #180 added worker membership revalidation around privileged writes. Exact-head isolated migration validation passed for PRs #174, #177 and #178, and PR #180's FIRSTLIGHT API CI passed.
-- Latest code baseline reviewed is `1acf9e1392f3d0110f01cf1a2eed7a4a70946894`; current `main` is `ac602e537c4571e7c56a828c4b3038905140a883`, a docs-only release-evidence refresh on top of it. FIRSTLIGHT API CI passed for the code baseline; current-main CI and CodeQL are queued after the docs-only merge.
+- Latest runtime-code baseline reviewed is `1acf9e1392f3d0110f01cf1a2eed7a4a70946894`; subsequent main merges #181 and #182 were docs-only. FIRSTLIGHT API CI passed for the code baseline; a main CI run was cancelled during the docs-only merges, so obtain a fresh successful CI result for `git rev-parse origin/main` before release.
 - The live SATARK tables still have zero tenants, cases, memberships, evidence records, jobs, and approvals. A read-only policy audit finds six non-storage policies on approvals, case notes, and investigation jobs still calling the revoked public membership wrapper; PR #174 fixes these in repository code, but the new migration is not yet applied to the hosted database.
 - Live migration history records `20261018114039`, `20261020042449` and `20261020044018`; versions `202610200004`, `20261020042000`, `20261020050000`, and the new `20261020051000` migration need the guarded runbook procedure. A read-only index check confirmed the five SATARK support indexes from `20261020050000_satark_foreign_key_support_indexes.sql` are absent. The unrecorded `20261020043000` migration file was removed by PR #164 and should not be repaired. Follow [the migration repair runbook](SUPABASE_MIGRATION_HISTORY_REPAIR.md) and use the linked Supabase CLI from a trusted environment.
 - The latest known READY production deployment is `dpl_4HRahKGhrAGeEKQdqB2AhRcH4GUJ` at source SHA `1b6a2dee26498ef6eef5f28ba58062264ff98d07`, aliased as `satark-rose.vercel.app` and `satark-jyc-website.vercel.app`. It predates the worker fix in PR #180 and current main `ac602e537c4571e7c56a828c4b3038905140a883`.
 - Vercel has reported HTTP 402 `api-deployments-free-per-day` (more than 100 deployments in 24 hours), and the connected deployment API has separately returned HTTP 403 for deployment permission. Resolve the quota/permission through the project owner; do not bypass permissions, limits, or billing/security settings.
+- The last production smoke run `39375823346` failed because the live `/` response did not contain the expected homepage marker. Treat the production alias as unverified until the exact approved SHA is deployed and the smoke workflow passes.
 - The connected Vercel runtime-error API returned 403. Production runtime error inspection remains unavailable.
 - A names/targets-only Vercel environment inventory found no `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN`, Wazuh Indexer endpoint/credentials, or worker service-role configuration. Existing secret values were not decrypted. Provision the required server-side configuration through the project owner before attempting live connector tests.
 - No authorized Wazuh endpoint/credentials, SATARK test tenant/case/actor, or private persistent worker host is configured. Real end-to-end ingestion and recovery are therefore not verified.
@@ -24,7 +25,7 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 ### Source and migrations
 - [x] PR #164 object-key contract and regression tests are merged with required checks passing.
 - [x] PR #173 empty-window checkpoint fix and PR #180 Wazuh worker membership-revalidation fix are merged; PR #174's policy-rebind migration and PR #177/#178 security-contract tests passed isolated migration validation before merge.
-- [ ] Confirm current-main CI and CodeQL finish successfully on `ac602e537c4571e7c56a828c4b3038905140a883` before treating it as the release candidate.
+- [ ] Record `git rev-parse origin/main`; confirm CI and CodeQL finish successfully for that exact SHA before treating it as the release candidate.
 - [ ] Run `supabase migration list --linked` from the trusted, correctly linked checkout.
 - [ ] Repair only versions `202610200004` and `20261020042000` as applied, following the runbook; verify the linked list afterward.
 - [ ] Confirm `supabase db push --dry-run --linked` shows exactly `20261020050000_satark_foreign_key_support_indexes.sql` and `20261020051000_satark_rebind_membership_policies.sql` pending in version order; stop if any other migration appears, then apply only those two SATARK-only migrations.
@@ -40,10 +41,10 @@ Candidate repository: `kaustubhdua/Satark`, branch `main`.
 
 ### Deployment
 - [ ] Have the Vercel account/plan owner resolve the `api-deployments-free-per-day` quota block; the direct deployment API also returned HTTP 403, so use only the authorized Git integration after the quota clears.
-- [ ] Deploy the exact current main SHA `ac602e537c4571e7c56a828c4b3038905140a883` to preview after quota clearance; record deployment ID, URL, environment, source SHA and timestamp.
+- [ ] Deploy the exact current main SHA from `git rev-parse origin/main` to preview after quota clearance; record deployment ID, URL, environment, source SHA and timestamp.
 - [ ] Run desktop/mobile browser and accessibility smoke on that exact preview.
 - [ ] Promote to production only after preview validation and explicit release approval.
-- [ ] Verify the production alias maps to the deployment containing the exact approved SHA `ac602e537c4571e7c56a828c4b3038905140a883`.
+- [ ] Verify the production alias maps to the deployment containing the exact approved SHA recorded above.
 - [ ] Inspect runtime errors and request logs using authorized project access.
 - [ ] Verify environment-variable names and scopes without printing secrets; ensure server-only tokens are never exposed via `NEXT_PUBLIC_*` variables.
 
