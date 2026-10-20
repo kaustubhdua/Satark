@@ -7,7 +7,7 @@ Last reviewed: 2026-10-20 UTC
 ## Candidate and deployment identity
 
 - Canonical repository: [kaustubhdua/Satark](https://github.com/kaustubhdua/Satark)
-- Latest main revision observed during this review: `a48869941d5ca277a4499a86e93907fdfa1b18e8` (PR #164 removed the unrecorded duplicate storage-policy migration). PR #164's CI, Web CI, CodeQL and isolated migration validation passed on its head.
+- Latest main revision observed during this review: `cf5be5927a572999841741e1129019b4f7823628` (PR #167 added the strict upload-key contract assertion after PR #164 removed the duplicate migration). PRs #164 and #167 passed their required CI/Web CI/CodeQL checks.
 - Production deployment: `dpl_5ounvL24fTLUDLMV7pAYGs2Avg4V`, source SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`, target `production`, URL `satark-r5lhz4upy-jyc-website.vercel.app`. This is older than current main.
 - Latest available preview: `dpl_FwE4x7KHmi6awKAzLCCXUE5rq3nW`, branch `feat/firstlight-wazuh-rebased`, SHA `a6ad65ea910c40362bb9005febb447893776002f`, state READY, target `null`. This is a preview, not proof that main is deployed.
 - Deployment attempt for current main was rejected by Vercel with HTTP 402 `api-deployments-free-per-day`, retry-after 86400 seconds. Do not bypass billing/rate limits or change project settings automatically.
@@ -21,6 +21,7 @@ Last reviewed: 2026-10-20 UTC
 - PR #159 (SATARK evidence-storage policy helper): merged; CI, CodeQL, isolated migration validation, tenant-isolation integration, and browser/accessibility smoke passed on its PR head.
 - PR #161 (storage migration history): merged; CI, CodeQL, and isolated migration validation passed on its validated head.
 - PR #164 (remove unrecorded storage-policy migration duplicate and strengthen object-key regression coverage): CI, Web CI, CodeQL, and isolated migration validation passed on its exact head.
+- PR #167 (strict evidence upload object-key contract): CI, Web CI and CodeQL passed and the test-only PR is merged.
 - These are PR-head checks, not proof that the current production deployment runs that SHA.
 
 ## Verified hosted database facts
