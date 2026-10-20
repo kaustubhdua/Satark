@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import os
 
+import pytest
 from fastapi.testclient import TestClient
 
 import firstlight_api
 from firstlight_engine import sha256_record
 
 client = TestClient(firstlight_api.app)
+
+
+@pytest.fixture(autouse=True)
+def require_api_token(monkeypatch):
+    # All ordinary endpoint tests exercise the same fail-closed auth posture as deployment.
+    monkeypatch.setenv("FIRSTLIGHT_API_TOKEN", "test-only-token-" + "x" * 40)
 
 
 def evidence(event_id: str, summary: str = "Routine application notice", kind: str = "notice") -> dict:
