@@ -12,7 +12,7 @@ and persistent case lifecycle are complete.
 4. Alerts are normalized to stable event IDs and include source/index/document provenance plus a SHA-256 digest of the indexed source record.
 5. The authenticated FIRSTLIGHT endpoint returns one bounded page for integration testing.
 
-The API preview endpoint itself **does not persist events or maintain a checkpoint**. A separate persistent worker now writes normalized alerts into an existing authorized SATARK case and records a durable cursor, provided the checkpoint migration is applied to the correct dedicated SATARK database and the worker is configured. The worker and live integration remain unverified against a real Wazuh server.
+The API preview endpoint itself **does not persist events or maintain a checkpoint**. A separate persistent worker now writes normalized alerts into an existing authorized SATARK case and records a durable cursor, provided the checkpoint migration is applied and the worker is configured. The migration has now been applied and verified on the approved nihdhoom project, which is shared with Nirdhoom and Saathi; only SATARK tables, indexes and grants were changed. The worker and live integration remain unverified against a real Wazuh server.
 
 ## Server-side configuration
 
@@ -59,9 +59,9 @@ The connector tests use mocked HTTP responses; they do not require a live Wazuh 
 - [ ] Provision an isolated Wazuh lab and enroll only an authorized test endpoint.
 - [ ] Verify the exact Indexer endpoint, TLS trust, role permissions and credentials.
 - [ ] Run the API endpoint against real, benign test alerts.
-- [ ] Add durable checkpointing, duplicate-safe storage and retry/recovery behavior.
-- [ ] Persist raw source artifacts and canonical event records in the existing approved storage with verified tenant-scoped authorization.
-- [ ] Add a worker or scheduled poller on a persistent runtime; do not rely on a Vercel request to poll continuously.
+- [ ] Validate durable checkpointing, duplicate-safe storage and retry/recovery behavior with a controlled live Wazuh event.
+- [ ] Verify raw source artifact persistence and canonical event records end-to-end with verified tenant-scoped authorization.
+- [ ] Deploy and verify the worker on a private persistent runtime; do not rely on a Vercel request to poll continuously.
 - [ ] Add end-to-end tests for source alert → connector → persistent case → investigation → report.
 - [ ] Verify production deployment SHA and run an authorized smoke test.
 - [ ] Keep live response disabled until the durable approval and response adapter have been separately audited and tested.
@@ -73,8 +73,8 @@ The worker is intended to run on a persistent private host, separate from Vercel
 
 Before enabling it:
 
-1. Verify the exact Supabase project is the dedicated SATARK database. Do not apply this migration to the unrelated JYC website or a shared/mixed-purpose project.
-2. Review and apply supabase/migrations/202610210001_satark_wazuh_ingestion_checkpoints.sql to that isolated project only after validating the existing SATARK schema and policies.
+1. The approved target is Supabase project `nihdhoom` (project ref `igqgtlmnwssjaoxkkzbm`), a shared project. The migration was applied only after inspecting the SATARK schema, migration history, foreign keys, existing Wazuh evidence and index-name conflicts. No Nirdhoom or Saathi tables were altered.
+2. The migration `supabase/migrations/202610210001_satark_wazuh_ingestion_checkpoints.sql` is applied and verified. The checkpoint table has forced RLS, no policies, and no `anon` or `authenticated` privileges; it is intentionally service-role-only. Supabase's RLS-without-policy lint finding is expected for this private table.
 3. Create or select an existing case in the target tenant, and verify the configured actor is an owner, responder or analyst in that tenant.
 4. Supply the following private environment variables to the persistent worker:
    - SUPABASE_URL
@@ -93,10 +93,10 @@ The worker explicitly verifies the target case/tenant and the actor's membership
 ## What remains unverified
 
 - No live Wazuh host, Indexer credentials, Supabase credentials or authorized test endpoint were available to this change.
-- The new SQL migration has not been applied to a database; tenant isolation and database audit behavior must be validated against an isolated SATARK project.
+- The SQL migration has been applied to the approved shared `nihdhoom` project after schema inspection. The checkpoint table and duplicate-protection index are verified; tenant isolation and database audit behavior still need a controlled live test using authorized test identities.
 - The worker's mocked tests do not prove real Wazuh field mappings, indexer role permissions, TLS trust, Supabase schema compatibility or production availability.
 - The Next.js UI does not yet provide a dedicated Wazuh source setup/status panel.
-- The integration is not production-ready until CI passes, the migration is safely validated, a benign live alert is ingested, and recovery/authorization tests pass.
+- The integration is not production-ready until CI passes, a benign live alert is ingested, and recovery/authorization tests pass.
 
 
 ## Next.js workspace integration
