@@ -14,7 +14,7 @@ A read-only `list_migrations` check on 2026-10-20 showed:
 - `20261020042000` — `satark_storage_policy_private_helper_rebind`: **not recorded**.
 - `20261020043000` — `satark_storage_insert_policy_private_helper_rebind`: **not recorded**.
 
-The canonical policy SQL is already recorded as `20261020044018`. The repository files for `20261020042000` and `20261020043000` are no-ops because they are superseded and older than the canonical applied migration. Version `202610200004` is also absent remotely; its helper/policy effects are superseded by migrations `202610200003`, `20261020042449`, and `20261020044018`. The live schema was verified to have the intended final policies, so the history repair should mark `202610200004` as applied without executing its older policy SQL. This keeps the final policy from being weakened by an out-of-order push.
+The canonical policy SQL is already recorded as `20261020044018`. The repository files for `20261020042000` and `20261020043000` are no-ops because they are superseded and older than the canonical applied migration. Version `202610200004` is also absent remotely. Its helper ACL effects are already present in the live schema after the recorded `20261018114039` membership-helper isolation migration; its older storage-policy definitions are superseded by the recorded `20261020042449` and `20261020044018` migrations. The live schema was verified to have the intended final policies, so the history repair should mark `202610200004` as applied without executing its older policy SQL. This keeps the final policy from being weakened by an out-of-order push.
 
 ## Required operator procedure
 
