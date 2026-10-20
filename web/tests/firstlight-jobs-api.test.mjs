@@ -6,6 +6,7 @@ const route = await readFile(new URL('../src/app/api/firstlight/jobs/route.ts', 
 const migration = await readFile(new URL('../../supabase/migrations/20261020031055_satark_investigation_jobs.sql', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../../firstlight_investigation_worker.py', import.meta.url), 'utf8');
 const auditMigration = await readFile(new URL('../../supabase/migrations/20261020031618_satark_investigation_job_audit.sql', import.meta.url), 'utf8');
+const caseWorkflowMigration = await readFile(new URL('../../supabase/migrations/20261020032710_satark_case_assignment_notes.sql', import.meta.url), 'utf8');
 
 test('durable job API authenticates users and validates tenant/case/idempotency inputs', () => {
   assert.match(route, /\/auth\/v1\/user/);
@@ -41,4 +42,15 @@ test('job state transitions append to the existing tenant audit hash chain', () 
   assert.match(auditMigration, /extensions\.digest/);
   assert.match(auditMigration, /investigation_job\.status_changed/);
   assert.match(auditMigration, /revoke all on function public\.satark_audit_investigation_job\(\) from public, anon, authenticated/i);
+});
+
+test('case assignment is tenant-bound and analyst notes are append-only', () => {
+  assert.match(caseWorkflowMigration, /assigned_to uuid references auth\.users/i);
+  assert.match(caseWorkflowMigration, /case assignee must be an owner, responder, or analyst in the same tenant/);
+  assert.match(caseWorkflowMigration, /old\.assigned_to is not distinct from new\.assigned_to/i);
+  assert.match(caseWorkflowMigration, /create table if not exists public\.satark_case_notes/i);
+  assert.match(caseWorkflowMigration, /force row level security/i);
+  assert.match(caseWorkflowMigration, /grant select,insert on public\.satark_case_notes to authenticated/i);
+  assert.match(caseWorkflowMigration, /case\.note_added/);
+  assert.doesNotMatch(caseWorkflowMigration, /grant .*update.*public\.satark_case_notes/i);
 });
