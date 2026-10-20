@@ -6,6 +6,7 @@ rules. It performs no live collection or real response actions.
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import os
