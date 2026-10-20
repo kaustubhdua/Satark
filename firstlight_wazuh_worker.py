@@ -313,15 +313,19 @@ class WazuhSupabaseWorker:
         source_hash = str(provenance.get("source_record_sha256", ""))
         if not isinstance(snapshot, str) or not snapshot:
             raise SupabaseRestError("Wazuh source snapshot was not returned; refusing digest-only evidence persistence")
+        if not re.fullmatch(r"[0-9a-f]{64}", source_hash):
+            raise SupabaseRestError("Wazuh event did not contain a valid source-record digest")
+
+        # Validate all normalized fields before uploading the immutable source
+        # object. Otherwise a malformed timestamp or empty summary can leave an
+        # orphaned object in Storage without a corresponding evidence row.
+        record = self._event_record(event, "")
+        if not record["summary"]:
+            raise SupabaseRestError("Wazuh event had no usable summary")
         source_path = self.rest.upload_source_snapshot(
             tenant_id=self.tenant_id, case_id=self.case_id, digest=source_hash, snapshot=snapshot,
         )
-        record = self._event_record(event, source_path)
-        if not record["summary"]:
-            raise SupabaseRestError("Wazuh event had no usable summary")
-        source_hash = str(event.get("provenance", {}).get("source_record_sha256", ""))
-        if len(source_hash) != 64 or any(ch not in "0123456789abcdef" for ch in source_hash):
-            raise SupabaseRestError("Wazuh event did not contain a valid source-record digest")
+        record["metadata"]["source_object_path"] = source_path
         body = {**record, "source_sha256": source_hash, "record_sha256": _canonical_hash(record)}
         self.rest.request(
             "POST", "satark_evidence",
