@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-from firstlight_investigation_worker import InvestigationJobWorker
+from firstlight_investigation_worker import InvestigationJobWorker, _bounded_details
 
 TENANT = "11111111-1111-4111-8111-111111111111"
 CASE = "22222222-2222-4222-8222-222222222222"
@@ -40,12 +40,15 @@ def _event():
 class FakeRest:
     def __init__(self, *, member=True, evidence=None):
         self.member = member
+        self.snapshot_valid = True
         self.evidence = [_event()] if evidence is None else evidence
         self.finished = []
         self.findings = []
         self.reports = []
         self.job = {"id": JOB, "tenant_id": TENANT, "case_id": CASE, "requested_by": ACTOR,
                     "attempts": 1, "max_attempts": 3, "run_version": "1.0"}
+    def verify_source_snapshot(self, *, tenant_id, case_id, path, digest):
+        return self.snapshot_valid
     def request(self, method, table, *, query=None, body=None, prefer=None):
         if method == "POST" and table == "rpc/satark_claim_investigation_job":
             return [self.job]
@@ -95,3 +98,30 @@ def test_worker_does_not_claim_when_queue_is_empty():
                 return []
             return super().request(method, table, query=query, body=body, prefer=prefer)
     assert InvestigationJobWorker(Empty()).run_once() == {"status": "idle"}
+
+def test_worker_flags_mismatched_preserved_source_snapshot_as_an_evidence_gap():
+    rest = FakeRest()
+    row = _event()
+    row["metadata"].update({
+        "persisted_by_worker": True,
+        "source_object_path": f"{TENANT}/{CASE}/wazuh/{'a' * 64}.json",
+    })
+    rest.evidence = [row]
+    rest.snapshot_valid = False
+    outcome = InvestigationJobWorker(rest).run_once()
+    assert outcome["status"] == "succeeded"
+    result = rest.finished[0]["p_result"]
+    assert result["evidence_provenance"][0]["source_snapshot_status"] == "mismatch"
+    assert any("Source snapshot verification is mismatch" in gap for gap in result["investigation"]["gaps"])
+
+
+def test_worker_bounds_nested_evidence_details_and_reports_the_gap():
+    details, truncated = _bounded_details({
+        "rule_level": 12,
+        "command": "x" * 20000,
+        "nested": {"field": "y" * 1000},
+    })
+    assert truncated is True
+    assert details["rule_level"] == 12
+    assert len(json.dumps(details, separators=(",", ":"), ensure_ascii=False).encode()) <= 8192
+    assert len(details["command"]) == 512
