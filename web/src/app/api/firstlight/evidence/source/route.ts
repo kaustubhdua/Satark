@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DIGEST = /^[0-9a-f]{64}$/;
-const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 4 * 1024 * 1024;
 
 function reply(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         size += value.byteLength;
         if (size > MAX_SOURCE_BYTES) {
           void reader.cancel().catch(() => undefined);
-          return reply({ error: 'The source object exceeds the configured 10 MiB limit.' }, 502);
+          return reply({ error: 'The source object exceeds the configured 4 MiB bucket limit.' }, 502);
         }
         chunks.push(value);
       }
