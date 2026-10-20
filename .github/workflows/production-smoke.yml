@@ -162,6 +162,12 @@ jobs:
             echo "::error::Production browser/server Supabase configuration is missing or mismatched; expected the verified SATARK project igqgtlmnwssjaoxkkzbm."
             exit 1
           fi
+          if ! jq -e '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' "$body" >/dev/null; then
+            echo "::error::Production FIRSTLIGHT proxies are not configured with a safe backend URL and strong server-side tokens."
+            exit 1
+          fi
+          echo "PASS /api/health: FIRSTLIGHT investigation and Wazuh proxy configuration is present."
+
           rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
           shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
           echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
