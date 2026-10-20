@@ -91,11 +91,11 @@ select set_config('request.jwt.claims',
   '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 
 select lives_ok(
-  $insert into storage.objects (bucket_id, name, owner, metadata)
+  $insert$ into storage.objects (bucket_id, name, owner, metadata)
     values ('satark-evidence',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/cccccccc-cccc-4ccc-8ccc-cccccccccccc/own.txt',
       '11111111-1111-4111-8111-111111111111',
-      '{"mimetype":"text/plain","size":1}'::jsonb)$,
+      '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
   'a tenant member can upload evidence to their own case'
 );
 select is((select count(*)::integer from storage.objects
@@ -107,11 +107,11 @@ select is((select count(*)::integer from storage.objects
     and name='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/foreign.txt'),
   0, 'a tenant member cannot read another tenant storage object');
 select throws_ok(
-  $insert into storage.objects (bucket_id, name, owner, metadata)
+  $insert$ into storage.objects (bucket_id, name, owner, metadata)
     values ('satark-evidence',
       'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/dddddddd-dddd-4ddd-8ddd-dddddddddddd/forbidden.txt',
       '11111111-1111-4111-8111-111111111111',
-      '{"mimetype":"text/plain","size":1}'::jsonb)$,
+      '{"mimetype":"text/plain","size":1}'::jsonb)$insert$,
   '42501', null, 'a tenant member cannot upload evidence into another tenant'
 );
 select is((select count(*)::integer from public.satark_cases
@@ -177,35 +177,35 @@ select throws_ok(
   'a tenant member cannot create a case in another tenant'
 );
 select throws_ok(
-  $insert into public.satark_evidence
+  $insert$ into public.satark_evidence
     (tenant_id, case_id, source_label, event_kind, observed_at, summary, record_sha256, created_by)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'forbidden.txt', 'note', now(),
-      'cross-tenant evidence', repeat('f',64), '11111111-1111-4111-8111-111111111111')$,
+      'cross-tenant evidence', repeat('f',64), '11111111-1111-4111-8111-111111111111')$insert$,
   '42501', null, 'a tenant member cannot insert evidence in another tenant'
 );
 select throws_ok(
-  $insert into public.satark_findings
+  $insert$ into public.satark_findings
     (tenant_id, case_id, finding_key, title, severity, detail, created_by)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'forbidden-finding', 'Forbidden', 'low',
-      'cross-tenant finding', '11111111-1111-4111-8111-111111111111')$,
+      'cross-tenant finding', '11111111-1111-4111-8111-111111111111')$insert$,
   '42501', null, 'a tenant member cannot insert findings in another tenant'
 );
 select throws_ok(
-  $insert into public.satark_reports
+  $insert$ into public.satark_reports
     (tenant_id, case_id, title, snapshot, snapshot_sha256, created_by)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'Forbidden report', '{"test":true}'::jsonb,
-      repeat('f',64), '11111111-1111-4111-8111-111111111111')$,
+      repeat('f',64), '11111111-1111-4111-8111-111111111111')$insert$,
   '42501', null, 'a tenant member cannot insert reports in another tenant'
 );
 select throws_ok(
-  $insert into public.satark_audit_events
+  $insert$ into public.satark_audit_events
     (tenant_id, case_id, actor_id, action, details, event_hash)
     values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-      '11111111-1111-4111-8111-111111111111', 'forged.audit', '{}'::jsonb, repeat('e',64))$$,
+      '11111111-1111-4111-8111-111111111111', 'forged.audit', '{}'::jsonb, repeat('e',64))$insert$,
   '42501', null,
   'a tenant member cannot forge audit events'
 );
