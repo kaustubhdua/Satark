@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "snapshot": {
+    "repository": "kaustubhdua/Satark",
+    "ref": "main",
+    "commit": "1f939064760c3c2410cc7435bec273c4235b80fb",
+    "capturedAt": "2026-10-20",
+    "kind": "static-baseline-not-runtime-health"
+  },
+  "statusVocabulary": [
+    "configured",
+    "healthy",
+    "degraded",
+    "disabled",
+    "unverified",
+    "partially_wired",
+    "simulated"
+  ],
+  "rule": "Do not report healthy without a timestamped successful real dependency check. Static source presence never implies configured or healthy.",
+  "capabilities": [
+    {
+      "id": "web-ui",
+      "name": "Next.js web UI",
+      "status": "partially_wired",
+      "evidence": [
+        "web/src/app"
+      ],
+      "healthCheck": null,
+      "blocker": "Audit every visible action and verify deployed browser behavior."
+    },
+    {
+      "id": "api-routes",
+      "name": "Next.js API routes",
+      "status": "partially_wired",
+      "evidence": [
+        "web/src/app/api"
+      ],
+      "healthCheck": null,
+      "blocker": "Run authenticated and unauthenticated route tests against deployed commit."
+    },
+    {
+      "id": "browser-session",
+      "name": "Server-managed HttpOnly browser session",
+      "status": "partially_wired",
+      "evidence": [
+        "web/src/app/api/auth/session/route.ts",
+        "web/src/lib/satark-auth.ts"
+      ],
+      "healthCheck": null,
+      "blocker": "Remove JavaScript-readable access/refresh token persistence and migrate all browser callers."
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase database and auth",
+      "status": "unverified",
+      "evidence": [
+        "supabase/migrations",
+        "docs/SUPABASE_MIGRATION_HISTORY_REPAIR.md"
+      ],
+      "healthCheck": null,
+      "blocker": "Shared project migration history and three pending SATARK migrations require operator-reviewed dry-run."
+    },
+    {
+      "id": "tenant-isolation",
+      "name": "Tenant isolation / RLS",
+      "status": "partially_wired",
+      "evidence": [
+        "supabase/tests",
+        "web/tests/tenant-isolation.integration.test.mjs"
+      ],
+      "healthCheck": null,
+      "blocker": "Dedicated non-production project integration tests must pass; skipped tests do not count."
+    },
+    {
+      "id": "evidence-integrity",
+      "name": "Evidence storage and verification",
+      "status": "partially_wired",
+      "evidence": [
+        "evidence_engine.py",
+        "web/src/app/api/evidence"
+      ],
+      "healthCheck": null,
+      "blocker": "Verify real object policies, immutable finalization, export manifest and hash chain."
+    },
+    {
+      "id": "wazuh-connector",
+      "name": "Wazuh manager connector",
+      "status": "unverified",
+      "evidence": [
+        "firstlight_wazuh.py",
+        "web/src/app/api/firstlight/wazuh/alerts/route.ts"
+      ],
+      "healthCheck": null,
+      "blocker": "No verified manager connectivity or enrolled Windows and Linux endpoint evidence."
+    },
+    {
+      "id": "wazuh-ingestion",
+      "name": "Durable Wazuh ingestion",
+      "status": "partially_wired",
+      "evidence": [
+        "firstlight_ingest.py",
+        "firstlight_wazuh_worker.py",
+        "supabase/migrations/20261020023851_satark_wazuh_ingestion_checkpoints.sql"
+      ],
+      "healthCheck": null,
+      "blocker": "Prove checkpointing, deduplication, retries, tenant attribution and restart recovery with live events."
+    },
+    {
+      "id": "detection",
+      "name": "Deterministic detection and alerting",
+      "status": "partially_wired",
+      "evidence": [
+        "firstlight_rules.py",
+        "docs/FIRSTLIGHT_DETECTION_RULES.md"
+      ],
+      "healthCheck": null,
+      "blocker": "Validate Sigma/field mapping, positive-negative corpus, correlation and real notification acknowledgements."
+    },
+    {
+      "id": "investigation-jobs",
+      "name": "Persistent investigation workers",
+      "status": "partially_wired",
+      "evidence": [
+        "firstlight_investigation_worker.py",
+        "supabase/migrations/20261020031055_satark_investigation_jobs.sql"
+      ],
+      "healthCheck": null,
+      "blocker": "Prove durable retries and safe restart recovery on dedicated non-production environment."
+    },
+    {
+      "id": "ai-inference",
+      "name": "FIRSTLIGHT AI inference",
+      "status": "unverified",
+      "evidence": [
+        "ai_provider.py",
+        "ai/service/app.py",
+        "ai/service/engine.py"
+      ],
+      "healthCheck": null,
+      "blocker": "No recent real local-model health result or representative benchmark recorded."
+    },
+    {
+      "id": "response-actions",
+      "name": "Real response and containment",
+      "status": "simulated",
+      "evidence": [
+        "integrations/response_actions.py",
+        "docs/FIRSTLIGHT_LIVE_RESPONSE.md"
+      ],
+      "healthCheck": null,
+      "blocker": "Treat success as simulated until a provider action and independent resulting-state verification are proven; high-impact actions disabled."
+    },
+    {
+      "id": "reports",
+      "name": "Persisted evidence-based reporting",
+      "status": "partially_wired",
+      "evidence": [
+        "reports.py",
+        "web/src/app/api/reports/route.ts"
+      ],
+      "healthCheck": null,
+      "blocker": "Prove deterministic report regeneration from persisted evidence/findings and software/rule versions."
+    },
+    {
+      "id": "threat-intelligence",
+      "name": "Threat intelligence enrichment",
+      "status": "partially_wired",
+      "evidence": [
+        "threat_intel.py"
+      ],
+      "healthCheck": null,
+      "blocker": "Provider configuration, provenance, license, freshness and confidence unverified."
+    },
+    {
+      "id": "observability",
+      "name": "Runtime health and operational metrics",
+      "status": "partially_wired",
+      "evidence": [
+        "web/src/app/api/health/route.ts",
+        "web/src/app/api/version/route.ts"
+      ],
+      "healthCheck": null,
+      "blocker": "Health must reflect real dependency checks, checkedAt, reason codes, backlog and freshness."
+    },
+    {
+      "id": "ci-release-gate",
+      "name": "CI and production release gate",
+      "status": "partially_wired",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/production-smoke.yml",
+        ".github/workflows/supabase-local-validation.yml"
+      ],
+      "healthCheck": null,
+      "blocker": "Fail closed if required checks are skipped, stale, missing secrets or target a different commit."
+    },
+    {
+      "id": "production-deployment",
+      "name": "Vercel production deployment",
+      "status": "unverified",
+      "evidence": [
+        "docs/RELEASE_EVIDENCE_2026-10-20.md"
+      ],
+      "healthCheck": null,
+      "blocker": "Vercel access/quota previously blocked deployment; verify deployed SHA and smoke tests after access is restored."
+    }
+  ]
+}
