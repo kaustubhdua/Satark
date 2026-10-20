@@ -14,7 +14,12 @@ From the repository root:
 
 ```bash
 docker compose -f docker-compose.local.yml up --build -d
-docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b\ndocker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5vl:3b
+
+# Download the default local text model used by SATARK/FIRSTLIGHT.
+docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
+
+# Optional: download a vision-capable model for image analysis.
+docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5vl:3b
 ```
 
 Open http://127.0.0.1:3000 for the Next.js workspace or http://127.0.0.1:8501 for the Streamlit workspace. Both apps and Ollama communicate over a private Docker network; the web UIs are published only on host loopback, and Ollama has no published host port. The first model pull requires internet access to download model files, but it does not require an API key. After the model is downloaded, inference runs locally. You may choose another model only after reviewing its license, hardware needs, and model-card limitations.
