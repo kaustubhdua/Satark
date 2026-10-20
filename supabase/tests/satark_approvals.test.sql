@@ -42,19 +42,19 @@ insert into public.satark_approvals (
 ) values
   ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-   'isolate-host', '{"host_id":"host-1"}'::jsonb, repeat('a',64),
+   'simulation.isolate-host', '{"mode":"simulation","host_id":"host-1"}'::jsonb, repeat('a',64),
    'pending', '11111111-1111-4111-8111-111111111111', now() + interval '30 minutes'),
   ('ffffffff-ffff-4fff-8fff-ffffffffffff',
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-   'revoke-session', '{"user_id":"user-1"}'::jsonb, repeat('b',64),
+   'simulation.revoke-session', '{"mode":"simulation","user_id":"user-1"}'::jsonb, repeat('b',64),
    'pending', '11111111-1111-4111-8111-111111111111', now() - interval '1 minute'),
   ('99999999-9999-4999-8999-999999999999',
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-   'disable-account', '{"user_id":"user-2"}'::jsonb, repeat('c',64),
+   'simulation.disable-account', '{"mode":"simulation","user_id":"user-2"}'::jsonb, repeat('c',64),
    'pending', '11111111-1111-4111-8111-111111111111', now() + interval '30 minutes'),
   ('77777777-7777-4777-8777-777777777777',
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-   'isolate-host', '{"host_id":"foreign"}'::jsonb, repeat('2',64),
+   'simulation.isolate-host', '{"mode":"simulation","host_id":"foreign"}'::jsonb, repeat('2',64),
    'pending', '44444444-4444-4444-8444-444444444444', now() + interval '30 minutes');
 
 select ok(not has_function_privilege('authenticated', 'public.satark_has_membership(uuid,text[])', 'EXECUTE'),
@@ -74,7 +74,7 @@ select throws_ok(
     (id, tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
     values ('88888888-8888-4888-8888-888888888888',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-      'isolate-host', '{"host_id":"host-3"}'::jsonb, repeat('1',64),
+      'simulation.isolate-host', '{"mode":"simulation","host_id":"host-3"}'::jsonb, repeat('1',64),
       '11111111-1111-4111-8111-111111111111', now() + interval '31 minutes')$insert$,
   'P0001', null, 'approval lifetime cannot be extended beyond thirty minutes'
 );
@@ -109,25 +109,25 @@ select ok(public.satark_authorize_response_action(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
+  'simulation.isolate-host', encode(extensions.digest(convert_to('{"mode":"simulation","host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'authorization accepts the exact tenant, case, action and payload hash');
 select ok(not public.satark_authorize_response_action(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', repeat('f',64)
+  'simulation.isolate-host', repeat('f',64)
 ), 'authorization rejects a mismatched payload hash');
 select ok(public.satark_consume_response_approval(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
+  'simulation.isolate-host', encode(extensions.digest(convert_to('{"mode":"simulation","host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'the exact approved action can be consumed once');
 select ok(not public.satark_consume_response_approval(
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'isolate-host', encode(extensions.digest(convert_to('{"host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
+  'simulation.isolate-host', encode(extensions.digest(convert_to('{"mode":"simulation","host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
 ), 'replaying a consumed approval is rejected');
 select is((select status from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
   'consumed', 'successful consumption leaves a durable terminal state');
@@ -138,8 +138,8 @@ select throws_ok(
   $insert$ insert into public.satark_approvals
     (tenant_id, case_id, action_key, action_payload, payload_sha256, requested_by, expires_at)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'isolate-host',
-      '{"host_id":"unauthorized"}'::jsonb, repeat('3',64),
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'simulation.isolate-host',
+      '{"mode":"simulation","host_id":"unauthorized"}'::jsonb, repeat('3',64),
       '22222222-2222-4222-8222-222222222222', now() + interval '30 minutes')$insert$,
   '42501', null, 'a tenant responder cannot request approval in another tenant'
 );
