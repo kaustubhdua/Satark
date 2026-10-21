@@ -1,0 +1,34 @@
+name: SATARK Track 1 acceptance configuration preflight
+
+on:
+  pull_request:
+    paths:
+      - "scripts/satark_track1_acceptance_preflight.py"
+      - "tests/test_satark_track1_acceptance_preflight.py"
+      - ".github/workflows/satark-track1-acceptance-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preflight-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run offline preflight tests
+        run: python -m unittest -v tests.test_satark_track1_acceptance_preflight
+      - name: Prove missing credentials fail closed without network access
+        run: |
+          set +e
+          output="$(env -i PATH="$PATH" python scripts/satark_track1_acceptance_preflight.py tenant 2>&1)"
+          status=$?
+          set -e
+          test "$status" -eq 2
+          printf '%s\n' "$output" | grep -q 'NOT READY'
+          printf '%s\n' "$output" | grep -q 'SATARK_TEST_SUPABASE_URL'
+          ! printf '%s\n' "$output" | grep -q 'CONFIGURATION SHAPE VALID'
