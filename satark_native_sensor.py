@@ -86,9 +86,12 @@ def scan_files(paths: list[Path], max_files: int = MAX_FILES) -> dict[str, dict[
             root_info = root.lstat()
         except OSError:
             continue
-        candidates = [root] if stat.S_ISREG(root_info.st_mode) else (
-            list(root.rglob("*")) if stat.S_ISDIR(root_info.st_mode) and not stat.S_ISLNK(root_info.st_mode) else []
-        )
+        if stat.S_ISREG(root_info.st_mode):
+            candidates = (root,)
+        elif stat.S_ISDIR(root_info.st_mode) and not stat.S_ISLNK(root_info.st_mode):
+            candidates = root.rglob("*")
+        else:
+            candidates = ()
         for path in candidates:
             if len(manifest) >= max_files:
                 break
