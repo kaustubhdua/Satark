@@ -145,27 +145,43 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
     """Append JSONL events with a verifiable previous-hash chain and fsync."""
     journal.parent.mkdir(parents=True, exist_ok=True)
     previous_hash = "0" * 64
-    if journal.exists():
-        with journal.open("rb") as handle:
-            for raw in handle:
-                try:
-                    existing = json.loads(raw)
-                    previous_hash = existing["chain_hash"]
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    raise ValueError("journal is malformed; refusing to append")
+    try:
+        info = journal.lstat()
+    except FileNotFoundError:
+        info = None
+    if info is not None and (stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode)):
+        raise ValueError("journal must be a regular non-symlink file")
+    if info is not None:
+        fd = os.open(journal, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            with os.fdopen(fd, "rb", closefd=False) as handle:
+                for raw in handle:
+                    try:
+                        existing = json.loads(raw)
+                        previous_hash = existing["chain_hash"]
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        raise ValueError("journal is malformed; refusing to append")
+        finally:
+            os.close(fd)
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(journal, flags, 0o600)
     written = 0
-    with journal.open("ab") as handle:
-        for event in events:
-            payload = {**event, "previous_chain_hash": previous_hash}
-            chain_hash = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
-            payload["chain_hash"] = chain_hash
-            handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode() + b"\n")
-            previous_hash = chain_hash
-            written += 1
-        handle.flush()
-        os.fsync(handle.fileno())
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError("journal must be a regular non-symlink file")
+        with os.fdopen(fd, "ab", closefd=False) as handle:
+            for event in events:
+                payload = {**event, "previous_chain_hash": previous_hash}
+                chain_hash = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
+                payload["chain_hash"] = chain_hash
+                handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode() + b"\\n")
+                previous_hash = chain_hash
+                written += 1
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        os.close(fd)
     return written
-
 
 def verify_hash_chain(journal: Path) -> tuple[bool, int]:
     previous_hash = "0" * 64
