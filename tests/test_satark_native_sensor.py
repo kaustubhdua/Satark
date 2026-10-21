@@ -7,9 +7,11 @@ from satark_native_sensor import (
     append_hash_chain,
     classify_auth_line,
     integrity_events,
+    load_json,
     parse_auth_log,
     scan_files,
     verify_hash_chain,
+    write_json_atomic,
 )
 
 
@@ -90,6 +92,39 @@ class NativeSensorTests(unittest.TestCase):
             event = {"event_id": "same", "event_type": "auth_failed"}
             self.assertEqual(append_hash_chain(journal, [event, event]), 2)
             self.assertEqual(verify_hash_chain(journal), (True, 2))
+
+    def test_state_loader_refuses_symlink(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "target.json"
+            target.write_text('{"safe": true}')
+            link = root / "state.json"
+            link.symlink_to(target)
+            with self.assertRaises(ValueError):
+                load_json(link)
+
+    def test_state_writer_atomically_replaces_symlink_without_touching_target(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "target.json"
+            target.write_text('{"owner": "other"}')
+            state = root / "state.json"
+            state.symlink_to(target)
+            write_json_atomic(state, {"owner": "satark"})
+            self.assertFalse(state.is_symlink())
+            self.assertEqual(json.loads(state.read_text()), {"owner": "satark"})
+            self.assertEqual(json.loads(target.read_text()), {"owner": "other"})
+
+    def test_scan_files_skips_symlinked_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "real.conf"
+            target.write_text("real")
+            link = root / "link.conf"
+            link.symlink_to(target)
+            manifest = scan_files([root])
+            self.assertIn(str(target), manifest)
+            self.assertNotIn(str(link), manifest)
 
 
 if __name__ == "__main__":
