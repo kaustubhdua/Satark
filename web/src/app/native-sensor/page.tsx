@@ -20,7 +20,7 @@ export default function NativeSensorPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <SiteHeader />
-      <div className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8">
+      <div id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-white"><ArrowLeft size={16} /> Back to SATARK</Link>
         <section className="mt-8 overflow-hidden rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-950/60 via-zinc-900 to-zinc-950 p-6 sm:p-10">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300"><Fingerprint size={16} /> SATARK native telemetry</div>
