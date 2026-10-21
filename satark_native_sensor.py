@@ -171,6 +171,9 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
     if info is not None and (stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode)):
         raise ValueError("journal must be a regular non-symlink file")
     if info is not None:
+        valid, _ = verify_hash_chain(journal)
+        if not valid:
+            raise ValueError("journal integrity check failed; refusing to append")
         fd = os.open(journal, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
         try:
             with os.fdopen(fd, "rb", closefd=False) as handle:
