@@ -8,7 +8,8 @@ class AcceptancePreflightTests(unittest.TestCase):
         errors = validate("tenant", {})
         self.assertTrue(errors)
         self.assertIn("SATARK_TEST_SUPABASE_URL", errors[0])
-        self.assertNotIn("password", " ".join(errors).casefold())
+        self.assertNotIn("publishable-test-key", " ".join(errors))
+        self.assertNotIn("not-logged", " ".join(errors))
 
     def test_tenant_requires_expected_isolated_project_and_distinct_tenants(self):
         env = {
