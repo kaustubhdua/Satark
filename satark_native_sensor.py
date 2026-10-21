@@ -266,7 +266,7 @@ def load_json(path: Path) -> dict[str, Any]:
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     """Write state via a private temporary file and atomic replacement."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = (json.dumps(value, sort_keys=True, indent=2) + "\\n").encode("utf-8")
+    data = json.dumps(value, sort_keys=True, indent=2).encode("utf-8")
     if len(data) > MAX_STATE_BYTES:
         raise ValueError("state file exceeds size limit")
     fd, temporary = tempfile.mkstemp(prefix=".satark-state-", dir=str(path.parent))
