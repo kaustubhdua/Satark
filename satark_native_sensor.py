@@ -60,7 +60,7 @@ def event_record(source: str, event_type: str, raw: bytes, observed_at: int | No
 
 def _open_regular_nofollow(path: Path, *, flags: int = os.O_RDONLY) -> int:
     """Open a regular file without following symlinks, then verify the opened inode."""
-    fd = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0))
+    fd = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     try:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise ValueError("path must resolve to a regular non-symlink file")
@@ -171,7 +171,7 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
     if info is not None and (stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode)):
         raise ValueError("journal must be a regular non-symlink file")
     if info is not None:
-        fd = os.open(journal, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(journal, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
         try:
             with os.fdopen(fd, "rb", closefd=False) as handle:
                 for raw in handle:
@@ -182,7 +182,7 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
                         raise ValueError("journal is malformed; refusing to append")
         finally:
             os.close(fd)
-    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     fd = os.open(journal, flags, 0o600)
     written = 0
     try:
