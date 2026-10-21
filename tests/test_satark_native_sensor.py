@@ -58,6 +58,17 @@ class NativeSensorTests(unittest.TestCase):
             journal.write_text(json.dumps(item) + "\n")
             self.assertEqual(verify_hash_chain(journal), (False, 0))
 
+    def test_append_refuses_symlinked_journal(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "target.jsonl"
+            target.write_text("keep me")
+            link = root / "events.jsonl"
+            link.symlink_to(target)
+            with self.assertRaises(ValueError):
+                append_hash_chain(link, [{"event_type": "auth_failed"}])
+            self.assertEqual(target.read_text(), "keep me")
+
     def test_duplicate_event_appends_are_chain_linked(self):
         with tempfile.TemporaryDirectory() as td:
             journal = Path(td) / "events.jsonl"
