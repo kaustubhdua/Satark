@@ -186,22 +186,35 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
 def verify_hash_chain(journal: Path) -> tuple[bool, int]:
     previous_hash = "0" * 64
     count = 0
-    if not journal.exists():
+    try:
+        info = journal.lstat()
+    except FileNotFoundError:
         return True, 0
-    with journal.open("rb") as handle:
-        for raw in handle:
-            try:
-                item = json.loads(raw)
-                supplied = item.pop("chain_hash")
-                if item.get("previous_chain_hash") != previous_hash:
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        return False, 0
+    try:
+        fd = os.open(journal, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return False, 0
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return False, 0
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            for raw in handle:
+                try:
+                    item = json.loads(raw)
+                    supplied = item.pop("chain_hash")
+                    if item.get("previous_chain_hash") != previous_hash:
+                        return False, count
+                    calculated = sha256(json.dumps(item, sort_keys=True, separators=(",", ":")).encode())
+                    if supplied != calculated:
+                        return False, count
+                    previous_hash = supplied
+                    count += 1
+                except (json.JSONDecodeError, KeyError, TypeError):
                     return False, count
-                calculated = sha256(json.dumps(item, sort_keys=True, separators=(",", ":")).encode())
-                if supplied != calculated:
-                    return False, count
-                previous_hash = supplied
-                count += 1
-            except (json.JSONDecodeError, KeyError, TypeError):
-                return False, count
+    finally:
+        os.close(fd)
     return True, count
 
 
