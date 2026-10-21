@@ -8,9 +8,9 @@ This runbook is an execution checklist, not proof that a secret, provider, deplo
 
 ## 1. Confirm production ownership before changing configuration
 
-The production smoke workflow targets `https://satark-rose.vercel.app`. At the baseline above, the production smoke failed because browser/server Supabase configuration was missing or mismatched; the workflow expected SATARK project ref `igqgtlmnwssjaoxkkzbm`. This expected ref must be reconciled with the environment owner's approved architecture and the read-only report in `docs/engineering/SAATHI_SATARK_ENVIRONMENT_RECONCILIATION_2026-10-22.md` before setting production variables.
+The production smoke workflow targets `https://satark-rose.vercel.app`. At the baseline above, the production smoke failed because browser/server Supabase configuration was missing or mismatched; the workflow expected SATARK project ref `igqgtlmnwssjaoxkkzbm`. Reconcile that expectation with the environment owner's approved architecture and `docs/engineering/SAATHI_SATARK_ENVIRONMENT_RECONCILIATION_2026-10-22.md` before changing production variables.
 
-The connected Vercel deployment context previously showed no project linked to `kaustubhdua/Satark`. Confirm the actual project that owns the production alias and its Git integration. Do not create a second project or repoint the alias until ownership is established.
+The connected Vercel deployment context did not show a Git project linked to `kaustubhdua/Satark`. A project named `satark` appears in the Vercel project list, but its details could not be verified with the connected project-inspection action. Confirm the actual project that owns the production alias and its Git integration. Do not create a duplicate project or repoint the alias until ownership is established.
 
 ## 2. Production web environment variables
 
@@ -46,10 +46,10 @@ On Vercel, `/api/analyze` intentionally fails closed when shared Upstash rate li
 
 Do not run cross-tenant write/delete tests against shared production data. Create/select a disposable non-production project and create three dedicated identities: Tenant A owner, Tenant B owner, and restricted viewer. Use only IDs belonging to that disposable environment.
 
-Configure these GitHub Actions secrets through repository Settings → Secrets and variables → Actions:
+Configure these **exact GitHub Actions secret names** through repository Settings → Secrets and variables → Actions. These names match the environment mapping in `.github/workflows/ci.yml`:
 
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
+- `SATARK_TEST_SUPABASE_URL`
+- `SATARK_TEST_SUPABASE_PUBLISHABLE_KEY`
 - `SATARK_TEST_USER_A_EMAIL`
 - `SATARK_TEST_USER_A_PASSWORD`
 - `SATARK_TEST_TENANT_A_ID`
@@ -59,6 +59,8 @@ Configure these GitHub Actions secrets through repository Settings → Secrets a
 - `SATARK_TEST_VIEWER_EMAIL`
 - `SATARK_TEST_VIEWER_PASSWORD`
 - `SATARK_TEST_VIEWER_TENANT_ID`
+
+The workflow maps the first two secrets into runtime environment variables named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; do not create duplicate Actions secrets under those runtime names unless another workflow explicitly requires them.
 
 Use unique strong credentials, do not reuse personal accounts, and never paste values into chat or commit them. Run the `CI` workflow on the exact candidate SHA. The job `Supabase tenant-isolation integration` and step `Run real Supabase tenant and role isolation tests` must both conclude success; a skipped step is not a pass.
 
