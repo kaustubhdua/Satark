@@ -24,6 +24,10 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 
 > **Prototype and safety boundary:** SATARK is a learning and triage aid, not an antivirus, certified forensic product, or proof that content is safe or malicious. The configured Vercel production alias is `https://satark-rose.vercel.app`; its current deployed revision and runtime health must be verified by the production smoke workflow before calling the deployment release-ready. The repository Actions variable `SATARK_PRODUCTION_URL` can override the target if the domain changes. FIRSTLIGHT's demo incident is synthetic. Optional Microsoft Defender/Entra response adapters are opt-in, require tenant credentials and explicit target-bound confirmation, and have not been live-validated or connected to the current simulated approval UI. The session-based audit chain is not independently anchored chain-of-custody evidence. Use synthetic or public, non-sensitive data in the current demo.
 
+## First-party native endpoint sensor
+
+SATARK includes an independently authored, standard-library Linux sensor for bounded local authentication-log collection and explicit-path file-integrity snapshots. It emits normalized observations with source digests and a local hash-chained journal. It performs no network requests or automatic response actions and is not a full EDR or a claim of complete endpoint coverage. See the [operator guide](docs/NATIVE_ENDPOINT_SENSOR.md) and the web experience at `/native-sensor` when running the Next.js app. Wazuh remains an optional external telemetry adapter, not a SATARK runtime dependency.
+
 ## Contents
 
 - [1. Executive summary](#1-executive-summary)
