@@ -12,6 +12,7 @@ const links = [
   { href: '/learn', label: 'Academy' },
   { href: '/cases', label: 'Cases' },
   { href: '/reports', label: 'Reports' },
+  { href: '/native-sensor', label: 'Endpoint sensor' },
 ];
 
 export default function SiteHeader() {
