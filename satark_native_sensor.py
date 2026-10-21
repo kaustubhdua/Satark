@@ -14,6 +14,7 @@ import os
 import re
 import stat
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ MAX_LOG_BYTES = 2 * 1024 * 1024
 MAX_LINE_BYTES = 16 * 1024
 MAX_FILE_BYTES = 16 * 1024 * 1024
 MAX_FILES = 5000
+MAX_STATE_BYTES = 8 * 1024 * 1024
 AUTH_PATTERNS = (
     ("auth_failed", re.compile(r"failed password|authentication failure|invalid user|failed publickey", re.I)),
     ("auth_success", re.compile(r"accepted password|accepted publickey|successful login", re.I)),
@@ -56,17 +58,30 @@ def event_record(source: str, event_type: str, raw: bytes, observed_at: int | No
     }
 
 
-def parse_auth_log(path: Path, max_bytes: int = MAX_LOG_BYTES) -> list[dict[str, Any]]:
-    """Read only a bounded tail; do not follow symlinks or read special files."""
+def _open_regular_nofollow(path: Path, *, flags: int = os.O_RDONLY) -> int:
+    """Open a regular file without following symlinks, then verify the opened inode."""
+    fd = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0))
     try:
-        info = path.lstat()
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError("path must resolve to a regular non-symlink file")
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def parse_auth_log(path: Path, max_bytes: int = MAX_LOG_BYTES) -> list[dict[str, Any]]:
+    """Read only a bounded tail; refuse symlinks and special files even across races."""
+    if max_bytes < 1:
+        raise ValueError("max_bytes must be positive")
+    try:
+        fd = _open_regular_nofollow(path)
+        with os.fdopen(fd, "rb") as handle:
+            size = os.fstat(handle.fileno()).st_size
+            handle.seek(max(0, size - max_bytes))
+            data = handle.read(max_bytes)
     except OSError as exc:
-        raise ValueError(f"cannot stat auth log: {exc.__class__.__name__}") from exc
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-        raise ValueError("auth log must be a regular non-symlink file")
-    with path.open("rb") as handle:
-        handle.seek(max(0, info.st_size - max_bytes))
-        data = handle.read(max_bytes)
+        raise ValueError(f"cannot safely read auth log: {exc.__class__.__name__}") from exc
     rows = []
     for raw_line in data.splitlines():
         raw_line = raw_line[:MAX_LINE_BYTES]
@@ -99,7 +114,11 @@ def scan_files(paths: list[Path], max_files: int = MAX_FILES) -> dict[str, dict[
                 info = path.lstat()
                 if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
                     continue
-                with path.open("rb") as handle:
+                fd = _open_regular_nofollow(path)
+                with os.fdopen(fd, "rb") as handle:
+                    opened_info = os.fstat(handle.fileno())
+                    if opened_info.st_size > MAX_FILE_BYTES:
+                        continue
                     content = handle.read(MAX_FILE_BYTES + 1)
                 if len(content) > MAX_FILE_BYTES:
                     continue
@@ -219,15 +238,51 @@ def verify_hash_chain(journal: Path) -> tuple[bool, int]:
 
 
 def load_json(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
+    """Load a bounded, regular state file without following a symlink."""
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        fd = _open_regular_nofollow(path)
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        raise ValueError(f"state file cannot be opened safely: {exc.__class__.__name__}") from exc
+    try:
+        with os.fdopen(fd, "rb") as handle:
+            if os.fstat(handle.fileno()).st_size > MAX_STATE_BYTES:
+                raise ValueError("state file exceeds size limit")
+            raw = handle.read(MAX_STATE_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("state file is unreadable") from exc
+    if len(raw) > MAX_STATE_BYTES:
+        raise ValueError("state file exceeds size limit")
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError("state file is unreadable or malformed") from exc
     if not isinstance(value, dict):
         raise ValueError("state file must contain a JSON object")
     return value
+
+
+def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    """Write state via a private temporary file and atomic replacement."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = (json.dumps(value, sort_keys=True, indent=2) + "\\n").encode("utf-8")
+    if len(data) > MAX_STATE_BYTES:
+        raise ValueError("state file exceeds size limit")
+    fd, temporary = tempfile.mkstemp(prefix=".satark-state-", dir=str(path.parent))
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def main(argv: list[str] | None = None) -> int:
