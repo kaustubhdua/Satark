@@ -174,7 +174,7 @@ def append_hash_chain(journal: Path, events: list[dict[str, Any]]) -> int:
                 payload = {**event, "previous_chain_hash": previous_hash}
                 chain_hash = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
                 payload["chain_hash"] = chain_hash
-                handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode() + b"\\n")
+                handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode() + b"\n")
                 previous_hash = chain_hash
                 written += 1
             handle.flush()
