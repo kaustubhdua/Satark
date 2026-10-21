@@ -126,6 +126,16 @@ class NativeSensorTests(unittest.TestCase):
             self.assertIn(str(target), manifest)
             self.assertNotIn(str(link), manifest)
 
+    def test_append_refuses_to_extend_tampered_journal(self):
+        with tempfile.TemporaryDirectory() as td:
+            journal = Path(td) / "events.jsonl"
+            append_hash_chain(journal, [{"event_type": "auth_failed"}])
+            item = json.loads(journal.read_text().strip())
+            item["event_type"] = "auth_success"
+            journal.write_text(json.dumps(item) + "\\n")
+            with self.assertRaises(ValueError):
+                append_hash_chain(journal, [{"event_type": "new_event"}])
+
 
 if __name__ == "__main__":
     unittest.main()
