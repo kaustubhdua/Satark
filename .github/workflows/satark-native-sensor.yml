@@ -1,0 +1,26 @@
+name: SATARK native sensor tests
+
+on:
+  pull_request:
+    paths:
+      - "satark_native_sensor.py"
+      - "tests/test_satark_native_sensor.py"
+      - ".github/workflows/satark-native-sensor.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-sensor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile sensor
+        run: python -m py_compile satark_native_sensor.py tests/test_satark_native_sensor.py
+      - name: Run sensor unit tests
+        run: python -m unittest -v tests.test_satark_native_sensor
