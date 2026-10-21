@@ -8,6 +8,7 @@ from satark_native_sensor import (
     classify_auth_line,
     integrity_events,
     load_json,
+    MAX_STATE_BYTES,
     parse_auth_log,
     scan_files,
     verify_hash_chain,
@@ -135,6 +136,20 @@ class NativeSensorTests(unittest.TestCase):
             journal.write_text(json.dumps(item) + "\\n")
             with self.assertRaises(ValueError):
                 append_hash_chain(journal, [{"event_type": "new_event"}])
+
+    def test_auth_log_rejects_nonpositive_read_limit(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "auth.log"
+            path.write_text("Accepted password for alice")
+            with self.assertRaises(ValueError):
+                parse_auth_log(path, max_bytes=0)
+
+    def test_state_loader_rejects_oversized_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "state.json"
+            path.write_bytes(b" " * (MAX_STATE_BYTES + 1))
+            with self.assertRaises(ValueError):
+                load_json(path)
 
 
 if __name__ == "__main__":
