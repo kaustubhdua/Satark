@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, FileSearch, Fingerprint, LockKeyhole, Terminal, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileSearch, Fingerprint, LockKeyhole, Terminal, ShieldAlert } from 'lucide-react';
 import SiteHeader from '../site-header';
 
 const steps = [
