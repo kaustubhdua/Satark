@@ -6,6 +6,12 @@ This guide configures the **dedicated non-production** Supabase project used by 
 
 `web/tests/tenant-isolation.integration.test.mjs` signs in as ordinary test users and uses the public PostgREST API. It checks cross-tenant reads and writes for cases, evidence, findings and reports, and verifies that a viewer cannot create or update cases. A skipped test is **not** a pass.
 
+## Saathi project mapping (requested tenant backend)
+
+Use the existing **Saathi** Supabase project as the SATARK tenant backend: project ref `ibvgxgvcqcfnoyrlwywa`, region `ap-northeast-2`. Set `SATARK_TEST_SUPABASE_URL` to that project's HTTPS API URL from Supabase project settings and `SATARK_TEST_SUPABASE_PUBLISHABLE_KEY` to its publishable/anon key. Never use a service-role key in browser tests or GitHub Actions.
+
+The connected project currently reports zero rows in the SATARK tenant, membership, case, evidence, finding, report, approval and ingestion tables. This is a point-in-time observation, not a guarantee that the project will remain empty. The suite uses dedicated Auth users and distinct disposable SATARK tenant IDs; do not point it at any real user's tenant or use any existing user credentials. Test only the dedicated test tenants and keep the normal Saathi application tables and identities untouched.
+
 ## 1. Prepare a dedicated test project
 
 1. Create or select a separate Supabase project used only for SATARK integration tests.
