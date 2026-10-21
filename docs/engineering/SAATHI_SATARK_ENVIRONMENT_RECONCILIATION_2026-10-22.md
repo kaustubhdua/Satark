@@ -47,3 +47,9 @@ These results prove that SATARK-named tables exist in both projects at audit tim
 ## Scope of this audit
 
 This was a read-only metadata and SQL inspection. No database rows, migrations, users, secrets, or project settings were changed. It is not a tenant-isolation acceptance result and does not authorize production migration changes.
+
+## Additional security-advisor result
+
+The Supabase Security Advisor on both projects reported `public.satark_ingestion_checkpoints` as RLS-enabled with no policies. The repository migration `supabase/migrations/20261020023851_satark_wazuh_ingestion_checkpoints.sql` explicitly revokes all access from `anon` and `authenticated`, grants the required operations to `service_role`, and documents that the private worker is the intended access path. This finding is therefore not automatically a defect: validate effective grants and the worker's private credential handling, but do not add browser policies simply to silence the advisor.
+
+The `nihdhoom` Security Advisor also reports other authenticated-callable `SECURITY DEFINER` functions and disabled leaked-password protection. Those findings may belong to Nirdhoom or shared Auth configuration rather than SATARK. Do not modify them as part of a SATARK-only patch. Inventory function ownership, call paths and intended grants with the relevant application owner before changing any shared-project function or Auth setting.
