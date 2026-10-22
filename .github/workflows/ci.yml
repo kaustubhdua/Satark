@@ -208,16 +208,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          required=(SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID SATARK_TEST_VIEWER_EMAIL SATARK_TEST_VIEWER_PASSWORD SATARK_TEST_VIEWER_TENANT_ID)
+          # Map runtime variable names to actual GitHub Actions secret names.
+          declare -A secret_for=(
+            [SUPABASE_URL]=SATARK_TEST_SUPABASE_URL
+            [SUPABASE_PUBLISHABLE_KEY]=SATARK_TEST_SUPABASE_PUBLISHABLE_KEY
+            [SATARK_TEST_USER_A_EMAIL]=SATARK_TEST_USER_A_EMAIL
+            [SATARK_TEST_USER_A_PASSWORD]=SATARK_TEST_USER_A_PASSWORD
+            [SATARK_TEST_TENANT_A_ID]=SATARK_TEST_TENANT_A_ID
+            [SATARK_TEST_USER_B_EMAIL]=SATARK_TEST_USER_B_EMAIL
+            [SATARK_TEST_USER_B_PASSWORD]=SATARK_TEST_USER_B_PASSWORD
+            [SATARK_TEST_TENANT_B_ID]=SATARK_TEST_TENANT_B_ID
+            [SATARK_TEST_VIEWER_EMAIL]=SATARK_TEST_VIEWER_EMAIL
+            [SATARK_TEST_VIEWER_PASSWORD]=SATARK_TEST_VIEWER_PASSWORD
+            [SATARK_TEST_VIEWER_TENANT_ID]=SATARK_TEST_VIEWER_TENANT_ID
+          )
           missing=()
-          for key in "${required[@]}"; do
-            if [[ -z "${!key:-}" ]]; then missing+=("$key"); fi
+          for key in "${!secret_for[@]}"; do
+            if [[ -z "${!key:-}" ]]; then missing+=("${secret_for[$key]}"); fi
           done
           if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            printf '::warning::Tenant-isolation integration was not run; configure these Actions secrets before release: %s\n' "${missing[*]}"
-            printf 'BLOCKED — tenant-isolation integration cannot run. Configure dedicated test credentials: %s. This required check must fail closed; production release remains blocked.\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Required tenant-isolation integration credentials are missing: ${missing[*]}"
+            printf '::warning::Tenant-isolation integration is blocked. Add these exact GitHub Actions secrets: %s\\n' "${missing[*]}"
+            printf 'BLOCKED — tenant-isolation integration cannot run. Add the exact dedicated test secrets listed here: %s. This required check must fail closed; production release remains blocked.\\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Missing required GitHub Actions secrets: ${missing[*]}"
             exit 1
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
