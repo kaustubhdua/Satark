@@ -153,7 +153,7 @@ class NativeSensorTests(unittest.TestCase):
                 load_json(path)
 
 
-    def test_file_scan_atomically_replaces_symlinked_state(self):
+    def test_file_scan_refuses_symlinked_state_without_touching_target(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             observed = root / "observed.conf"
@@ -166,9 +166,8 @@ class NativeSensorTests(unittest.TestCase):
 
             result = main(["file-scan", "--paths", str(observed), "--state", str(state), "--journal", str(journal)])
 
-            self.assertEqual(result, 0)
-            self.assertFalse(state.is_symlink())
-            self.assertIn(str(observed), json.loads(state.read_text()))
+            self.assertEqual(result, 2)
+            self.assertTrue(state.is_symlink())
             self.assertEqual(json.loads(target.read_text()), {"owner": "other"})
 
 
