@@ -8,6 +8,7 @@ from satark_native_sensor import (
     classify_auth_line,
     integrity_events,
     load_json,
+    main,
     MAX_STATE_BYTES,
     parse_auth_log,
     scan_files,
@@ -150,6 +151,25 @@ class NativeSensorTests(unittest.TestCase):
             path.write_bytes(b" " * (MAX_STATE_BYTES + 1))
             with self.assertRaises(ValueError):
                 load_json(path)
+
+
+    def test_file_scan_atomically_replaces_symlinked_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            observed = root / "observed.conf"
+            observed.write_text("secure")
+            target = root / "target.json"
+            target.write_text('{"owner": "other"}')
+            state = root / "state.json"
+            state.symlink_to(target)
+            journal = root / "events.jsonl"
+
+            result = main(["file-scan", "--paths", str(observed), "--state", str(state), "--journal", str(journal)])
+
+            self.assertEqual(result, 0)
+            self.assertFalse(state.is_symlink())
+            self.assertIn(str(observed), json.loads(state.read_text()))
+            self.assertEqual(json.loads(target.read_text()), {"owner": "other"})
 
 
 if __name__ == "__main__":
