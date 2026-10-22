@@ -312,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
             events = integrity_events(previous, current)
             count = append_hash_chain(args.journal, events)
             args.state.parent.mkdir(parents=True, exist_ok=True)
-            args.state.write_text(json.dumps(current, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            write_json_atomic(args.state, current)
             print(json.dumps({"status": "ok", "mode": "local_file_integrity", "files_observed": len(current), "events_appended": count, "journal": str(args.journal)}))
         else:
             ok, count = verify_hash_chain(args.journal)
