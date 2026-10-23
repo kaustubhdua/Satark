@@ -186,6 +186,7 @@ jobs:
       SATARK_TEST_VIEWER_EMAIL: ${{ secrets.SATARK_TEST_VIEWER_EMAIL }}
       SATARK_TEST_VIEWER_PASSWORD: ${{ secrets.SATARK_TEST_VIEWER_PASSWORD }}
       SATARK_TEST_VIEWER_TENANT_ID: ${{ secrets.SATARK_TEST_VIEWER_TENANT_ID }}
+      SATARK_REQUIRE_INTEGRATION: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
