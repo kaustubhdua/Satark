@@ -6,6 +6,28 @@ Baseline: `fba9b3590be977182a1e35b207f745654980966f`.
 
 This runbook is an execution checklist, not proof that a secret, provider, deployment, or security test is configured. Never put secret values in this file, issue comments, logs, or test artifacts.
 
+
+## Live recheck — 2026-10-26
+
+**Release decision: NO-GO.** This section supersedes the baseline date for current release blockers; historical evidence below is retained.
+
+- **Current `main` SHA:** `fba9b3590be977182a1e35b207f745654980966f` (latest commit observed from GitHub).
+- **Vercel production deployment:** Vercel API reports alias `satark-rose.vercel.app` is attached to deployment `satark-ass053dpx-jyc-website.vercel.app`, state `READY`, target `production`, source branch `main`, commit `fba9b3590be977182a1e35b207f745654980966f`. This confirms which commit is deployed; it does **not** establish runtime readiness.
+- **Latest scheduled production smoke:** [run 40177404513](https://github.com/kaustubhdua/Satark/actions/runs/40177404513) failed on 2026-10-25. Public routes and baseline security headers passed, as did unauthenticated API rejection checks. Release checks still report production Supabase browser/server configuration missing or mismatched, shared rate limiting not configured/verified, and the FIRSTLIGHT proxy readiness gate unresolved. A successful HTTP page response is not a release pass.
+- **Latest CI on `main`:** [run 39688785640](https://github.com/kaustubhdua/Satark/actions/runs/39688785640) failed because the authenticated Supabase tenant-isolation job could not find its dedicated least-privilege test credentials. Python regression tests, Next.js validation and browser/accessibility smoke passed; the actual tenant-isolation integration did not run. [CodeQL run 39688785694](https://github.com/kaustubhdua/Satark/actions/runs/39688785694) passed.
+- **Supabase project identity:** the connected Supabase API identifies project `igqgtlmnwssjaoxkkzbm` as `nihdhoom` in `ap-south-1`; the production smoke expects this project ref. This is a shared project containing multiple applications. Do not change production auth/storage/database routing until the environment owner confirms the intended tenant/auth migration and existing user implications.
+- **Vercel configuration write limitation:** the connected Vercel project listing finds project `satark`, but project-scoped variable update/inspection calls return `404 project not found` for the selected scope. No production variable was changed by this review. Resolve project/team ownership in Vercel, then configure values using the table below.
+- **Real-world acceptance remains absent:** no verified Wazuh host/agent event has been observed end to end in this review; no authorized persistent worker/endpoint evidence acceptance, isolated authenticated tenant test, backup/object restore, or provider-observed live response has been demonstrated. Keep live response disabled.
+
+### Exact next actions (do not bypass)
+
+1. Resolve the Vercel project/team scope with an owner who can edit the `satark` project. Confirm intended Supabase auth project before changing environment values. Set matching browser/server Supabase URL and publishable key, then run `/api/health` and the production smoke.
+2. Configure valid Upstash REST URL/token for Production. Verify actual connectivity and atomic expiry behavior; `/api/health` is only a configuration snapshot. Do not downgrade production to process-local rate limiting.
+3. Provision three dedicated ordinary test users and separate SATARK-only tenant fixtures in the approved disposable integration environment. Add the secret names listed in section 4, then require the real tenant-isolation job to pass rather than skip.
+4. Configure a genuine authorized Wazuh lab and a private persistent worker; pass `scripts/accept_firstlight_wazuh_live.py` and `scripts/accept_firstlight_worker_live.py` against real source data and preserve sanitized evidence of the run.
+5. Test evidence object restoration separately from Postgres restoration, then run an authorized harmless response through durable approval → execution → provider-side verification. Until that passes, advertise response as simulation-only.
+6. Re-run all required checks on one frozen SHA, deploy that exact SHA, rerun production smoke, and record the result before release.
+
 ## 1. Confirm production ownership before changing configuration
 
 The production smoke workflow targets `https://satark-rose.vercel.app`. At the baseline above, the production smoke failed because browser/server Supabase configuration was missing or mismatched; the workflow expected SATARK project ref `igqgtlmnwssjaoxkkzbm`. Reconcile that expectation with the environment owner's approved architecture and `docs/engineering/SAATHI_SATARK_ENVIRONMENT_RECONCILIATION_2026-10-22.md` before changing production variables.
