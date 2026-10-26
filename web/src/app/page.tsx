@@ -9,7 +9,7 @@ const ServiceReadiness = dynamic(() => import('../components/service-readiness')
 import IntegrityLedger from '../components/ui/integrity-ledger';
 import {
   ArrowRight, ArrowUpRight, ScanSearch, ShieldCheck, FileText, BookOpen, LockKeyhole, ScanLine, Eye, ShieldAlert,
-  Fingerprint, ListFilter, Radar, Clock3, SearchCheck, Route, UserCheck, Image as ImageIcon, Film, FolderKanban, ChevronRight,
+  Fingerprint, ListFilter, Radar, Clock3, SearchCheck, Route, UserCheck, Image as ImageIcon, Film, FolderKanban, ChevronRight, Terminal,
 } from 'lucide-react';
 
 // The order matches the shared FIRSTLIGHT engine's agent trace.
@@ -30,6 +30,7 @@ const bento = [
   { icon: ImageIcon, title: 'Inspect an image', text: 'Read metadata markers and fingerprint the file in your browser.', href: '/image-review', cta: 'Inspect an image', cls: 'span-2' },
   { icon: Film, title: 'Sample video frames', text: 'Pull six representative frames from a clip for a closer look. No deepfake verdicts.', href: '/media-review', cta: 'Sample a video', cls: 'span-3 wide-m' },
   { icon: FolderKanban, title: 'Cases and reports', text: 'Keep investigations, evidence and report snapshots in your team workspace once it is connected.', href: '/cases', cta: 'Open cases', cls: 'span-3 wide-m' },
+  { icon: Terminal, title: 'Native endpoint sensor', text: 'Collect bounded Linux authentication signals and file-integrity changes with SATARK-authored tooling.', href: '/native-sensor', cta: 'Explore native sensor', cls: 'span-3 wide-m' },
 ];
 
 const tools: Array<[string, string, string, string]> = [
@@ -42,6 +43,7 @@ const tools: Array<[string, string, string, string]> = [
   ['Threat-intelligence status', 'The local indicator cache needs an approved, provenance-tracked feed. No match does not mean safe.', '/tools#intel', 'View status'],
   ['Persistent case workspace', 'Create and track tenant-scoped investigation cases when the workspace backend is configured.', '/cases', 'Open cases'],
   ['Reports & saved exports', 'Review local TXT/JSON exports and persistent report snapshots where the workspace database is configured.', '/reports', 'Open reports'],
+  ['Native Linux endpoint sensor', 'Review the first-party local auth-log and file-integrity collector, operator commands and evidence limitations.', '/native-sensor', 'Explore sensor'],
   ['Academy & scam challenge', 'Practice recognizing social-engineering patterns with educational examples.', '/learn', 'Open learning'],
 ];
 
