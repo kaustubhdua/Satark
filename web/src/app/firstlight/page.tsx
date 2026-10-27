@@ -157,6 +157,7 @@ export default function FirstlightPage() {
 
   async function loadWazuhAlerts() {
     if (!session || busy) return;
+    if (evidence.length > 0 && !window.confirm('Replace the current in-memory evidence with the next Wazuh alert page? Export or save your current case first if you need it.')) return;
     const tenantId = getActiveTenant();
     if (!tenantId) { setNotice('Select a workspace before loading real Wazuh alerts.'); return; }
     setBusy(true);
@@ -261,6 +262,7 @@ export default function FirstlightPage() {
 
   function log(action: string, detail: string) { setAudit(prev => [...prev, {time:new Date().toISOString(),action,detail}]); }
   async function loadCase() {
+    if (evidence.length > 0 && !window.confirm('Replace the current in-memory evidence with the clearly labeled synthetic training scenario? Export or save your current case first if you need it.')) return;
     setBusy(true); setNotice('');
     try {
       const sealed: Evidence[] = [];
@@ -273,6 +275,7 @@ export default function FirstlightPage() {
   }
   async function importFile(file?: File) {
     if (!file || busy) return;
+    if (evidence.length > 0 && !window.confirm('Replace the current in-memory evidence with this imported file? Export or save your current case first if you need it.')) return;
     setNotice('');
     if (file.size > 5 * 1024 * 1024) { setNotice('File exceeds the 5 MiB import limit.'); return; }
     setBusy(true);
