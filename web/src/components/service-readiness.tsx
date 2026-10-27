@@ -53,16 +53,19 @@ export default function ServiceReadiness() {
     <div className="readiness-body"><strong>Checking service configuration…</strong><small>This check reports configuration only, not live dependency health.</small></div>
   </div>;
 
+  const needsAttention = !health.checks.persistentStorage.configured ||
+    !health.checks.rateLimit.configured || !health.checks.rateLimit.sharedAcrossInstances;
   const chips: Array<[string, string]> = [
-    ['Analysis', health.checks.analysis.configured ? 'local' : 'needs review'],
-    ['Self-hosted model', health.checks.localModel.configured ? 'configured' : 'not configured'],
-    ['Storage', health.checks.persistentStorage.configured ? 'configured' : 'not configured'],
+    ['Analysis', health.checks.analysis.configured ? 'local rules available' : 'needs review'],
+    ['Self-hosted model', health.checks.localModel.configured ? 'configured · unverified' : 'not configured'],
+    ['Storage', health.checks.persistentStorage.configured ? 'configured · unverified' : 'not configured'],
+    ['Rate limit', health.checks.rateLimit.sharedAcrossInstances ? 'shared · unverified' : 'shared limiter missing'],
   ];
 
-  return <div className="readiness-banner readiness-ready" role="status">
+  return <div className={'readiness-banner ' + (needsAttention ? 'readiness-degraded' : 'readiness-ready')} role="status">
     <span className="readiness-dot" aria-hidden="true" />
     <div className="readiness-body">
-      <strong>Service configuration snapshot</strong>
+      <strong>{needsAttention ? 'Configuration needs attention' : 'Configuration snapshot · not live health'}</strong>
       <div className="readiness-chips">{chips.map(([label, value]) => <span key={label}>{label}: <b>{value}</b></span>)}</div>
       <details className="readiness-details">
         <summary>What this does and does not check</summary>
