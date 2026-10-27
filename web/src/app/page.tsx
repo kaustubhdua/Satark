@@ -12,8 +12,8 @@ import {
   Fingerprint, ListFilter, Radar, Clock3, SearchCheck, Route, UserCheck, Image as ImageIcon, Film, FolderKanban, ChevronRight, Terminal,
 } from 'lucide-react';
 
-// The order matches the shared FIRSTLIGHT engine's agent trace.
-const agents = [
+// The order reflects the shared FIRSTLIGHT engine's deterministic investigation stages.
+const stages = [
   { icon: Fingerprint, name: 'Evidence integrity', text: 'Checks every SHA-256 seal' },
   { icon: ListFilter, name: 'Evidence triage', text: 'Sorts what to look at first' },
   { icon: Radar, name: 'Detection & correlation', text: 'Links signals to evidence' },
@@ -50,7 +50,7 @@ const tools: Array<[string, string, string, string]> = [
 const principles = [
   { icon: Eye, title: 'Uncertainty stays visible', text: 'Signals are triage guidance, not a verdict.' },
   { icon: LockKeyhole, title: 'Privacy-aware by default', text: 'Submitted URLs are not automatically visited.' },
-  { icon: UserCheck, title: 'A person approves every response', text: 'Agents propose. Nothing is recorded as approved until you decide.' },
+  { icon: UserCheck, title: 'Human control over response decisions', text: 'Review and approval workflows are available; this deployment does not claim live containment.' },
 ];
 
 export default function Home() {
@@ -81,16 +81,16 @@ export default function Home() {
         <section className="sentinel-hero" aria-labelledby="hero-title">
           <div className="dot-pattern" aria-hidden="true" />
           <div className="sentinel-hero-copy">
-            <a className="shiny-pill sentinel-kicker" href="/firstlight"><b>New</b><span className="shiny-text">FIRSTLIGHT multi-agent incident response</span><ChevronRight size={14} aria-hidden="true" /></a>
+            <a className="shiny-pill sentinel-kicker" href="/firstlight"><b>New</b><span className="shiny-text">FIRSTLIGHT evidence-led investigation</span><ChevronRight size={14} aria-hidden="true" /></a>
             <h1 id="hero-title">Every second matters. Every piece of evidence counts.</h1>
-            <p className="sentinel-lede">Check suspicious messages, links and files with signals you can read. When it is more than a phishing email, FIRSTLIGHT rebuilds the incident from sealed evidence and waits for your approval before any response.</p>
+            <p className="sentinel-lede">Check suspicious messages, links and files with signals you can read. When it is more than a phishing email, FIRSTLIGHT helps reconstruct an incident from evidence. Live containment is not enabled by default.</p>
             <div className="sentinel-hero-actions">
               <a className="sentinel-primary" href="/investigate"><ScanSearch size={16} aria-hidden="true" /> Start an investigation</a>
               <a className="sentinel-secondary" href="/firstlight">Open FIRSTLIGHT</a>
             </div>
             <div className="sentinel-trust-line">
               <span><LockKeyhole size={14} aria-hidden="true" /> Links are never opened for you</span>
-              <span><UserCheck size={14} aria-hidden="true" /> Human-approved responses</span>
+              <span><UserCheck size={14} aria-hidden="true" /> Human control over response decisions</span>
             </div>
             <p className="field-note sentinel-privacy-note">Local deterministic checks by default. No third-party AI key is required. Optional self-hosted Ollama analysis is only used when configured.</p>
           </div>
@@ -99,13 +99,13 @@ export default function Home() {
 
         <section className="home-section" aria-labelledby="pipeline-title">
           <div className="sentinel-section-heading">
-            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Six specialist agents, one decision for you.</h2></div>
-            <p>Each agent does one job and hands a structured result to the next, so every finding can be traced back to the evidence that produced it.</p>
+            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Six investigation stages, one decision for you.</h2></div>
+            <p>Each stage has a defined purpose and hands structured results to the next. Findings remain tied to evidence; this is a staged deterministic workflow, not six independent AI agents.</p>
           </div>
           <div className="pipeline-card">
             <div className="dot-pattern" aria-hidden="true" />
-            <ol className="pipeline" aria-label="FIRSTLIGHT agent sequence">
-              {agents.map(({ icon: Icon, name, text }) => (
+            <ol className="pipeline" aria-label="FIRSTLIGHT investigation stages">
+              {stages.map(({ icon: Icon, name, text }) => (
                 <li className="pipeline-node" key={name}>
                   <span className="pipeline-icon"><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
                   <strong>{name}</strong><small>{text}</small>
