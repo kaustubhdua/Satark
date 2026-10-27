@@ -481,7 +481,7 @@ async function inspectViewport(viewport, label) {
       await page.getByText(originalFileHash, { exact: false }).waitFor();
       await page.getByText(/no external anchor or custody log/i).waitFor();
 
-      await page.getByRole('button', { name: /load synthetic case/i }).click();
+      await page.getByRole('button', { name: 'Open synthetic training scenario', exact: true }).click();
       await page.getByText('TRAINING CASE', { exact: true }).waitFor();
       assert.equal(await page.locator('.evidence-table tbody tr').count(), 5,
         'switching from imported data to the synthetic case should reset the evidence source label and rows');
