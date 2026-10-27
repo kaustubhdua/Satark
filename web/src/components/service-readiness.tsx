@@ -63,7 +63,7 @@ export default function ServiceReadiness() {
     ['Rate limit', health.checks.rateLimit.sharedAcrossInstances ? 'shared · unverified' : 'shared limiter missing'],
   ];
 
-  return <div className={'readiness-banner ' + (needsAttention ? 'readiness-degraded' : 'readiness-ready')} role="status">
+  return <div className={'readiness-banner ' + (needsAttention ? 'readiness-degraded' : '')} role="status">
     <span className="readiness-dot" aria-hidden="true" />
     <div className="readiness-body">
       <strong>{needsAttention ? 'Configuration needs attention' : 'Configuration snapshot · not live health'}</strong>
