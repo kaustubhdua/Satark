@@ -9,7 +9,7 @@ type Health = {
     analysis: { mode: string; configured: boolean };
     localModel: { configured: boolean };
     rateLimit: { mode: string; configured: boolean; sharedAcrossInstances: boolean };
-    persistentStorage: { configured: boolean };
+    persistentStorage: { configured: boolean; clientConfigured: boolean; serverClientMatch: boolean };
   };
   note?: string;
 };
@@ -54,11 +54,12 @@ export default function ServiceReadiness() {
   </div>;
 
   const needsAttention = !health.checks.persistentStorage.configured ||
+    !health.checks.persistentStorage.clientConfigured || health.checks.persistentStorage.serverClientMatch !== true ||
     !health.checks.rateLimit.configured || !health.checks.rateLimit.sharedAcrossInstances;
   const chips: Array<[string, string]> = [
     ['Analysis', health.checks.analysis.configured ? 'local rules available' : 'needs review'],
     ['Self-hosted model', health.checks.localModel.configured ? 'configured · unverified' : 'not configured'],
-    ['Storage', health.checks.persistentStorage.configured ? 'configured · unverified' : 'not configured'],
+    ['Storage', health.checks.persistentStorage.serverClientMatch !== true ? 'project mismatch' : health.checks.persistentStorage.configured && health.checks.persistentStorage.clientConfigured ? 'configured · unverified' : 'not configured'],
     ['Rate limit', health.checks.rateLimit.sharedAcrossInstances ? 'shared · unverified' : 'shared limiter missing'],
   ];
 
