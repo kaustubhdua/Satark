@@ -99,8 +99,8 @@ export default function Home() {
 
         <section className="home-section" aria-labelledby="pipeline-title">
           <div className="sentinel-section-heading">
-            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Six specialist agents, one decision for you.</h2></div>
-            <p>Each agent does one job and hands a structured result to the next, so every finding can be traced back to the evidence that produced it.</p>
+            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Six investigation stages, one decision for you.</h2></div>
+            <p>Each stage has a defined purpose and hands structured results to the next. Findings remain tied to evidence; this is a staged deterministic workflow, not six independent AI agents.</p>
           </div>
           <div className="pipeline-card">
             <div className="dot-pattern" aria-hidden="true" />
