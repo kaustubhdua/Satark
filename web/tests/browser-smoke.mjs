@@ -405,7 +405,7 @@ async function inspectViewport(viewport, label) {
       }
       // The primary action now uses real telemetry. Browser smoke must explicitly
       // choose the optional synthetic fixture instead of pretending Wazuh is connected.
-      const launch = page.getByRole('button', { name: /open synthetic training scenario/i });
+      const launch = page.getByRole('button', { name: 'Open synthetic training scenario', exact: true });
       await launch.waitFor();
       await launch.click();
       await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
