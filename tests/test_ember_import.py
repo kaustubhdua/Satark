@@ -22,7 +22,7 @@ class EmberImportTests(unittest.TestCase):
                 {"sha256": "c" * 64, "label": -1, "file_type": "Win32"},
                 {"sha256": "invalid", "label": 1, "file_type": "Win32"},
             ]
-            source.write_text("\\n".join(json.dumps(x) for x in records), encoding="utf-8")
+            source.write_text("\n".join(json.dumps(x) for x in records), encoding="utf-8")
             manifest = convert(root, root / "out", split="train", file_type="Win32", rows_per_part=1)
             self.assertEqual(manifest["rows"]["rows_seen"], 4)
             self.assertEqual(manifest["rows"]["exported_rows"], 2)
@@ -37,9 +37,9 @@ class EmberImportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "APK_train.jsonl").write_text(
-                json.dumps({"sha256":"a"*64,"label":1,"file_type":"APK"}) + "\\n", encoding="utf-8")
+                json.dumps({"sha256":"a"*64,"label":1,"file_type":"APK"}) + "\n", encoding="utf-8")
             (root / "PDF_test.jsonl").write_text(
-                json.dumps({"sha256":"b"*64,"label":1,"file_type":"PDF"}) + "\\n", encoding="utf-8")
+                json.dumps({"sha256":"b"*64,"label":1,"file_type":"PDF"}) + "\n", encoding="utf-8")
             manifest = convert(root, root / "out", split="train", file_type="APK")
             self.assertEqual(manifest["rows"]["exported_rows"], 1)
             self.assertEqual(manifest["source_files"], ["APK_train.jsonl"])
