@@ -24,7 +24,7 @@ A file shared from another app is accessed through the temporary URI permission 
 
 ## Dataset
 
-The app's threat-intelligence database is empty by default. Users may import a CSV snapshot. The source identifier and supplied dataset contents are stored locally. Dataset provenance and licensing must be checked by the person importing the snapshot.
+The app's threat-intelligence database is empty by default. The recommended historical source is EMBER2024 (2023–2024; Win32, Win64, .NET, APK, ELF and PDF) under the upstream dataset project's Apache-2.0 license. Users may import locally converted CSV hash snapshots; the source identifier, file type, family and dataset date are stored locally. The app does not download data or contact the upstream service. The operator remains responsible for reviewing dataset terms and provenance.
 
 ## Limitations
 
