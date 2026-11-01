@@ -90,6 +90,7 @@ class MainActivity : Activity() {
         content.addView(actionButton("Enable frequent background scan (15 min, best-effort)") { enableFrequentScan() })
         content.addView(actionButton("Enable daily background scan") { enableDailyScan() })
         content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
+        content.addView(actionButton("Stop background scans (keep folder access)") { stopBackgroundScans() })
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
             setTextColor(0xFFF3F5FF.toInt())
@@ -408,6 +409,12 @@ class MainActivity : Activity() {
             status.text = "CHOOSE A FOLDER FIRST · NO STORAGE IS SCANNED WITHOUT PERMISSION"
             return
         }
+        val otherName = if (uniqueName == FolderScanWorker.UNIQUE_FREQUENT_NAME) {
+            FolderScanWorker.UNIQUE_PERIODIC_NAME
+        } else {
+            FolderScanWorker.UNIQUE_FREQUENT_NAME
+        }
+        WorkManager.getInstance(this).cancelUniquePeriodicWork(otherName)
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
             .setConstraints(Constraints.Builder().build())
             .build()
@@ -417,6 +424,17 @@ class MainActivity : Activity() {
             request
         )
         status.text = statusMessage
+    }
+
+    private fun stopBackgroundScans() {
+        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
+        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
+        WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
+        status.text = if (prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
+            "BACKGROUND SCANS STOPPED · NO SAVED FOLDER PERMISSION"
+        } else {
+            "BACKGROUND SCANS STOPPED · FOLDER ACCESS RETAINED"
+        }
     }
 
     private fun enqueueFolderScan() {
