@@ -63,6 +63,19 @@ class FileGuardTests(unittest.TestCase):
             store.clear()
             self.assertEqual(store.stats()["total"], 0)
 
+    def test_historical_import_retains_file_type_provenance(self):
+        digest = hashlib.sha256(b"apk-fixture").hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
+            store.import_csv(
+                StringIO(f"sha256,label,file_type,dataset_date\\n{digest},1,APK,2024-12-01\\n"),
+                "EMBER2024-APK-train",
+            )
+            result = scan_bytes(b"apk-fixture", "sample.apk", intelligence=store)
+            self.assertEqual(result.verdict, "Known threat")
+            self.assertEqual(result.intelligence_match["file_type"], "APK")
+            self.assertEqual(result.intelligence_match["dataset_date"], "2024-12-01")
+
     def test_conflicting_labels_rejected(self):
         digest = hashlib.sha256(b"x").hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
