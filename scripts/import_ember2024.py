@@ -106,6 +106,11 @@ def convert(input_dir: Path, output_dir: Path, *, split="all", file_type="all",
     output_dir.mkdir(parents=True, exist_ok=True)
     safe_split = re.sub(r"[^a-z0-9_-]+", "-", split.lower())
     safe_type = re.sub(r"[^a-z0-9_-]+", "-", file_type.lower())
+    for stale in output_dir.glob(f"ember2024_{safe_split}_{safe_type}_*.csv"):
+        stale.unlink()
+    stale_manifest = output_dir / f"ember2024_{safe_split}_{safe_type}_manifest.json"
+    if stale_manifest.exists():
+        stale_manifest.unlink()
     counters = {"rows_seen": 0, "exported_rows": 0, "unlabeled_rows": 0, "invalid_rows": 0}
     parts = []
     writer = None
