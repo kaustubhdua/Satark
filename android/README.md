@@ -29,9 +29,21 @@ Open the `android/` folder in Android Studio if you prefer the IDE. The CI workf
 2. Open SATARK File Guard, or use Share from WhatsApp/Telegram and select SATARK.
 3. Alternatively choose one or more files with the Android system file picker.
 4. To scan a folder, choose a folder through Android's directory picker. SATARK stores only the user-granted URI permission and scans that folder.
-5. Import a historical CSV snapshot using the source ID field and import button.
+5. Import a historical CSV snapshot using the source ID field and import button. You can multi-select all converter-generated CSV parts in one import operation.
 6. Review local scan history. Clear history or the imported threat database independently. Remove folder access at any time to release the saved permission and cancel scheduled scans.
 7. Allow notifications if you want alerts when a scheduled scan finds files needing review.
+
+## Historical dataset preparation
+
+The recommended historical source is EMBER2024 (2023-09-24 through 2024-12-14), which provides SHA-256 labels across Win32, Win64, .NET, APK, ELF and PDF. The app does not download data or contact a threat-intelligence feed. On a trusted development computer, acquire the public dataset once and convert its local JSONL metadata:
+
+```bash
+python -m pip install git+https://github.com/FutureComputing4AI/EMBER2024.git
+python -c "import thrember; thrember.download_dataset('data/ember2024', split='train', file_type='APK')"
+python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
+```
+
+Repeat for PDF, ELF or PE if those formats are needed. Transfer the generated CSV parts to the phone and multi-select them in the import picker. Each part is 25,000 rows by default; confirm it is below the 64 MB import limit. Keep the generated manifest with the snapshot for provenance. The APK itself has no Internet permission.
 
 ## Limits
 
