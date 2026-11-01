@@ -79,7 +79,7 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
         score += 45
     if DOUBLE_EXT.search(name):
         signals.append({"code":"DOUBLE_EXTENSION","severity":"high","detail":"Document/image extension is followed by an executable extension."})
-        score += 35
+        score += 45
     match = intelligence.lookup(digest) if intelligence else None
     if match and match["label"] == "malicious":
         signals.append({"code":"KNOWN_MALICIOUS_HASH","severity":"critical","detail":f"Exact SHA-256 match in {match['source']}."})
