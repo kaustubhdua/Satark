@@ -11,7 +11,7 @@ SATARK File Guard statically inspects files that a user explicitly shares with t
 - It does not read WhatsApp or Telegram messages, chat databases, account credentials or private app directories.
 - It does not extract document text, perform OCR, render media, unpack archives or execute files.
 - It does not send files, hashes, scan results or telemetry to a server.
-- It does not request network access.
+- It does not request network access.\n- It may request Android's notification permission to alert you when a scheduled local scan finds files needing review; notification text contains only a count, not filenames or file contents.
 - It does not automatically delete, quarantine, modify or block files.
 
 ## Storage
