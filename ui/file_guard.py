@@ -102,14 +102,27 @@ def render_file_guard():
     with st.expander("Dataset import"):
         st.code("sha256,label,family,dataset_date\n<64-char-hash>,malicious,<family>,<YYYY-MM-DD>", language="csv")
         source = st.text_input("Dataset source / snapshot ID", key="file_guard_source")
-        csv_file = st.file_uploader("Historical hash CSV", type=["csv"], key="file_guard_csv")
-        if st.button("Import snapshot", disabled=not csv_file or not source.strip()):
-            try:
-                outcome = store.import_csv(StringIO(csv_file.getvalue().decode("utf-8-sig")), source.strip())
-                st.success(f"Imported {outcome['inserted']:,}; duplicates {outcome['skipped']:,}; invalid rows {outcome['rejected']:,}.")
-                st.rerun()
-            except Exception as exc:
-                st.error(f"Import rejected: {type(exc).__name__}: {exc}")
+        csv_files = st.file_uploader("Historical hash CSV parts (select multiple)", type=["csv"], accept_multiple_files=True, key="file_guard_csv")
+        if st.button("Import selected snapshot parts", disabled=not csv_files or not source.strip()):
+            totals = {"inserted": 0, "skipped": 0, "rejected": 0}
+            failed = []
+            for csv_file in csv_files:
+                try:
+                    source_id = (source.strip() + ":" + csv_file.name)[:160]
+                    outcome = store.import_csv(StringIO(csv_file.getvalue().decode("utf-8-sig")), source_id)
+                    for key in totals:
+                        totals[key] += outcome[key]
+                except Exception as exc:
+                    failed.append(f"{csv_file.name}: {type(exc).__name__}")
+            st.success(f"Imported {totals['inserted']:,}; duplicates {totals['skipped']:,}; invalid rows {totals['rejected']:,}.")
+            if failed:
+                st.error("Some files failed: " + "; ".join(failed))
+            st.rerun()
+        confirm_clear = st.checkbox("I understand this removes all imported hash indicators", key="file_guard_confirm_clear")
+        if st.button("Clear imported threat database", disabled=not confirm_clear):
+            store.clear()
+            st.success("Imported hash indicators cleared.")
+            st.rerun()
 
     st.markdown("### Privacy and coverage")
     st.markdown(
