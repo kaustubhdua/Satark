@@ -35,21 +35,29 @@ def download_archive(filename: str, archive_dir: Path, max_download_bytes: int) 
     if target.exists() and zipfile.is_zipfile(target):
         return target
     request = Request(archive_url(filename), headers={"User-Agent": "SATARK-FileGuard-Dataset-Importer/1.0"})
-    with urlopen(request, timeout=90) as response:
-        length = response.headers.get("Content-Length")
-        if length and int(length) > max_download_bytes:
-            raise ValueError("Archive exceeds configured download limit.")
-        with tempfile.NamedTemporaryFile(dir=archive_dir, suffix=".download", delete=False) as tmp:
-            temp_path = Path(tmp.name)
-            total = 0
-            while True:
-                chunk = response.read(1024 * 1024)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > max_download_bytes:
-                    raise ValueError("Archive exceeded configured download limit while streaming.")
-                tmp.write(chunk)
+    temp_path = None
+    try:
+        with urlopen(request, timeout=90) as response:
+            length = response.headers.get("Content-Length")
+            if length and int(length) > max_download_bytes:
+                raise ValueError("Archive exceeds configured download limit.")
+            with tempfile.NamedTemporaryFile(dir=archive_dir, suffix=".download", delete=False) as tmp:
+                temp_path = Path(tmp.name)
+                total = 0
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > max_download_bytes:
+                        raise ValueError("Archive exceeded configured download limit while streaming.")
+                    tmp.write(chunk)
+    except Exception:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+        raise
+    if temp_path is None:
+        raise RuntimeError("Download did not create a temporary archive.")
     if not zipfile.is_zipfile(temp_path):
         temp_path.unlink(missing_ok=True)
         raise ValueError("Downloaded payload is not a valid ZIP archive.")
@@ -58,6 +66,8 @@ def download_archive(filename: str, archive_dir: Path, max_download_bytes: int) 
 
 def safe_extract_zip(archive: Path, destination: Path, max_extracted_bytes: int = 20 * 1024**3,
                      max_files: int = 1_000_000) -> list[str]:
+    if destination.is_symlink():
+        raise ValueError("Extraction destination cannot be a symlink.")
     destination.mkdir(parents=True, exist_ok=True)
     root = destination.resolve()
     extracted = []
@@ -73,7 +83,13 @@ def safe_extract_zip(archive: Path, destination: Path, max_extracted_bytes: int 
             mode = (info.external_attr >> 16) & 0o170000
             if mode == stat.S_IFLNK:
                 raise ValueError("ZIP symlinks are not accepted.")
-            target = (root / Path(*name.parts)).resolve()
+            candidate = root / Path(*name.parts)
+            cursor = candidate
+            while cursor != root:
+                if cursor.is_symlink():
+                    raise ValueError("ZIP entry would overwrite a symlink.")
+                cursor = cursor.parent
+            target = candidate.resolve()
             if not target.is_relative_to(root):
                 raise ValueError("ZIP entry escapes the extraction directory.")
             if info.is_dir():
@@ -146,6 +162,8 @@ def main():
     parser.add_argument("--max-download-gb", type=float, default=20)
     parser.add_argument("--max-extracted-gb", type=float, default=20)
     args = parser.parse_args()
+    if args.max_download_gb <= 0 or args.max_extracted_gb <= 0:
+        parser.error("download and extracted size limits must be positive")
     manifest = download_and_extract(
         args.output_dir, args.split, args.file_type,
         int(args.max_download_gb * 1024**3), int(args.max_extracted_gb * 1024**3)
