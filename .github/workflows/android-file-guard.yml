@@ -5,6 +5,10 @@ on:
       - "android/**"
       - "file_guard/**"
       - "tests/test_file_guard.py"
+      - "tests/test_ember_import.py"
+      - "tests/test_ember_download.py"
+      - "scripts/import_ember2024.py"
+      - "scripts/download_ember2024.py"
       - ".github/workflows/android-file-guard.yml"
   pull_request:
     paths:
