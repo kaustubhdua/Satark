@@ -1,11 +1,11 @@
 <div align="center">
 
 # SATARK Sentinel
-### Evidence-led incident investigation and AI-assisted digital threat triage
+### Offline-first mobile file security and evidence-led threat inspection
 
-**Investigate the incident. Trace the evidence. Make the next decision with context.**
+**Inspect the file. Match the signature. Keep the content private.**
 
-SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. Its web analysis defaults to local deterministic checks and can optionally use a self-hosted Ollama model. The default analysis path requires no third-party AI API key and does not send submitted content to external threat-intelligence APIs. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting a heuristic score as a verdict.
+SATARK is evolving into an **app-oriented, Python-based, offline-first file security system**. Its new File Guard workflow inspects file fingerprints, magic bytes, filename/signature mismatches and optional local YARA rules against an explicitly imported historical dataset. It does not extract document text, read WhatsApp/Telegram messages, execute files, upload samples, or call hosted analysis APIs. FIRSTLIGHT and the earlier content-triage workflows remain in the repository as legacy/supporting experiences while the mobile product is developed.
 
 [![Production smoke](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
@@ -27,6 +27,19 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 ## First-party native endpoint sensor
 
 SATARK includes an independently authored, standard-library Linux sensor for bounded local authentication-log collection and explicit-path file-integrity snapshots. It emits normalized observations with source digests and a local hash-chained journal. It performs no network requests or automatic response actions and is not a full EDR or a claim of complete endpoint coverage. See the [operator guide](docs/NATIVE_ENDPOINT_SENSOR.md) and the web experience at `/native-sensor` when running the Next.js app. Wazuh remains an optional external telemetry adapter, not a SATARK runtime dependency.
+
+## New product direction: SATARK File Guard
+
+File Guard is the current product direction: a privacy-first local file scanner for files received through WhatsApp, Telegram, downloads and other apps.
+
+- Python static inspection engine with SHA-256, magic-byte identification, extension mismatch checks and optional local YARA rules.
+- Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
+- No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
+- No semantic file-content extraction, OCR, preview, execution, archive unpacking or automatic deletion.
+- Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
+- A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
+
+The first implementation milestone and known gaps are documented in [OFFLINE_FILE_GUARD.md](docs/OFFLINE_FILE_GUARD.md). The Android native sharesheet receiver, scoped-storage bridge, WorkManager scheduling, curated YARA pack and a licensed populated historical snapshot are not yet implemented. The current Streamlit page is a development interface, not proof of native Android background monitoring.
 
 ## Contents
 
