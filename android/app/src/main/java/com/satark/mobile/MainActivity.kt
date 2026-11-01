@@ -2,9 +2,12 @@ package com.satark.mobile
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
@@ -40,6 +43,11 @@ class MainActivity : Activity() {
         ensurePython()
         buildScreen()
         handleIncomingIntent(intent)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -71,7 +79,7 @@ class MainActivity : Activity() {
             val lastCount = prefs.getInt("last_folder_scan_files", 0)
             status.text = if (lastScan > 0L) {
                 "FOLDER ACCESS GRANTED · LAST SCAN " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScan)) +
-                    " · " + lastCount + " FILES"
+                    " · " + lastCount + " FILES · " + prefs.getInt("last_folder_scan_alerts", 0) + " ALERTS"
             } else {
                 "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
             }
@@ -406,6 +414,7 @@ class MainActivity : Activity() {
         private const val REQUEST_FILES = 401
         private const val REQUEST_FOLDER = 402
         private const val REQUEST_DATASET = 403
+        private const val REQUEST_NOTIFICATIONS = 404
         private const val KEY_TREE_URI = "granted_tree_uri"
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"
