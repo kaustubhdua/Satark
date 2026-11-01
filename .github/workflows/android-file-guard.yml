@@ -71,7 +71,7 @@ jobs:
           gradle-version: "8.13"
       - name: Verify Android privacy and integration boundaries
         run: |
-          ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml\n          grep -q 'android.permission.POST_NOTIFICATIONS' android/app/src/main/AndroidManifest.xml
           grep -q 'android.intent.action.SEND' android/app/src/main/AndroidManifest.xml
           grep -q 'android.intent.action.SEND_MULTIPLE' android/app/src/main/AndroidManifest.xml
           grep -q 'ACTION_OPEN_DOCUMENT_TREE' android/app/src/main/java/com/satark/mobile/MainActivity.kt
