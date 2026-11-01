@@ -61,6 +61,11 @@ class ThreatIntelligenceStore:
                 inserted += 1
         return {"inserted": inserted, "skipped": skipped, "rejected": rejected}
 
+    def clear(self):
+        """Remove imported indicators without touching scan history."""
+        with self._connect() as db:
+            db.execute("DELETE FROM hashes")
+
     def stats(self):
         with self._connect() as db:
             rows = db.execute("SELECT label,COUNT(*) n FROM hashes GROUP BY label").fetchall()
