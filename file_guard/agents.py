@@ -57,13 +57,17 @@ def inspect_hash(digest, intelligence):
         signals.append({
             "code": "KNOWN_MALICIOUS_HASH",
             "severity": "critical",
-            "detail": "Exact SHA-256 match in imported dataset " + str(match["source"]) + ".",
+            "detail": "Exact SHA-256 match in " + str(match["source"]) +
+                ((" · type " + str(match.get("file_type"))) if match.get("file_type") else "") +
+                ((" · family " + str(match.get("family"))) if match.get("family") else "") +
+                ((" · dataset date " + str(match.get("dataset_date"))) if match.get("dataset_date") else "") + ".",
         })
     elif match and match["label"] == "benign":
         signals.append({
             "code": "KNOWN_BENIGN_HASH",
             "severity": "info",
-            "detail": "Exact benign hash match in imported dataset " + str(match["source"]) + ".",
+            "detail": "Exact benign hash match in " + str(match["source"]) +
+                ((" · type " + str(match.get("file_type"))) if match.get("file_type") else "") + ".",
         })
     return {
         "agent": "sha256_intelligence",
