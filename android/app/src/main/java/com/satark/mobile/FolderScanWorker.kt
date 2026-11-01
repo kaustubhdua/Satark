@@ -163,6 +163,7 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
     companion object {
         const val KEY_TREE_URI = "tree_uri"
         const val UNIQUE_PERIODIC_NAME = "satark-file-guard-daily"
+        const val UNIQUE_FREQUENT_NAME = "satark-file-guard-frequent"
         private const val MAX_FILES = 1000
         private const val MAX_DEPTH = 8
         private const val MAX_FILE_BYTES = 64L * 1024L * 1024L
