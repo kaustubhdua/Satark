@@ -2,7 +2,7 @@ package com.satark.mobile
 
 import android.content.Context
 import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
+import android.provider.DocumentsContract
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.chaquo.python.Python
@@ -15,42 +15,80 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
             ?: applicationContext.getSharedPreferences("satark_file_guard", Context.MODE_PRIVATE)
                 .getString("granted_tree_uri", null)
             ?: return Result.failure()
-        val root = DocumentFile.fromTreeUri(applicationContext, Uri.parse(rawUri))
-            ?: return Result.failure()
-        if (!root.isDirectory || !root.canRead()) return Result.failure()
+        val treeUri = Uri.parse(rawUri)
 
         try {
+            val rootDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
             if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
             val bridge = Python.getInstance().getModule("android_bridge")
+            val pending = ArrayDeque<Pair<String, Int>>()
+            pending.add(rootDocumentId to 0)
             var scanned = 0
+            var skipped = 0
             var totalBytes = 0L
-            val pending = ArrayDeque<Pair<DocumentFile, Int>>()
-            pending.add(root to 0)
-            while (pending.isNotEmpty() && scanned < MAX_FILES && !isStopped) {
-                val (directory, depth) = pending.removeFirst()
-                val children = try { directory.listFiles() } catch (_: Exception) { emptyArray() }
-                for (child in children) {
-                    if (isStopped || scanned >= MAX_FILES) break
-                    if (child.isDirectory) {
-                        if (depth < MAX_DEPTH) pending.add(child to depth + 1)
-                        continue
-                    }
-                    if (!child.isFile || !child.canRead()) continue
-                    val declaredSize = child.length()
-                    if (declaredSize > MAX_FILE_BYTES) continue
-                    if (declaredSize > 0 && totalBytes + declaredSize > MAX_TOTAL_BYTES) break
-                    try {
-                        val bytes = readBounded(child.uri)
-                        if (totalBytes + bytes.size > MAX_TOTAL_BYTES) break
-                        totalBytes += bytes.size
-                        bridge.callAttr("scan_shared_file", bytes, child.name ?: "document", applicationContext.filesDir.absolutePath)
-                        scanned += 1
-                    } catch (_: Exception) {
-                        // Keep scanning other granted files; failures are not safety verdicts.
+            var hitLimit = false
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE
+            )
+
+            while (pending.isNotEmpty() && scanned < MAX_FILES && !isStopped && !hitLimit) {
+                val (parentId, depth) = pending.removeFirst()
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
+                val cursor = applicationContext.contentResolver.query(childrenUri, projection, null, null, null)
+                    ?: continue
+                cursor.use { rows ->
+                    while (rows.moveToNext() && scanned < MAX_FILES && !isStopped && !hitLimit) {
+                        val documentId = rows.getString(0) ?: continue
+                        val name = rows.getString(1) ?: "document"
+                        val mime = rows.getString(2) ?: "application/octet-stream"
+                        if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                            if (depth < MAX_DEPTH) pending.add(documentId to depth + 1)
+                            continue
+                        }
+                        val size = if (rows.isNull(3)) -1L else rows.getLong(3)
+                        if (size > MAX_FILE_BYTES) {
+                            skipped += 1
+                            continue
+                        }
+                        try {
+                            val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+                            val bytes = readBounded(documentUri)
+                            if (totalBytes + bytes.size > MAX_TOTAL_BYTES) {
+                                hitLimit = true
+                                break
+                            }
+                            bridge.callAttr(
+                                "scan_shared_file", bytes, name, applicationContext.filesDir.absolutePath
+                            )
+                            totalBytes += bytes.size
+                            scanned += 1
+                        } catch (_: Exception) {
+                            skipped += 1
+                        }
                     }
                 }
             }
-            return Result.success(androidx.work.workDataOf("scanned_files" to scanned, "scanned_bytes" to totalBytes))
+
+            applicationContext.getSharedPreferences("satark_file_guard", Context.MODE_PRIVATE)
+                .edit()
+                .putLong("last_folder_scan_ms", System.currentTimeMillis())
+                .putInt("last_folder_scan_files", scanned)
+                .putInt("last_folder_scan_skipped", skipped)
+                .apply()
+
+            return Result.success(
+                androidx.work.workDataOf(
+                    "scanned_files" to scanned,
+                    "skipped_files" to skipped,
+                    "scanned_bytes" to totalBytes,
+                    "limit_reached" to hitLimit
+                )
+            )
+        } catch (_: SecurityException) {
+            return Result.failure()
         } catch (_: Exception) {
             return Result.retry()
         }
