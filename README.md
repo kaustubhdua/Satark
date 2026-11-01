@@ -39,7 +39,7 @@ File Guard is the current product direction: a privacy-first local file scanner 
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
 
-The first implementation milestone and known gaps are documented in [OFFLINE_FILE_GUARD.md](docs/OFFLINE_FILE_GUARD.md). The Android native sharesheet receiver, scoped-storage bridge, WorkManager scheduling, curated YARA pack and a licensed populated historical snapshot are not yet implemented. The current Streamlit page is a development interface, not proof of native Android background monitoring.
+The first implementation milestone and known gaps are documented in [OFFLINE_FILE_GUARD.md](docs/OFFLINE_FILE_GUARD.md). The Android native sharesheet receiver, scoped-storage bridge, WorkManager scheduling, curated YARA pack and a licensed populated historical snapshot are not yet implemented. The current Streamlit page is a development interface; uploaded bytes reach the Streamlit host, so run it locally or on a trusted private host. It is not proof of native Android background monitoring.
 
 ## Contents
 
