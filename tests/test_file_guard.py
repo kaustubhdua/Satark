@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from file_guard.agents import fuse_evidence, route_file\nfrom file_guard.engine import scan_bytes, scan_stream, scan_path, scan_directory
+from file_guard.agents import fuse_evidence, route_file
+from file_guard.engine import scan_bytes, scan_stream, scan_path, scan_directory
 from file_guard.history import ScanHistory
 from file_guard.intelligence import ThreatIntelligenceStore
 
