@@ -95,7 +95,7 @@ class MainActivity : Activity() {
             hint = "Dataset source / snapshot ID"
             setTextColor(0xFFF3F5FF.toInt())
             setHintTextColor(0xFF8D9AB2.toInt())
-            singleLine = true
+            setSingleLine(true)
         }
         content.addView(datasetSource)
         content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
@@ -254,8 +254,8 @@ class MainActivity : Activity() {
         } catch (_: SecurityException) {
             // Continue to clear local tracking even if Android already revoked the grant.
         }
-        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
-        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
+        WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
+        WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
         WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
         prefs.edit().remove(KEY_TREE_URI).remove(KEY_TREE_FLAGS).apply()
         status.text = "FOLDER PERMISSION RELEASED · SCHEDULED SCANS CANCELLED"
@@ -414,7 +414,7 @@ class MainActivity : Activity() {
         } else {
             FolderScanWorker.UNIQUE_FREQUENT_NAME
         }
-        WorkManager.getInstance(this).cancelUniquePeriodicWork(otherName)
+        WorkManager.getInstance(this).cancelUniqueWork(otherName)
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
             .setConstraints(Constraints.Builder().build())
             .build()
@@ -427,8 +427,8 @@ class MainActivity : Activity() {
     }
 
     private fun stopBackgroundScans() {
-        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
-        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
+        WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
+        WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
         WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
         status.text = if (prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             "BACKGROUND SCANS STOPPED · NO SAVED FOLDER PERMISSION"
