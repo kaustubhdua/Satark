@@ -314,11 +314,20 @@ class MainActivity : Activity() {
                     val json = Python.getInstance().getModule("android_bridge")
                         .callAttr("scan_shared_file", bytes, name, filesDir.absolutePath).toString()
                     val item = JSONObject(json)
+                    val verdict = item.optString("verdict")
+                    val safetyNote = if (verdict == "No known threat detected") {
+                        "\nNo enabled check matched. This is not proof the file is safe."
+                    } else {
+                        ""
+                    }
                     output.add(
-                        item.optString("verdict") + " · " + item.optString("filename") + "\n" +
-                        "Type: " + item.optString("detected_type") + " · Risk: " + item.optString("risk_level") + "\n" +
+                        verdict + " · " + item.optString("filename") + "\n" +
+                        "Type: " + item.optString("detected_type") + " · Risk: " + item.optString("risk_level") +
+                        " · Score: " + item.optInt("score") + "\n" +
+                        "Size: " + item.optLong("size_bytes") + " bytes\n" +
                         "SHA-256: " + item.optString("sha256") + "\n" +
-                        item.optJSONArray("signals")?.toString(2).orEmpty()
+                        "Evidence signals:\n" + item.optJSONArray("signals")?.toString(2).orEmpty() +
+                        "\nAgent trace:\n" + item.optJSONArray("agent_trace")?.toString(2).orEmpty() + safetyNote
                     )
                 } catch (error: Exception) {
                     output.add("SCAN INCOMPLETE · " + error.javaClass.simpleName + ". The file was not modified.")
