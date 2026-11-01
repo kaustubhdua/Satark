@@ -34,7 +34,8 @@ File Guard is the current product direction: a privacy-first local file scanner 
 
 - Python static inspection engine with SHA-256, magic-byte identification, extension mismatch checks and optional local YARA rules.
 - Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
-- No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.\n- Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the offline `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
+- No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
+- Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the offline `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
 - No semantic file-content extraction, OCR, preview, execution, archive unpacking or automatic deletion.
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
