@@ -49,7 +49,7 @@ The user chooses which files or folder are accessible. SATARK does not access Wh
 
 ## 24/7 and real-time claims
 
-A frozen dataset cannot discover newly emerging threats. Real-time means a newly shared file is inspected immediately against the currently installed historical snapshot. Scheduled folder scans are best-effort: Android may defer WorkManager tasks according to battery, Doze, app standby and device scheduling. Periodic WorkManager jobs have a 15-minute minimum interval and no exact-time guarantee; SATARK uses a 24-hour interval and must not claim continuous 24/7 monitoring.
+A frozen dataset cannot discover newly emerging threats. Real-time means a newly shared file is inspected immediately against the currently installed historical snapshot. Scheduled folder scans are best-effort: Android may defer WorkManager tasks according to battery, Doze, app standby and device scheduling. Periodic WorkManager jobs have a 15-minute minimum interval and no exact-time guarantee. SATARK offers an opt-in 15-minute frequent schedule and a 24-hour daily schedule; Android may defer either. Neither is continuous 24/7 monitoring.
 
 ## Historical dataset: EMBER2024
 
