@@ -38,8 +38,7 @@ Open the `android/` folder in Android Studio if you prefer the IDE. The CI workf
 The recommended historical source is EMBER2024 (2023-09-24 through 2024-12-14), which provides SHA-256 labels across Win32, Win64, .NET, APK, ELF and PDF. The app does not download data or contact a threat-intelligence feed. On a trusted development computer, acquire the public dataset once and convert its local JSONL metadata:
 
 ```bash
-python -m pip install git+https://github.com/FutureComputing4AI/EMBER2024.git
-python -c "import thrember; thrember.download_dataset('data/ember2024', split='train', file_type='APK')"
+python scripts/download_ember2024.py --output-dir data/ember2024 --split train --file-type APK
 python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
