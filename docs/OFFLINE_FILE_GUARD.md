@@ -24,7 +24,15 @@ Inspired by the routing, gated workflow, human approval and trace-based evaluati
 Reference: https://github.com/NirDiamant/GenAI_Agents
 
 ## Dataset
-The SQLite store starts empty. No fabricated indicators are bundled. Import a legally usable, date-stamped CSV snapshot with sha256,label and optional family,dataset_date. Conflicting labels fail closed.\n\n### Candidate historical sources\n\n- **SOREL-20M (2020):** the project describes a metadata SQLite database containing SHA-256, labels, tags and counts. The complete distribution is roughly 8 TB and the metadata database alone is about 3.5 GB; obtain and process only the metadata needed, and review its terms before using or redistributing derived indicators. It is PE-focused, so it does not provide equal coverage for APK, PDF, Office or media files.\n- **EMBER 2017/2018:** the official repository describes feature vectors extracted from PE files, not a ready-made universal hash feed. It is useful for reproducible PE feature-model research, not as a drop-in mobile file hash database.\n- **YARA rules:** local byte-pattern signatures complement exact hash matching, but they are not a complete threat feed. Keep each rule pack versioned and provenance-tagged; do not fetch rules at scan time.\n\nA frozen snapshot detects exact known hashes only; even one changed byte alters SHA-256. For the first mobile release, prefer a compact, legally usable hash-only export derived from an approved historical source rather than shipping raw malware samples or huge research corpora.
+The SQLite store starts empty. No fabricated indicators are bundled. Import a legally usable, date-stamped CSV snapshot with sha256,label and optional family,dataset_date. Conflicting labels fail closed.
+
+### Candidate historical sources
+
+- **SOREL-20M (2020):** the project describes a metadata SQLite database containing SHA-256, labels, tags and counts. The complete distribution is roughly 8 TB and the metadata database alone is about 3.5 GB; obtain and process only the metadata needed, and review its terms before using or redistributing derived indicators. It is PE-focused, so it does not provide equal coverage for APK, PDF, Office or media files.
+- **EMBER 2017/2018:** the official repository describes feature vectors extracted from PE files, not a ready-made universal hash feed. It is useful for reproducible PE feature-model research, not as a drop-in mobile file hash database.
+- **YARA rules:** local byte-pattern signatures complement exact hash matching, but they are not a complete threat feed. Keep each rule pack versioned and provenance-tagged; do not fetch rules at scan time.
+
+A frozen snapshot detects exact known hashes only; even one changed byte alters SHA-256. For the first mobile release, prefer a compact, legally usable hash-only export derived from an approved historical source rather than shipping raw malware samples or huge research corpora.
 
 ## Android access model
 Android app sandboxing means SATARK cannot freely read WhatsApp or Telegram private databases/directories. The native app should support:
