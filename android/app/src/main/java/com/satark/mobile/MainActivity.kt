@@ -65,6 +65,9 @@ class MainActivity : Activity() {
             15f, 0xFFB8C2D8.toInt(), false
         ))
         status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 12f, 0xFF78E0C1.toInt(), true)
+        if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
+            status.text = "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
+        }
         content.addView(status)
         content.addView(actionButton("Choose a file") { chooseFile() })
         content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
@@ -104,6 +107,8 @@ class MainActivity : Activity() {
         Button(this).apply {
             text = label
             isAllCaps = false
+            setTextColor(0xFF0A111F.toInt())
+            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF78E0C1.toInt())
             setOnClickListener { action() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
