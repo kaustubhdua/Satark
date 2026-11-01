@@ -152,32 +152,44 @@ class MainActivity : Activity() {
         val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
         startActivityForResult(picker, REQUEST_DATASET)
     }
 
-    private fun importDataset(uri: Uri) {
+    private fun importDatasets(uris: List<Uri>) {
         val source = datasetSource.text.toString().trim()
-        status.text = "IMPORTING HISTORICAL HASH SNAPSHOT LOCALLY…"
+        status.text = "IMPORTING " + uris.size + " OFFLINE CSV PART(S)…"
         executor.execute {
-            try {
-                val bytes = readBounded(uri)
-                val response = Python.getInstance().getModule("android_bridge")
-                    .callAttr("import_csv_snapshot", bytes, source, filesDir.absolutePath).toString()
-                val item = JSONObject(response)
-                val counts = item.getJSONObject("import")
-                mainHandler.post {
-                    results.text = "Dataset import complete\nInserted: " + counts.optInt("inserted") +
-                        " · Duplicates: " + counts.optInt("skipped") + " · Rejected: " + counts.optInt("rejected") +
-                        "\nLocal intelligence total: " + item.getJSONObject("stats").optInt("total")
-                    status.text = "HISTORICAL DATASET IMPORTED · OFFLINE"
+            var inserted = 0
+            var skipped = 0
+            var rejected = 0
+            var failures = 0
+            val summaries = mutableListOf<String>()
+            uris.take(100).forEachIndexed { index, uri ->
+                try {
+                    val bytes = readBounded(uri)
+                    val sourceId = (source + ":" + displayName(uri)).take(160)
+                    val response = Python.getInstance().getModule("android_bridge")
+                        .callAttr("import_csv_snapshot", bytes, sourceId, filesDir.absolutePath).toString()
+                    val counts = JSONObject(response).getJSONObject("import")
+                    inserted += counts.optInt("inserted")
+                    skipped += counts.optInt("skipped")
+                    rejected += counts.optInt("rejected")
+                    summaries.add(displayName(uri) + " · imported " + counts.optInt("inserted"))
+                } catch (error: Exception) {
+                    failures += 1
+                    summaries.add(displayName(uri) + " · rejected (" + error.javaClass.simpleName + ")")
                 }
-            } catch (error: Exception) {
                 mainHandler.post {
-                    status.text = "DATASET IMPORT REJECTED"
-                    results.text = "Import failed: " + error.javaClass.simpleName +
-                        "\nExpected CSV columns: sha256,label; optional family,dataset_date."
+                    status.text = "IMPORTING PART " + (index + 1) + " / " + minOf(uris.size, 100)
                 }
+            }
+            mainHandler.post {
+                results.text = "EMBER / historical CSV import complete\nInserted: " + inserted +
+                    " · Duplicates: " + skipped + " · Invalid rows: " + rejected +
+                    " · Failed files: " + failures + "\n\n" + summaries.joinToString("\n")
+                status.text = "OFFLINE DATASET IMPORT FINISHED"
             }
         }
     }
@@ -293,8 +305,12 @@ class MainActivity : Activity() {
                 if (selected.isNotEmpty()) scanUris(selected.distinct())
             }
             REQUEST_DATASET -> {
-                val uri = data.data ?: return
-                importDataset(uri)
+                val selected = mutableListOf<Uri>()
+                data.clipData?.let { clip ->
+                    for (index in 0 until clip.itemCount) selected.add(clip.getItemAt(index).uri)
+                }
+                if (selected.isEmpty()) data.data?.let(selected::add)
+                if (selected.isNotEmpty()) importDatasets(selected.distinct())
             }
             REQUEST_FOLDER -> {
                 val tree = data.data ?: return
