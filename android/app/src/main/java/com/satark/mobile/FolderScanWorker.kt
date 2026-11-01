@@ -41,6 +41,7 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                     if (declaredSize > 0 && totalBytes + declaredSize > MAX_TOTAL_BYTES) break
                     try {
                         val bytes = readBounded(child.uri)
+                        if (totalBytes + bytes.size > MAX_TOTAL_BYTES) break
                         totalBytes += bytes.size
                         bridge.callAttr("scan_shared_file", bytes, child.name ?: "document", applicationContext.filesDir.absolutePath)
                         scanned += 1
