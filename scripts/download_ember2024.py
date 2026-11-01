@@ -68,7 +68,7 @@ def safe_extract_zip(archive: Path, destination: Path, max_extracted_bytes: int 
             raise ValueError("ZIP contains too many entries.")
         for info in entries:
             name = PurePosixPath(info.filename)
-            if name.is_absolute() or ".." in name.parts or not name.parts:
+            if name.is_absolute() or ".." in name.parts or not name.parts or "\\" in info.filename or ":" in name.parts[0]:
                 raise ValueError("ZIP contains an unsafe path.")
             mode = (info.external_attr >> 16) & 0o170000
             if mode == stat.S_IFLNK:
@@ -117,9 +117,15 @@ def download_and_extract(output_dir: Path, split="train", file_type="APK",
         "network_used": True,
         "api_key_required": False,
     }
+    total_uncompressed = 0
     for filename in selected_archives(split, file_type):
         archive = download_archive(filename, archive_dir, max_download_bytes)
-        files = safe_extract_zip(archive, output_dir, max_extracted_bytes)
+        with zipfile.ZipFile(archive, "r") as bundle:
+            declared_uncompressed = sum(item.file_size for item in bundle.infolist())
+        total_uncompressed += declared_uncompressed
+        if total_uncompressed > max_extracted_bytes:
+            raise ValueError("Selected dataset archives exceed the total extracted-size limit.")
+        files = safe_extract_zip(archive, output_dir, max_extracted_bytes - (total_uncompressed - declared_uncompressed))
         manifest["archives"].append({
             "file": filename,
             "sha256": sha256_file(archive),
