@@ -67,7 +67,14 @@ class MainActivity : Activity() {
         ))
         status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 12f, 0xFF78E0C1.toInt(), true)
         if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
-            status.text = "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
+            val lastScan = prefs.getLong("last_folder_scan_ms", 0L)
+            val lastCount = prefs.getInt("last_folder_scan_files", 0)
+            status.text = if (lastScan > 0L) {
+                "FOLDER ACCESS GRANTED · LAST SCAN " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScan)) +
+                    " · " + lastCount + " FILES"
+            } else {
+                "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
+            }
         }
         content.addView(status)
         content.addView(actionButton("Choose a file") { chooseFile() })
