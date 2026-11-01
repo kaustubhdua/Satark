@@ -145,11 +145,13 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
             applicationContext, 0, openApp,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = if (Build.VERSION.SDK_INT >= 26) {
+        val builder = if (Build.VERSION.SDK_INT >= 26) {
             Notification.Builder(applicationContext, CHANNEL_ID)
         } else {
             Notification.Builder(applicationContext)
-        }.setSmallIcon(android.R.drawable.stat_sys_warning)
+        }
+        val notification = builder
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle("SATARK found files needing review")
             .setContentText(count.toString() + " file(s) matched a local warning rule. Open File Guard to review.")
             .setContentIntent(pending)
