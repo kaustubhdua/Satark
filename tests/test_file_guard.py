@@ -1,5 +1,6 @@
 from io import BytesIO, StringIO
 import hashlib
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,6 +55,23 @@ class FileGuardTests(unittest.TestCase):
             imported = store.import_csv(StringIO(f"sha256,label,family\n{digest},malicious,test\n"), "test-snapshot")
             self.assertEqual(imported["inserted"], 1)
             self.assertEqual(scan_bytes(payload, "test.pdf", intelligence=store).verdict, "Known threat")
+
+    def test_existing_hash_database_migrates_file_type_column(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "old.sqlite3"
+            with sqlite3.connect(path) as db:
+                db.execute("""CREATE TABLE hashes (
+                    sha256 TEXT PRIMARY KEY,
+                    label TEXT NOT NULL CHECK(label IN ('malicious','benign')),
+                    family TEXT NOT NULL DEFAULT '',
+                    source TEXT NOT NULL,
+                    dataset_date TEXT NOT NULL DEFAULT ''
+                )""")
+            store = ThreatIntelligenceStore(path)
+            with sqlite3.connect(path) as db:
+                columns = {row[1] for row in db.execute("PRAGMA table_info(hashes)")}
+            self.assertIn("file_type", columns)
+            self.assertEqual(store.stats()["total"], 0)
 
     def test_clear_intelligence_removes_indicators(self):
         digest = hashlib.sha256(b"fixture").hexdigest()
