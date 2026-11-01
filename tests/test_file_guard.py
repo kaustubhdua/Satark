@@ -23,6 +23,7 @@ class FileGuardTests(unittest.TestCase):
     def test_double_extension(self):
         result = scan_bytes(b"MZ" + bytes(32), "invoice.pdf.exe")
         self.assertIn("DOUBLE_EXTENSION", [x["code"] for x in result.signals])
+        self.assertEqual(result.verdict, "Suspicious")
 
     def test_exact_historical_hash_match(self):
         payload = b"%PDF-1.7 test"
