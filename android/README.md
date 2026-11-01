@@ -30,7 +30,8 @@ Open the `android/` folder in Android Studio if you prefer the IDE. The CI workf
 3. Alternatively choose one or more files with the Android system file picker.
 4. To scan a folder, choose a folder through Android's directory picker. SATARK stores only the user-granted URI permission and scans that folder.
 5. Import a historical CSV snapshot using the source ID field and import button.
-6. Review local scan history. Clear history or the imported threat database independently. Remove folder access at any time to release the saved permission and cancel scheduled scans.\n7. Allow notifications if you want alerts when a scheduled scan finds files needing review.
+6. Review local scan history. Clear history or the imported threat database independently. Remove folder access at any time to release the saved permission and cancel scheduled scans.
+7. Allow notifications if you want alerts when a scheduled scan finds files needing review.
 
 ## Limits
 
