@@ -1,6 +1,7 @@
 package com.satark.mobile
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -83,6 +84,8 @@ class MainActivity : Activity() {
         content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
         content.addView(actionButton("View local scan history") { showHistory() })
         content.addView(actionButton("Clear local scan history") { clearHistory() })
+        content.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
+        content.addView(actionButton("Remove folder access and stop scheduled scans") { removeFolderAccess() })
         content.addView(text(
             "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
             13f, 0xFFFFD28A.toInt(), false
@@ -185,6 +188,49 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun confirmClearDataset() {
+        AlertDialog.Builder(this)
+            .setTitle("Clear imported threat dataset?")
+            .setMessage("This removes locally imported SHA-256 indicators. It does not delete scan history or any original files.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Clear dataset") { _, _ -> clearDataset() }
+            .show()
+    }
+
+    private fun clearDataset() {
+        executor.execute {
+            try {
+                Python.getInstance().getModule("android_bridge")
+                    .callAttr("clear_intelligence", filesDir.absolutePath)
+                mainHandler.post {
+                    status.text = "LOCAL THREAT DATASET CLEARED"
+                    results.text = "Imported hash indicators were removed. The scanner now has no historical hash coverage until a new snapshot is imported."
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "COULD NOT CLEAR DATASET · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
+    private fun removeFolderAccess() {
+        val raw = prefs.getString(KEY_TREE_URI, null)
+        if (raw.isNullOrBlank()) {
+            status.text = "NO SAVED FOLDER PERMISSION"
+            return
+        }
+        val uri = Uri.parse(raw)
+        val flags = prefs.getInt(KEY_TREE_FLAGS, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            contentResolver.releasePersistableUriPermission(uri, flags)
+        } catch (_: SecurityException) {
+            // Continue to clear local tracking even if Android already revoked the grant.
+        }
+        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
+        WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
+        prefs.edit().remove(KEY_TREE_URI).remove(KEY_TREE_FLAGS).apply()
+        status.text = "FOLDER PERMISSION RELEASED · SCHEDULED SCANS CANCELLED"
+    }
+
     private fun clearHistory() {
         executor.execute {
             try {
@@ -240,7 +286,7 @@ class MainActivity : Activity() {
                 val grantFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 try {
                     contentResolver.takePersistableUriPermission(tree, grantFlags)
-                    prefs.edit().putString(KEY_TREE_URI, tree.toString()).apply()
+                    prefs.edit().putString(KEY_TREE_URI, tree.toString()).putInt(KEY_TREE_FLAGS, grantFlags).apply()
                     status.text = "FOLDER ACCESS GRANTED · USER-SELECTED LOCATION ONLY"
                     enqueueFolderScan()
                 } catch (_: SecurityException) {
@@ -329,6 +375,7 @@ class MainActivity : Activity() {
         }
         val request = OneTimeWorkRequestBuilder<FolderScanWorker>()
             .setInputData(workDataOf(FolderScanWorker.KEY_TREE_URI to uri))
+            .addTag(FOLDER_SCAN_TAG)
             .build()
         WorkManager.getInstance(this).enqueue(request)
         status.text = "FOLDER SCAN QUEUED · ANDROID BACKGROUND SCHEDULER"
@@ -344,5 +391,7 @@ class MainActivity : Activity() {
         private const val REQUEST_FOLDER = 402
         private const val REQUEST_DATASET = 403
         private const val KEY_TREE_URI = "granted_tree_uri"
+        private const val KEY_TREE_FLAGS = "granted_tree_flags"
+        private const val FOLDER_SCAN_TAG = "satark-folder-scan"
     }
 }
