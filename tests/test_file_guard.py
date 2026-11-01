@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from file_guard.engine import scan_bytes, scan_stream, scan_path, scan_directory
+from file_guard.agents import fuse_evidence, route_file\nfrom file_guard.engine import scan_bytes, scan_stream, scan_path, scan_directory
 from file_guard.history import ScanHistory
 from file_guard.intelligence import ThreatIntelligenceStore
 
@@ -14,6 +14,26 @@ class FileGuardTests(unittest.TestCase):
         self.assertEqual(result.detected_type, "PDF")
         self.assertFalse(result.content_extracted)
         self.assertFalse(result.executed)
+
+    def test_specialist_agent_trace_is_structured(self):
+        result = scan_bytes(b"%PDF-1.7 sample", "sample.pdf")
+        self.assertEqual(result.agent_trace[0]["agent"], "file_router")
+        self.assertIn("sha256_intelligence", result.agent_trace[0]["specialists"])
+        self.assertEqual(result.agent_trace[-1]["agent"], "evidence_fusion")
+        self.assertFalse(result.content_extracted)
+
+    def test_router_adds_yara_only_when_configured(self):
+        plain = route_file("file.pdf", "PDF", yara_configured=False)
+        with_yara = route_file("file.pdf", "PDF", yara_configured=True)
+        self.assertNotIn("local_yara", plain["specialists"])
+        self.assertIn("local_yara", with_yara["specialists"])
+
+    def test_benign_hash_never_downgrades_suspicious_metadata(self):
+        result = fuse_evidence(
+            [{"code": "EXTENSION_SIGNATURE_MISMATCH", "severity": "high"}],
+            {"label": "benign"}, []
+        )
+        self.assertEqual(result["verdict"], "Suspicious")
 
     def test_signature_extension_mismatch(self):
         result = scan_bytes(b"MZ" + bytes(32), "invoice.pdf")
