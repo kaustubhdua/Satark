@@ -87,7 +87,8 @@ class MainActivity : Activity() {
         content.addView(status)
         content.addView(actionButton("Choose a file") { chooseFile() })
         content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
-        content.addView(actionButton("Enable daily background scan") { enablePeriodicScan() })
+        content.addView(actionButton("Enable frequent background scan (15 min, best-effort)") { enableFrequentScan() })
+        content.addView(actionButton("Enable daily background scan") { enableDailyScan() })
         content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
@@ -253,6 +254,7 @@ class MainActivity : Activity() {
             // Continue to clear local tracking even if Android already revoked the grant.
         }
         WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
+        WorkManager.getInstance(this).cancelUniquePeriodicWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
         WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
         prefs.edit().remove(KEY_TREE_URI).remove(KEY_TREE_FLAGS).apply()
         status.text = "FOLDER PERMISSION RELEASED · SCHEDULED SCANS CANCELLED"
@@ -390,21 +392,31 @@ class MainActivity : Activity() {
         return output.toByteArray()
     }
 
-    private fun enablePeriodicScan() {
+    private fun enableFrequentScan() {
+        scheduleFolderScan(15, TimeUnit.MINUTES, FolderScanWorker.UNIQUE_FREQUENT_NAME,
+            "FREQUENT SCAN SCHEDULED · ANDROID MAY DEFER EXECUTION")
+    }
+
+    private fun enableDailyScan() {
+        scheduleFolderScan(24, TimeUnit.HOURS, FolderScanWorker.UNIQUE_PERIODIC_NAME,
+            "DAILY SCAN SCHEDULED · ANDROID MAY DEFER EXECUTION")
+    }
+
+    private fun scheduleFolderScan(interval: Long, unit: TimeUnit, uniqueName: String, statusMessage: String) {
         val uri = prefs.getString(KEY_TREE_URI, null)
         if (uri.isNullOrBlank()) {
             status.text = "CHOOSE A FOLDER FIRST · NO STORAGE IS SCANNED WITHOUT PERMISSION"
             return
         }
-        val request = PeriodicWorkRequestBuilder<FolderScanWorker>(24, TimeUnit.HOURS)
+        val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
             .setConstraints(Constraints.Builder().build())
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            FolderScanWorker.UNIQUE_PERIODIC_NAME,
+            uniqueName,
             ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
-        status.text = "DAILY SCAN SCHEDULED · ANDROID MAY DEFER EXECUTION"
+        status.text = statusMessage
     }
 
     private fun enqueueFolderScan() {
