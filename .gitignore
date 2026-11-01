@@ -35,3 +35,7 @@ local.properties
 
 # Local File Guard databases
 data/*.sqlite3
+
+# Locally downloaded historical datasets and converted hash snapshots
+data/ember2024/
+data/ember2024-csv/
