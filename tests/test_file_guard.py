@@ -68,7 +68,7 @@ class FileGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
             store.import_csv(
-                StringIO(f"sha256,label,file_type,dataset_date\\n{digest},1,APK,2024-12-01\\n"),
+                StringIO(f"sha256,label,file_type,dataset_date\n{digest},1,APK,2024-12-01\n"),
                 "EMBER2024-APK-train",
             )
             result = scan_bytes(b"apk-fixture", "sample.apk", intelligence=store)
