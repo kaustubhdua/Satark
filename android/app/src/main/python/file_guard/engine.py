@@ -117,6 +117,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
                       yara_rules_path=yara_rules_path, max_bytes=max_bytes)
 
 def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
+    """Open one regular file without following a symlink; refuse special files."""
     target = Path(path)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
     fd = os.open(target, flags)
@@ -135,10 +136,16 @@ def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FI
 def scan_directory(root, *, intelligence=None, yara_rules_path=None,
                    max_files=MAX_DIRECTORY_FILES, max_total_bytes=MAX_DIRECTORY_BYTES,
                    max_depth=MAX_DIRECTORY_DEPTH, max_file_bytes=MAX_FILE_BYTES):
+    """Scan a user-selected local directory without following symlinks.
+
+    This is a desktop/local-filesystem adapter. Android must enumerate granted
+    content URIs via SAF and pass each stream to scan_stream instead.
+    """
     base = Path(root)
     if base.is_symlink() or not base.is_dir():
         raise ValueError("Select an existing directory that is not a symlink.")
-    results, errors, total_bytes = [], [], 0
+    results, errors = [], []
+    total_bytes = 0
     stack = [(base, 0)]
     while stack:
         current, depth = stack.pop()
@@ -146,7 +153,7 @@ def scan_directory(root, *, intelligence=None, yara_rules_path=None,
             with os.scandir(current) as entries:
                 for entry in entries:
                     if len(results) + len(errors) >= max_files:
-                        errors.append({"path": entry.name, "error": "FILE_COUNT_LIMIT"})
+                        errors.append({"path": str(entry.path), "error": "FILE_COUNT_LIMIT"})
                         return {"results": results, "errors": errors, "files_scanned": len(results),
                                 "bytes_scanned": total_bytes, "limit_reached": True}
                     try:
