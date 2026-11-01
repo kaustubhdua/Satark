@@ -34,6 +34,14 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(imported["inserted"], 1)
             self.assertEqual(scan_bytes(payload, "test.pdf", intelligence=store).verdict, "Known threat")
 
+    def test_clear_intelligence_removes_indicators(self):
+        digest = hashlib.sha256(b"fixture").hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
+            store.import_csv(StringIO(f"sha256,label\\n{digest},malicious\\n"), "snapshot")
+            store.clear()
+            self.assertEqual(store.stats()["total"], 0)
+
     def test_conflicting_labels_rejected(self):
         digest = hashlib.sha256(b"x").hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
