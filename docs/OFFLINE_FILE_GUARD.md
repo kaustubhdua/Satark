@@ -17,13 +17,16 @@ SATARK File Guard is an app-oriented, local-first file-security workflow for fil
 
 Inspired by workflow patterns in NirDiamant/GenAI_Agents without importing its hosted-LLM/API tutorial dependencies:
 
-1. Router: choose static checks based on file signature.
-2. Hash specialist: exact local SHA-256 indicator match.
-3. Signature specialist: optional local YARA byte-pattern match.
-4. Metadata specialist: filename/extension and magic-byte consistency.
-5. Evidence fusion: deterministic precedence with explicit signal codes.
-6. Human review: present evidence, never auto-delete or silently block.
-7. Trace evaluation: deterministic fixture tests, not an LLM judge.
+The current implementation records an inspectable `agent_trace` for each file:
+1. **Router:** choose static checks based on detected file type and optional YARA configuration.
+2. **Magic/signature specialist:** identify supported magic bytes and compare against the filename extension.
+3. **Metadata specialist:** flag double extensions and annotate executable extensions without treating the extension alone as malware.
+4. **SHA-256 intelligence specialist:** perform an exact local lookup and retain source provenance.
+5. **YARA specialist:** run reviewed local byte-pattern rules when configured; distinguish missing rules, missing dependency, no match and rule errors.
+6. **Evidence fusion:** deterministic precedence: known malicious SHA-256 > YARA match > suspicious metadata > no known indicator. A benign hash does not override suspicious evidence.
+7. **Human review and trace evaluation:** present every specialist's observations and test deterministic behavior with fixtures; no LLM judge or hidden generated verdicts.
+
+This adapts the independent-agent and evidence-fusion architecture from the user's CyberSentinel project in `kaustubhdua/jai-hack`. The file scanner deliberately replaces learned network-flow models with static deterministic specialists: training a flow classifier would not improve byte-signature matching and would introduce unnecessary API/model dependencies.
 
 Reference: https://github.com/NirDiamant/GenAI_Agents
 
