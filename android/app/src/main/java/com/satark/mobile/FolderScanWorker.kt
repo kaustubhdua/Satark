@@ -1,12 +1,21 @@
 package com.satark.mobile
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
 class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -25,6 +34,7 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
             pending.add(rootDocumentId to 0)
             var scanned = 0
             var skipped = 0
+            var highRisk = 0
             var totalBytes = 0L
             var hitLimit = false
             val projection = arrayOf(
@@ -60,9 +70,13 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                                 hitLimit = true
                                 break
                             }
-                            bridge.callAttr(
+                            val scanJson = bridge.callAttr(
                                 "scan_shared_file", bytes, name, applicationContext.filesDir.absolutePath
-                            )
+                            ).toString()
+                            val verdict = JSONObject(scanJson).optString("verdict")
+                            if (verdict in setOf("Known threat", "Signature match", "Suspicious", "Needs review")) {
+                                highRisk += 1
+                            }
                             totalBytes += bytes.size
                             scanned += 1
                         } catch (_: Exception) {
@@ -77,13 +91,17 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 .putLong("last_folder_scan_ms", System.currentTimeMillis())
                 .putInt("last_folder_scan_files", scanned)
                 .putInt("last_folder_scan_skipped", skipped)
+                .putInt("last_folder_scan_alerts", highRisk)
                 .apply()
+
+            if (highRisk > 0) notifyThreats(highRisk)
 
             return Result.success(
                 androidx.work.workDataOf(
                     "scanned_files" to scanned,
                     "skipped_files" to skipped,
                     "scanned_bytes" to totalBytes,
+                    "alerts" to highRisk,
                     "limit_reached" to hitLimit
                 )
             )
@@ -110,6 +128,36 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
         return output.toByteArray()
     }
 
+    private fun notifyThreats(count: Int) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= 26) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "SATARK File Guard alerts", NotificationManager.IMPORTANCE_HIGH)
+            )
+        }
+        val openApp = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            applicationContext, 0, openApp,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = if (Build.VERSION.SDK_INT >= 26) {
+            Notification.Builder(applicationContext, CHANNEL_ID)
+        } else {
+            Notification.Builder(applicationContext)
+        }.setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle("SATARK found files needing review")
+            .setContentText(count.toString() + " file(s) matched a local warning rule. Open File Guard to review.")
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(NOTIFICATION_ID, notification)
+    }
+
     companion object {
         const val KEY_TREE_URI = "tree_uri"
         const val UNIQUE_PERIODIC_NAME = "satark-file-guard-daily"
@@ -117,5 +165,7 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
         private const val MAX_DEPTH = 8
         private const val MAX_FILE_BYTES = 64L * 1024L * 1024L
         private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L
+        private const val CHANNEL_ID = "satark-file-guard-alerts"
+        private const val NOTIFICATION_ID = 4601
     }
 }
