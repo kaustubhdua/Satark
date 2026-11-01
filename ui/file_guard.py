@@ -64,6 +64,8 @@ def render_file_guard():
                     st.code(item["sha256"])
                 for signal in item.get("signals", []):
                     st.write(f"• **{signal['code']}** — {signal['detail']}")
+                with st.expander("Deterministic agent trace"):
+                    st.json(item.get("agent_trace", []))
                 if item["verdict"] == "No known threat detected":
                     st.info("No match in enabled local checks. This is not proof the file is safe.")
                 elif item["verdict"] in {"Known threat", "Signature match", "Suspicious"}:
