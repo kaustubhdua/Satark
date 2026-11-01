@@ -143,16 +143,16 @@ class MainActivity : Activity() {
                 val item = JSONObject(response)
                 val counts = item.getJSONObject("import")
                 mainHandler.post {
-                    results.text = "Dataset import complete\\nInserted: " + counts.optInt("inserted") +
+                    results.text = "Dataset import complete\nInserted: " + counts.optInt("inserted") +
                         " · Duplicates: " + counts.optInt("skipped") + " · Rejected: " + counts.optInt("rejected") +
-                        "\\nLocal intelligence total: " + item.getJSONObject("stats").optInt("total")
+                        "\nLocal intelligence total: " + item.getJSONObject("stats").optInt("total")
                     status.text = "HISTORICAL DATASET IMPORTED · OFFLINE"
                 }
             } catch (error: Exception) {
                 mainHandler.post {
                     status.text = "DATASET IMPORT REJECTED"
                     results.text = "Import failed: " + error.javaClass.simpleName +
-                        "\\nExpected CSV columns: sha256,label; optional family,dataset_date."
+                        "\nExpected CSV columns: sha256,label; optional family,dataset_date."
                 }
             }
         }
@@ -167,10 +167,10 @@ class MainActivity : Activity() {
                 val lines = (0 until array.length()).map { index ->
                     val item = array.getJSONObject(index)
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
-                        " · " + item.optString("filename") + "\\nSHA-256: " + item.optString("sha256")
+                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256")
                 }
                 mainHandler.post {
-                    results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\\n\\n")
+                    results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\n\n")
                     status.text = "LOCAL HISTORY · " + lines.size + " RECORD(S)"
                 }
             } catch (error: Exception) {
@@ -316,7 +316,8 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_FILES = 401
-        private const val REQUEST_FOLDER = 402\n        private const val REQUEST_DATASET = 403
+        private const val REQUEST_FOLDER = 402
+        private const val REQUEST_DATASET = 403
         private const val KEY_TREE_URI = "granted_tree_uri"
     }
 }
