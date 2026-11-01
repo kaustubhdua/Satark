@@ -15,7 +15,7 @@ def render_file_guard():
     stats = store.stats()
     st.markdown('<div class="pill">LOCAL DEVICE SECURITY · OFFLINE FILE GUARD</div>', unsafe_allow_html=True)
     st.title("File Guard")
-    st.caption("Inspect fingerprints, file headers and locally installed signatures. No document text extraction, file execution, uploads to cloud or external reputation calls.")
+    st.caption("Inspect fingerprints, file headers and locally installed signatures. No document text extraction, file execution or external reputation calls. Streamlit uploads go to the app host; use localhost for private scanning.")
     cols = st.columns(4)
     cols[0].metric("Historical indicators", f"{stats['total']:,}")
     cols[1].metric("Malicious hashes", f"{stats['malicious']:,}")
