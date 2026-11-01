@@ -3,8 +3,9 @@ from dataclasses import asdict, dataclass, field
 import hashlib
 import os
 from pathlib import Path
-import re
 import stat
+
+from .agents import route_file, inspect_filename, inspect_hash, inspect_yara, fuse_evidence
 
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_DIRECTORY_FILES = 5000
@@ -23,7 +24,6 @@ MAGIC = [
     (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "OLE document", {".doc", ".xls", ".ppt", ".msg"}),
     (b"dex\n", "Android DEX", {".dex"}),
 ]
-DOUBLE_EXT = re.compile(r"\.(pdf|docx?|xlsx?|pptx?|jpg|jpeg|png)\.(exe|scr|com|bat|cmd|ps1)$", re.I)
 
 @dataclass
 class FileScanResult:
@@ -39,6 +39,8 @@ class FileScanResult:
     intelligence_match: dict | None = None
     yara_available: bool = False
     yara_matches: list = field(default_factory=list)
+    yara_error: str | None = None
+    agent_trace: list = field(default_factory=list)
     content_extracted: bool = False
     executed: bool = False
     def to_dict(self):
@@ -50,18 +52,6 @@ def _type(header):
             return label, extensions
     return ("Empty file" if not header else "Unknown / unrecognized"), set()
 
-def _yara(data, rules_path):
-    if not rules_path or not Path(rules_path).is_file():
-        return False, []
-    try:
-        import yara
-        matches = yara.compile(filepath=str(rules_path)).match(data=data, timeout=3)
-        return True, [m.rule for m in matches]
-    except ImportError:
-        return False, []
-    except Exception:
-        return True, []
-
 def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
     if not isinstance(data, bytes):
         raise TypeError("File data must be bytes.")
@@ -71,38 +61,35 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     ext = Path(name).suffix.lower()
     digest = hashlib.sha256(data).hexdigest()
     detected, allowed_exts = _type(data[:4096])
-    signals, score = [], 0
+    signals = []
     if detected == "Unknown / unrecognized":
         signals.append({"code":"UNKNOWN_SIGNATURE","severity":"low","detail":"No supported file signature recognized."})
     if allowed_exts and ext not in allowed_exts:
         signals.append({"code":"EXTENSION_SIGNATURE_MISMATCH","severity":"high","detail":f"{ext or '(none)'} extension conflicts with {detected} signature."})
-        score += 45
-    if DOUBLE_EXT.search(name):
-        signals.append({"code":"DOUBLE_EXTENSION","severity":"high","detail":"Document/image extension is followed by an executable extension."})
-        score += 45
-    match = intelligence.lookup(digest) if intelligence else None
-    if match and match["label"] == "malicious":
-        signals.append({"code":"KNOWN_MALICIOUS_HASH","severity":"critical","detail":f"Exact SHA-256 match in {match['source']}."})
-        score = 100
-    elif match:
-        signals.append({"code":"KNOWN_BENIGN_HASH","severity":"info","detail":f"Exact benign hash match in {match['source']}."})
-    yara_available, yara_matches = _yara(data, yara_rules_path)
-    if yara_matches:
-        signals.append({"code":"YARA_MATCH","severity":"high","detail":"Local YARA match: " + ", ".join(yara_matches[:8])})
-        score = max(score, 80)
-    score = min(score, 100)
-    if match and match["label"] == "malicious":
-        verdict, risk = "Known threat", "critical"
-    elif yara_matches:
-        verdict, risk = "Signature match", "high"
-    elif score >= 40:
-        verdict, risk = "Suspicious", "high"
-    elif score >= 20:
-        verdict, risk = "Needs review", "medium"
-    else:
-        verdict, risk = "No known threat detected", "low"
-    return FileScanResult(name, len(data), digest, detected, ext, verdict, risk, score,
-                          signals, match, yara_available, yara_matches)
+
+    router = route_file(name, detected, yara_configured=bool(yara_rules_path))
+    metadata = inspect_filename(name)
+    hash_report = inspect_hash(digest, intelligence)
+    yara_report = inspect_yara(data, yara_rules_path)
+    signals.extend(metadata["signals"])
+    signals.extend(hash_report["signals"])
+    signals.extend(yara_report["signals"])
+    fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
+
+    trace = [
+        router,
+        {"agent":"magic_signature","status":"complete","detected_type":detected,
+         "extension_compatible": (not allowed_exts or ext in allowed_exts)},
+        metadata,
+        hash_report,
+        yara_report,
+        fusion,
+    ]
+    return FileScanResult(
+        name, len(data), digest, detected, ext, fusion["verdict"], fusion["risk_level"],
+        fusion["score"], signals, hash_report["match"], yara_report["available"],
+        yara_report["matches"], yara_report["error"], trace
+    )
 
 def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
     data = bytearray()
@@ -117,7 +104,6 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
                       yara_rules_path=yara_rules_path, max_bytes=max_bytes)
 
 def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
-    """Open one regular file without following a symlink; refuse special files."""
     target = Path(path)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
     fd = os.open(target, flags)
@@ -136,16 +122,10 @@ def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FI
 def scan_directory(root, *, intelligence=None, yara_rules_path=None,
                    max_files=MAX_DIRECTORY_FILES, max_total_bytes=MAX_DIRECTORY_BYTES,
                    max_depth=MAX_DIRECTORY_DEPTH, max_file_bytes=MAX_FILE_BYTES):
-    """Scan a user-selected local directory without following symlinks.
-
-    This is a desktop/local-filesystem adapter. Android must enumerate granted
-    content URIs via SAF and pass each stream to scan_stream instead.
-    """
     base = Path(root)
     if base.is_symlink() or not base.is_dir():
         raise ValueError("Select an existing directory that is not a symlink.")
-    results, errors = [], []
-    total_bytes = 0
+    results, errors, total_bytes = [], [], 0
     stack = [(base, 0)]
     while stack:
         current, depth = stack.pop()
