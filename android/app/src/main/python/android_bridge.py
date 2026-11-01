@@ -34,6 +34,11 @@ def clear_scan_history(app_data_dir):
     ScanHistory(root / "file_guard_history.sqlite3").clear()
     return json.dumps({"cleared": True})
 
+def clear_intelligence(app_data_dir):
+    root = _paths(app_data_dir)
+    ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3").clear()
+    return json.dumps({"cleared": True})
+
 def scan_stats(app_data_dir):
     root = _paths(app_data_dir)
     return json.dumps(ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3").stats())
