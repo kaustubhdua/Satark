@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,6 +30,7 @@ class MainActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private lateinit var status: TextView
     private lateinit var results: TextView
+    private lateinit var datasetSource: EditText
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
@@ -68,6 +70,15 @@ class MainActivity : Activity() {
         content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
         content.addView(actionButton("Enable daily background scan") { enablePeriodicScan() })
         content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
+        datasetSource = EditText(this).apply {
+            hint = "Dataset source / snapshot ID"
+            setTextColor(0xFFF3F5FF.toInt())
+            setHintTextColor(0xFF8D9AB2.toInt())
+            singleLine = true
+        }
+        content.addView(datasetSource)
+        content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
+        content.addView(actionButton("View local scan history") { showHistory() })
         content.addView(text(
             "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
             13f, 0xFFFFD28A.toInt(), false
@@ -108,6 +119,66 @@ class MainActivity : Activity() {
         startActivityForResult(picker, REQUEST_FILES)
     }
 
+    private fun chooseDataset() {
+        val source = datasetSource.text.toString().trim()
+        if (source.isBlank()) {
+            status.text = "ENTER A DATASET SOURCE ID BEFORE IMPORTING"
+            return
+        }
+        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(picker, REQUEST_DATASET)
+    }
+
+    private fun importDataset(uri: Uri) {
+        val source = datasetSource.text.toString().trim()
+        status.text = "IMPORTING HISTORICAL HASH SNAPSHOT LOCALLY…"
+        executor.execute {
+            try {
+                val bytes = readBounded(uri)
+                val response = Python.getInstance().getModule("android_bridge")
+                    .callAttr("import_csv_snapshot", bytes, source, filesDir.absolutePath).toString()
+                val item = JSONObject(response)
+                val counts = item.getJSONObject("import")
+                mainHandler.post {
+                    results.text = "Dataset import complete\\nInserted: " + counts.optInt("inserted") +
+                        " · Duplicates: " + counts.optInt("skipped") + " · Rejected: " + counts.optInt("rejected") +
+                        "\\nLocal intelligence total: " + item.getJSONObject("stats").optInt("total")
+                    status.text = "HISTORICAL DATASET IMPORTED · OFFLINE"
+                }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    status.text = "DATASET IMPORT REJECTED"
+                    results.text = "Import failed: " + error.javaClass.simpleName +
+                        "\\nExpected CSV columns: sha256,label; optional family,dataset_date."
+                }
+            }
+        }
+    }
+
+    private fun showHistory() {
+        executor.execute {
+            try {
+                val json = Python.getInstance().getModule("android_bridge")
+                    .callAttr("scan_history", filesDir.absolutePath).toString()
+                val array = org.json.JSONArray(json)
+                val lines = (0 until array.length()).map { index ->
+                    val item = array.getJSONObject(index)
+                    item.optString("scanned_at") + " · " + item.optString("verdict") +
+                        " · " + item.optString("filename") + "\\nSHA-256: " + item.optString("sha256")
+                }
+                mainHandler.post {
+                    results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\\n\\n")
+                    status.text = "LOCAL HISTORY · " + lines.size + " RECORD(S)"
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "HISTORY UNAVAILABLE · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
     private fun chooseFolder() {
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQUEST_FOLDER)
     }
@@ -134,6 +205,10 @@ class MainActivity : Activity() {
                 }
                 if (selected.isEmpty()) data.data?.let(selected::add)
                 if (selected.isNotEmpty()) scanUris(selected.distinct())
+            }
+            REQUEST_DATASET -> {
+                val uri = data.data ?: return
+                importDataset(uri)
             }
             REQUEST_FOLDER -> {
                 val tree = data.data ?: return
@@ -241,7 +316,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_FILES = 401
-        private const val REQUEST_FOLDER = 402
+        private const val REQUEST_FOLDER = 402\n        private const val REQUEST_DATASET = 403
         private const val KEY_TREE_URI = "granted_tree_uri"
     }
 }
