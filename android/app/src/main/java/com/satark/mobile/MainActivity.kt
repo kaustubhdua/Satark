@@ -79,6 +79,7 @@ class MainActivity : Activity() {
         content.addView(datasetSource)
         content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
         content.addView(actionButton("View local scan history") { showHistory() })
+        content.addView(actionButton("Clear local scan history") { clearHistory() })
         content.addView(text(
             "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
             13f, 0xFFFFD28A.toInt(), false
@@ -179,17 +180,36 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun clearHistory() {
+        executor.execute {
+            try {
+                Python.getInstance().getModule("android_bridge")
+                    .callAttr("clear_scan_history", filesDir.absolutePath)
+                mainHandler.post {
+                    results.text = "Local scan history cleared. The historical threat-intelligence database was not changed."
+                    status.text = "LOCAL HISTORY CLEARED"
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "COULD NOT CLEAR HISTORY · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
     private fun chooseFolder() {
         startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQUEST_FOLDER)
     }
 
     private fun handleIncomingIntent(source: Intent?) {
         if (source == null) return
-        val uris = when (source.action) {
-            Intent.ACTION_SEND -> listOfNotNull(source.getParcelableExtra<Uri>(Intent.EXTRA_STREAM) ?: source.data)
-            Intent.ACTION_SEND_MULTIPLE -> source.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.toList().orEmpty()
-            else -> emptyList()
+        val clipUris = mutableListOf<Uri>()
+        source.clipData?.let { clip ->
+            for (index in 0 until clip.itemCount) clipUris.add(clip.getItemAt(index).uri)
         }
+        val uris = when (source.action) {
+            Intent.ACTION_SEND -> listOfNotNull(source.getParcelableExtra<Uri>(Intent.EXTRA_STREAM), source.data) + clipUris
+            Intent.ACTION_SEND_MULTIPLE -> (source.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.toList().orEmpty() + clipUris)
+            else -> emptyList()
+        }.distinct()
         if (uris.isNotEmpty()) scanUris(uris)
     }
 
