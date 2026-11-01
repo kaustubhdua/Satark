@@ -38,7 +38,7 @@ class FileGuardTests(unittest.TestCase):
         digest = hashlib.sha256(b"fixture").hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
             store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
-            store.import_csv(StringIO(f"sha256,label\\n{digest},malicious\\n"), "snapshot")
+            store.import_csv(StringIO(f"sha256,label\n{digest},malicious\n"), "snapshot")
             store.clear()
             self.assertEqual(store.stats()["total"], 0)
 
