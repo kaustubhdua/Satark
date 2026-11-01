@@ -1,10 +1,15 @@
 """Bounded static file inspection. No text extraction, rendering, unpacking or execution."""
 from dataclasses import asdict, dataclass, field
 import hashlib
+import os
 from pathlib import Path
 import re
+import stat
 
 MAX_FILE_BYTES = 64 * 1024 * 1024
+MAX_DIRECTORY_FILES = 5000
+MAX_DIRECTORY_BYTES = 1024 * 1024 * 1024
+MAX_DIRECTORY_DEPTH = 8
 MAGIC = [
     (b"%PDF-", "PDF", {".pdf"}),
     (b"MZ", "Windows executable", {".exe", ".dll", ".scr", ".com"}),
@@ -110,3 +115,71 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
             raise ValueError("File exceeds the configured scan size limit.")
     return scan_bytes(bytes(data), filename, intelligence=intelligence,
                       yara_rules_path=yara_rules_path, max_bytes=max_bytes)
+
+def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
+    """Open one regular file without following a symlink; refuse special files."""
+    target = Path(path)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    fd = os.open(target, flags)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError("Only regular files can be scanned.")
+        if info.st_size > max_bytes:
+            raise ValueError("File exceeds the configured scan size limit.")
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            return scan_stream(handle, target.name, intelligence=intelligence,
+                               yara_rules_path=yara_rules_path, max_bytes=max_bytes)
+    finally:
+        os.close(fd)
+
+def scan_directory(root, *, intelligence=None, yara_rules_path=None,
+                   max_files=MAX_DIRECTORY_FILES, max_total_bytes=MAX_DIRECTORY_BYTES,
+                   max_depth=MAX_DIRECTORY_DEPTH, max_file_bytes=MAX_FILE_BYTES):
+    """Scan a user-selected local directory without following symlinks.
+
+    This is a desktop/local-filesystem adapter. Android must enumerate granted
+    content URIs via SAF and pass each stream to scan_stream instead.
+    """
+    base = Path(root)
+    if base.is_symlink() or not base.is_dir():
+        raise ValueError("Select an existing directory that is not a symlink.")
+    results, errors = [], []
+    total_bytes = 0
+    stack = [(base, 0)]
+    while stack:
+        current, depth = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    if len(results) + len(errors) >= max_files:
+                        errors.append({"path": str(entry.path), "error": "FILE_COUNT_LIMIT"})
+                        return {"results": results, "errors": errors, "files_scanned": len(results),
+                                "bytes_scanned": total_bytes, "limit_reached": True}
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir(follow_symlinks=False):
+                            if depth < max_depth:
+                                stack.append((Path(entry.path), depth + 1))
+                            continue
+                        if not entry.is_file(follow_symlinks=False):
+                            continue
+                        info = entry.stat(follow_symlinks=False)
+                        if info.st_size > max_file_bytes:
+                            errors.append({"path": entry.name, "error": "FILE_SIZE_LIMIT"})
+                            continue
+                        if total_bytes + info.st_size > max_total_bytes:
+                            errors.append({"path": entry.name, "error": "DIRECTORY_BYTE_LIMIT"})
+                            return {"results": results, "errors": errors, "files_scanned": len(results),
+                                    "bytes_scanned": total_bytes, "limit_reached": True}
+                        result = scan_path(entry.path, intelligence=intelligence,
+                                           yara_rules_path=yara_rules_path, max_bytes=max_file_bytes)
+                        results.append(result.to_dict())
+                        total_bytes += result.size_bytes
+                    except (OSError, ValueError) as exc:
+                        errors.append({"path": entry.name, "error": type(exc).__name__})
+        except OSError as exc:
+            errors.append({"path": str(current), "error": type(exc).__name__})
+    return {"results": results, "errors": errors, "files_scanned": len(results),
+            "bytes_scanned": total_bytes, "limit_reached": False}
