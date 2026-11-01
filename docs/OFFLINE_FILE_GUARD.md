@@ -49,12 +49,34 @@ The user chooses which files or folder are accessible. SATARK does not access Wh
 
 A frozen dataset cannot discover newly emerging threats. Real-time means a newly shared file is inspected immediately against the currently installed historical snapshot. Scheduled folder scans are best-effort: Android may defer WorkManager tasks according to battery, Doze, app standby and device scheduling. Periodic WorkManager jobs have a 15-minute minimum interval and no exact-time guarantee; SATARK uses a 24-hour interval and must not claim continuous 24/7 monitoring.
 
-## Historical dataset research
+## Historical dataset: EMBER2024
 
-- **SOREL-20M:** PE-focused research corpus with hash metadata; large and subject to licensing/redistribution review. Not universal Android/PDF/Office coverage.
-- **EMBER:** PE static-feature research data, not a universal cross-platform SHA-256 feed.
-- **YARA:** local byte-pattern rules complement exact hash matching but are not a complete feed.
-- The app ships with an empty local indicator database. Import only a date-stamped, legally usable CSV snapshot with `sha256,label` and optional `family,dataset_date` columns. Conflicting labels fail closed.
+The preferred first historical hash source is **EMBER2024**, rather than older PE-only EMBER2017/2018 or the very large SOREL-20M corpus.
+
+- The official project describes 3.2 million labelled samples across Win32, Win64, .NET, APK, ELF and PDF.
+- Its collection window is 24 September 2023 through 14 December 2024; the chronological split contains 2,626,000 training samples and 606,000 test samples, plus a 6,315-sample challenge set.
+- Binary labels are 0 = benign, 1 = malicious and -1 = unlabeled; the converter excludes unlabeled rows rather than treating them as benign.
+- The upstream project repository is Apache-2.0 licensed. Review dataset terms and cite the upstream paper before redistributing derived data.
+- The download contains metadata/features and hashes, not original malware binaries.
+
+### Explicit one-time acquisition (no API key)
+
+The separate downloader uses direct public archive URLs and Python's standard library. It is not imported by the app and never runs during a scan:
+
+```bash
+python scripts/download_ember2024.py --output-dir data/ember2024 --split train --file-type APK
+python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
+```
+
+Repeat with `--file-type PDF`, `ELF` or `PE` if required. The converter reads only local JSONL metadata, writes 25,000-row CSV parts by default, and emits a manifest with per-part SHA-256 checksums. Multi-select the generated CSV parts in Android or Streamlit and retain the manifest for provenance. Confirm each part is below Android's 64 MB import limit. Public archive acquisition is a one-time network download; the Android app itself has no Internet permission and scans offline.
+
+### Coverage and limitations
+
+- APK/PDF/ELF/PE hash matches give exact known-sample coverage for those formats. EMBER2024 does not supply Office-document coverage as a separate file type.
+- This is historical data ending in December 2024, not a live feed. It cannot detect new or modified files absent from the database.
+- SHA-256 changes completely when a file changes by even one byte. Local YARA rules are complementary and must be versioned with explicit rule provenance.
+- The app ships with an empty local indicator database. No fake indicators are bundled.
+- SOREL-20M remains a useful PE research source but is far larger (about 8 TB overall, metadata DB around 3.5 GB) and does not improve APK/PDF/ELF coverage enough to justify its mobile storage cost for the first release.
 
 ## Streamlit interface boundary
 
