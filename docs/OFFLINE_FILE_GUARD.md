@@ -40,8 +40,10 @@ Implemented in the Android scaffold:
 - User-granted directory selection using `ACTION_OPEN_DOCUMENT_TREE`.
 - Persisted URI read permission for the selected tree.
 - Local Python SHA-256 and file-signature scanning.
-- Local SQLite scan history and historical CSV hash snapshot import.
-- WorkManager one-time and daily scheduled folder scans, bounded to 1,000 files, 8 directory levels, 64 MB/file and 512 MB/run.
+- Local SQLite scan history, multi-part historical CSV hash snapshot import and user-controlled reset of history/database.
+- User control to release persisted folder permissions and cancel scheduled scans.
+- WorkManager one-time and best-effort daily scheduled folder scans, bounded to 1,000 files, 8 directory levels, 64 MB/file and 512 MB/run.
+- Optional Android notifications when a background scan finds files requiring review; notification text contains only a count.
 
 The user chooses which files or folder are accessible. SATARK does not access WhatsApp/Telegram private chat databases or private app directories. A sender's temporary URI grant is used for a shared attachment; the app does not assume it can persist that sender grant.
 
