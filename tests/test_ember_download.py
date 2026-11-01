@@ -31,6 +31,11 @@ class EmberDownloadTests(unittest.TestCase):
                 archive.writestr("../escape.jsonl", "bad")
             with self.assertRaises(ValueError):
                 safe_extract_zip(bad, root / "bad-out")
+            backslash = root / "backslash.zip"
+            with zipfile.ZipFile(backslash, "w") as archive:
+                archive.writestr("..\\outside.jsonl", "bad")
+            with self.assertRaises(ValueError):
+                safe_extract_zip(backslash, root / "backslash-out")
 
 if __name__ == "__main__":
     unittest.main()
