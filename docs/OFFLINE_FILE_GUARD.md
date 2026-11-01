@@ -1,52 +1,65 @@
 # SATARK File Guard — offline mobile file inspection
 
-## Direction
-SATARK is adding an app-oriented, local-first file security workflow. This first milestone adds a bounded Python scanner, a local SQLite hash index and a focused Streamlit workspace. The Python engine is intended to remain the detection source of truth behind a native Android adapter.
+## Product direction
 
-## Hard constraints
-- No hosted analysis APIs, API keys, cloud lookups, telemetry uploads or live feed polling.
-- Use only a traceable historical dataset snapshot explicitly imported by the operator.
-- Do not read chat/message content, extract document text, OCR images or render media.
-- Do not execute, install, preview, unpack, delete or quarantine files.
-- Raw bytes must still be read for SHA-256, magic-byte identification and optional YARA pattern matching. “Does not read content” means no semantic/content extraction, not zero byte access.
-- “No known threat detected” is not a safety guarantee.
+SATARK File Guard is an app-oriented, local-first file-security workflow for files received through WhatsApp, Telegram, downloads, email attachments and other apps. The Android app invokes the deterministic Python inspection engine using Chaquopy; there is no hosted analysis API or runtime network permission.
 
-## Agent design reference
-Inspired by the routing, gated workflow, human approval and trace-based evaluation patterns catalogued in NirDiamant/GenAI_Agents. The implementation deliberately does not adopt the repository's hosted-model/API notebooks or add a runtime dependency. SATARK uses deterministic specialist agents:
-1. Router: file signature and extension identify relevant checks.
-2. Hash specialist: exact SHA-256 lookup against the local historical index.
-3. Signature specialist: optional local YARA rules.
-4. Metadata specialist: extension/signature mismatch and double-extension checks.
-5. Evidence fusion: explicit verdict precedence, with exact malicious hash > YARA match > suspicious mismatch > no known match.
-6. Human review: report only; never automatically delete or block.
-7. Trace evaluation: fixed regression tests, no LLM judge.
+## Detection boundary
+
+- SHA-256 exact-match lookup against a historical, locally imported SQLite index.
+- Magic-byte identification for common document, archive, executable, image and Android DEX formats.
+- Extension/signature mismatch and double-extension heuristics.
+- Optional YARA rules in the desktop Python engine when local `yara-python` and a reviewed rules file are installed. The first Android build does not bundle YARA.
+- No document text extraction, OCR, rendering, archive unpacking, file execution, preview, deletion or automatic quarantine.
+- Unknown files are not labelled safe. A no-match verdict means only that enabled checks found no known indicator.
+
+## Agent architecture
+
+Inspired by workflow patterns in NirDiamant/GenAI_Agents without importing its hosted-LLM/API tutorial dependencies:
+
+1. Router: choose static checks based on file signature.
+2. Hash specialist: exact local SHA-256 indicator match.
+3. Signature specialist: optional local YARA byte-pattern match.
+4. Metadata specialist: filename/extension and magic-byte consistency.
+5. Evidence fusion: deterministic precedence with explicit signal codes.
+6. Human review: present evidence, never auto-delete or silently block.
+7. Trace evaluation: deterministic fixture tests, not an LLM judge.
 
 Reference: https://github.com/NirDiamant/GenAI_Agents
 
-## Dataset
-The SQLite store starts empty. No fabricated indicators are bundled. Import a legally usable, date-stamped CSV snapshot with sha256,label and optional family,dataset_date. Conflicting labels fail closed.
+## Android implementation
 
-### Candidate historical sources
+The standalone Android project is in `android/` and uses Kotlin + Chaquopy 17.2 / Python 3.13. Chaquopy's current requirements are minSdk 24 and supported Android Gradle Plugin versions 7.3–9.4; this project targets Android API 35, minSdk 24 and 64-bit ARM/emulator ABIs.
 
-- **SOREL-20M (2020):** the project describes a metadata SQLite database containing SHA-256, labels, tags and counts. The complete distribution is roughly 8 TB and the metadata database alone is about 3.5 GB; obtain and process only the metadata needed, and review its terms before using or redistributing derived indicators. It is PE-focused, so it does not provide equal coverage for APK, PDF, Office or media files.
-- **EMBER 2017/2018:** the official repository describes feature vectors extracted from PE files, not a ready-made universal hash feed. It is useful for reproducible PE feature-model research, not as a drop-in mobile file hash database.
-- **YARA rules:** local byte-pattern signatures complement exact hash matching, but they are not a complete threat feed. Keep each rule pack versioned and provenance-tagged; do not fetch rules at scan time.
+Implemented in the Android scaffold:
+- Android Sharesheet receivers for `ACTION_SEND` and `ACTION_SEND_MULTIPLE`.
+- System file picker using `ACTION_OPEN_DOCUMENT`.
+- User-granted directory selection using `ACTION_OPEN_DOCUMENT_TREE`.
+- Persisted URI read permission for the selected tree.
+- Local Python SHA-256 and file-signature scanning.
+- Local SQLite scan history and historical CSV hash snapshot import.
+- WorkManager one-time and daily scheduled folder scans, bounded to 1,000 files, 8 directory levels, 64 MB/file and 512 MB/run.
 
-A frozen snapshot detects exact known hashes only; even one changed byte alters SHA-256. For the first mobile release, prefer a compact, legally usable hash-only export derived from an approved historical source rather than shipping raw malware samples or huge research corpora.
+The user chooses which files or folder are accessible. SATARK does not access WhatsApp/Telegram private chat databases or private app directories. A sender's temporary URI grant is used for a shared attachment; the app does not assume it can persist that sender grant.
 
-## Android access model
-Android app sandboxing means SATARK cannot freely read WhatsApp or Telegram private databases/directories. The native app should support:
-- ACTION_SEND / ACTION_SEND_MULTIPLE: user shares selected attachment to SATARK.
-- ACTION_OPEN_DOCUMENT: user picks an individual file.
-- ACTION_OPEN_DOCUMENT_TREE: user grants access to a specific visible directory tree.
-- Persisted URI permissions for user-approved folders.
-- WorkManager for best-effort scheduled scans, with visible last-scan and granted-folder state.
+## 24/7 and real-time claims
 
-WhatsApp/Telegram shared media may be accessible through system-provided storage locations on some Android versions; access varies. Do not claim private chat or unrestricted app-storage access. Kotlin should handle Android intents, content URIs, permissions, notifications and lifecycle; Chaquopy or an equivalent embedded Python runtime can invoke this Python scanner.
+A frozen dataset cannot discover newly emerging threats. Real-time means a newly shared file is inspected immediately against the currently installed historical snapshot. Scheduled folder scans are best-effort: Android may defer WorkManager tasks according to battery, Doze, app standby and device scheduling. Periodic WorkManager jobs have a 15-minute minimum interval and no exact-time guarantee; SATARK uses a 24-hour interval and must not claim continuous 24/7 monitoring.
 
-## 24/7 / real-time claim
-With a frozen dataset, real-time means a newly shared or discovered accessible file is scanned immediately (foreground) or at the next OS-permitted background-work opportunity against the installed historical snapshot. It does not mean new malware intelligence arrives automatically. Android may defer background work for battery and lifecycle reasons; never promise second-by-second scanning.
+## Historical dataset research
 
-## Current milestone and gaps
-Implemented: Python hash/signature inspection, SQLite historical hash import, local-only Streamlit UI, and offline tests.
-Not yet implemented: native Android package, Share-to-SATARK receiver, Storage Access Framework bridge, persistent URI grants, WorkManager scheduling, YARA rule pack, and a populated licensed historical dataset. Streamlit upload is a development workflow, not native phone background monitoring.
+- **SOREL-20M:** PE-focused research corpus with hash metadata; large and subject to licensing/redistribution review. Not universal Android/PDF/Office coverage.
+- **EMBER:** PE static-feature research data, not a universal cross-platform SHA-256 feed.
+- **YARA:** local byte-pattern rules complement exact hash matching but are not a complete feed.
+- The app ships with an empty local indicator database. Import only a date-stamped, legally usable CSV snapshot with `sha256,label` and optional `family,dataset_date` columns. Conflicting labels fail closed.
+
+## Streamlit interface boundary
+
+The Streamlit File Guard page is a developer interface. Uploaded bytes are transferred to the Streamlit host. Run it on localhost or a trusted private host if you want scans to remain on your own machine. The Android app is the intended mobile local-processing path.
+
+## Validation and release
+
+- `.github/workflows/android-file-guard.yml` compiles Python modules, runs deterministic tests and builds a debug APK.
+- A successful CI build is required before treating the Android scaffold as build-verified.
+- Device validation is still required for WhatsApp/Telegram sender compatibility, scoped-storage provider behavior, low-memory handling, Android 13+ behavior, background scheduling and OEM battery restrictions.
+- A signed release APK/AAB, Play Store compliance review, privacy policy and physical-device QA are not yet supplied.
