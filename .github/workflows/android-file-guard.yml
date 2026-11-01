@@ -39,8 +39,10 @@ jobs:
           cmp file_guard/history.py android/app/src/main/python/file_guard/history.py
       - name: Compile File Guard
         run: python -m compileall -q file_guard android/app/src/main/python
-      - name: Run deterministic tests
+      - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Run EMBER2024 converter tests
+        run: python -m unittest discover -s tests -p "test_ember_import.py" -v
 
   android-build:
     name: Build native Android APK
