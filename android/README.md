@@ -48,7 +48,7 @@ Repeat for PDF, ELF or PE if those formats are needed. Transfer the generated CS
 
 - Maximum 64 MB per file, 20 shared files per foreground share event.
 - Folder worker: up to 1,000 files, 8 directory levels, 64 MB per file and 512 MB per run.
-- Daily periodic scan is best-effort; Android may defer it. This is not 24/7 real-time monitoring.
+- Frequent 15-minute and daily periodic scans are best-effort; Android may defer either. The 15-minute option is not exact and neither schedule is continuous 24/7 monitoring.
 - Only the selected folder tree is accessible. WhatsApp/Telegram private message stores and private app directories are not accessed.
 - The bundled Android scanner uses SHA-256, magic bytes and filename/signature checks. It does not currently bundle YARA.
 - The historical intelligence database is empty until the user imports a licensed, provenance-labelled CSV.
