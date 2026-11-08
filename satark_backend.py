@@ -1,6 +1,5 @@
 """Self-hosted SATARK application backend.
 
-No Supabase SDK, Auth, PostgREST, Storage, or RPC calls are used here.
 PostgreSQL is the production database; SQLite is supported for local use/tests.
 """
 from __future__ import annotations
@@ -216,6 +215,7 @@ class InvestigationJob(Base):
     tenant_id: Mapped[str] = mapped_column(String(36), index=True)
     case_id: Mapped[str] = mapped_column(String(36), index=True)
     requested_by: Mapped[str] = mapped_column(String(36))
+    idempotency_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="queued")
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     result_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
