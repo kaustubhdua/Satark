@@ -716,6 +716,7 @@ def add_workspace_member(body: dict, user: User = Depends(current_user), db: Ses
     email = body.get("email")
     role = body.get("role", "analyst")
     require_membership(db, user, str(tenant_id), {"owner"})
+    db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
     if not isinstance(email, str) or not EMAIL_RE.fullmatch(email.strip().lower()):
         raise HTTPException(400, "A valid existing account email is required.")
     if role not in {"owner", "responder", "analyst", "viewer"}:
@@ -741,6 +742,7 @@ def add_workspace_member(body: dict, user: User = Depends(current_user), db: Ses
 def update_workspace_member(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
     tenant_id, target_id, role = body.get("tenant_id"), body.get("user_id"), body.get("role")
     require_membership(db, user, str(tenant_id), {"owner"})
+    db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
     if not isinstance(target_id, str) or not UUID_RE.fullmatch(target_id):
         raise HTTPException(400, "A valid user_id is required.")
     if role not in {"owner", "responder", "analyst", "viewer"}:
@@ -769,6 +771,7 @@ def update_workspace_member(body: dict, user: User = Depends(current_user), db: 
 @router.delete("/workspaces/members")
 def remove_workspace_member(tenant_id: str, user_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id, {"owner"})
+    db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
     if not UUID_RE.fullmatch(user_id):
         raise HTTPException(400, "A valid user_id is required.")
     row = db.scalar(select(Membership).where(
