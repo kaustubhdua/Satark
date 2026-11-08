@@ -149,7 +149,10 @@ def test_worker_does_not_advance_checkpoint_when_wazuh_page_fails(database):
     db = backend.SessionLocal()
     checkpoint = db.scalar(select(backend.IngestionCheckpoint))
     assert checkpoint.last_status == "error"
-    assert checkpoint.last_event_timestamp == datetime(2026, 10, 20, 7, 0, tzinfo=timezone.utc)
+    checkpoint_time = checkpoint.last_event_timestamp
+    if checkpoint_time.tzinfo is None:
+        checkpoint_time = checkpoint_time.replace(tzinfo=timezone.utc)
+    assert checkpoint_time == datetime(2026, 10, 20, 7, 0, tzinfo=timezone.utc)
     db.close()
 
 
