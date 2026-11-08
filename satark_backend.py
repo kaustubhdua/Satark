@@ -20,7 +20,7 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
@@ -509,6 +509,84 @@ def list_workspace_members(tenant_id: str, user: User = Depends(current_user), d
         .limit(500)
     ).all()
     return {"members": [{"user_id": user_id, "email": email, "role": role} for user_id, email, role in rows]}
+
+
+@router.post("/workspaces/members", status_code=201)
+def add_workspace_member(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id = body.get("tenant_id")
+    email = body.get("email")
+    role = body.get("role", "analyst")
+    require_membership(db, user, str(tenant_id), {"owner"})
+    if not isinstance(email, str) or not EMAIL_RE.fullmatch(email.strip().lower()):
+        raise HTTPException(400, "A valid existing account email is required.")
+    if role not in {"owner", "responder", "analyst", "viewer"}:
+        raise HTTPException(400, "Role must be owner, responder, analyst, or viewer.")
+    target = db.scalar(select(User).where(User.email == email.strip().lower(), User.is_active.is_(True)))
+    if not target:
+        raise HTTPException(404, "The account must register with SATARK before it can join a workspace.")
+    existing = db.scalar(select(Membership).where(
+        Membership.tenant_id == tenant_id, Membership.user_id == target.id
+    ))
+    if existing:
+        raise HTTPException(409, "This account is already a workspace member.")
+    row = Membership(tenant_id=tenant_id, user_id=target.id, role=role)
+    db.add(row)
+    audit(db, tenant_id, user.id, "workspace.member.added", {
+        "member_user_id": target.id, "role": role,
+    })
+    db.commit()
+    return {"member": {"user_id": target.id, "email": target.email, "role": row.role}}
+
+
+@router.patch("/workspaces/members")
+def update_workspace_member(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, target_id, role = body.get("tenant_id"), body.get("user_id"), body.get("role")
+    require_membership(db, user, str(tenant_id), {"owner"})
+    if not isinstance(target_id, str) or not UUID_RE.fullmatch(target_id):
+        raise HTTPException(400, "A valid user_id is required.")
+    if role not in {"owner", "responder", "analyst", "viewer"}:
+        raise HTTPException(400, "Role must be owner, responder, analyst, or viewer.")
+    row = db.scalar(select(Membership).where(
+        Membership.tenant_id == tenant_id, Membership.user_id == target_id
+    ))
+    if not row:
+        raise HTTPException(404, "Workspace member not found.")
+    if row.role == "owner" and role != "owner":
+        owners = db.scalar(select(func.count()).select_from(Membership).where(
+            Membership.tenant_id == tenant_id, Membership.role == "owner"
+        )) or 0
+        if owners <= 1:
+            raise HTTPException(409, "A workspace must retain at least one owner.")
+    previous_role = row.role
+    row.role = role
+    audit(db, tenant_id, user.id, "workspace.member.role_changed", {
+        "member_user_id": target_id, "from_role": previous_role, "to_role": role,
+    })
+    db.commit()
+    target = db.get(User, target_id)
+    return {"member": {"user_id": target_id, "email": target.email if target else None, "role": row.role}}
+
+
+@router.delete("/workspaces/members")
+def remove_workspace_member(tenant_id: str, user_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id, {"owner"})
+    if not UUID_RE.fullmatch(user_id):
+        raise HTTPException(400, "A valid user_id is required.")
+    row = db.scalar(select(Membership).where(
+        Membership.tenant_id == tenant_id, Membership.user_id == user_id
+    ))
+    if not row:
+        raise HTTPException(404, "Workspace member not found.")
+    if row.role == "owner":
+        owners = db.scalar(select(__import__("sqlalchemy").func.count()).select_from(Membership).where(
+            Membership.tenant_id == tenant_id, Membership.role == "owner"
+        )) or 0
+        if owners <= 1:
+            raise HTTPException(409, "A workspace must retain at least one owner.")
+    db.delete(row)
+    audit(db, tenant_id, user.id, "workspace.member.removed", {"member_user_id": user_id})
+    db.commit()
+    return {"ok": True, "removed_user_id": user_id}
 
 
 @router.get("/workspaces")
