@@ -7,7 +7,7 @@ const navigation = fs.readFileSync(new URL('../src/app/site-header.tsx', import.
 const homepage = fs.readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
 const browserSmoke = fs.readFileSync(new URL('./browser-smoke.mjs', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL('../src/app/api/cases/route.ts', import.meta.url), 'utf8');
-const backend = fs.readFileSync(new URL('../../../satark_backend.py', import.meta.url), 'utf8');
+const backend = fs.readFileSync(new URL('../../satark_backend.py', import.meta.url), 'utf8');
 const firstlightCasePanel = fs.readFileSync(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
 
 test('case workspace reads and creates cases through tenant-scoped authenticated helpers', () => {
