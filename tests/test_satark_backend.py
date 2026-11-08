@@ -128,3 +128,21 @@ def test_empty_bearer_header_does_not_bypass_cookie_csrf(client):
         headers={"Origin": "https://attacker.example", "Authorization": "Bearer "},
     )
     assert response.status_code == 403
+
+def test_session_refresh_rotates_and_revokes_previous_cookie(client):
+    register(client, "rotate@example.test")
+    old_token = client.cookies.get("satark_session")
+    before = client.get("/api/auth/session")
+    assert before.status_code == 200
+    assert before.json()["expires_in"] > 0
+
+    refreshed = client.post("/api/auth/refresh", headers=origin())
+    assert refreshed.status_code == 200, refreshed.text
+    new_token = client.cookies.get("satark_session")
+    assert new_token and new_token != old_token
+    assert refreshed.json()["user"]["email"] == "rotate@example.test"
+
+    stale_client = TestClient(app, base_url="http://testserver")
+    stale_client.cookies.set("satark_session", old_token)
+    assert stale_client.get("/api/auth/session").status_code == 401
+    assert client.get("/api/auth/session").status_code == 200
