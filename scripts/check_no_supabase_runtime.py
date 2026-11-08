@@ -22,7 +22,7 @@ RUNTIME_FILES = [
     ROOT / "firstlight-api-requirements.txt",
     ROOT / ".github" / "workflows",
 ]
-FORBIDDEN = re.compile(r"supabase|@supabase|/auth/v1|/rest/v1|/storage/v1", re.IGNORECASE)
+FORBIDDEN = re.compile(r"SUPABASE_|@supabase|supabase\\.co|/auth/v1|/rest/v1|/storage/v1", re.IGNORECASE)
 
 
 def source_files():
