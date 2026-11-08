@@ -133,6 +133,7 @@ class Evidence(Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     content_type: Mapped[str] = mapped_column(String(160))
     original_filename: Mapped[str] = mapped_column(String(100))
+    metadata_json: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_by: Mapped[str] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -462,6 +463,45 @@ def create_case(body: CaseInput, user: User = Depends(current_user), db: Session
     return {"case": case_json(row)}
 
 
+@router.patch("/cases")
+def update_case(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    require_membership(db, user, str(tenant_id), {"owner", "responder"})
+    row = db.scalar(select(Case).where(Case.id == case_id, Case.tenant_id == tenant_id))
+    if not row:
+        raise HTTPException(404, "Case not found.")
+    allowed = {"title", "status", "severity", "assigned_to", "metadata"}
+    if not any(key in body for key in allowed):
+        raise HTTPException(400, "At least one case field must be provided for update.")
+    if "title" in body:
+        if not isinstance(body["title"], str) or not body["title"].strip() or len(body["title"]) > 240:
+            raise HTTPException(400, "Case title is invalid.")
+        row.title = body["title"].strip()
+    if "status" in body:
+        if body["status"] not in {"open", "contained", "resolved", "archived"}:
+            raise HTTPException(400, "Invalid case status.")
+        row.status = body["status"]
+    if "severity" in body:
+        if body["severity"] not in {"unknown", "info", "low", "medium", "high", "critical"}:
+            raise HTTPException(400, "Invalid case severity.")
+        row.severity = body["severity"]
+    if "assigned_to" in body:
+        assignee = body["assigned_to"]
+        if assignee is not None:
+            membership = db.scalar(select(Membership).where(Membership.tenant_id == tenant_id, Membership.user_id == assignee))
+            if not membership or membership.role not in {"owner", "responder", "analyst"}:
+                raise HTTPException(400, "The assignee must be an active workspace member.")
+        row.assigned_to = assignee
+    if "metadata" in body:
+        if not isinstance(body["metadata"], dict) or len(json.dumps(body["metadata"]).encode()) > 16 * 1024:
+            raise HTTPException(400, "Case metadata is invalid or oversized.")
+        row.metadata_json = body["metadata"]
+    row.updated_at = utcnow()
+    audit(db, tenant_id, user.id, "case.updated", {"case_id": row.id, "fields": sorted(key for key in allowed if key in body)})
+    db.commit()
+    return {"case": case_json(row)}
+
+
 @router.get("/cases/notes")
 def list_notes(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
@@ -584,7 +624,7 @@ async def upload_evidence(
     except ValueError:
         object_path.unlink(missing_ok=True)
         raise HTTPException(400, "observed_at must include an explicit timezone.")
-    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path), source_label=source_label[:160], event_kind=event_kind[:100], observed_at=when, summary=summary[:8192], source_sha256=digest, size_bytes=len(raw), content_type=content_type, original_filename=name, created_by=user.id)
+    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path), source_label=source_label[:160], event_kind=event_kind[:100], observed_at=when, summary=summary[:8192], source_sha256=digest, size_bytes=len(raw), content_type=content_type, original_filename=name, metadata_json={}, created_by=user.id)
     db.add(row)
     audit(db, tenant_id, user.id, "evidence.uploaded", {"evidence_id": evidence_id, "sha256": digest, "size_bytes": len(raw)})
     try:
@@ -636,7 +676,7 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
     row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
         source_label=source, event_kind=kind, observed_at=observed, summary=summary,
         source_sha256=digest, size_bytes=len(raw), content_type="application/json",
-        original_filename="evidence.json", created_by=user.id)
+        original_filename="evidence.json", metadata_json=metadata, created_by=user.id)
     db.add(row)
     db.flush()
     audit(db, tenant_id, user.id, "evidence.record.imported", {"evidence_id": evidence_id, "sha256": digest})
@@ -678,7 +718,7 @@ def download_wazuh_source(tenant_id: str, case_id: str, path: str, user: User = 
 def list_evidence(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
     rows = db.scalars(select(Evidence).where(Evidence.tenant_id == tenant_id, Evidence.case_id == case_id).order_by(Evidence.observed_at.asc()).limit(500)).all()
-    return {"evidence": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "source_label": r.source_label, "event_kind": r.event_kind, "observed_at": r.observed_at.isoformat(), "summary": r.summary, "source_sha256": r.source_sha256, "size_bytes": r.size_bytes, "content_type": r.content_type, "original_filename": r.original_filename, "created_by": r.created_by, "created_at": r.created_at.isoformat()} for r in rows]}
+    return {"evidence": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "source_label": r.source_label, "event_kind": r.event_kind, "observed_at": r.observed_at.isoformat(), "summary": r.summary, "source_sha256": r.source_sha256, "size_bytes": r.size_bytes, "content_type": r.content_type, "original_filename": r.original_filename, "metadata": r.metadata_json, "created_by": r.created_by, "created_at": r.created_at.isoformat()} for r in rows]}
 
 
 @router.get("/evidence/{evidence_id}/download")
