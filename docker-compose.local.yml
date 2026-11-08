@@ -17,8 +17,6 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
-      ollama:
-        condition: service_healthy
       firstlight-api:
         condition: service_healthy
     restart: unless-stopped
@@ -135,9 +133,6 @@ services:
       SATARK_WHISPER_COMPUTE_TYPE: int8
     ports:
       - "127.0.0.1:8501:8501"
-    depends_on:
-      ollama:
-        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -147,6 +142,7 @@ services:
       - /tmp:size=64m,mode=1777
 
   ollama:
+    profiles: ["ai"]
     image: ollama/ollama:latest
     volumes:
       - ollama_models:/root/.ollama
