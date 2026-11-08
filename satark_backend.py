@@ -20,7 +20,7 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
@@ -455,7 +455,7 @@ def refresh_session(request: Request, db: Session = Depends(db_session), user: U
     now = utcnow()
     # Atomic one-time rotation: a concurrent replay cannot mint a second session.
     changed = db.execute(
-        __import__("sqlalchemy").update(SessionRecord)
+        update(SessionRecord)
         .where(
             SessionRecord.user_id == user.id,
             SessionRecord.token_hash == token_digest(token),
