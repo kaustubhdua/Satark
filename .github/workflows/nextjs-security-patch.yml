@@ -1,0 +1,75 @@
+name: Patch Next.js security release
+on:
+  push:
+    branches:
+      - chore/nextjs-15-5-28-security-patch
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: satark-next-security-patch
+  cancel-in-progress: false
+
+jobs:
+  patch-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/nextjs-15-5-28-security-patch
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Upgrade to patched Next.js and fixed Sharp
+        run: npm install next@15.5.28 sharp@^0.35.5
+      - name: Reject critical dependency advisories
+        run: npm audit --audit-level=critical
+      - name: Typecheck, unit tests and production build
+        run: npm run test:ci
+      - name: Install browser dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Start production server
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start > /tmp/satark-web-patch.log 2>&1 &
+          echo $! > /tmp/satark-web-patch.pid
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/satark-web-patch.log
+          exit 1
+      - name: Production browser and accessibility smoke
+        env:
+          SATARK_WEB_URL: http://127.0.0.1:3000
+          SATARK_WEB_ARTIFACTS: artifacts/security-patch
+        run: npm run test:browser
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/satark-web-patch.pid ]; then kill "$(cat /tmp/satark-web-patch.pid)" || true; fi
+      - name: Commit verified dependency update
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/package.json web/package-lock.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit."
+            exit 0
+          fi
+          git commit -m "fix(security): patch Next.js and Sharp dependencies"
+          git push origin HEAD:chore/nextjs-15-5-28-security-patch
