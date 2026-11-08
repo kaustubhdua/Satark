@@ -43,15 +43,7 @@ export function buildHealthSnapshot(env = {}) {
   const firstlightApiUrlValid = isFirstlightBackendUrl(env.FIRSTLIGHT_API_URL, env.VERCEL !== '1');
   const firstlightApiTokenConfigured = hasValue(env.FIRSTLIGHT_API_TOKEN) && env.FIRSTLIGHT_API_TOKEN.trim().length >= 32;
   const firstlightWazuhSyncTokenConfigured = hasValue(env.FIRSTLIGHT_WAZUH_SYNC_TOKEN) && env.FIRSTLIGHT_WAZUH_SYNC_TOKEN.trim().length >= 32;
-  const serverSupabaseUrlValid = isHttpsUrl(env.SUPABASE_URL);
-  const clientSupabaseUrlValid = isHttpsUrl(env.NEXT_PUBLIC_SUPABASE_URL);
-  const serverProjectRef = supabaseProjectRef(env.SUPABASE_URL);
-  const clientProjectRef = supabaseProjectRef(env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseClientServerMatch = Boolean(
-    serverProjectRef && clientProjectRef && serverProjectRef === clientProjectRef
-  );
   const persistentStorageConfigured = hasValue(env.SATARK_DATABASE_URL);
-  const clientSupabaseConfigured = clientSupabaseUrlValid && hasValue(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
   const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const redisUrlValid = isHttpsUrl(env.UPSTASH_REDIS_REST_URL);
@@ -76,14 +68,12 @@ export function buildHealthSnapshot(env = {}) {
       },
       persistentStorage: {
         configured: persistentStorageConfigured,
-        clientConfigured: clientSupabaseConfigured,
-        serverClientMatch: supabaseClientServerMatch,
-        // Project refs are public identifiers, not keys or secrets. Never expose URLs or key values.
-        serverProjectRef,
-        clientProjectRef,
+        provider: 'self-hosted',
+        clientConfigured: false,
+        serverClientMatch: false,
       },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model, database, Redis, or FIRSTLIGHT API connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the browser and server are configured for the same Supabase project without exposing URLs or keys. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, Redis, or FIRSTLIGHT API connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the self-hosted database URL is configured without exposing connection details. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
   };
 }
 
