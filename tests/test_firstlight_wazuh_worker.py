@@ -86,6 +86,7 @@ def test_worker_persists_private_source_snapshot_evidence_and_checkpoint(databas
     result = worker.run_once()
     assert result["status"] == "ok"
     assert result["fetched"] == 2
+    assert result["persisted"] == 2
 
     db = backend.SessionLocal()
     rows = db.scalars(select(backend.Evidence).where(
@@ -115,7 +116,9 @@ def test_worker_is_idempotent_when_overlapping_wazuh_window_replays_events(datab
     wazuh = FakeWazuh([event("replay", timestamp)])
     worker = seed_worker(wazuh, page_size=10, overlap_seconds=300)
     assert worker.run_once()["fetched"] == 1
-    assert worker.run_once()["fetched"] == 0
+    replay = worker.run_once()
+    assert replay["fetched"] == 1
+    assert replay["persisted"] == 0
     db = backend.SessionLocal()
     assert len(db.scalars(select(backend.Evidence)).all()) == 1
     db.close()
