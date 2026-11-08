@@ -63,8 +63,8 @@ class VisibleTextParser(HTMLParser):
             return True
         style = str(values.get("style", "")).lower()
         return bool(re.search(
-            r"(?:^|;)\\s*(?:display\\s*:\\s*none|visibility\\s*:\\s*hidden)"
-            r"(?:\\s*!important)?\\s*(?:;|$)",
+            r"(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)"
+            r"(?:\s*!important)?\s*(?:;|$)",
             style,
         ))
 
