@@ -208,6 +208,21 @@ class Approval(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class IngestionCheckpoint(Base):
+    __tablename__ = "satark_ingestion_checkpoints"
+    __table_args__ = (UniqueConstraint("tenant_id", "case_id", "source_key", name="uq_satark_ingestion_checkpoint"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    case_id: Mapped[str] = mapped_column(String(36), index=True)
+    source_key: Mapped[str] = mapped_column(String(256))
+    last_event_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_batch_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_status: Mapped[str] = mapped_column(String(16), default="ok")
+    last_error: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class InvestigationJob(Base):
     __tablename__ = "satark_investigation_jobs"
     __table_args__ = (UniqueConstraint("tenant_id", "case_id", "idempotency_key", name="uq_satark_job_idempotency"),)
