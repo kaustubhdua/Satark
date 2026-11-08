@@ -15,3 +15,8 @@ test('web container talks to the private self-hosted API service', () => {
   assert.match(compose, /SATARK_API_INTERNAL_URL: http:\/\/firstlight-api:8788/);
   assert.doesNotMatch(compose, /NEXT_PUBLIC_SUPABASE|SUPABASE_URL|SUPABASE_PUBLISHABLE_KEY/i);
 });
+
+test('Ollama is opt-in and does not block deterministic local startup', () => {
+  assert.match(compose, /ollama:\n    profiles: \["ai"\]/);
+  assert.doesNotMatch(compose, /depends_on:\n\s+ollama:/);
+});
