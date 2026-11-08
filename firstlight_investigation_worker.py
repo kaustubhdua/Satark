@@ -13,7 +13,7 @@ from datetime import timedelta
 
 from sqlalchemy import or_, select
 
-from firstlight_engine import investigate_case
+from firstlight_engine import investigate_case, sha256_record
 from satark_backend import (
     Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, utcnow,
 )
@@ -108,7 +108,7 @@ class InvestigationJobWorker:
                     "source": item.source_label, "kind": item.event_kind, "summary": item.summary,
                     "details": details}
                 envelopes.append({"evidence_id": item.id, "record": record,
-                    "sha256": item.source_sha256 if valid else "0" * 64,
+                    "sha256": sha256_record(record) if valid else "0" * 64,
                     "collected_at": item.created_at.isoformat(),
                     "integrity_status": "verified" if valid else "mismatch"})
             result = investigate_case({"case_id": case.id, "title": case.title}, envelopes)
@@ -142,6 +142,7 @@ class InvestigationJobWorker:
                     confidence=None, created_by=job.requested_by,
                 ))
             db.add(report)
+            db.flush()
             job.status = "succeeded"
             job.result = payload
             job.result_sha256 = digest
