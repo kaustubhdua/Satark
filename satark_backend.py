@@ -178,6 +178,43 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+
+
+class Approval(Base):
+    __tablename__ = "satark_approvals"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    case_id: Mapped[str] = mapped_column(String(36), index=True)
+    action_key: Mapped[str] = mapped_column(String(120))
+    action_payload: Mapped[dict] = mapped_column(JSON)
+    payload_sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    requested_by: Mapped[str] = mapped_column(String(36))
+    decided_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class InvestigationJob(Base):
+    __tablename__ = "satark_investigation_jobs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    case_id: Mapped[str] = mapped_column(String(36), index=True)
+    requested_by: Mapped[str] = mapped_column(String(36))
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    result_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 def db_session():
     db = SessionLocal()
     try:
@@ -559,3 +596,188 @@ def download_evidence(evidence_id: str, tenant_id: str, user: User = Depends(cur
     if hashlib.sha256(path.read_bytes()).hexdigest() != row.source_sha256:
         raise HTTPException(409, "Evidence integrity verification failed.")
     return FileResponse(path, media_type=row.content_type, filename=row.original_filename, headers={"Cache-Control": "no-store"})
+
+
+
+@router.get("/audit/verify")
+def verify_audit_chain(tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    rows = db.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.created_at.asc(), AuditEvent.id.asc())).all()
+    previous = "0" * 64
+    for row in rows:
+        record = {"tenant_id": row.tenant_id, "actor_id": row.actor_id, "event_type": row.event_type,
+                  "payload": row.payload, "previous_hash": row.previous_hash}
+        canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        actual = hashlib.sha256(canonical.encode()).hexdigest()
+        if row.previous_hash != previous or not hmac.compare_digest(actual, row.event_hash):
+            return {"tenant_id": tenant_id, "chain_valid": False, "events_checked": len(rows),
+                    "failed_event_id": row.id, "failure": "hash_or_link_mismatch"}
+        previous = row.event_hash
+    return {"tenant_id": tenant_id, "chain_valid": True, "events_checked": len(rows),
+            "head_sha256": previous, "verified_at": utcnow().isoformat()}
+
+
+@router.get("/evidence/records")
+def list_evidence_records(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    return list_evidence(tenant_id, case_id, user, db)
+
+
+@router.get("/evidence/{evidence_id}/verify")
+def verify_evidence(evidence_id: str, tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    row = db.get(Evidence, evidence_id)
+    if not row or row.tenant_id != tenant_id:
+        raise HTTPException(404, "Evidence not found.")
+    require_membership(db, user, tenant_id)
+    path = Path(row.object_key).resolve()
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    if root not in path.parents or not path.is_file():
+        raise HTTPException(404, "Evidence object not found.")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    matched = hmac.compare_digest(actual, row.source_sha256)
+    return {"evidence_id": row.id, "algorithm": "SHA-256", "expected_sha256": row.source_sha256,
+            "actual_sha256": actual, "matched": matched, "verified_at": utcnow().isoformat(),
+            "note": "Digest match verifies stored bytes against the upload record; it does not prove original source authenticity."}
+
+
+@router.get("/reports/{report_id}")
+def get_report(report_id: str, tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    row = db.get(Report, report_id)
+    if not row or row.tenant_id != tenant_id:
+        raise HTTPException(404, "Report not found.")
+    require_membership(db, user, tenant_id)
+    canonical = json.dumps(row.snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    actual = hashlib.sha256(canonical.encode()).hexdigest()
+    matched = hmac.compare_digest(actual, row.snapshot_sha256)
+    payload = {"id": row.id, "tenant_id": row.tenant_id, "case_id": row.case_id, "title": row.title,
+               "report_version": row.report_version, "snapshot": row.snapshot, "snapshot_sha256": row.snapshot_sha256,
+               "created_by": row.created_by, "created_at": row.created_at.isoformat()}
+    return {"report": payload, "integrity": {"algorithm": "SHA-256", "expected_sha256": row.snapshot_sha256,
+            "actual_sha256": actual, "matched": matched}}, 200 if matched else 409
+
+
+@router.get("/firstlight/approvals")
+def list_approvals(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    rows = db.scalars(select(Approval).where(Approval.tenant_id == tenant_id, Approval.case_id == case_id).order_by(Approval.created_at.desc()).limit(100)).all()
+    return {"approvals": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "action_key": r.action_key,
+        "action_payload": r.action_payload, "payload_sha256": r.payload_sha256, "status": r.status,
+        "requested_by": r.requested_by, "decided_by": r.decided_by, "decision_reason": r.decision_reason,
+        "decided_at": r.decided_at.isoformat() if r.decided_at else None, "expires_at": r.expires_at.isoformat(),
+        "consumed_at": r.consumed_at.isoformat() if r.consumed_at else None, "created_at": r.created_at.isoformat()} for r in rows]}
+
+
+@router.post("/firstlight/approvals", status_code=201)
+def request_approval(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    action_key, payload = body.get("action_key"), body.get("action_payload")
+    require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
+    if not isinstance(case_id, str) or not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
+        raise HTTPException(404, "Case not found.")
+    if not isinstance(action_key, str) or not re.fullmatch(r"simulation\.[a-z0-9][a-z0-9._-]{0,110}", action_key):
+        raise HTTPException(400, "Only named simulation actions can be approved.")
+    if not isinstance(payload, dict) or payload.get("mode") != "simulation":
+        raise HTTPException(400, "Response approvals are simulation-only.")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+    if len(encoded.encode()) > 16 * 1024:
+        raise HTTPException(413, "Action payload exceeds 16 KiB.")
+    digest = hashlib.sha256(encoded.encode()).hexdigest()
+    row = Approval(tenant_id=tenant_id, case_id=case_id, action_key=action_key, action_payload=payload,
+                   payload_sha256=digest, requested_by=user.id, expires_at=utcnow() + timedelta(hours=24))
+    db.add(row)
+    db.flush()
+    audit(db, tenant_id, user.id, "approval.requested", {"approval_id": row.id, "case_id": case_id, "payload_sha256": digest})
+    db.commit()
+    return {"approval": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "action_key": action_key,
+        "action_payload": payload, "payload_sha256": digest, "status": row.status, "requested_by": user.id,
+        "expires_at": row.expires_at.isoformat(), "created_at": row.created_at.isoformat()}}
+
+
+@router.patch("/firstlight/approvals")
+def decide_approval(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    approval_id = body.get("approval_id")
+    decision, reason = body.get("decision"), body.get("reason")
+    if not isinstance(approval_id, str) or not UUID_RE.fullmatch(approval_id) or decision not in {"approved", "rejected"}:
+        raise HTTPException(400, "A valid approval_id and approved/rejected decision are required.")
+    row = db.get(Approval, approval_id)
+    if not row:
+        raise HTTPException(404, "Approval not found.")
+    require_membership(db, user, row.tenant_id, {"owner", "responder"})
+    if row.requested_by == user.id:
+        raise HTTPException(403, "An approval requester cannot approve their own request.")
+    if row.status != "pending" or row.consumed_at is not None or row.expires_at <= utcnow():
+        raise HTTPException(409, "Approval is expired, already decided, or already consumed.")
+    row.status = decision
+    row.decided_by = user.id
+    row.decision_reason = str(reason or "")[:1000] or None
+    row.decided_at = utcnow()
+    audit(db, row.tenant_id, user.id, "approval.decided", {"approval_id": row.id, "decision": decision})
+    db.commit()
+    return {"approval": {"id": row.id, "status": row.status, "decided_by": row.decided_by,
+        "decision_reason": row.decision_reason, "decided_at": row.decided_at.isoformat()}}
+
+
+@router.get("/firstlight/jobs")
+def list_investigation_jobs(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    rows = db.scalars(select(InvestigationJob).where(InvestigationJob.tenant_id == tenant_id,
+        InvestigationJob.case_id == case_id).order_by(InvestigationJob.created_at.desc()).limit(100)).all()
+    return {"jobs": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "status": r.status,
+        "requested_by": r.requested_by, "result": r.result, "result_sha256": r.result_sha256,
+        "error_code": r.error_code, "attempts": r.attempts, "created_at": r.created_at.isoformat(),
+        "updated_at": r.updated_at.isoformat()} for r in rows]}
+
+
+@router.post("/firstlight/jobs", status_code=202)
+def enqueue_investigation(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
+    if not isinstance(case_id, str) or not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
+        raise HTTPException(404, "Case not found.")
+    row = InvestigationJob(tenant_id=tenant_id, case_id=case_id, requested_by=user.id)
+    db.add(row)
+    db.flush()
+    audit(db, tenant_id, user.id, "investigation.queued", {"job_id": row.id, "case_id": case_id})
+    db.commit()
+    return {"job": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "status": row.status,
+        "requested_by": user.id, "created_at": row.created_at.isoformat()}}
+
+
+@router.post("/firstlight/investigate")
+def investigate_persisted_case(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
+    case = db.scalar(select(Case).where(Case.id == case_id, Case.tenant_id == tenant_id))
+    if not case:
+        raise HTTPException(404, "Case not found.")
+    rows = db.scalars(select(Evidence).where(Evidence.tenant_id == tenant_id, Evidence.case_id == case_id).order_by(Evidence.observed_at.asc()).limit(501)).all()
+    if len(rows) > 500:
+        raise HTTPException(413, "Case evidence exceeds the 500-record investigation limit.")
+    from firstlight_engine import investigate_case, sha256_record
+    envelopes = []
+    integrity = []
+    for row in rows:
+        path = Path(row.object_key).resolve()
+        root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+        if root not in path.parents or not path.is_file():
+            continue
+        raw = path.read_bytes()
+        actual = hashlib.sha256(raw).hexdigest()
+        valid = hmac.compare_digest(actual, row.source_sha256)
+        try:
+            details = json.loads(raw.decode("utf-8")) if row.content_type == "application/json" else {}
+        except (ValueError, UnicodeDecodeError):
+            details = {}
+        record = {"event_id": row.id, "timestamp": row.observed_at.isoformat(), "source": row.source_label,
+            "kind": row.event_kind, "summary": row.summary, "details": details if isinstance(details, dict) else {}}
+        digest = sha256_record(record)
+        integrity.append({"evidence_id": row.id, "valid": valid, "status": "VERIFIED" if valid else "HASH MISMATCH"})
+        envelopes.append({"evidence_id": row.id, "record": record, "sha256": digest if valid else row.source_sha256,
+            "collected_at": row.created_at.isoformat(), "integrity_status": "verified" if valid else "mismatch"})
+    result = investigate_case({"case_id": case_id, "title": case.title}, envelopes)
+    return {"schema_version": "1.1", "case_id": case_id, "integrity": integrity,
+        "integrity_summary": {"total": len(integrity), "verified": sum(1 for x in integrity if x["valid"]),
+        "mismatched": sum(1 for x in integrity if not x["valid"])}, "investigation": result,
+        "agent_analysis": {"enabled": False, "mode": "deterministic_only", "agents": []},
+        "limitations": ["Only evidence already stored in this SATARK case was analyzed.",
+        "Evidence digest verification is limited to the stored bytes and does not independently prove original source authenticity.",
+        "No live response action was executed."]}
