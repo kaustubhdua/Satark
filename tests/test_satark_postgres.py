@@ -62,6 +62,13 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert status.status_code == 200
             assert status.json()["job"]["status"] == "succeeded"
             assert len(status.json()["job"]["result_sha256"]) == 64
+            db = backend.SessionLocal()
+            findings = db.scalars(select(backend.Finding).where(
+                backend.Finding.tenant_id == tenant_id, backend.Finding.case_id == case_id
+            )).all()
+            assert len(findings) == 1
+            assert evidence_id in findings[0].evidence_refs
+            db.close()
     finally:
         backend.Base.metadata.drop_all(engine)
         engine.dispose()
