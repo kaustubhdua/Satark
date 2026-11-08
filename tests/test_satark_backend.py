@@ -251,3 +251,21 @@ def test_password_recovery_response_does_not_enumerate_unknown_accounts(client, 
     )
     assert response.status_code == 202
     assert response.json()["ok"] is True
+
+def test_login_failures_trigger_database_backed_cooldown(client, monkeypatch):
+    register(client, "throttle@example.test")
+
+    class AlwaysWrongPassword:
+        def verify(self, *_args):
+            return False
+
+    monkeypatch.setattr(backend, "PASSWORDS", AlwaysWrongPassword())
+    for _ in range(10):
+        response = client.post("/api/auth/login", json={
+            "email": "throttle@example.test", "password": "Wrong-Password-123",
+        }, headers=origin())
+        assert response.status_code == 401
+    locked = client.post("/api/auth/login", json={
+        "email": "throttle@example.test", "password": "Correct-Horse-Battery-42",
+    }, headers=origin())
+    assert locked.status_code == 429
