@@ -2,38 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const route = await readFile(new URL('../src/app/api/auth/session/route.ts', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
+const proxy = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
 
-test('session-cookie endpoint rejects absent, malformed, and cross-origin Origin values', () => {
-  assert.match(route, /function sameOrigin\(request: Request\)/);
-  assert.match(route, /if \(!origin\) return false/);
-  assert.match(route, /new URL\(origin\)\.origin === new URL\(request\.url\)\.origin/);
-  assert.match(route, /if \(!sameOrigin\(request\)\) return response\(\{ error: 'Cross-origin session requests are not allowed\.' \}, 403\)/);
-  assert.equal((route.match(/if \(!sameOrigin\(request\)\)/g) || []).length, 2,
-    'both session creation and deletion must enforce the origin boundary');
+test('SATARK sessions use Argon2id password hashes and opaque revocable tokens', () => {
+  assert.match(backend, /PasswordHasher/);
+  assert.match(backend, /token_urlsafe\(48\)/);
+  assert.match(backend, /token_digest/);
+  assert.match(backend, /revoked_at/);
+  assert.match(backend, /expires_at/);
 });
 
-test('session-cookie endpoint uses server-only Supabase configuration and bounded token validation', () => {
-  assert.match(route, /process\.env\.SUPABASE_URL/);
-  assert.match(route, /process\.env\.SUPABASE_PUBLISHABLE_KEY/);
-  assert.doesNotMatch(route, /NEXT_PUBLIC_SUPABASE/);
-  assert.match(route, /const MAX_TOKEN = 8192/);
-  assert.match(route, /TOKEN_PATTERN/);
-  assert.match(route, /expiresAt > Date\.now\(\) \+ 86400_000/);
-  assert.match(route, /redirect: 'error'/);
-  assert.match(route, /AbortSignal\.timeout\(4000\)/);
+test('session cookie is HttpOnly, SameSite=Lax, secure on HTTPS and deleted on logout', () => {
+  assert.match(backend, /httponly=True/);
+  assert.match(backend, /samesite="lax"/);
+  assert.match(backend, /secure=request\.headers\.get\("x-forwarded-proto"/);
+  assert.match(backend, /delete_cookie\("satark_session"/);
 });
 
-test('session cookies are HttpOnly, SameSite=Lax, scoped, and cleared symmetrically', () => {
-  assert.match(route, /result\.cookies\.set\('satark-access', access, \{ httpOnly: true, secure, sameSite: 'lax', path: '\/', expires: new Date\(expiresAt\), priority: 'high' \}\)/);
-  assert.match(route, /result\.cookies\.set\('satark-refresh', refresh, \{ httpOnly: true, secure, sameSite: 'lax', path: '\/api\/auth', maxAge: 86400 \* 30, priority: 'high' \}\)/);
-  assert.match(route, /result\.cookies\.set\('satark-access', '', \{ httpOnly: true, secure, sameSite: 'lax', path: '\/', maxAge: 0 \}\)/);
-  assert.match(route, /result\.cookies\.set\('satark-refresh', '', \{ httpOnly: true, secure, sameSite: 'lax', path: '\/api\/auth', maxAge: 0 \}\)/);
+test('browser session mutations are protected by origin validation and proxy CSRF checks', () => {
+  assert.match(backend, /Cross-origin mutation is not allowed/);
+  assert.match(proxy, /Cross-origin API requests are not allowed/);
+  assert.match(proxy, /redirect: 'error'/);
 });
 
-test('session responses disable caching and validate access token with Supabase Auth', () => {
-  assert.match(route, /'Cache-Control': 'no-store'/);
-  assert.match(route, /Pragma: 'no-cache'/);
-  assert.match(route, /config\.url \+ '\/auth\/v1\/user'/);
-  assert.match(route, /if \(!\(await verify\(access\)\)\) return response\(\{ error: 'The session is invalid or expired\.' \}, 401\)/);
+test('authentication never relies on Supabase or browser-stored bearer tokens', () => {
+  assert.doesNotMatch(backend, /SUPABASE|supabase\.co|\/auth\/v1|\/rest\/v1/i);
+  assert.doesNotMatch(proxy, /SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE/i);
 });
