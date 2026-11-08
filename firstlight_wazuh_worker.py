@@ -123,7 +123,10 @@ class WazuhSatarkWorker:
                 IngestionCheckpoint.source_key == self.source_key,
             ))
             if row:
-                return _parse_timestamp(row.last_event_timestamp.isoformat(), "checkpoint")
+                value = row.last_event_timestamp
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=timezone.utc)
+                return value.astimezone(timezone.utc)
             if self.initial_since is None:
                 raise WorkerConfigurationError(
                     "No checkpoint exists; set FIRSTLIGHT_WAZUH_INITIAL_SINCE to an explicit ISO-8601 timestamp before first run"
