@@ -19,6 +19,9 @@ RUNTIME_FILES = [
     ROOT / "satark_backend.py",
     ROOT / "firstlight_wazuh_worker.py",
     ROOT / "firstlight_investigation_worker.py",
+    ROOT / "requirements.txt",
+    ROOT / "Dockerfile.streamlit",
+    ROOT / "ui",
     ROOT / "firstlight-api-requirements.txt",
     ROOT / "scripts" / "satark_track1_acceptance_preflight.py",
     ROOT / ".github" / "workflows",
@@ -27,6 +30,8 @@ FORBIDDEN = re.compile(r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|AN
 
 
 def source_files():
+    # Include every first-party root Python module, not only the new API files.
+    yield from (path for path in ROOT.glob("*.py") if path.is_file())
     for entry in RUNTIME_FILES:
         if entry.is_file():
             yield entry
