@@ -57,6 +57,9 @@ def test_workspace_case_and_tenant_isolation(client):
     workspace = client.post("/api/workspaces", json={"name": "Blue Team"}, headers=origin())
     assert workspace.status_code == 201, workspace.text
     tenant_id = workspace.json()["id"]
+    members = client.get("/api/workspaces/members", params={"tenant_id": tenant_id})
+    assert members.status_code == 200
+    assert members.json()["members"] == [{"user_id": members.json()["members"][0]["user_id"], "email": "owner-a@example.test", "role": "owner"}]
 
     created = client.post("/api/cases", json={"tenant_id": tenant_id, "title": "Suspicious login", "severity": "high"}, headers=origin())
     assert created.status_code == 201, created.text
@@ -72,6 +75,8 @@ def test_workspace_case_and_tenant_isolation(client):
     register(client, "outsider@example.test")
     denied = client.get("/api/cases", params={"tenant_id": tenant_id})
     assert denied.status_code == 403
+    denied_members = client.get("/api/workspaces/members", params={"tenant_id": tenant_id})
+    assert denied_members.status_code == 403
     denied_create = client.post("/api/cases", json={"tenant_id": tenant_id, "title": "IDOR attempt"}, headers=origin())
     assert denied_create.status_code == 403
 
