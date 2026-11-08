@@ -43,7 +43,9 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  if (unsafe) headers.set('origin', base.origin);
+  // Match the forwarded browser scheme while targeting the private upstream host.
+  // FastAPI validates Origin against Host and X-Forwarded-Proto at this boundary.
+  if (unsafe) headers.set('origin', `${incoming.protocol}//${target.host}`);
   headers.set('x-forwarded-proto', incoming.protocol.slice(0, -1));
   try {
     const upstream = await fetch(target, {
