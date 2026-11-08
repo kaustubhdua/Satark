@@ -8,6 +8,7 @@ hostname a second time during connection establishment.
 
 import http.client
 import ipaddress
+import re
 import socket
 import ssl
 from html.parser import HTMLParser
@@ -33,25 +34,56 @@ _ACCEPTED_TYPES = {
 
 
 class VisibleTextParser(HTMLParser):
-    """Extract visible-ish text while excluding common non-visible elements."""
+    """Extract visible-ish text while excluding explicit hidden and embedded content.
+
+    This is a bounded text extractor, not a browser rendering engine: CSS classes,
+    external stylesheets and computed visibility cannot be evaluated here.
+    """
+
+    _IGNORED_TAGS = {
+        "head", "script", "style", "noscript", "svg", "template",
+        "iframe", "object", "embed", "canvas",
+    }
+    _VOID_TAGS = {
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+    }
 
     def __init__(self):
         super().__init__()
         self.parts = []
         self._skip_tags = []
-        self._ignored_tags = {"script", "style", "noscript", "svg"}
+
+    @staticmethod
+    def _explicitly_hidden(attrs):
+        values = {str(name).lower(): value for name, value in attrs}
+        if "hidden" in values or "inert" in values:
+            return True
+        if str(values.get("aria-hidden", "")).strip().lower() == "true":
+            return True
+        style = str(values.get("style", "")).lower()
+        return bool(re.search(
+            r"(?:^|;)\\s*(?:display\\s*:\\s*none|visibility\\s*:\\s*hidden)"
+            r"(?:\\s*!important)?\\s*(?:;|$)",
+            style,
+        ))
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
-        if self._skip_tags:
-            self._skip_tags.append(tag)
-        elif tag in self._ignored_tags:
+        should_skip = bool(self._skip_tags) or tag in self._IGNORED_TAGS or self._explicitly_hidden(attrs)
+        if should_skip and tag not in self._VOID_TAGS:
             self._skip_tags.append(tag)
 
     def handle_endtag(self, tag):
         tag = tag.lower()
-        if self._skip_tags and tag == self._skip_tags[-1]:
-            self._skip_tags.pop()
+        if not self._skip_tags:
+            return
+        # Recover from common malformed nesting without allowing an unmatched
+        # closing tag to expose content that is still inside a hidden ancestor.
+        for index in range(len(self._skip_tags) - 1, -1, -1):
+            if self._skip_tags[index] == tag:
+                del self._skip_tags[index:]
+                break
 
     def handle_data(self, data):
         if not self._skip_tags and data.strip():
