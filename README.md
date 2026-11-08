@@ -195,13 +195,28 @@ These are implementation goals and demonstrated prototype behaviors. The reposit
                     Streamlit interface/session
 ~~~
 
+### Self-hosted application backend (Supabase-independent)
+
+The web application's authenticated API is being moved to a SATARK-owned FastAPI service. The service owns password hashing (Argon2id), opaque revocable HttpOnly sessions, workspace membership, cases, notes, evidence metadata and private evidence bytes, findings, reports, approvals, hash-chained audit events, and the durable FIRSTLIGHT job queue. SQLAlchemy provides the relational persistence layer; PostgreSQL is the intended multi-instance database and SQLite is supported for local development and single-host evaluation. Alembic owns schema changes. The browser talks to the service through a same-origin Next.js rewrite and never receives a database credential.
+
+The local Compose stack persists the database and evidence files in the `satark_data` volume. A clean local setup is:
+
+~~~bash
+cp .env.example .env
+docker compose -f docker-compose.local.yml up --build
+~~~
+
+The web UI is served at `http://localhost:3000`. For multi-instance or public deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and mount evidence storage on a private durable volume accessible to both the API and worker. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
+
+This replacement is being validated on a dedicated branch. Until the complete API/UI regression suite and deployment acceptance checks pass, treat it as a migration candidate rather than a production-ready release. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
+
 ### Main trust boundaries
 
 1. **Browser to Streamlit:** browser/UI state is presentation state and is not trusted as durable evidence.
 2. **Input to preprocessing:** uploaded and pasted content is subject to format-specific bounds and validation.
 3. **Server to user-supplied URL:** URL retrieval is an SSRF-sensitive operation. The implementation validates eligible HTTP(S) destinations, checks DNS results, pins connections to validated IPs, revalidates redirects, blocks HTTPS-to-HTTP downgrade redirects, and limits response size/type.
 4. **Application to local model:** prepared evidence is sent only to the operator-controlled Ollama endpoint when local model inference is configured; no hosted AI provider is used.
-5. **Session state to persistence:** current history and FIRSTLIGHT audit events are session-scoped, not durable multi-user case storage.
+5. **Browser to application backend:** same-origin HttpOnly sessions are checked by FastAPI; each case/evidence/report/job query is scoped through the user's workspace membership. The backend owns relational persistence and private evidence bytes; PostgreSQL is recommended for multi-instance deployments.
 
 ### Processing flow for a scanner
 
@@ -353,7 +368,7 @@ GitHub Actions also runs dependency/compile/test checks, browser smoke and layou
 ### Known limitations and release gates
 
 - **Release verification is still required:** the Next.js web workspace has authenticated persistence APIs and tenant-scoped database policies, but the latest `main` revision has not yet been verified on the production alias. Do not use the live deployment for confidential multi-user cases until the exact deployed SHA, production smoke tests, and isolated authorization tests pass.
-- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. Use the Next.js web workspace for the persistent Supabase-backed case/evidence/findings/reports workflow, subject to the release gates above.
+- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. The self-hosted FastAPI + SQLAlchemy backend is the replacement for the former Supabase-backed case/evidence/findings/reports workflow. Its migration branch still requires complete API compatibility, regression tests, and deployment acceptance before confidential use.
 - **Evidence provenance is not independently anchored:** SHA-256 hashes support integrity comparison, but they do not by themselves prove original source, collection procedure, or independent chain of custody.
 - **Audit boundaries differ by workflow:** FIRSTLIGHT's demo/session audit trail is not an enterprise audit service. The web database has persistent hash-chained audit records, but production policy consistency and end-to-end verification still require successful isolated and deployed tests.
 - **Shared rate limiting must be verified:** Vercel analysis fails closed without a working Upstash Redis REST configuration. Process-local limits are for local development only and are not a distributed/global quota.
