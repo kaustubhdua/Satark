@@ -22,6 +22,8 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     engine = create_engine(url, pool_pre_ping=True)
     backend.SessionLocal.configure(bind=engine)
     backend.Base.metadata.drop_all(engine)
+    with engine.begin() as connection:
+        connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
     monkeypatch.setenv("SATARK_DATABASE_URL", url)
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "evidence"))
     alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
@@ -94,4 +96,6 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             db.close()
     finally:
         backend.Base.metadata.drop_all(engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
         engine.dispose()
