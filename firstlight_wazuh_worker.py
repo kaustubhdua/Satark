@@ -299,7 +299,8 @@ class WazuhSatarkWorker:
         until_dt = datetime.now(timezone.utc)
         until = _iso_utc(until_dt)
         offset = 0
-        count = 0
+        fetched_count = 0
+        persisted_count = 0
         try:
             while True:
                 self._validate_target()
@@ -307,9 +308,10 @@ class WazuhSatarkWorker:
                     limit=self.page_size, since=since, until=until, offset=offset, include_source_snapshot=True,
                 )
                 self._validate_target()
+                fetched_count += len(page)
                 for event in page:
                     if self._save_event(event):
-                        count += 1
+                        persisted_count += 1
                 if len(page) < self.page_size:
                     break
                 offset += len(page)
@@ -318,12 +320,12 @@ class WazuhSatarkWorker:
                         "The time window contains at least 10,000 alerts; reduce the polling interval or backfill window"
                     )
             self._validate_target()
-            self._save_checkpoint(until_dt, count)
-            return {"status": "ok", "fetched": count, "cursor": until}
+            self._save_checkpoint(until_dt, fetched_count)
+            return {"status": "ok", "fetched": fetched_count, "persisted": persisted_count, "cursor": until}
         except Exception as exc:
             try:
                 self._validate_target()
-                self._save_checkpoint(cursor, count, status="error", error=_safe_error_code(exc))
+                self._save_checkpoint(cursor, fetched_count, status="error", error=_safe_error_code(exc))
             except Exception:
                 pass
             raise
