@@ -11,6 +11,7 @@ COPY firstlight_rules.py ./firstlight_rules.py
 COPY firstlight_wazuh.py ./firstlight_wazuh.py
 COPY firstlight_wazuh_worker.py ./firstlight_wazuh_worker.py
 COPY firstlight_investigation_worker.py ./firstlight_investigation_worker.py
+COPY satark_backend.py ./satark_backend.py
 RUN useradd --system --uid 10001 --create-home firstlight
 USER 10001:10001
 CMD ["python", "firstlight_investigation_worker.py"]
