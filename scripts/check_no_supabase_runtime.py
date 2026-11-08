@@ -20,6 +20,7 @@ RUNTIME_FILES = [
     ROOT / "firstlight_wazuh_worker.py",
     ROOT / "firstlight_investigation_worker.py",
     ROOT / "firstlight-api-requirements.txt",
+    ROOT / "scripts" / "satark_track1_acceptance_preflight.py",
     ROOT / ".github" / "workflows",
 ]
 FORBIDDEN = re.compile(r"SUPABASE_|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1", re.IGNORECASE)
