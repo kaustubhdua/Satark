@@ -41,6 +41,8 @@ def utcnow() -> datetime:
 def database_url() -> str:
     value = os.getenv("SATARK_DATABASE_URL", "").strip()
     if value:
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
         return value
     path = Path(os.getenv("SATARK_SQLITE_PATH", "./data/satark.db"))
     path.parent.mkdir(parents=True, exist_ok=True)
