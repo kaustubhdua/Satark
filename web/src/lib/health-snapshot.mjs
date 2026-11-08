@@ -50,7 +50,7 @@ export function buildHealthSnapshot(env = {}) {
   const supabaseClientServerMatch = Boolean(
     serverProjectRef && clientProjectRef && serverProjectRef === clientProjectRef
   );
-  const persistentStorageConfigured = serverSupabaseUrlValid && hasValue(env.SUPABASE_PUBLISHABLE_KEY);
+  const persistentStorageConfigured = hasValue(env.SATARK_DATABASE_URL);
   const clientSupabaseConfigured = clientSupabaseUrlValid && hasValue(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
   const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
