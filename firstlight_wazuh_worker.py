@@ -111,6 +111,12 @@ class WazuhSatarkWorker:
     def _load_checkpoint(self) -> datetime:
         db = SessionLocal()
         try:
+            membership = db.scalar(select(Membership).where(
+                Membership.tenant_id == self.tenant_id, Membership.user_id == self.actor_id,
+            ).with_for_update())
+            case = db.scalar(select(Case).where(Case.id == self.case_id, Case.tenant_id == self.tenant_id))
+            if not case or not membership or membership.role not in {"owner", "responder", "analyst"}:
+                raise WorkerConfigurationError("Target case or actor membership is no longer authorized")
             row = db.scalar(select(IngestionCheckpoint).where(
                 IngestionCheckpoint.tenant_id == self.tenant_id,
                 IngestionCheckpoint.case_id == self.case_id,
@@ -215,6 +221,12 @@ class WazuhSatarkWorker:
         record["metadata"]["source_object_path"] = relative
         db = SessionLocal()
         try:
+            case = db.scalar(select(Case).where(Case.id == self.case_id, Case.tenant_id == self.tenant_id).with_for_update())
+            membership = db.scalar(select(Membership).where(
+                Membership.tenant_id == self.tenant_id, Membership.user_id == self.actor_id,
+            ).with_for_update())
+            if not case or not membership or membership.role not in {"owner", "responder", "analyst"}:
+                raise WorkerConfigurationError("Target case or actor membership is no longer authorized")
             existing = db.scalar(select(Evidence).where(
                 Evidence.tenant_id == self.tenant_id,
                 Evidence.case_id == self.case_id,
