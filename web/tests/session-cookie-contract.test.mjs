@@ -21,7 +21,7 @@ test('session cookie is HttpOnly, SameSite=Lax, secure on HTTPS and deleted on l
 });
 
 test('browser session mutations are protected by origin validation and proxy CSRF checks', () => {
-  assert.match(backend, /Cross-origin mutation is not allowed/);
+  assert.match(backend, /Cross-origin authentication requests are not allowed/);
   assert.match(proxy, /Cross-origin API requests are not allowed/);
   assert.match(proxy, /redirect: 'error'/);
 });
