@@ -61,12 +61,16 @@ export async function signUp(email: string, password: string) {
   return { session: currentSession, confirmationRequired: false };
 }
 
-export async function requestPasswordReset(_email: string, _redirectTo: string) {
-  throw new Error('Password recovery is not enabled on this self-hosted deployment. Ask the workspace administrator to initiate the verified recovery procedure.');
+export async function requestPasswordReset(email: string, _redirectTo: string) {
+  return api('/api/auth/password-reset/request', {
+    method: 'POST', body: JSON.stringify({ email: email.trim() }),
+  });
 }
 
-export async function completePasswordReset(_accessToken: string, _password: string) {
-  throw new Error('Password recovery is not enabled on this self-hosted deployment.');
+export async function completePasswordReset(token: string, password: string) {
+  return api('/api/auth/password-reset/complete', {
+    method: 'POST', body: JSON.stringify({ token, password }),
+  });
 }
 
 export async function getSession(): Promise<SatarkSession | null> {
