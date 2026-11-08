@@ -239,5 +239,44 @@ class URLSecurityTests(unittest.TestCase):
         connection.close.assert_called_once()
 
 
+    def test_visible_text_parser_excludes_explicit_hidden_and_embedded_content(self):
+        from url_security import VisibleTextParser
+
+        parser = VisibleTextParser()
+        parser.feed(
+            "<html><head><title>Hidden page title</title></head><body>"
+            "<p>Visible incident note</p>"
+            "<div hidden>hidden attribute secret</div>"
+            "<section aria-hidden='true'><p>aria hidden secret</p></section>"
+            "<div style='color:red; display: none !important'>display hidden secret</div>"
+            "<span style='visibility: hidden'>visibility hidden secret</span>"
+            "<template><p>template secret</p></template>"
+            "<iframe><p>embedded secret</p></iframe>"
+            "<object>object secret</object><canvas>canvas secret</canvas>"
+            "<p>Visible follow-up after hidden content</p>"
+            "</body></html>"
+        )
+        parser.close()
+        result = parser.text()
+        self.assertIn("Visible incident note", result)
+        self.assertIn("Visible follow-up after hidden content", result)
+        for hidden in (
+            "Hidden page title", "hidden attribute secret", "aria hidden secret",
+            "display hidden secret", "visibility hidden secret", "template secret",
+            "embedded secret", "object secret", "canvas secret",
+        ):
+            with self.subTest(hidden=hidden):
+                self.assertNotIn(hidden, result)
+
+    def test_void_elements_inside_hidden_container_do_not_hide_following_text(self):
+        from url_security import VisibleTextParser
+
+        parser = VisibleTextParser()
+        parser.feed("<div hidden>secret<img src='pixel.png'><br><input></div><p>Visible after voids</p>")
+        parser.close()
+        self.assertEqual(parser.text(), "Visible after voids")
+
+
+
 if __name__ == "__main__":
     unittest.main()
