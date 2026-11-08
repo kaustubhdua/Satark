@@ -10,6 +10,10 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        # The backfill is a controlled schema migration, so pause the append-only
+        # trigger only for this statement and restore it before migration ends.
+        op.execute("DROP TRIGGER IF EXISTS satark_audit_events_append_only ON satark_audit_events")
     inspector = sa.inspect(bind)
     columns = {column["name"] for column in inspector.get_columns("satark_audit_events")}
     if "sequence" not in columns:
@@ -30,6 +34,12 @@ def upgrade() -> None:
     constraints = {item.get("name") for item in sa.inspect(bind).get_unique_constraints("satark_audit_events")}
     if "uq_satark_audit_sequence" not in constraints:
         op.create_unique_constraint("uq_satark_audit_sequence", "satark_audit_events", ["tenant_id", "sequence"])
+    if bind.dialect.name == "postgresql":
+        op.execute("""
+            CREATE TRIGGER satark_audit_events_append_only
+            BEFORE UPDATE OR DELETE ON satark_audit_events
+            FOR EACH ROW EXECUTE FUNCTION satark_reject_audit_mutation()
+        """)
 
 
 def downgrade() -> None:
