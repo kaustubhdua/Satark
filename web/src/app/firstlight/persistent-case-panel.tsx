@@ -333,11 +333,10 @@ export default function PersistentCasePanel({
         digest: typeof row.metadata?.browser_record_sha256 === 'string' ? row.metadata.browser_record_sha256 : '',
         tampered: Boolean(row.metadata?.simulated_tamper),
       }));
-      const auditQuery = new URLSearchParams({ select:'action,details,created_at',tenant_id:'eq.'+tenant.id,case_id:'eq.'+item.id,order:'id.asc',limit:'500' });
-      const auditResponse = await authenticatedFetch('/rest/v1/satark_audit_events?' + auditQuery);
-      const audit = auditResponse.ok ? (await auditResponse.json() as {action:string;details:Record<string,unknown>;created_at:string}[]).map(a => ({
-        time:a.created_at, action:a.action, detail:JSON.stringify(a.details),
-      })) : [];
+      const auditQuery = new URLSearchParams({ tenant_id: tenant.id, case_id: item.id });
+      const auditResponse = await authenticatedFetch('/api/audit/events?' + auditQuery);
+      const auditPayload = auditResponse.ok ? await auditResponse.json() as { events: { action:string; details:Record<string,unknown>; created_at:string }[] } : { events: [] };
+      const audit = auditPayload.events.map(a => ({ time:a.created_at, action:a.action, detail:JSON.stringify(a.details) }));
       onLoaded(item.id, mapped, audit);
       setSelectedAssignee(item.assigned_to || '');
       try {
