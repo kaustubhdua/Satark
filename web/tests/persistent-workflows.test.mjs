@@ -24,8 +24,12 @@ test('browser identity uses SATARK-owned same-origin endpoints and HttpOnly cook
 test('Next.js proxies the migrated application routes to the private FastAPI service', () => {
   assert.match(nextConfig, /SATARK_API_INTERNAL_URL/);
   assert.match(nextConfig, /beforeFiles/);
-  assert.ok(nextConfig.includes("source: '/api/:path*'"));
-  assert.ok(nextConfig.includes("destination: satarkApi + '/api/:path*'"));
+  assert.ok(nextConfig.includes("source: '/api/auth/:path*'"));
+  assert.ok(nextConfig.includes("source: '/api/cases/:path*'"));
+  assert.ok(nextConfig.includes("source: '/api/firstlight/:path*'"));
+  assert.ok(nextConfig.includes("destination: satarkApi + '/api/auth/:path*'"));
+  assert.ok(nextConfig.includes("destination: satarkApi + '/api/firstlight/:path*'"));
+  assert.ok(!nextConfig.includes("source: '/api/:path*'"));
   assert.doesNotMatch(nextConfig, /SUPABASE|supabase\.co/i);
 });
 
