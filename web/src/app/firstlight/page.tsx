@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import SiteHeader from '../site-header';
 import FirstlightReadiness from '../../components/firstlight-readiness';
 import dynamic from 'next/dynamic';
@@ -117,9 +116,10 @@ export default function FirstlightPage() {
     let active = true;
     void getSession().then(current => {
       if (!active) return;
+      if (!current) { window.location.replace('/login'); return; }
       setSession(current);
       setAuthChecked(true);
-    }).catch(() => { if (active) { setSession(null); setAuthChecked(true); } });
+    }).catch(() => { if (active) window.location.replace('/login'); });
     return () => { active = false; };
   }, []);
 
@@ -376,7 +376,7 @@ export default function FirstlightPage() {
     setNotice('Evidence review JSON exported. This local bundle is not certified forensic preservation.');
   }
   if (!authChecked) return <div className="shell"><SiteHeader /><main id="main-content" className="container"><p role="status" className="muted">Checking your secure session…</p><FirstlightReadiness /></main></div>;
-  if (!session) return <div className="shell"><SiteHeader /><main id="main-content" className="container"><section className="panel"><h1>FIRSTLIGHT workspace access</h1><p className="muted">Sign in to access saved investigations, private evidence, and workspace tools. Public readiness information is shown below.</p><Link className="btn btn-primary" href="/login">Sign in to SATARK</Link></section><FirstlightReadiness /></main></div>;
+  if (!session) return <div className="shell"><SiteHeader /><main id="main-content" className="container"><p role="status" className="muted">Redirecting to secure sign-in…</p><FirstlightReadiness /></main></div>;
 
   return <main className="shell"><SiteHeader />
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
