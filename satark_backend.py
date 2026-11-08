@@ -373,7 +373,7 @@ def signup(body: Credentials, request: Request, db: Session = Depends(db_session
     token = issue_session(db, user)
     db.commit()
     response = {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}
-    return response_with_session(request, response, token)
+    return response_with_session(request, response, token, status_code=201)
 
 
 def response_with_session(request: Request, body: dict, token: str, status_code: int = 200):
