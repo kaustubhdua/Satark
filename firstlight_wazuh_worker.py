@@ -184,7 +184,7 @@ class WazuhSatarkWorker:
             "summary": summary, "metadata": metadata,
         }
 
-    def _persist_source_snapshot(self, digest: str, snapshot: str) -> tuple[str, int]:
+    def _persist_source_snapshot(self, digest: str, snapshot: str) -> tuple[str, int, bool]:
         raw = snapshot.encode("utf-8")
         if not raw or len(raw) > MAX_SOURCE_BYTES:
             raise WorkerConfigurationError("Wazuh source snapshot exceeds the 4 MiB evidence limit")
@@ -199,7 +199,7 @@ class WazuhSatarkWorker:
             existing = destination.read_bytes()
             if not hashlib.sha256(existing).hexdigest() == digest:
                 raise WorkerConfigurationError("Existing Wazuh source snapshot failed integrity verification")
-            return relative, len(existing)
+            return relative, len(existing), False
         temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".part")
         try:
             with temporary.open("xb") as handle:
@@ -209,7 +209,7 @@ class WazuhSatarkWorker:
             os.replace(temporary, destination)
         finally:
             temporary.unlink(missing_ok=True)
-        return relative, len(raw)
+        return relative, len(raw), True
 
     def _save_event(self, event: dict[str, Any]) -> bool:
         provenance = event.get("provenance") if isinstance(event.get("provenance"), dict) else {}
@@ -220,7 +220,7 @@ class WazuhSatarkWorker:
         record = self._event_record(event, "")
         if not record["summary"]:
             raise WorkerConfigurationError("Wazuh event had no usable summary")
-        relative, byte_count = self._persist_source_snapshot(source_hash, snapshot)
+        relative, byte_count, created_object = self._persist_source_snapshot(source_hash, snapshot)
         record["metadata"]["source_object_path"] = relative
         db = SessionLocal()
         try:
@@ -260,6 +260,13 @@ class WazuhSatarkWorker:
             ))
             if existing:
                 return False
+            if created_object:
+                (self.evidence_dir / relative).resolve().unlink(missing_ok=True)
+            raise
+        except Exception:
+            db.rollback()
+            if created_object:
+                (self.evidence_dir / relative).resolve().unlink(missing_ok=True)
             raise
         finally:
             db.close()
