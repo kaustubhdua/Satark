@@ -48,7 +48,8 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
         env["PGPORT"] = str(url.port)
     if url.database:
         env["PGDATABASE"] = url.database
-    safe_url = str(url.set(password=None, username=url.username))
+    drivername = "postgresql" if url.drivername.startswith("postgresql") else url.drivername
+    safe_url = str(url.set(drivername=drivername, password=None, username=url.username))
     return safe_url, env
 
 
@@ -100,6 +101,9 @@ def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[s
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
         raise FileExistsError(f"Backup already exists: {output}")
+    evidence_root = evidence_dir.expanduser().resolve()
+    if output == evidence_root or evidence_root in output.parents:
+        raise ValueError("Store the backup outside the live evidence directory.")
     with tempfile.TemporaryDirectory(prefix="satark-backup-") as temporary:
         work = Path(temporary)
         database_file = work / "database"
