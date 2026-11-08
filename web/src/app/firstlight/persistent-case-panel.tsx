@@ -10,7 +10,7 @@ import {
 type EvidenceRow = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
 type FindingRow = { title: string; detail: string; severity: string; refs: string[] };
 type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; assigned_to?: string | null; created_at: string; updated_at: string };
-type MemberRow = { user_id: string; role: string };
+type MemberRow = { user_id: string; email?: string; role: string };
 type CaseNote = { id: string; tenant_id: string; case_id: string; body: string; created_by: string; created_at: string };
 type ApprovalRow = { id: string; action_key: string; action_payload: Record<string, unknown>; payload_sha256: string; status: string; requested_by: string; decided_by?: string | null; decision_reason?: string | null; created_at: string; expires_at: string };
 type AuditRow = { time: string; action: string; detail: string };
@@ -39,6 +39,8 @@ export default function PersistentCasePanel({
   const [message, setMessage] = useState('');
   const [jobStatus, setJobStatus] = useState('');
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberRole, setMemberRole] = useState('analyst');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [notes, setNotes] = useState<CaseNote[]>([]);
   const [noteDraft, setNoteDraft] = useState('');
@@ -76,7 +78,8 @@ export default function PersistentCasePanel({
         const memberRows = Array.isArray(memberPayload.members) ? memberPayload.members : [];
         setMembers(memberRows.filter((row): row is MemberRow =>
           !!row && typeof row === 'object' && 'user_id' in row && typeof row.user_id === 'string' &&
-          'role' in row && typeof row.role === 'string'));
+          'role' in row && typeof row.role === 'string' &&
+          (!('email' in row) || typeof row.email === 'string')));
       } catch { setMembers([]); }
     } else {
       setCases([]);
@@ -84,6 +87,53 @@ export default function PersistentCasePanel({
     }
     setCaseListLoaded(true);
   }
+  async function addWorkspaceMember() {
+    if (!tenant || tenant.role !== 'owner' || !memberEmail.trim()) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await authenticatedFetch('/api/workspaces/members', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, email: memberEmail.trim(), role: memberRole }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace member could not be added.');
+      setMembers(previous => [...previous, payload.member as MemberRow].sort((a,b) => (a.email || '').localeCompare(b.email || '')));
+      setMemberEmail('');
+      setMessage('Workspace member added. They can now sign in and access this workspace.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace member could not be added.'); }
+    finally { setBusy(false); }
+  }
+
+  async function changeWorkspaceRole(member: MemberRow, role: string) {
+    if (!tenant || tenant.role !== 'owner' || role === member.role) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await authenticatedFetch('/api/workspaces/members', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, user_id: member.user_id, role }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace role could not be changed.');
+      setMembers(previous => previous.map(item => item.user_id === member.user_id ? { ...item, role } : item));
+      setMessage('Workspace role updated.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace role could not be changed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function removeWorkspaceMember(member: MemberRow) {
+    if (!tenant || tenant.role !== 'owner') return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const query = new URLSearchParams({ tenant_id: tenant.id, user_id: member.user_id });
+      const response = await authenticatedFetch('/api/workspaces/members?' + query.toString(), { method: 'DELETE' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace member could not be removed.');
+      setMembers(previous => previous.filter(item => item.user_id !== member.user_id));
+      setMessage('Workspace membership removed.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace member could not be removed.'); }
+    finally { setBusy(false); }
+  }
+
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('case_id') || '';
     if (requested) setRequestedCaseId(requested);
@@ -489,7 +539,7 @@ export default function PersistentCasePanel({
   return <section className="persistent-case-panel panel" aria-labelledby="persistent-case-heading">
     <div className="panel-heading"><div><div className="panel-kicker">Persistent case workspace</div><h2 id="persistent-case-heading">Save beyond this browser session</h2></div><span className={session ? 'safe-chip' : 'review-chip'}>{session ? 'Authenticated' : 'Local mode'}</span></div>
     {!session ? <p className="empty-state">Training and imports still work locally. <Link href="/login">Sign in or create a workspace</Link> to save cases, evidence, findings, reports, and audit events in persistent storage.</p> : !tenant ? <p className="empty-state">This account has no workspace membership. <Link href="/login">Create a workspace</Link> to begin.</p> : <>
-      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. Case and evidence reads are tenant-scoped by database row-level security.</p>
+      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. Case and evidence access is checked by the SATARK backend against workspace membership.</p>
       <div className="persistent-controls">
         <label className="field-label" htmlFor="persistent-case-title">Incident title</label>
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
@@ -497,6 +547,27 @@ export default function PersistentCasePanel({
         <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
       </div>
       {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
+      {tenant.role === 'owner' && <div className="private-upload" aria-labelledby="workspace-members-heading">
+        <strong id="workspace-members-heading">Workspace members & roles</strong>
+        <p className="hint">Add an existing SATARK account by email. Invitations for accounts that have not registered are not enabled yet. Keep at least one owner in the workspace.</p>
+        <label className="field-label" htmlFor="workspace-member-email">Account email</label>
+        <input id="workspace-member-email" type="email" maxLength={254} value={memberEmail} onChange={e=>setMemberEmail(e.target.value)} disabled={busy} placeholder="teammate@example.com" />
+        <label className="field-label" htmlFor="workspace-member-role">Initial role</label>
+        <select id="workspace-member-role" value={memberRole} onChange={e=>setMemberRole(e.target.value)} disabled={busy}>
+          <option value="viewer">Viewer</option><option value="analyst">Analyst</option><option value="responder">Responder</option><option value="owner">Owner</option>
+        </select>
+        <button className="btn btn-secondary" type="button" disabled={busy || !memberEmail.trim()} onClick={()=>void addWorkspaceMember()}>Add workspace member</button>
+        <div className="case-notes-list">{members.map(member=><div className="case-note" key={member.user_id}>
+          <p><strong>{member.email || member.user_id.slice(0,8)}</strong> · {member.user_id === session.user.id ? 'You' : 'Member'}</p>
+          <div className="actions">
+            <label className="sr-only" htmlFor={'workspace-role-'+member.user_id}>Role for {member.email || member.user_id}</label>
+            <select id={'workspace-role-'+member.user_id} value={member.role} disabled={busy} onChange={e=>void changeWorkspaceRole(member,e.target.value)}>
+              <option value="viewer">Viewer</option><option value="analyst">Analyst</option><option value="responder">Responder</option><option value="owner">Owner</option>
+            </select>
+            <button className="mini-btn" type="button" disabled={busy} onClick={()=>void removeWorkspaceMember(member)}>Remove</button>
+          </div>
+        </div>)}</div>
+      </div>}
       {currentCaseId && cases.some(c => c.id === currentCaseId) && <>
         <div className="private-upload">
           <label className="field-label" htmlFor="case-assignee">Assign case (owner/responder only)</label>
@@ -536,7 +607,7 @@ export default function PersistentCasePanel({
         </div>
       </>}
       <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><div className="saved-case-row" key={item.id}><button type="button" className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button><label className="sr-only" htmlFor={'status-'+item.id}>Update status for {item.title}</label><select id={'status-'+item.id} value={item.status} disabled={busy} onChange={e=>void updateCaseStatus(item,e.target.value)}><option value="open">Open</option><option value="contained">Contained</option><option value="resolved">Resolved</option><option value="archived">Archived</option></select></div>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
-      <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
+      <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in private evidence storage. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
     {message && <p className="success-message" role="status">{message}</p>}
