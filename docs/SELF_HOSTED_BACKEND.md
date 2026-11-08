@@ -54,12 +54,35 @@ Uploaded files are bounded to 4 MiB per object and checked against supported con
 
 Investigation processing is limited to 500 evidence records, 32 MiB total evidence bytes, 4 MiB per object, and a 1 MiB result snapshot. Deterministic findings reference evidence IDs; tampered bytes are not treated as trusted evidence.
 
+## Backup, verification, and restore
+
+The repository includes `scripts/satark_backup.py` for a versioned archive containing a consistent database export, the private evidence tree, and a SHA-256 manifest.
+
+Stop SATARK API and worker writers before creating a backup so the database and evidence files represent the same point in time:
+
+~~~bash
+docker compose -f docker-compose.local.yml stop web firstlight-wazuh-worker firstlight-investigation-worker streamlit firstlight-api
+python scripts/satark_backup.py create --output /secure-backups/satark-$(date -u +%Y%m%dT%H%M%SZ).tar.gz
+python scripts/satark_backup.py verify /secure-backups/<backup-file>.tar.gz
+~~~
+
+Restore only into an empty target database and empty evidence directory:
+
+~~~bash
+SATARK_DATABASE_URL=sqlite:////restore/satark.db SATARK_EVIDENCE_DIR=/restore/evidence \
+  python scripts/satark_backup.py restore /secure-backups/<backup-file>.tar.gz
+~~~
+
+For PostgreSQL, install the matching `pg_dump` and `pg_restore` client tools and set `SATARK_DATABASE_URL` to the empty target database. The restore command does not drop existing database objects. Test restores in an isolated environment before production use.
+
+The archive is **not encrypted**. Encrypt it with an approved KMS, age, or GPG workflow before off-host transfer; restrict file permissions and retention. Do not place backup archives inside the live evidence directory. Backup/restore code is not a substitute for scheduled restore drills, PostgreSQL WAL/PITR, or tested recovery objectives.
+
 ## Current limitations
 
 - Email verification and MFA are not implemented. Password recovery is implemented but is disabled until SMTP and the trusted public base URL are configured.
 - Workspace owners can add existing SATARK accounts and manage member roles/removal. Email invitations for users who have not registered are not implemented.
 - Database-level PostgreSQL RLS policies are not yet part of this migration. Tenant isolation currently depends on the API's membership checks and tenant-scoped SQL queries; do not treat this as independently audited multi-tenant production isolation until DB-level policies and adversarial integration tests are added.
-- The hash-linked audit stream is application-managed. It is not externally anchored and is not a certified chain-of-custody service.
+- The hash-linked audit stream is application-managed and PostgreSQL rejects ordinary UPDATE/DELETE mutations through a trigger. It is not externally anchored and is not a certified chain-of-custody service.
 - The Wazuh adapter remains optional and needs its own target-environment validation.
 - No live endpoint, account, network, or process response action is executed by the FIRSTLIGHT investigation worker.
 - The migration branch must pass Python, frontend, browser/accessibility, migration, and security checks before it is merged or deployed.
