@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const proxy = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
 const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../../firstlight_investigation_worker.py', import.meta.url), 'utf8');
+const wazuhWorker = await readFile(new URL('../../firstlight_wazuh_worker.py', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
 
 test('FIRSTLIGHT API proxy bounds request bytes and rejects redirects', () => {
@@ -20,6 +21,14 @@ test('evidence, reports, jobs and findings are bounded and persisted by SATARK',
   assert.match(worker, /MAX_TOTAL_EVIDENCE_BYTES/);
   assert.match(worker, /Finding\(/);
   assert.match(worker, /Report\(/);
+});
+
+test('Wazuh ingestion uses SATARK-owned storage and tenant-scoped checkpoints', () => {
+  assert.match(wazuhWorker, /WazuhSatarkWorker/);
+  assert.match(wazuhWorker, /IngestionCheckpoint/);
+  assert.match(wazuhWorker, /SATARK_EVIDENCE_DIR/);
+  assert.match(wazuhWorker, /wazuh\.evidence\.ingested/);
+  assert.doesNotMatch(wazuhWorker, /SUPABASE|supabase\.co|service_role|\/rest\/v1|\/storage\/v1/i);
 });
 
 test('saved FIRSTLIGHT evidence reload preserves its original browser digest', () => {
