@@ -26,7 +26,7 @@ test('configured integrations remain unverified until real probes exist', () => 
     FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: 'private-token',
     FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: '004,005',
   });
-  for (const id of ['storage.supabase', 'rate_limit.shared', 'ai.local_model', 'firstlight.investigation', 'telemetry.wazuh']) {
+  for (const id of ['storage.self_hosted', 'rate_limit.shared', 'ai.local_model', 'firstlight.investigation', 'telemetry.wazuh']) {
     assert.equal(byId(registry, id).status, 'configured');
     assert.equal(byId(registry, id).healthVerified, false);
   }
