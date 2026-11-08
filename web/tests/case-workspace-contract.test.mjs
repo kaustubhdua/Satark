@@ -7,6 +7,7 @@ const navigation = fs.readFileSync(new URL('../src/app/site-header.tsx', import.
 const homepage = fs.readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
 const browserSmoke = fs.readFileSync(new URL('./browser-smoke.mjs', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL('../src/app/api/cases/route.ts', import.meta.url), 'utf8');
+const backend = fs.readFileSync(new URL('../../../satark_backend.py', import.meta.url), 'utf8');
 const firstlightCasePanel = fs.readFileSync(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
 
 test('case workspace reads and creates cases through tenant-scoped authenticated helpers', () => {
@@ -14,16 +15,18 @@ test('case workspace reads and creates cases through tenant-scoped authenticated
   assert.ok(page.includes('listCases(tenantId)'));
   assert.match(page, /createCase\(tenant\.id, title\.trim\(\), severity\)/);
   assert.match(page, /tenant_id: tenant\.id/);
-  assert.match(api, /created_by: user\.id/);
-  assert.match(api, /redirect: 'error'/);
+  assert.match(api, /proxySatarkApi/);
+  assert.match(backend, /def create_case\(/);
+  assert.match(backend, /require_membership\(db, user, body\.tenant_id/);
 });
 
 test('case field changes go through the authenticated case API and validate returned tenant', () => {
   assert.match(page, /method: 'PATCH'/);
   assert.match(page, /\[field\]: value/);
   assert.match(page, /updated\.tenant_id !== tenant\.id/);
-  assert.match(api, /export async function PATCH/);
-  assert.match(api, /At least one case field must be provided for update/);
+  assert.match(api, /export const POST = proxySatarkApi/);
+  assert.match(backend, /@router\.patch\("\/cases"\)/);
+  assert.match(backend, /At least one case field must be provided for update/);
 });
 
 test('case workspace includes useful filtering and read-only handling for viewer role', () => {
