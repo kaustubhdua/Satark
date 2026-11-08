@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+from pathlib import Path
 from datetime import timedelta
 
 import pytest
@@ -62,7 +64,7 @@ def test_worker_claims_and_persists_investigation(database):
 
 def test_worker_uses_normalized_wazuh_metadata_to_create_evidence_linked_findings(database):
     tenant_id, case_id, user_id, job_id = seed_job()
-    root = database.parent / "evidence"
+    root = Path(os.environ["SATARK_EVIDENCE_DIR"])
     object_dir = root / tenant_id / case_id / "wazuh"
     object_dir.mkdir(parents=True, exist_ok=True)
     raw = b'{"@timestamp":"2026-11-09T10:00:00Z","rule":{"id":"5710","level":8}}'
