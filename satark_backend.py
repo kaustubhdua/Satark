@@ -761,11 +761,19 @@ def enqueue_investigation(body: dict, user: User = Depends(current_user), db: Se
         return {"job": {"id": existing.id, "tenant_id": existing.tenant_id, "case_id": existing.case_id, "status": existing.status, "requested_by": existing.requested_by, "created_at": existing.created_at.isoformat()}}
     row = InvestigationJob(tenant_id=tenant_id, case_id=case_id, requested_by=user.id, idempotency_key=idempotency_key)
     db.add(row)
-    db.flush()
-    audit(db, tenant_id, user.id, "investigation.queued", {"job_id": row.id, "case_id": case_id})
-    db.commit()
+    try:
+        db.flush()
+        audit(db, tenant_id, user.id, "investigation.queued", {"job_id": row.id, "case_id": case_id})
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = db.scalar(select(InvestigationJob).where(InvestigationJob.tenant_id == tenant_id,
+            InvestigationJob.case_id == case_id, InvestigationJob.idempotency_key == idempotency_key))
+        if not existing:
+            raise HTTPException(503, "The investigation queue could not safely resolve a duplicate request.")
+        row = existing
     return {"job": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "status": row.status,
-        "requested_by": user.id, "created_at": row.created_at.isoformat()}}
+        "requested_by": row.requested_by, "created_at": row.created_at.isoformat()}}
 
 
 @router.post("/firstlight/investigate")
