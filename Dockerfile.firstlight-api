@@ -13,7 +13,9 @@ COPY firstlight_wazuh.py ./firstlight_wazuh.py
 COPY ai_provider.py ./ai_provider.py
 COPY firstlight_api.py ./firstlight_api.py
 COPY satark_backend.py ./satark_backend.py
+COPY alembic.ini ./alembic.ini
+COPY migrations ./migrations
 RUN mkdir -p /data/evidence && chown -R 10001:10001 /data
 USER 10001:10001
 EXPOSE 8788
-CMD ["uvicorn", "firstlight_api:app", "--host", "0.0.0.0", "--port", "8788"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn firstlight_api:app --host 0.0.0.0 --port 8788"]
