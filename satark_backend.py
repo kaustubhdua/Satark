@@ -422,6 +422,7 @@ def create_note(body: NoteInput, user: User = Depends(current_user), db: Session
         raise HTTPException(404, "Case not found.")
     row = CaseNote(tenant_id=body.tenant_id, case_id=body.case_id, body=body.body.strip(), created_by=user.id)
     db.add(row)
+    db.flush()
     audit(db, body.tenant_id, user.id, "case.note.created", {"case_id": body.case_id, "note_id": row.id})
     db.commit()
     return {"note": {"id": row.id, "tenant_id": row.tenant_id, "case_id": row.case_id, "body": row.body, "created_by": row.created_by, "created_at": row.created_at.isoformat()}}
@@ -472,6 +473,7 @@ def create_report(body: dict, user: User = Depends(current_user), db: Session = 
     digest = hashlib.sha256(canonical.encode()).hexdigest()
     row = Report(tenant_id=tenant_id, case_id=case_id, title=str(body.get("title") or "Investigation report")[:240], snapshot=snapshot, snapshot_sha256=digest, created_by=user.id)
     db.add(row)
+    db.flush()
     audit(db, tenant_id, user.id, "report.created", {"report_id": row.id, "case_id": case_id, "sha256": digest})
     db.commit()
     return {"report": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "title": row.title, "report_version": row.report_version, "snapshot_sha256": digest, "created_by": user.id, "created_at": row.created_at.isoformat()}}
