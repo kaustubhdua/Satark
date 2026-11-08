@@ -3,8 +3,6 @@ import { buildSecurityHeaders } from './src/lib/security-headers.mjs';
 
 const securityHeaders = buildSecurityHeaders(process.env);
 
-const satarkApi = (process.env.SATARK_API_INTERNAL_URL || 'http://firstlight-api:8788').replace(/\/$/, '');
-
 const nextConfig: NextConfig = {
   async rewrites() {
     // Keep scanner analysis, capability discovery, health snapshot, and version
