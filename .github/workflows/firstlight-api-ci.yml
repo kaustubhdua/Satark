@@ -128,6 +128,8 @@ jobs:
 
       - name: Verify no Supabase runtime dependency remains
         run: python scripts/check_no_supabase_runtime.py
+      - name: Validate self-hosted Compose stack
+        run: docker compose -f docker-compose.local.yml config --quiet
       - name: Build FIRSTLIGHT API and worker images
         run: |
           docker build -f Dockerfile.firstlight-api -t firstlight-api:ci .
