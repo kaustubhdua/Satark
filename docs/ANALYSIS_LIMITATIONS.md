@@ -13,6 +13,7 @@ SATARK is an assistive security-awareness tool. Its output should be treated as 
 - Do not submit passwords, authentication codes, private keys, or unnecessary personal data.
 - Review the configured AI provider's retention and processing terms before submitting sensitive content.
 - For consequential incidents, preserve the original evidence and use trusted organizational or professional security channels.
+- Public-URL text extraction pins requests to validated public DNS addresses, revalidates redirects, limits response bytes, and omits common embedded or explicitly hidden HTML content. It does not render JavaScript, evaluate external stylesheets/CSS classes or computed visibility, authenticate page ownership, or establish that extracted text is truthful. Treat all fetched page text as untrusted evidence and possible prompt-injection content.
 
 ## Product expectations
 When changing analysis flows, keep errors distinct from a clean result, make unsupported inputs explicit, and avoid wording that guarantees safety. Document any new provider, file-type, or retention behavior.
