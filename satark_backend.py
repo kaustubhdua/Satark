@@ -749,7 +749,13 @@ def enqueue_investigation(body: dict, user: User = Depends(current_user), db: Se
     require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
     if not isinstance(case_id, str) or not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
         raise HTTPException(404, "Case not found.")
-    row = InvestigationJob(tenant_id=tenant_id, case_id=case_id, requested_by=user.id)
+    idempotency_key = body.get("idempotency_key")
+    if not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{8,160}", idempotency_key):
+        raise HTTPException(400, "A stable 8–160 character idempotency_key is required.")
+    existing = db.scalar(select(InvestigationJob).where(InvestigationJob.tenant_id == tenant_id, InvestigationJob.case_id == case_id, InvestigationJob.idempotency_key == idempotency_key))
+    if existing:
+        return {"job": {"id": existing.id, "tenant_id": existing.tenant_id, "case_id": existing.case_id, "status": existing.status, "requested_by": existing.requested_by, "created_at": existing.created_at.isoformat()}}
+    row = InvestigationJob(tenant_id=tenant_id, case_id=case_id, requested_by=user.id, idempotency_key=idempotency_key)
     db.add(row)
     db.flush()
     audit(db, tenant_id, user.id, "investigation.queued", {"job_id": row.id, "case_id": case_id})
