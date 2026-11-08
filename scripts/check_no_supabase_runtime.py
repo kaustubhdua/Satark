@@ -7,6 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_FILES = [
     ROOT / "web" / "src",
+    ROOT / "web" / "next.config.ts",
+    ROOT / "web" / "Dockerfile",
+    ROOT / "web" / "scripts",
     ROOT / "web" / "package.json",
     ROOT / "web" / "package-lock.json",
     ROOT / "web" / ".env.example",
