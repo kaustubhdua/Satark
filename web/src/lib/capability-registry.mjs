@@ -4,21 +4,28 @@
  * Never include secret values in this response.
  */
 const hasValue = value => typeof value === 'string' && value.trim().length > 0;
+function isSelfHostedApiUrl(value, allowLocalHttp = true) {
+  if (!hasValue(value)) return false;
+  try {
+    const url = new URL(value.trim());
+    const localHosts = new Set(['localhost', '127.0.0.1', '::1', 'firstlight-api']);
+    const allowed = url.protocol === 'https:' || (allowLocalHttp && url.protocol === 'http:' && localHosts.has(url.hostname));
+    return allowed && !url.username && !url.password && !url.search && !url.hash;
+  } catch { return false; }
+}
+
 function capability(id, name, configured, details, configuredStatus = 'configured') {
   return { id, name, status: configured ? configuredStatus : 'disabled', configured: Boolean(configured), healthVerified: false, details };
 }
 
 /** @param {Record<string, string | undefined>} [env={}] */
 export function buildCapabilityRegistry(env = {}) {
-  const storageConfigured = hasValue(env.SUPABASE_URL) && hasValue(env.SUPABASE_PUBLISHABLE_KEY) &&
-    hasValue(env.NEXT_PUBLIC_SUPABASE_URL) && hasValue(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-  let storageMatches = false;
-  try {
-    const server = new URL(env.SUPABASE_URL || '');
-    const client = new URL(env.NEXT_PUBLIC_SUPABASE_URL || '');
-    storageMatches = server.protocol === 'https:' && client.protocol === 'https:' &&
-      server.hostname === client.hostname && server.hostname.endsWith('.supabase.co');
-  } catch { /* missing or malformed configuration */ }
+  const storageConfigured = isSelfHostedApiUrl(env.SATARK_API_INTERNAL_URL, env.VERCEL !== '1');
+  const firstlightConfigured = storageConfigured;
+  const wazuhConfigured = hasValue(env.FIRSTLIGHT_WAZUH_INDEXER_URL) &&
+    hasValue(env.FIRSTLIGHT_WAZUH_INDEXER_USERNAME) &&
+    hasValue(env.FIRSTLIGHT_WAZUH_INDEXER_PASSWORD) &&
+    hasValue(env.FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS);
   const redisConfigured = hasValue(env.UPSTASH_REDIS_REST_URL) &&
     /^https:\/\//i.test(env.UPSTASH_REDIS_REST_URL.trim()) && hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const modelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
@@ -28,11 +35,8 @@ export function buildCapabilityRegistry(env = {}) {
     env.FIRSTLIGHT_WAZUH_SYNC_TOKEN.trim().length >= 32;
   const capabilities = [
     capability('analysis.deterministic', 'Deterministic analysis', true, 'Analysis code is present; this endpoint does not execute analysis requests.'),
-    capability('storage.supabase', 'Persistent Supabase storage', storageConfigured,
-      storageConfigured && !storageMatches
-        ? 'Server/browser Supabase project configuration does not match.'
-        : 'Configuration only; database connectivity, schema compatibility and RLS are not probed.',
-      storageConfigured && !storageMatches ? 'degraded' : 'configured'),
+    capability('storage.self_hosted', 'Self-hosted persistent storage', storageConfigured,
+      'Private SATARK FastAPI and database URL are configured; database connectivity, schema compatibility and tenant isolation are not probed.'),
     capability('rate_limit.shared', 'Shared rate limiting', redisConfigured,
       redisConfigured ? 'Upstash settings are present; connectivity and enforcement are not probed.'
         : env.VERCEL === '1' ? 'Required in production; analysis must fail closed until configured.'
@@ -41,11 +45,11 @@ export function buildCapabilityRegistry(env = {}) {
       modelConfigured ? 'Endpoint and model are configured; reachability and invocation are unverified.'
         : 'No local model endpoint/model pair is configured; do not substitute canned AI output.'),
     capability('firstlight.investigation', 'FIRSTLIGHT investigation API', firstlightConfigured,
-      firstlightConfigured ? 'Backend URL/token are configured; reachability and investigation execution are unverified.'
-        : 'Private backend URL and strong server-side token are not both configured.'),
+      firstlightConfigured ? 'SATARK-owned investigation API is configured; reachability and execution are unverified.'
+        : 'Private SATARK_API_INTERNAL_URL is not configured or is unsafe.'),
     capability('telemetry.wazuh', 'Wazuh telemetry connector', wazuhConfigured,
-      wazuhConfigured ? 'Connector settings are present; manager access, event freshness and durable ingestion are unverified.'
-        : 'Real Wazuh ingestion is not verified as configured.'),
+      wazuhConfigured ? 'Read-only Indexer settings and agent allowlist are present; connectivity, event freshness and durable ingestion are unverified.'
+        : 'Wazuh Indexer URL, credentials, and allowed agent IDs are not all configured.'),
     capability('detection.rules', 'Deterministic detection rules', true,
       'Rule code exists; live coverage, regression corpus and alert delivery are unverified.', 'unverified'),
     capability('response.live', 'Live response / containment', false,
