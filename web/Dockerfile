@@ -5,8 +5,7 @@ RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
-ARG SATARK_API_INTERNAL_URL=http://firstlight-api:8788
-ENV NEXT_TELEMETRY_DISABLED=1 SATARK_API_INTERNAL_URL=${SATARK_API_INTERNAL_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run typecheck && npm test && npm run build
