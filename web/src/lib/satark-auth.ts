@@ -29,7 +29,15 @@ function sessionFrom(value: unknown): SatarkSession {
     throw new Error('The SATARK server returned an invalid session.');
   }
   const user = value.user as SatarkSession['user'];
-  return { access_token: '', refresh_token: '', expires_at: Date.now() + 14 * 86400_000, user };
+  const serverExpiry = 'expires_at' in value && typeof value.expires_at === 'string'
+    ? Date.parse(value.expires_at)
+    : Number.NaN;
+  const relativeExpiry = 'expires_in' in value && typeof value.expires_in === 'number'
+    ? Date.now() + Math.max(0, value.expires_in) * 1000
+    : Number.NaN;
+  const expiresAt = Number.isFinite(serverExpiry) ? serverExpiry
+    : Number.isFinite(relativeExpiry) ? relativeExpiry : Date.now();
+  return { access_token: '', refresh_token: '', expires_at: expiresAt, user };
 }
 
 export function readStoredSession(): SatarkSession | null {
@@ -63,7 +71,13 @@ export async function completePasswordReset(_accessToken: string, _password: str
 
 export async function getSession(): Promise<SatarkSession | null> {
   try {
-    currentSession = sessionFrom(await api('/api/auth/session'));
+    let session = sessionFrom(await api('/api/auth/session'));
+    // Rotate near-expiry sessions server-side. The raw cookie remains HttpOnly;
+    // the browser never receives or stores a bearer/refresh token.
+    if (session.expires_at - Date.now() < 24 * 60 * 60 * 1000) {
+      session = sessionFrom(await api('/api/auth/refresh', { method: 'POST' }));
+    }
+    currentSession = session;
     return currentSession;
   } catch {
     currentSession = null;
