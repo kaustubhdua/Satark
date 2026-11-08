@@ -30,6 +30,7 @@ UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2, hash_len=32, salt_len=16)
 SESSION_TTL_DAYS = 14
+DUMMY_PASSWORD_HASH = PASSWORDS.hash("not-a-real-user-password-for-timing-equalization")
 MAX_UPLOAD = 4 * 1024 * 1024
 
 
@@ -202,8 +203,18 @@ def current_user(request: Request, authorization: str | None = Header(default=No
     if not token or len(token) > 256:
         raise HTTPException(401, "Sign in is required.")
     row = db.scalar(select(SessionRecord).where(SessionRecord.token_hash == token_digest(token), SessionRecord.revoked_at.is_(None)))
-    if not row or row.expires_at <= utcnow():
+    expiry = row.expires_at.replace(tzinfo=timezone.utc) if row and row.expires_at.tzinfo is None else (row.expires_at if row else None)
+    if not row or expiry <= utcnow():
         raise HTTPException(401, "Your session is invalid or expired.")
+    # Cookie-authenticated unsafe requests must originate from this exact origin.
+    # Bearer clients are not ambient-cookie authenticated and do not use this CSRF path.
+    if not (authorization and authorization.startswith("Bearer ")) and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("origin", "")
+        try:
+            if not origin or __import__("urllib.parse", fromlist=["urlsplit"]).urlsplit(origin).netloc.lower() != request.headers.get("host", "").lower():
+                raise HTTPException(403, "Cross-origin mutation is not allowed.")
+        except ValueError:
+            raise HTTPException(403, "Cross-origin mutation is not allowed.")
     user = db.get(User, row.user_id)
     if not user or not user.is_active:
         raise HTTPException(401, "Your account is disabled.")
@@ -315,7 +326,7 @@ def signup(body: Credentials, request: Request, db: Session = Depends(db_session
 def response_with_session(request: Request, body: dict, token: str):
     from fastapi.responses import JSONResponse
     response = JSONResponse(body)
-    response.set_cookie("satark_session", token, httponly=True, secure=request.url.scheme == "https", samesite="lax",
+    response.set_cookie("satark_session", token, httponly=True, secure=request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip() == "https", samesite="lax",
                         max_age=SESSION_TTL_DAYS * 86400, path="/")
     return response
 
@@ -325,12 +336,11 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
     email = body.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     valid = False
-    if user and user.is_active:
-        try:
-            valid = PASSWORDS.verify(user.password_hash, body.password)
-        except VerifyMismatchError:
-            valid = False
-    if not valid or not user:
+    try:
+        valid = PASSWORDS.verify(user.password_hash if user and user.is_active else DUMMY_PASSWORD_HASH, body.password)
+    except VerifyMismatchError:
+        valid = False
+    if not valid or not user or not user.is_active:
         # Perform a dummy hash verification path for unknown accounts to reduce timing leaks.
         raise HTTPException(401, "Email or password is incorrect.")
     token = issue_session(db, user)
@@ -352,7 +362,7 @@ def logout(request: Request, db: Session = Depends(db_session), user: User = Dep
         db.commit()
     from fastapi.responses import JSONResponse
     response = JSONResponse({"ok": True})
-    response.delete_cookie("satark_session", path="/", httponly=True, secure=request.url.scheme == "https", samesite="lax")
+    response.delete_cookie("satark_session", path="/", httponly=True, secure=request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip() == "https", samesite="lax")
     return response
 
 
