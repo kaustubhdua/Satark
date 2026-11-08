@@ -654,7 +654,7 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
 @router.get("/firstlight/evidence/source")
 def download_wazuh_source(tenant_id: str, case_id: str, path: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
-    expected = re.fullmatch(rf"{re.escape(tenant_id)}/{re.escape(case_id)}/wazuh/([0-9a-f]{{64}})\\.json", path)
+    expected = re.fullmatch(rf"{re.escape(tenant_id)}/{re.escape(case_id)}/wazuh/([0-9a-f]{{64}})\.json", path)
     if not expected:
         raise HTTPException(400, "The source-object path is invalid for this case.")
     row = db.scalar(select(Evidence).where(Evidence.tenant_id == tenant_id,
