@@ -45,7 +45,7 @@ def database_url() -> str:
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
         return value
-    path = Path(os.getenv("SATARK_SQLITE_PATH", "./data/satark.db"))
+    path = Path(os.getenv("SATARK_SQLITE_PATH", "/tmp/satark/satark.db"))
     path.parent.mkdir(parents=True, exist_ok=True)
     return "sqlite:///" + str(path.resolve())
 
