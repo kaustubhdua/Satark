@@ -15,17 +15,16 @@ export default function ResetPasswordPage() {
   const [linkReady, setLinkReady] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const token = params.get('access_token') || '';
-    const type = params.get('type');
-    if (type === 'recovery' && token && token.length <= 8192) {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || '';
+    if (token && token.length <= 256) {
       setAccessToken(token);
       setLinkReady(true);
     } else {
       setError('This recovery link is missing or expired. Request a new link from the sign-in page.');
     }
-    // Remove credentials from the visible URL/history as soon as they are read.
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    // Remove the one-time credential from the visible URL/history immediately.
+    window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
   async function submit(event: FormEvent) {
@@ -36,8 +35,8 @@ export default function ResetPasswordPage() {
       setError('This recovery link is invalid or expired. Request a new one.');
       return;
     }
-    if (password.length < 8 || password.length > 128) {
-      setError('Use a password between 8 and 128 characters.');
+    if (password.length < 12 || password.length > 128) {
+      setError('Use a password between 12 and 128 characters.');
       return;
     }
     if (password !== confirmPassword) {
@@ -75,7 +74,7 @@ export default function ResetPasswordPage() {
             <h2 id="reset-title">Choose a new password</h2>
             <form onSubmit={submit}>
               <label className="field-label" htmlFor="password">New password</label>
-              <input id="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} disabled={!linkReady || busy} />
+              <input id="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} disabled={!linkReady || busy} />
               <label className="field-label" htmlFor="confirm-password">Confirm new password</label>
               <input id="confirm-password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={!linkReady || busy} />
               <button className="btn btn-primary" type="submit" disabled={!linkReady || busy}>{busy ? 'Updating…' : 'Update password'}</button>
