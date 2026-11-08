@@ -23,7 +23,7 @@ cp .env.example .env
 docker compose -f docker-compose.local.yml up --build
 ~~~
 
-Open `http://localhost:3000`. The local Compose stack uses SQLite and a named `satark_data` volume for the database and evidence objects. Optional Ollama runs locally in the Compose network; SATARK's deterministic analysis and FIRSTLIGHT rules do not need a hosted AI API key.
+Open `http://localhost:3000`. The default local Compose stack uses SQLite and a named `satark_data` volume for the database and evidence objects. It starts without Ollama; deterministic analysis and FIRSTLIGHT rules work without an AI model. To opt into local model inference, start the optional AI profile with `docker compose -f docker-compose.local.yml --profile ai up --build`. The Ollama model is then available inside the Compose network. No hosted AI API key is required.
 
 ## Multi-instance deployment
 
