@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session\nfrom sqlalchemy import event
 
 router = APIRouter(prefix="/api", tags=["SATARK self-hosted"])
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
@@ -51,7 +51,7 @@ def database_url() -> str:
 
 DB_URL = database_url()
 engine = create_engine(DB_URL, pool_pre_ping=True, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)\n\nif DB_URL.startswith("sqlite"):\n    @event.listens_for(engine, "connect")\n    def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):\n        cursor = dbapi_connection.cursor()\n        cursor.execute("PRAGMA foreign_keys=ON")\n        cursor.close()
 
 
 class Base(DeclarativeBase):
@@ -284,6 +284,8 @@ def require_membership(db: Session, user: User, tenant_id: str, roles: set[str] 
 
 
 def audit(db: Session, tenant_id: str, actor: str, event_type: str, payload: dict) -> None:
+    # Serialize audit-head reads/writes per tenant on PostgreSQL to prevent forked chains.
+    db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
     previous = db.scalar(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.created_at.desc()).limit(1))
     previous_hash = previous.event_hash if previous else "0" * 64
     record = {"tenant_id": tenant_id, "actor_id": actor, "event_type": event_type, "payload": payload, "previous_hash": previous_hash}
