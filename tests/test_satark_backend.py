@@ -31,7 +31,7 @@ def origin():
 
 
 def register(client, email):
-    response = client.post("/api/auth/signup", json={"email": email, "password": "Correct-Horse-Battery-42"})
+    response = client.post("/api/auth/signup", json={"email": email, "password": "Correct-Horse-Battery-42"}, headers=origin())
     assert response.status_code == 201, response.text
     assert "satark_session" in response.cookies
     assert "access_token" not in response.json()
@@ -47,7 +47,7 @@ def test_self_hosted_signup_login_and_cookie_session(client):
     client.post("/api/auth/logout", headers=origin())
     assert client.get("/api/auth/session").status_code == 401
 
-    login = client.post("/api/auth/login", json={"email": "analyst@example.test", "password": "Correct-Horse-Battery-42"})
+    login = client.post("/api/auth/login", json={"email": "analyst@example.test", "password": "Correct-Horse-Battery-42"}, headers=origin())
     assert login.status_code == 200
     assert client.get("/api/auth/session").status_code == 200
 
