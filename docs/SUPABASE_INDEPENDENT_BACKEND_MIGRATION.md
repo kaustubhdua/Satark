@@ -1,6 +1,6 @@
 # Supabase-independent backend migration
 
-**Status:** Active implementation branch; core self-hosted API, storage, sessions, job worker, and Wazuh ingestion are implemented. Full parity and production acceptance are still in progress.
+**Status:** Core Supabase runtime replacement is implemented on the draft branch. Session rotation, email-based password recovery, persistent sign-in throttling, workspace member/role administration, append-only PostgreSQL audit enforcement, audit sequencing, and backup/restore tooling have also been added. Latest-commit CI and production acceptance are not yet verified.
 **Target:** Remove all runtime dependency on Supabase Auth, PostgREST, Storage, database RPCs, and Supabase-specific environment variables.
 **Branch:** remove-supabase-runtime-dependency
 
@@ -40,10 +40,10 @@ Every tenant-owned record must be checked against membership and role in the sam
 ## Authentication and browser session contract
 
 1. Sign-up and sign-in terminate at FastAPI; passwords are hashed with Argon2id.
-2. Sessions use cryptographically random opaque tokens. Persist only a keyed/hash representation. Rotate refresh sessions on use; detect reuse and revoke the token family.
+2. Sessions use cryptographically random opaque tokens. Persist only a hash representation. Near-expiry cookie sessions rotate atomically and the previous token is revoked; full token-family reuse detection remains a release item.
 3. The Next.js same-origin session endpoint sets Secure (HTTPS), HttpOnly, SameSite=Lax cookies with narrow paths and bounded lifetimes. Enforce Origin/CSRF protections on mutations.
 4. Browser API requests go through same-origin Next.js routes. The BFF forwards cookie-derived identity only to the private FastAPI origin over a trusted network. No bearer/session token in localStorage.
-5. Password recovery must use a configured mail transport or be explicitly disabled with a safe administrator recovery process. Do not claim email verification if no mail provider exists.
+5. Password recovery uses single-use 30-minute token digests and is enabled only when SMTP plus a trusted public base URL are configured. Email verification is a separate optional release gate and must not be implied by password recovery.
 6. Sign-out revokes the server-side session. Expiry and revocation are enforced by FastAPI, not by trusting cookie expiry alone.
 
 ## Evidence storage contract
@@ -60,7 +60,10 @@ Every tenant-owned record must be checked against membership and role in the sam
 
 Implemented on this branch (automated tests are still running and must pass on the latest commit):
 
-- [x] Self-hosted sign-up/sign-in/logout/session inspection with Argon2id hashes, opaque random tokens stored as digests, HttpOnly/SameSite cookies, expiry and server-side revocation.
+- [x] Self-hosted sign-up/sign-in/logout/session inspection with Argon2id hashes, opaque random tokens stored as digests, HttpOnly/SameSite cookies, expiry, atomic near-expiry rotation, and server-side revocation.
+- [x] One-time password reset tokens, optional SMTP delivery, session revocation on reset, generic account-enumeration-safe responses, and persistent email-keyed login cooldowns.
+- [x] Workspace owner UI/API for adding existing accounts, changing roles, and removing members while retaining at least one owner.
+- [x] PostgreSQL append-only audit trigger, deterministic per-tenant audit sequence, SQLite/PostgreSQL migration coverage, and a verifiable database + evidence backup/restore utility.
 - [x] Workspace creation/listing and role-checked tenant access for core case, evidence, note, finding, report, audit, approval, and job operations.
 - [x] SQLAlchemy models and Alembic initial schema for SQLite local mode and PostgreSQL production mode.
 - [x] Private filesystem evidence uploads, metadata imports, downloads, SHA-256 verification, bounded uploads, and source-snapshot preservation.
@@ -71,19 +74,19 @@ Implemented on this branch (automated tests are still running and must pass on t
 
 Still outstanding before calling the migration complete:
 
-- [ ] Password recovery, verified email, session rotation/reuse detection, account lockout/rate limits, and workspace member invitation/role-management UI.
+- [ ] Email verification, MFA, unregistered-user invitations, per-IP/global edge throttling, and session-family reuse detection. Password recovery, near-expiry session rotation, email-keyed sign-in cooldowns, and existing-account role administration are implemented.
 - [ ] Multi-instance S3-compatible evidence backend; current evidence storage is private local filesystem and requires a shared durable mount for API/worker.
 - [ ] One-way legacy data export/import with row-count, tenant, digest, audit-chain, and foreign-key reconciliation. The old project/data has not been deleted or imported.
-- [ ] PostgreSQL concurrency, backup/restore, crash-recovery, retention/deletion, and full role-matrix tests beyond the initial integration path.
-- [ ] Review DB-level audit immutability and approval consumption/one-time execution semantics. Live response remains disabled.
-- [ ] Full repository-wide runtime scan and end-to-end browser acceptance against a deployed private FastAPI service.
+- [ ] Production PostgreSQL concurrency and full adversarial role-matrix acceptance; backup/restore tooling exists but restore drills, crash-recovery, retention/deletion, and operational recovery objectives remain unverified.
+- [ ] PostgreSQL rejects ordinary audit UPDATE/DELETE through a trigger, and the chain has deterministic sequence numbers. Independent privileged-operator immutability, database-level tenant RLS/defense-in-depth, and approval concurrency semantics still require review. Live response remains disabled.
+- [ ] Re-run the expanded Supabase runtime guard, full Python/Node/PostgreSQL/browser/accessibility suites on the latest branch commit, and complete end-to-end acceptance against a deployed private FastAPI service.
 
 Historical Supabase SQL migrations and migration notes may remain as read-only legacy material. They are not used by the new runtime; they must not be reintroduced into app startup, build, or deployment requirements.
 
 ## Safe migration sequence
 
 1. Add backend repository interfaces, SQLAlchemy models, migrations, SQLite fixtures, and PostgreSQL integration tests. (Implemented; continue expanding PostgreSQL coverage.)
-2. Implement authentication and session lifecycle; test password hashing, expiry, revocation, CSRF, and session fixation. (Core cookie/session path implemented; rotation/recovery and abuse controls remain.)
+2. Implement authentication and session lifecycle; test password hashing, expiry, revocation, CSRF, session rotation, password recovery, and sign-in throttling. (Core flows implemented; email verification, MFA, session-family reuse detection, and edge throttling remain.)
 3. Implement tenant and membership authorization and prove cross-tenant read/write denial for every resource.
 4. Implement cases, notes, findings, reports, approvals, jobs, and append-only audit behavior with transaction and concurrency tests.
 5. Implement private evidence storage and crash/recovery tests.
