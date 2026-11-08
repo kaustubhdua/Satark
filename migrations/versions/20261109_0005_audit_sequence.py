@@ -87,8 +87,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     constraints = {item.get("name") for item in sa.inspect(bind).get_unique_constraints("satark_audit_events")}
-    if "uq_satark_audit_sequence" in constraints:
-        op.drop_constraint("uq_satark_audit_sequence", "satark_audit_events", type_="unique")
     columns = {column["name"] for column in sa.inspect(bind).get_columns("satark_audit_events")}
-    if "sequence" in columns:
-        op.drop_column("satark_audit_events", "sequence")
+    if bind.dialect.name == "sqlite":
+        if "uq_satark_audit_sequence" in constraints or "sequence" in columns:
+            with op.batch_alter_table("satark_audit_events") as batch:
+                if "uq_satark_audit_sequence" in constraints:
+                    batch.drop_constraint("uq_satark_audit_sequence", type_="unique")
+                if "sequence" in columns:
+                    batch.drop_column("sequence")
+    else:
+        if "uq_satark_audit_sequence" in constraints:
+            op.drop_constraint("uq_satark_audit_sequence", "satark_audit_events", type_="unique")
+        if "sequence" in columns:
+            op.drop_column("satark_audit_events", "sequence")
