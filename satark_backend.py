@@ -588,8 +588,7 @@ async def upload_evidence(
     raw = await file.read(MAX_UPLOAD + 1)
     if not raw or len(raw) > MAX_UPLOAD:
         raise HTTPException(413, "Evidence must be between 1 byte and 4 MiB.")
-    when = when.astimezone(timezone.utc)
-    content_type = (file.content_type or "application/octet-stream")[:160
+    content_type = (file.content_type or "application/octet-stream")[:160]
     # Minimal magic checks prevent trusting the browser-supplied MIME type.
     signatures = {
         "application/pdf": raw.startswith(b"%PDF-"),
@@ -625,6 +624,7 @@ async def upload_evidence(
     except ValueError:
         object_path.unlink(missing_ok=True)
         raise HTTPException(400, "observed_at must include an explicit timezone.")
+    when = when.astimezone(timezone.utc)
     row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path), source_label=source_label[:160], event_kind=event_kind[:100], observed_at=when, summary=summary[:8192], source_sha256=digest, size_bytes=len(raw), content_type=content_type, original_filename=name, metadata_json={}, created_by=user.id)
     db.add(row)
     audit(db, tenant_id, user.id, "evidence.uploaded", {"evidence_id": evidence_id, "sha256": digest, "size_bytes": len(raw)})
