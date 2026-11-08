@@ -325,9 +325,9 @@ def signup(body: Credentials, request: Request, db: Session = Depends(db_session
     return response_with_session(request, response, token)
 
 
-def response_with_session(request: Request, body: dict, token: str):
+def response_with_session(request: Request, body: dict, token: str, status_code: int = 200):
     from fastapi.responses import JSONResponse
-    response = JSONResponse(body)
+    response = JSONResponse(body, status_code=status_code)
     response.set_cookie("satark_session", token, httponly=True, secure=request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip() == "https", samesite="lax",
                         max_age=SESSION_TTL_DAYS * 86400, path="/")
     return response
