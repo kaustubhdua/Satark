@@ -12,8 +12,9 @@ const [nextConfig, worker, backend, compose] = await Promise.all([
 
 test('all browser API requests are proxied to SATARK-owned FastAPI routes', () => {
   assert.match(nextConfig, /SATARK_API_INTERNAL_URL/);
-  assert.ok(nextConfig.includes("source: '/api/:path*'"));
-  assert.ok(nextConfig.includes("destination: satarkApi + '/api/:path*'"));
+  assert.ok(nextConfig.includes("source: '/api/firstlight/:path*'"));
+  assert.ok(nextConfig.includes("destination: satarkApi + '/api/firstlight/:path*'"));
+  assert.ok(nextConfig.includes("source: '/api/evidence/:path*'"));
   assert.doesNotMatch(nextConfig, /SUPABASE|supabase\.co/i);
 });
 
