@@ -1,6 +1,6 @@
 # FIRSTLIGHT trusted response executor foundation
 
-This module is a local, open-source foundation for a trusted response executor. It adds a durable approval lifecycle and audit log, but it is **not yet connected to the browser approval UI or the existing Supabase approval RPCs**. Do not describe the complete response workflow as production-ready until that integration and live acceptance are finished.
+This module is a local, open-source foundation for a trusted response executor. It adds a durable approval lifecycle and audit log, but it is **not yet connected to the browser approval UI or the SATARK's self-hosted simulation-only approval records**. Do not describe the complete response workflow as production-ready until that integration and live acceptance are finished.
 
 ## Controls implemented
 
