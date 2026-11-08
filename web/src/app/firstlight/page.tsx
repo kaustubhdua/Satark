@@ -375,7 +375,7 @@ export default function FirstlightPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice('Evidence review JSON exported. This local bundle is not certified forensic preservation.');
   }
-  if (!authChecked || !session) return <div className="shell"><SiteHeader /><main id="main-content" className="container"><p role="status" className="muted">Checking your secure session…</p></main></div>;
+  if (!authChecked || !session) return <div className="shell"><SiteHeader /><main id="main-content" className="container"><p role="status" className="muted">Checking your secure session…</p><FirstlightReadiness /></main></div>;
 
   return <main className="shell"><SiteHeader />
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
