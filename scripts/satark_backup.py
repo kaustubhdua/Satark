@@ -24,12 +24,16 @@ from typing import Any
 from sqlalchemy.engine import make_url
 
 
-def sha256_file(path: Path) -> str:
+def sha256_stream(handle) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    with path.open("rb") as handle:
+        return sha256_stream(handle)
 
 
 def _pg_env(url) -> tuple[str, dict[str, str]]:
@@ -166,7 +170,7 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
             source = archive.extractfile(by_name[name])
             if source is None:
                 raise ValueError(f"Backup file cannot be read: {name}")
-            digest = hashlib.sha256(source.read()).hexdigest()
+            digest = sha256_stream(source)
             if not hmac.compare_digest(digest, manifest["files"][name]):
                 raise ValueError(f"Backup checksum mismatch: {name}")
         return manifest
