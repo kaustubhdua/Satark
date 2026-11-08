@@ -121,6 +121,7 @@ class CaseNote(Base):
 
 class Evidence(Base):
     __tablename__ = "satark_evidence"
+    __table_args__ = (UniqueConstraint("tenant_id", "case_id", "source_sha256", name="uq_satark_evidence_digest"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id: Mapped[str] = mapped_column(String(36), index=True)
     case_id: Mapped[str] = mapped_column(ForeignKey("satark_cases.id", ondelete="CASCADE"), index=True)
@@ -465,7 +466,7 @@ def create_case(body: CaseInput, user: User = Depends(current_user), db: Session
 
 @router.patch("/cases")
 def update_case(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
-    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id") or body.get("id")
     require_membership(db, user, str(tenant_id), {"owner", "responder"})
     row = db.scalar(select(Case).where(Case.id == case_id, Case.tenant_id == tenant_id))
     if not row:
@@ -737,6 +738,19 @@ def download_evidence(evidence_id: str, tenant_id: str, user: User = Depends(cur
         raise HTTPException(409, "Evidence integrity verification failed.")
     return FileResponse(path, media_type=row.content_type, filename=row.original_filename, headers={"Cache-Control": "no-store"})
 
+
+
+@router.get("/audit/events")
+def list_audit_events(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    if not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
+        raise HTTPException(404, "Case not found.")
+    rows = db.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id)
+        .order_by(AuditEvent.created_at.asc()).limit(1000)).all()
+    events = [{"id": row.id, "action": row.event_type, "details": row.payload,
+        "actor_id": row.actor_id, "created_at": row.created_at.isoformat(),
+        "event_hash": row.event_hash} for row in rows if row.payload.get("case_id") == case_id]
+    return {"events": events[-500:]}
 
 
 @router.get("/audit/verify")
