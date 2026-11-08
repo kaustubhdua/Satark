@@ -53,7 +53,14 @@ def database_url() -> str:
 
 DB_URL = database_url()
 engine = create_engine(DB_URL, pool_pre_ping=True, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)\n\nif DB_URL.startswith("sqlite"):\n    @event.listens_for(engine, "connect")\n    def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):\n        cursor = dbapi_connection.cursor()\n        cursor.execute("PRAGMA foreign_keys=ON")\n        cursor.close()
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
+
+if DB_URL.startswith("sqlite"):
+    @event.listens_for(engine, "connect")
+    def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 class Base(DeclarativeBase):
