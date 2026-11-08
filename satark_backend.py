@@ -578,7 +578,7 @@ def remove_workspace_member(tenant_id: str, user_id: str, user: User = Depends(c
     if not row:
         raise HTTPException(404, "Workspace member not found.")
     if row.role == "owner":
-        owners = db.scalar(select(__import__("sqlalchemy").func.count()).select_from(Membership).where(
+        owners = db.scalar(select(func.count()).select_from(Membership).where(
             Membership.tenant_id == tenant_id, Membership.role == "owner"
         )) or 0
         if owners <= 1:
