@@ -77,12 +77,12 @@ test('bounded response JSON helper enforces the shared byte cap before parsing',
   assert.match(source, /bounded\.reason === 'too_large'/);
 });
 
-test('evidence multipart upload is byte-bounded before form-data parsing', async () => {
-  const source = await readFile(new URL('../src/app/api/evidence/route.ts', import.meta.url), 'utf8');
-  assert.match(source, /readBoundedBody\(request,\s*MAX_FILE_BYTES\s*\+\s*64\s*\*\s*1024\)/);
-  assert.match(source, /new Request\(request\.url,[\s\S]*body:\s*Buffer\.from\(boundedBody\.bytes\)/);
-  assert.match(source, /contentEncoding\.toLowerCase\(\)\s*!==\s*'identity'/);
-  assert.doesNotMatch(source, /await\s+request\.formData\(\)/);
+test('evidence multipart upload is bounded before FastAPI form parsing', async () => {
+  const proxy = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
+  const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
+  assert.match(proxy, /MAX_REQUEST_BYTES = 8 \* 1024 \* 1024/);
+  assert.match(backend, /MAX_UPLOAD = 4 \* 1024 \* 1024/);
+  assert.match(backend, /await file\.read\(MAX_UPLOAD \+ 1\)/);
 });
 
 test('shared bounded request reader caps streamed bytes and parses JSON only after the cap', async () => {
