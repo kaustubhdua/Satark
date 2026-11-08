@@ -40,7 +40,7 @@ def database(monkeypatch, tmp_path):
 
 
 def event(doc_id: str, timestamp: str):
-    source = {"@timestamp": timestamp, "rule": {"id": "5710", "level": 8, "description": "Lab alert"}}
+    source = {"@timestamp": timestamp, "_id": doc_id, "rule": {"id": "5710", "level": 8, "description": "Lab alert"}}
     snapshot = json.dumps(source, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     digest = hashlib.sha256(snapshot.encode()).hexdigest()
     return {
