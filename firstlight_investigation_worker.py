@@ -101,7 +101,7 @@ class InvestigationJobWorker:
                 if item.content_type == "application/json":
                     try:
                         parsed = json.loads(raw.decode("utf-8"))
-                        details = parsed if isinstance(parsed, dict) else {}
+                        details = item.metadata_json if isinstance(item.metadata_json, dict) and item.metadata_json else (parsed if isinstance(parsed, dict) else {})
                     except (ValueError, UnicodeDecodeError):
                         details = {}
                 record = {"event_id": item.id, "timestamp": item.observed_at.isoformat(),
