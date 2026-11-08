@@ -129,7 +129,10 @@ def test_worker_advances_checkpoint_after_empty_window(database):
     db = backend.SessionLocal()
     checkpoint = db.scalar(select(backend.IngestionCheckpoint))
     assert checkpoint is not None
-    checkpoint_time = checkpoint.last_event_timestamp\n    if checkpoint_time.tzinfo is None:\n        checkpoint_time = checkpoint_time.replace(tzinfo=timezone.utc)\n    assert checkpoint_time > datetime(2026, 10, 20, tzinfo=timezone.utc)
+    checkpoint_time = checkpoint.last_event_timestamp
+    if checkpoint_time.tzinfo is None:
+        checkpoint_time = checkpoint_time.replace(tzinfo=timezone.utc)
+    assert checkpoint_time > datetime(2026, 10, 20, tzinfo=timezone.utc)
     db.close()
 
 
