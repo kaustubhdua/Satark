@@ -203,7 +203,9 @@ class Report(Base):
 
 class AuditEvent(Base):
     __tablename__ = "satark_audit_events"
+    __table_args__ = (UniqueConstraint("tenant_id", "sequence", name="uq_satark_audit_sequence"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sequence: Mapped[int] = mapped_column(Integer, default=1)
     tenant_id: Mapped[str] = mapped_column(String(36), index=True)
     actor_id: Mapped[str] = mapped_column(String(36))
     event_type: Mapped[str] = mapped_column(String(100))
@@ -377,12 +379,13 @@ def require_membership(db: Session, user: User, tenant_id: str, roles: set[str] 
 def audit(db: Session, tenant_id: str, actor: str, event_type: str, payload: dict) -> None:
     # Serialize audit-head reads/writes per tenant on PostgreSQL to prevent forked chains.
     db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
-    previous = db.scalar(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.created_at.desc()).limit(1))
+    previous = db.scalar(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.sequence.desc()).limit(1))
     previous_hash = previous.event_hash if previous else "0" * 64
+    sequence = (previous.sequence + 1) if previous else 1
     record = {"tenant_id": tenant_id, "actor_id": actor, "event_type": event_type, "payload": payload, "previous_hash": previous_hash}
     canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     digest = hashlib.sha256(canonical.encode()).hexdigest()
-    db.add(AuditEvent(tenant_id=tenant_id, actor_id=actor, event_type=event_type, payload=payload, previous_hash=previous_hash, event_hash=digest))
+    db.add(AuditEvent(tenant_id=tenant_id, sequence=sequence, actor_id=actor, event_type=event_type, payload=payload, previous_hash=previous_hash, event_hash=digest))
 
 
 class Credentials(BaseModel):
@@ -1103,8 +1106,8 @@ def list_audit_events(tenant_id: str, case_id: str, user: User = Depends(current
     if not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
         raise HTTPException(404, "Case not found.")
     rows = db.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id)
-        .order_by(AuditEvent.created_at.asc()).limit(1000)).all()
-    events = [{"id": row.id, "action": row.event_type, "details": row.payload,
+        .order_by(AuditEvent.sequence.asc()).limit(1000)).all()
+    events = [{"id": row.id, "sequence": row.sequence, "action": row.event_type, "details": row.payload,
         "actor_id": row.actor_id, "created_at": row.created_at.isoformat(),
         "event_hash": row.event_hash} for row in rows if row.payload.get("case_id") == case_id]
     return {"events": events[-500:]}
@@ -1113,7 +1116,7 @@ def list_audit_events(tenant_id: str, case_id: str, user: User = Depends(current
 @router.get("/audit/verify")
 def verify_audit_chain(tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
-    rows = db.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.created_at.asc(), AuditEvent.id.asc())).all()
+    rows = db.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant_id).order_by(AuditEvent.sequence.asc())).all()
     previous = "0" * 64
     for row in rows:
         record = {"tenant_id": row.tenant_id, "actor_id": row.actor_id, "event_type": row.event_type,
