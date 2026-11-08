@@ -88,7 +88,7 @@ def main() -> int:
             ).order_by(Evidence.observed_at.desc()).limit(10)).all()
             checkpoint_rows = [{
                 "last_status": checkpoint.last_status,
-                "last_event_timestamp": checkpoint.last_event_timestamp.isoformat(),
+                "last_event_timestamp": (checkpoint.last_event_timestamp.replace(tzinfo=__import__("datetime").timezone.utc) if checkpoint.last_event_timestamp.tzinfo is None else checkpoint.last_event_timestamp).isoformat(),
             }] if checkpoint else []
             evidence_rows = [{
                 "id": row.id, "source_sha256": row.source_sha256,
