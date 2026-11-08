@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.satark_backup import create_backup, restore_backup, verify_backup
+from sqlalchemy.engine import make_url
+
+from scripts.satark_backup import _pg_env, create_backup, restore_backup, verify_backup
 
 
 class SatarkBackupTests(unittest.TestCase):
@@ -61,6 +63,13 @@ class SatarkBackupTests(unittest.TestCase):
                     target.addfile(info, io.BytesIO(raw))
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
                 verify_backup(corrupted)
+
+    def test_postgres_backup_url_does_not_expose_password_to_process_arguments(self):
+        url = make_url("postgresql+psycopg://satark:private-secret@db.internal:5432/satark?sslmode=require")
+        safe_url, env = _pg_env(url)
+        self.assertTrue(safe_url.startswith("postgresql://"))
+        self.assertNotIn("private-secret", safe_url)
+        self.assertEqual(env["PGPASSWORD"], "private-secret")
 
     def test_restore_refuses_nonempty_evidence_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
