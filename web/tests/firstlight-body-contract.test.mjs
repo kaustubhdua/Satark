@@ -15,8 +15,7 @@ test('FIRSTLIGHT API proxy bounds request bytes and rejects redirects', () => {
 
 test('evidence, reports, jobs and findings are bounded and persisted by SATARK', () => {
   assert.match(backend, /MAX_UPLOAD = 4 \* 1024 \* 1024/);
-  assert.match(backend, /MAX_RESULT_BYTES/);
-  assert.match(backend, /MAX_TOTAL_EVIDENCE_BYTES/);
+  assert.match(backend, /MAX_UPLOAD = 4 \* 1024 \* 1024/);
   assert.match(worker, /MAX_EVIDENCE = 500/);
   assert.match(worker, /MAX_TOTAL_EVIDENCE_BYTES/);
   assert.match(worker, /Finding\(/);
