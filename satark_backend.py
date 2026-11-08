@@ -577,7 +577,8 @@ def request_password_reset(body: PasswordResetRequest, request: Request, db: Ses
     latest = db.scalar(select(PasswordResetToken).where(
         PasswordResetToken.user_id == user.id
     ).order_by(PasswordResetToken.created_at.desc()).limit(1))
-    if recent_count >= 3 or (latest and latest.created_at >= now - timedelta(minutes=1)):
+    latest_created = latest.created_at.replace(tzinfo=timezone.utc) if latest and latest.created_at.tzinfo is None else (latest.created_at if latest else None)
+    if recent_count >= 3 or (latest_created and latest_created >= now - timedelta(minutes=1)):
         return generic
     db.execute(update(PasswordResetToken).where(
         PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
