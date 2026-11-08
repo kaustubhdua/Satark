@@ -19,7 +19,7 @@ from typing import Any
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import IntegrityError
@@ -593,6 +593,84 @@ async def upload_evidence(
         object_path.unlink(missing_ok=True)
         raise
     return {"evidence": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "source_label": row.source_label, "event_kind": row.event_kind, "observed_at": row.observed_at.isoformat(), "summary": row.summary, "source_sha256": digest, "size_bytes": row.size_bytes, "content_type": row.content_type, "original_filename": name, "created_by": user.id, "created_at": row.created_at.isoformat()}}
+
+
+@router.post("/evidence/records", status_code=201)
+def create_evidence_record(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
+    require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
+    if not isinstance(case_id, str) or not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
+        raise HTTPException(404, "Case not found.")
+    source = str(body.get("source_label") or "Imported event").strip()
+    kind = str(body.get("event_kind") or "observation").strip()
+    summary = str(body.get("summary") or "").strip()
+    if not source or len(source) > 160 or not kind or len(kind) > 100 or not summary or len(summary) > 8192:
+        raise HTTPException(400, "Evidence metadata is invalid or oversized.")
+    try:
+        observed = datetime.fromisoformat(str(body.get("observed_at", "")).replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            raise ValueError()
+    except ValueError:
+        raise HTTPException(400, "observed_at must include an explicit timezone.")
+    metadata = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
+    raw = json.dumps(metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
+    if len(raw) > MAX_UPLOAD:
+        raise HTTPException(413, "Evidence metadata exceeds 4 MiB.")
+    evidence_id = str(uuid.uuid4())
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    object_dir = root / tenant_id / case_id
+    object_dir.mkdir(parents=True, exist_ok=True)
+    object_path = object_dir / evidence_id
+    temporary = object_dir / (evidence_id + ".part")
+    try:
+        with temporary.open("xb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, object_path)
+    except OSError:
+        temporary.unlink(missing_ok=True)
+        raise HTTPException(503, "Private evidence storage is unavailable.")
+    digest = hashlib.sha256(raw).hexdigest()
+    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
+        source_label=source, event_kind=kind, observed_at=observed, summary=summary,
+        source_sha256=digest, size_bytes=len(raw), content_type="application/json",
+        original_filename="evidence.json", created_by=user.id)
+    db.add(row)
+    db.flush()
+    audit(db, tenant_id, user.id, "evidence.record.imported", {"evidence_id": evidence_id, "sha256": digest})
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        object_path.unlink(missing_ok=True)
+        raise
+    return {"evidence": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id,
+        "source_label": source, "event_kind": kind, "observed_at": observed.isoformat(),
+        "summary": summary, "source_sha256": digest, "created_by": user.id,
+        "metadata": metadata, "created_at": row.created_at.isoformat()}}
+
+
+@router.get("/firstlight/evidence/source")
+def download_wazuh_source(tenant_id: str, case_id: str, path: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    expected = re.fullmatch(rf"{re.escape(tenant_id)}/{re.escape(case_id)}/wazuh/([0-9a-f]{{64}})\\.json", path)
+    if not expected:
+        raise HTTPException(400, "The source-object path is invalid for this case.")
+    row = db.scalar(select(Evidence).where(Evidence.tenant_id == tenant_id,
+        Evidence.case_id == case_id, Evidence.source_sha256 == expected.group(1),
+        Evidence.content_type == "application/json"))
+    if not row:
+        raise HTTPException(404, "The preserved source object was not found.")
+    object_path = Path(row.object_key).resolve()
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    if root not in object_path.parents or not object_path.is_file():
+        raise HTTPException(404, "The source object was not found.")
+    raw = object_path.read_bytes()
+    if not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), row.source_sha256):
+        raise HTTPException(409, "Source-object integrity verification failed.")
+    return Response(content=raw, media_type="application/json",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/evidence")
