@@ -23,7 +23,7 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func, delete
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
@@ -99,6 +99,15 @@ class PasswordResetToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuthThrottle(Base):
+    __tablename__ = "satark_auth_throttles"
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Tenant(Base):
@@ -283,6 +292,50 @@ def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _login_throttle_key(email: str) -> str:
+    return hashlib.sha256(("satark-login:" + email).encode("utf-8")).hexdigest()
+
+
+def login_is_locked(db: Session, email: str, now: datetime | None = None) -> bool:
+    now = now or utcnow()
+    row = db.get(AuthThrottle, _login_throttle_key(email))
+    if not row or not row.locked_until:
+        return False
+    locked_until = row.locked_until.replace(tzinfo=timezone.utc) if row.locked_until.tzinfo is None else row.locked_until
+    return locked_until > now
+
+
+def record_login_failure(db: Session, email: str, now: datetime | None = None) -> None:
+    now = now or utcnow()
+    key = _login_throttle_key(email)
+    row = db.scalar(select(AuthThrottle).where(AuthThrottle.key_hash == key).with_for_update())
+    if not row:
+        try:
+            with db.begin_nested():
+                row = AuthThrottle(key_hash=key, attempts=0, window_started_at=now)
+                db.add(row)
+                db.flush()
+        except IntegrityError:
+            row = db.scalar(select(AuthThrottle).where(AuthThrottle.key_hash == key).with_for_update())
+    if not row:
+        raise HTTPException(503, "Authentication throttling is temporarily unavailable.")
+    started = row.window_started_at.replace(tzinfo=timezone.utc) if row.window_started_at.tzinfo is None else row.window_started_at
+    if started < now - timedelta(minutes=15):
+        row.attempts = 0
+        row.window_started_at = now
+        row.locked_until = None
+    row.attempts += 1
+    row.updated_at = now
+    if row.attempts >= 10:
+        row.locked_until = now + timedelta(minutes=15)
+    db.commit()
+
+
+def clear_login_failures(db: Session, email: str) -> None:
+    db.execute(delete(AuthThrottle).where(AuthThrottle.key_hash == _login_throttle_key(email)))
+    db.commit()
+
+
 def issue_session(db: Session, user: User) -> str:
     token = secrets.token_urlsafe(48)
     db.add(SessionRecord(user_id=user.id, token_hash=token_digest(token), expires_at=utcnow() + timedelta(days=SESSION_TTL_DAYS)))
@@ -441,6 +494,8 @@ def response_with_session(request: Request, body: dict, token: str, status_code:
 def login(body: Credentials, request: Request, db: Session = Depends(db_session)):
     enforce_same_origin(request)
     email = body.email.strip().lower()
+    if login_is_locked(db, email):
+        raise HTTPException(429, "Too many unsuccessful sign-in attempts. Try again in 15 minutes.")
     user = db.scalar(select(User).where(User.email == email))
     valid = False
     try:
@@ -448,8 +503,10 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
     except VerifyMismatchError:
         valid = False
     if not valid or not user or not user.is_active:
-        # Perform a dummy hash verification path for unknown accounts to reduce timing leaks.
+        # Failed attempts are stored by a one-way email key in SATARK's database.
+        record_login_failure(db, email)
         raise HTTPException(401, "Email or password is incorrect.")
+    clear_login_failures(db, email)
     token = issue_session(db, user)
     db.commit()
     return response_with_session(request, {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}, token)
@@ -513,6 +570,15 @@ def request_password_reset(body: PasswordResetRequest, request: Request, db: Ses
     if not user:
         return generic
     now = utcnow()
+    recent_count = db.scalar(select(func.count()).select_from(PasswordResetToken).where(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.created_at >= now - timedelta(hours=1),
+    )) or 0
+    latest = db.scalar(select(PasswordResetToken).where(
+        PasswordResetToken.user_id == user.id
+    ).order_by(PasswordResetToken.created_at.desc()).limit(1))
+    if recent_count >= 3 or (latest and latest.created_at >= now - timedelta(minutes=1)):
+        return generic
     db.execute(update(PasswordResetToken).where(
         PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
     ).values(used_at=now))
