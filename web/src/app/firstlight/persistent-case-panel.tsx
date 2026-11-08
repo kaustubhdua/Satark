@@ -336,7 +336,7 @@ export default function PersistentCasePanel({
       setSelectedAssignee(item.assigned_to || '');
       try {
         const notesResponse = await fetch('/api/cases/notes?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(item.id), {
-          headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+          cache: 'no-store',
         });
         const notesPayload = await notesResponse.json().catch(() => ({}));
         setNotes(notesResponse.ok && Array.isArray(notesPayload.notes) ? notesPayload.notes as CaseNote[] : []);
@@ -371,7 +371,6 @@ export default function PersistentCasePanel({
       setJobStatus('Job ' + jobId.slice(0, 8) + ' · ' + String(queued.job.status || 'queued'));
       for (let attempt = 0; attempt < 30; attempt++) {
         const statusResponse = await fetch('/api/firstlight/jobs?tenant_id=' + encodeURIComponent(tenant.id) + '&job_id=' + encodeURIComponent(jobId), {
-          headers: { Authorization: 'Bearer ' + session.access_token },
           cache: 'no-store',
         });
         const statusPayload = await statusResponse.json().catch(() => ({}));
@@ -467,7 +466,7 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     setBusy(true); setError(''); setAuditVerification('');
     try {
-      const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { headers:{Authorization:'Bearer '+session.access_token}, cache:'no-store' });
+      const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Audit verification failed.');
       setAuditVerification((result.chain_valid ? 'Audit chain valid' : 'Audit chain invalid') + ' · ' + result.event_count + ' events · verified ' + result.verified_at + (result.first_invalid_event_id ? ' · first invalid event ' + result.first_invalid_event_id : ''));
@@ -479,7 +478,7 @@ export default function PersistentCasePanel({
     if (!uploadedId || !session) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify', { headers:{Authorization:'Bearer '+session.access_token}, cache:'no-store' });
+      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify', { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Integrity verification failed.');
       setMessage((result.matched ? 'Integrity match' : 'INTEGRITY MISMATCH') + ' · ' + result.actual_sha256 + ' · ' + result.note);
