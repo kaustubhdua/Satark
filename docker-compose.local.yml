@@ -3,7 +3,6 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-      args:
     environment:
       NODE_ENV: production
       SATARK_ANALYSIS_MODE: local
