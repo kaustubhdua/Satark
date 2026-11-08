@@ -45,12 +45,12 @@ jobs:
         run: |
           python -m compileall -q \
             satark.py ai_provider.py scam_challenge.py video_processing.py reports.py \
-            satark_utils.py url_security.py radar_background.py stepper_component.py evidence_engine.py firstlight_engine.py firstlight_agents.py firstlight_ingest.py config.py input_processing.py analysis_engine.py findings.py rate_limiter.py ui tests
+            satark_backend.py satark_utils.py url_security.py radar_background.py stepper_component.py evidence_engine.py firstlight_engine.py firstlight_agents.py firstlight_ingest.py config.py input_processing.py analysis_engine.py findings.py rate_limiter.py ui tests
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Run FIRSTLIGHT API and engine regression tests
-        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_live_wazuh_investigation.py tests/test_firstlight_live_response_cli.py tests/test_firstlight_track1_scenario.py tests/test_firstlight_wazuh_investigation_api.py
+        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_live_wazuh_investigation.py tests/test_firstlight_live_response_cli.py tests/test_firstlight_track1_scenario.py tests/test_firstlight_wazuh_investigation_api.py tests/test_satark_backend.py
 
       - name: Install browser test tooling and deterministic video fixture encoder
         run: |
@@ -170,62 +170,23 @@ jobs:
       - name: Typecheck, test and build Next.js app
         run: npm run test:ci
 
-  web-tenant-integration:
-    name: Supabase tenant-isolation integration
+  self-hosted-tenant-integration:
+    name: Self-hosted SATARK auth and tenant-isolation integration
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: web
-    env:
-      SUPABASE_URL: ${{ secrets.SATARK_TEST_SUPABASE_URL }}
-      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SATARK_TEST_SUPABASE_PUBLISHABLE_KEY }}
-      SATARK_TEST_USER_A_EMAIL: ${{ secrets.SATARK_TEST_USER_A_EMAIL }}
-      SATARK_TEST_USER_A_PASSWORD: ${{ secrets.SATARK_TEST_USER_A_PASSWORD }}
-      SATARK_TEST_TENANT_A_ID: ${{ secrets.SATARK_TEST_TENANT_A_ID }}
-      SATARK_TEST_USER_B_EMAIL: ${{ secrets.SATARK_TEST_USER_B_EMAIL }}
-      SATARK_TEST_USER_B_PASSWORD: ${{ secrets.SATARK_TEST_USER_B_PASSWORD }}
-      SATARK_TEST_TENANT_B_ID: ${{ secrets.SATARK_TEST_TENANT_B_ID }}
-      SATARK_TEST_VIEWER_EMAIL: ${{ secrets.SATARK_TEST_VIEWER_EMAIL }}
-      SATARK_TEST_VIEWER_PASSWORD: ${{ secrets.SATARK_TEST_VIEWER_PASSWORD }}
-      SATARK_TEST_VIEWER_TENANT_ID: ${{ secrets.SATARK_TEST_VIEWER_TENANT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install web dependencies
-        run: npm ci
-
-      - name: Check dedicated least-privilege test accounts
-        id: credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          required=(SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID SATARK_TEST_VIEWER_EMAIL SATARK_TEST_VIEWER_PASSWORD SATARK_TEST_VIEWER_TENANT_ID)
-          missing=()
-          for key in "${required[@]}"; do
-            if [[ -z "${!key:-}" ]]; then missing+=("$key"); fi
-          done
-          if (( ${#missing[@]} )); then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            printf '::warning::Tenant-isolation integration was not run; configure these Actions secrets before release: %s\n' "${missing[*]}"
-            printf 'BLOCKED — tenant-isolation integration cannot run. Configure dedicated test credentials: %s. This required check must fail closed; production release remains blocked.\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Required tenant-isolation integration credentials are missing: ${missing[*]}"
-            exit 1
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run real Supabase tenant and role isolation tests
-        if: steps.credentials.outputs.configured == 'true'
-        run: npm run test:integration
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: python -m pip install -r firstlight-api-requirements.txt pytest
+      - name: Run SQLite identity, tenant isolation, and persistence tests
+        env:
+          SATARK_DATABASE_URL: sqlite://
+        run: python -m pytest -q tests/test_satark_backend.py
 
   web-browser-acceptance:
     name: Next.js production browser and accessibility smoke
