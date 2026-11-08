@@ -617,7 +617,7 @@ def complete_password_reset(body: PasswordResetComplete, request: Request, db: S
         PasswordResetToken.id == row.id,
         PasswordResetToken.used_at.is_(None),
         PasswordResetToken.expires_at > now,
-    ).values(used_at=now))
+    ).execution_options(synchronize_session=False).values(used_at=now))
     if changed.rowcount != 1:
         db.rollback()
         raise HTTPException(400, "The password reset link is invalid or expired.")
@@ -664,6 +664,7 @@ def refresh_session(request: Request, db: Session = Depends(db_session), user: U
             SessionRecord.revoked_at.is_(None),
             SessionRecord.expires_at > now,
         )
+        .execution_options(synchronize_session=False)
         .values(revoked_at=now)
     )
     if changed.rowcount != 1:
