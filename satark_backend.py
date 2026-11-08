@@ -223,6 +223,19 @@ def db_session():
         db.close()
 
 
+
+def enforce_same_origin(request: Request) -> None:
+    from urllib.parse import urlsplit
+    origin = request.headers.get("origin", "")
+    host = request.headers.get("host", "").lower()
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip().lower()
+    try:
+        parsed = urlsplit(origin)
+        if not origin or parsed.netloc.lower() != host or parsed.scheme.lower() != scheme:
+            raise HTTPException(403, "Cross-origin authentication requests are not allowed.")
+    except ValueError:
+        raise HTTPException(403, "Cross-origin authentication requests are not allowed.")
+
 def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -348,6 +361,7 @@ def storage_health():
 
 @router.post("/auth/signup", status_code=201)
 def signup(body: Credentials, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
     email = body.email.strip().lower()
     if not EMAIL_RE.fullmatch(email):
         raise HTTPException(400, "Enter a valid email address.")
@@ -372,6 +386,7 @@ def response_with_session(request: Request, body: dict, token: str, status_code:
 
 @router.post("/auth/login")
 def login(body: Credentials, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
     email = body.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     valid = False
@@ -651,8 +666,9 @@ def get_report(report_id: str, tenant_id: str, user: User = Depends(current_user
     payload = {"id": row.id, "tenant_id": row.tenant_id, "case_id": row.case_id, "title": row.title,
                "report_version": row.report_version, "snapshot": row.snapshot, "snapshot_sha256": row.snapshot_sha256,
                "created_by": row.created_by, "created_at": row.created_at.isoformat()}
-    return {"report": payload, "integrity": {"algorithm": "SHA-256", "expected_sha256": row.snapshot_sha256,
-            "actual_sha256": actual, "matched": matched}}, 200 if matched else 409
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"report": payload, "integrity": {"algorithm": "SHA-256", "expected_sha256": row.snapshot_sha256,
+            "actual_sha256": actual, "matched": matched}}, status_code=200 if matched else 409)
 
 
 @router.get("/firstlight/approvals")
