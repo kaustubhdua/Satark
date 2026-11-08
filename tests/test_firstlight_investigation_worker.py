@@ -60,6 +60,41 @@ def test_worker_claims_and_persists_investigation(database):
     db.close()
 
 
+def test_worker_uses_normalized_wazuh_metadata_to_create_evidence_linked_findings(database):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    root = database.parent / "evidence"
+    object_dir = root / tenant_id / case_id / "wazuh"
+    object_dir.mkdir(parents=True, exist_ok=True)
+    raw = b'{"@timestamp":"2026-11-09T10:00:00Z","rule":{"id":"5710","level":8}}'
+    evidence_id = "44444444-4444-4444-8444-444444444444"
+    object_path = object_dir / "wazuh-source.json"
+    object_path.write_bytes(raw)
+    db = backend.SessionLocal()
+    db.add(backend.Evidence(
+        id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
+        source_label="Wazuh", event_kind="security_alert",
+        observed_at=backend.utcnow(), summary="Wazuh authentication alert",
+        source_sha256=hashlib.sha256(raw).hexdigest(), size_bytes=len(raw),
+        content_type="application/json", original_filename="wazuh-source.json",
+        metadata_json={"provider": "wazuh-indexer", "rule_level": 8,
+                       "rule_groups": ["authentication_failed"], "agent_id": "004"},
+        created_by=user_id,
+    ))
+    db.commit()
+    db.close()
+    result = InvestigationJobWorker().run_once()
+    assert result["status"] == "succeeded"
+    db = backend.SessionLocal()
+    job = db.get(backend.InvestigationJob, job_id)
+    findings = db.scalars(select(backend.Finding).where(
+        backend.Finding.tenant_id == tenant_id, backend.Finding.case_id == case_id
+    )).all()
+    assert job.result["investigation"]["findings"]
+    assert any(evidence_id in row.evidence_refs for row in findings)
+    assert any("Wazuh" in row.title for row in findings)
+    db.close()
+
+
 def test_worker_is_idle_when_queue_is_empty(database):
     assert InvestigationJobWorker().run_once() == {"status": "idle"}
 
