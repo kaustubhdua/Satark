@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
-const [auth, nextConfig, backend, compose, requirements, dockerfile, migration, env] = await Promise.all([
+const [auth, catchAll, backend, compose, requirements, dockerfile, migration, env] = await Promise.all([
   read('../src/lib/satark-auth.ts'),
-  read('../next.config.ts'),
+  read('../src/app/api/[...path]/route.ts'),
   read('../../satark_backend.py'),
   read('../../docker-compose.local.yml'),
   read('../../firstlight-api-requirements.txt'),
@@ -21,16 +21,12 @@ test('browser identity uses SATARK-owned same-origin endpoints and HttpOnly cook
   assert.doesNotMatch(auth, /SUPABASE|supabase\.co|\/auth\/v1|\/rest\/v1|localStorage\.setItem\([^,]*(SESSION|TOKEN)/i);
 });
 
-test('Next.js proxies the migrated application routes to the private FastAPI service', () => {
-  assert.match(nextConfig, /SATARK_API_INTERNAL_URL/);
-  assert.match(nextConfig, /beforeFiles/);
-  assert.ok(nextConfig.includes("source: '/api/auth/:path*'"));
-  assert.ok(nextConfig.includes("source: '/api/cases/:path*'"));
-  assert.ok(nextConfig.includes("source: '/api/firstlight/:path*'"));
-  assert.ok(nextConfig.includes("destination: satarkApi + '/api/auth/:path*'"));
-  assert.ok(nextConfig.includes("destination: satarkApi + '/api/firstlight/:path*'"));
-  assert.ok(!nextConfig.includes("destination: satarkApi + '/api/:path*'"));
-  assert.doesNotMatch(nextConfig, /SUPABASE|supabase\.co/i);
+test('all unmatched same-origin API paths use the bounded SATARK FastAPI proxy', () => {
+  assert.match(catchAll, /proxySatarkApi/);
+  for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+    assert.match(catchAll, new RegExp('export const ' + method + ' = proxySatarkApi'));
+  }
+  assert.doesNotMatch(catchAll, /SUPABASE|supabase\.co/i);
 });
 
 test('self-hosted backend owns password hashing, sessions, tenant authorization, and persistence', () => {
