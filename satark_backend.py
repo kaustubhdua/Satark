@@ -737,14 +737,31 @@ def decide_approval(body: dict, user: User = Depends(current_user), db: Session 
 
 
 @router.get("/firstlight/jobs")
-def list_investigation_jobs(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+def list_investigation_jobs(tenant_id: str, case_id: str | None = None, job_id: str | None = None,
+                            user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
-    rows = db.scalars(select(InvestigationJob).where(InvestigationJob.tenant_id == tenant_id,
-        InvestigationJob.case_id == case_id).order_by(InvestigationJob.created_at.desc()).limit(100)).all()
-    return {"jobs": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "status": r.status,
-        "requested_by": r.requested_by, "result": r.result, "result_sha256": r.result_sha256,
-        "error_code": r.error_code, "attempts": r.attempts, "created_at": r.created_at.isoformat(),
-        "updated_at": r.updated_at.isoformat()} for r in rows]}
+    query = select(InvestigationJob).where(InvestigationJob.tenant_id == tenant_id)
+    if job_id:
+        if not UUID_RE.fullmatch(job_id):
+            raise HTTPException(400, "A valid job_id is required.")
+        query = query.where(InvestigationJob.id == job_id)
+    elif case_id:
+        if not UUID_RE.fullmatch(case_id):
+            raise HTTPException(400, "A valid case_id is required.")
+        query = query.where(InvestigationJob.case_id == case_id)
+    else:
+        raise HTTPException(400, "A case_id or job_id is required.")
+    rows = db.scalars(query.order_by(InvestigationJob.created_at.desc()).limit(100)).all()
+    values = [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "status": r.status,
+        "requested_by": r.requested_by, "idempotency_key": r.idempotency_key, "result": r.result,
+        "result_sha256": r.result_sha256, "error_code": r.error_code, "attempts": r.attempts,
+        "max_attempts": r.max_attempts, "created_at": r.created_at.isoformat(),
+        "updated_at": r.updated_at.isoformat()} for r in rows]
+    if job_id:
+        if not values:
+            raise HTTPException(404, "Investigation job not found.")
+        return {"job": values[0]}
+    return {"jobs": values}
 
 
 @router.post("/firstlight/jobs", status_code=202)
