@@ -24,7 +24,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session\nfrom sqlalchemy import event
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
+from sqlalchemy import event
 
 router = APIRouter(prefix="/api", tags=["SATARK self-hosted"])
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
