@@ -26,17 +26,6 @@ function isFirstlightBackendUrl(value, allowLocalHttp = true) {
   }
 }
 
-function supabaseProjectRef(value) {
-  if (!isHttpsUrl(value)) return null;
-  try {
-    const hostname = new URL(value.trim()).hostname.toLowerCase();
-    const match = hostname.match(/^([a-z0-9]{20})\.supabase\.co$/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
-
 /** @param {Record<string, string | undefined>} [env={}] */
 export function buildHealthSnapshot(env = {}) {
   const localModelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
