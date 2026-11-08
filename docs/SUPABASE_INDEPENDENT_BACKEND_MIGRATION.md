@@ -1,6 +1,6 @@
 # Supabase-independent backend migration
 
-**Status:** Architecture and migration contract; implementation is not complete.
+**Status:** Active implementation branch; core self-hosted API, storage, sessions, job worker, and Wazuh ingestion are implemented. Full parity and production acceptance are still in progress.
 **Target:** Remove all runtime dependency on Supabase Auth, PostgREST, Storage, database RPCs, and Supabase-specific environment variables.
 **Branch:** remove-supabase-runtime-dependency
 
@@ -12,11 +12,11 @@ Use the existing FastAPI service as the single backend boundary. Use PostgreSQL 
 
 This is a backend replacement, not a security downgrade. Tenant isolation, roles, session security, immutable audit history, approval controls, evidence integrity, and fail-closed behavior remain mandatory.
 
-## Current dependency inventory
+## Historical dependency inventory (before this migration)
 
 The current Next.js application directly calls Supabase from multiple API route handlers. Authentication is performed in the browser against /auth/v1, and the server session route verifies Supabase access tokens. Case, evidence, note, report, findings, approval, and job flows use PostgREST, Storage, or database RPCs. Background workers use Supabase service-role credentials. SQL migrations encode RLS policies, membership helpers, audit triggers, approval consumption, and Storage policies.
 
-The existing FIRSTLIGHT FastAPI service provides a bounded, token-protected investigation API, but its case investigation request is stateless. It is a foundation, not yet a replacement for the durable SATARK application backend.
+That was the pre-migration state. The branch now adds a SATARK-owned FastAPI router with SQLAlchemy persistence, Argon2id password hashes, opaque revocable sessions, workspace membership checks, case/note/finding/report APIs, private local evidence storage, hash-chained audit events, simulation approvals, durable FIRSTLIGHT jobs, and a Wazuh ingestion checkpoint/worker. The web workspace routes persistent API requests to this backend through a same-origin proxy. The legacy Wazuh worker's Supabase REST/Storage client has been replaced with this same database and evidence store.
 
 ## Target architecture
 
@@ -56,28 +56,39 @@ Every tenant-owned record must be checked against membership and role in the sam
 - Use private S3-compatible storage for multi-instance deployments; presigned URLs must be short-lived and issued only after authorization. No public bucket.
 - Deletion must follow an explicit retention/legal-hold policy and append an audit event. Never silently delete evidence during migration.
 
-## Supabase feature parity checklist
+## Replacement implementation status
 
-The migration is incomplete until every item is implemented and tested:
+Implemented on this branch (automated tests are still running and must pass on the latest commit):
 
-- Replace Supabase Auth sign-up/sign-in/refresh/logout/password recovery.
-- Replace membership and tenant creation RPCs with transactional service methods.
-- Replace PostgREST for cases, notes, evidence, findings, reports, approvals, jobs, checkpoints, audit events, and assignable members.
-- Replace Supabase Storage with the private EvidenceStore.
-- Reimplement RLS policies, membership helpers, trigger immutability, approval ACLs, and audit-chain rules in backend authorization/transactions and DB constraints/triggers where appropriate.
-- Move every worker to the same repository and tenant authorization contract; remove Supabase service-role credentials.
-- Remove required Supabase configuration from environment checks, Docker Compose, CI, smoke tests, deployment docs, and operator runbooks.
-- Search the complete repository for SUPABASE_, supabase.co, /auth/v1, /rest/v1, /storage/v1, supabase-js, and Supabase SDK imports. Remaining matches may only be historical migration/export documentation or migration tooling, never runtime paths.
+- [x] Self-hosted sign-up/sign-in/logout/session inspection with Argon2id hashes, opaque random tokens stored as digests, HttpOnly/SameSite cookies, expiry and server-side revocation.
+- [x] Workspace creation/listing and role-checked tenant access for core case, evidence, note, finding, report, audit, approval, and job operations.
+- [x] SQLAlchemy models and Alembic initial schema for SQLite local mode and PostgreSQL production mode.
+- [x] Private filesystem evidence uploads, metadata imports, downloads, SHA-256 verification, bounded uploads, and source-snapshot preservation.
+- [x] Durable FIRSTLIGHT investigation jobs with leases, retries, idempotency, bounded evidence/result processing, findings, reports, and audit linkage.
+- [x] Self-hosted Wazuh ingestion worker with private source snapshots, tenant membership checks, duplicate-safe evidence writes, and persistent checkpoints.
+- [x] Same-origin Next.js API proxy and environment templates without hosted database credentials.
+- [x] Retired the Supabase local-validation workflow and removed Supabase runtime settings from Docker Compose and web environment examples.
+
+Still outstanding before calling the migration complete:
+
+- [ ] Password recovery, verified email, session rotation/reuse detection, account lockout/rate limits, and workspace member invitation/role-management UI.
+- [ ] Multi-instance S3-compatible evidence backend; current evidence storage is private local filesystem and requires a shared durable mount for API/worker.
+- [ ] One-way legacy data export/import with row-count, tenant, digest, audit-chain, and foreign-key reconciliation. The old project/data has not been deleted or imported.
+- [ ] PostgreSQL concurrency, backup/restore, crash-recovery, retention/deletion, and full role-matrix tests beyond the initial integration path.
+- [ ] Review DB-level audit immutability and approval consumption/one-time execution semantics. Live response remains disabled.
+- [ ] Full repository-wide runtime scan and end-to-end browser acceptance against a deployed private FastAPI service.
+
+Historical Supabase SQL migrations and migration notes may remain as read-only legacy material. They are not used by the new runtime; they must not be reintroduced into app startup, build, or deployment requirements.
 
 ## Safe migration sequence
 
-1. Add backend repository interfaces, SQLAlchemy models, migrations, SQLite fixtures, and PostgreSQL integration tests.
-2. Implement authentication and session lifecycle; test password hashing, token rotation/reuse, expiry, revocation, CSRF, and session fixation.
+1. Add backend repository interfaces, SQLAlchemy models, migrations, SQLite fixtures, and PostgreSQL integration tests. (Implemented; continue expanding PostgreSQL coverage.)
+2. Implement authentication and session lifecycle; test password hashing, expiry, revocation, CSRF, and session fixation. (Core cookie/session path implemented; rotation/recovery and abuse controls remain.)
 3. Implement tenant and membership authorization and prove cross-tenant read/write denial for every resource.
 4. Implement cases, notes, findings, reports, approvals, jobs, and append-only audit behavior with transaction and concurrency tests.
 5. Implement private evidence storage and crash/recovery tests.
-6. Move Next.js routes to the FastAPI BFF contract; remove browser Supabase Auth and localStorage token persistence.
-7. Move workers and Wazuh checkpoints to the same repository.
+6. Move Next.js routes to the FastAPI BFF contract; remove browser-hosted Auth and browser-stored session tokens. (Implemented for persistent app APIs.)
+7. Move workers and Wazuh checkpoints to the same repository. (FIRSTLIGHT and Wazuh workers now use SATARK-owned persistence.)
 8. Add a one-way export/import utility for existing Supabase data. Validate row counts, tenant ownership, evidence digests, audit-chain continuity, and referential integrity before cutover. Do not delete or mutate the source project.
 9. Run the full test matrix against SQLite and PostgreSQL, security tests, browser/accessibility tests, dependency scans, and backup/restore.
 10. Remove Supabase packages, env vars, workflows, and runtime references only after all application paths use the replacement backend. Deploy the replacement and verify production smoke before retiring any old backend.
