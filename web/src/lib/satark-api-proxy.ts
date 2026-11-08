@@ -22,10 +22,9 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
   const incoming = new URL(request.url);
   const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase());
   const origin = request.headers.get('origin');
-  const bearer = request.headers.get('authorization')?.startsWith('Bearer ');
   let sameOrigin = false;
   try { sameOrigin = Boolean(origin && new URL(origin).origin === incoming.origin); } catch { sameOrigin = false; }
-  if (unsafe && !sameOrigin && !bearer) {
+  if (unsafe && !sameOrigin) {
     return NextResponse.json({ error: 'Cross-origin API requests are not allowed.' }, { status: 403 });
   }
 
