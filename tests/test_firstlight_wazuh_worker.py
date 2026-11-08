@@ -163,6 +163,26 @@ def test_worker_revalidates_membership_before_poll_and_before_persist(database):
     assert wazuh.calls == []
 
 
+def test_worker_rejects_membership_revocation_during_wazuh_fetch(database):
+    timestamp = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat().replace("+00:00", "Z")
+    db = backend.SessionLocal()
+    class RevokingWazuh(FakeWazuh):
+        def fetch_alerts(self, **kwargs):
+            page = super().fetch_alerts(**kwargs)
+            membership = db.scalar(select(backend.Membership).where(backend.Membership.user_id == ACTOR))
+            db.delete(membership)
+            db.commit()
+            return page
+    wazuh = RevokingWazuh([event("revoked-during-fetch", timestamp)])
+    worker = seed_worker(wazuh)
+    with pytest.raises(WorkerConfigurationError, match="actor"):
+        worker.run_once()
+    assert wazuh.calls
+    assert db.scalars(select(backend.Evidence)).all() == []
+    assert db.scalars(select(backend.IngestionCheckpoint)).all() == []
+    db.close()
+
+
 def test_worker_rejects_invalid_event_before_creating_source_object(database):
     malformed = event("bad", "2026-10-20T07:01:00Z")
     malformed["summary"] = ""
