@@ -104,7 +104,13 @@ class InvestigationJobWorker:
                         details = item.metadata_json if isinstance(item.metadata_json, dict) and item.metadata_json else (parsed if isinstance(parsed, dict) else {})
                     except (ValueError, UnicodeDecodeError):
                         details = {}
-                observed_at = item.observed_at\n                created_at = item.created_at\n                if observed_at.tzinfo is None:\n                    observed_at = observed_at.replace(tzinfo=timezone.utc)\n                if created_at.tzinfo is None:\n                    created_at = created_at.replace(tzinfo=timezone.utc)\n                record = {"event_id": item.id, "timestamp": observed_at.isoformat(),
+                observed_at = item.observed_at
+                created_at = item.created_at
+                if observed_at.tzinfo is None:
+                    observed_at = observed_at.replace(tzinfo=timezone.utc)
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                record = {"event_id": item.id, "timestamp": observed_at.isoformat(),
                     "source": item.source_label, "kind": item.event_kind, "summary": item.summary,
                     "details": details}
                 envelopes.append({"evidence_id": item.id, "record": record,
