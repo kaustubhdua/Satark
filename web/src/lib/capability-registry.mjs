@@ -29,10 +29,6 @@ export function buildCapabilityRegistry(env = {}) {
   const redisConfigured = hasValue(env.UPSTASH_REDIS_REST_URL) &&
     /^https:\/\//i.test(env.UPSTASH_REDIS_REST_URL.trim()) && hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const modelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
-  const firstlightConfigured = hasValue(env.FIRSTLIGHT_API_URL) &&
-    hasValue(env.FIRSTLIGHT_API_TOKEN) && env.FIRSTLIGHT_API_TOKEN.trim().length >= 32;
-  const wazuhConfigured = firstlightConfigured && hasValue(env.FIRSTLIGHT_WAZUH_SYNC_TOKEN) &&
-    env.FIRSTLIGHT_WAZUH_SYNC_TOKEN.trim().length >= 32;
   const capabilities = [
     capability('analysis.deterministic', 'Deterministic analysis', true, 'Analysis code is present; this endpoint does not execute analysis requests.'),
     capability('storage.self_hosted', 'Self-hosted persistent storage', storageConfigured,
