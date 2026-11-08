@@ -26,7 +26,7 @@ test('browser session mutations are protected by origin validation and proxy CSR
   assert.match(proxy, /redirect: 'error'/);
 });
 
-test('authentication never relies on Supabase or browser-stored bearer tokens', () => {
+test('authentication never relies on external identity providers or browser-stored bearer tokens', () => {
   assert.doesNotMatch(backend, /SUPABASE|supabase\.co|\/auth\/v1|\/rest\/v1/i);
   assert.doesNotMatch(proxy, /SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE/i);
 });
