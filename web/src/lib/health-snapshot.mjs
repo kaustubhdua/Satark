@@ -43,7 +43,7 @@ export function buildHealthSnapshot(env = {}) {
   const firstlightApiUrlValid = isFirstlightBackendUrl(env.FIRSTLIGHT_API_URL, env.VERCEL !== '1');
   const firstlightApiTokenConfigured = hasValue(env.FIRSTLIGHT_API_TOKEN) && env.FIRSTLIGHT_API_TOKEN.trim().length >= 32;
   const firstlightWazuhSyncTokenConfigured = hasValue(env.FIRSTLIGHT_WAZUH_SYNC_TOKEN) && env.FIRSTLIGHT_WAZUH_SYNC_TOKEN.trim().length >= 32;
-  const persistentStorageConfigured = hasValue(env.SATARK_DATABASE_URL);
+  const persistentStorageConfigured = isFirstlightBackendUrl(env.SATARK_API_INTERNAL_URL, env.VERCEL !== '1');
   const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
   const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const redisUrlValid = isHttpsUrl(env.UPSTASH_REDIS_REST_URL);
