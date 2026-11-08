@@ -12,7 +12,6 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
 [![FIRSTLIGHT API CI](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml)
 [![Web CI](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml)
-[![Supabase local validation](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
@@ -368,7 +367,7 @@ GitHub Actions also runs dependency/compile/test checks, browser smoke and layou
 ### Known limitations and release gates
 
 - **Release verification is still required:** the Next.js web workspace has authenticated persistence APIs and tenant-scoped database policies, but the latest `main` revision has not yet been verified on the production alias. Do not use the live deployment for confidential multi-user cases until the exact deployed SHA, production smoke tests, and isolated authorization tests pass.
-- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. The self-hosted FastAPI + SQLAlchemy backend is the replacement for the former Supabase-backed case/evidence/findings/reports workflow. Its migration branch still requires complete API compatibility, regression tests, and deployment acceptance before confidential use.
+- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. The self-hosted FastAPI + SQLAlchemy backend is the replacement for the former self-hosted case/evidence/findings/reports workflow. Its migration branch still requires complete API compatibility, regression tests, and deployment acceptance before confidential use.
 - **Evidence provenance is not independently anchored:** SHA-256 hashes support integrity comparison, but they do not by themselves prove original source, collection procedure, or independent chain of custody.
 - **Audit boundaries differ by workflow:** FIRSTLIGHT's demo/session audit trail is not an enterprise audit service. The web database has persistent hash-chained audit records, but production policy consistency and end-to-end verification still require successful isolated and deployed tests.
 - **Shared rate limiting must be verified:** Vercel analysis fails closed without a working Upstash Redis REST configuration. Process-local limits are for local development only and are not a distributed/global quota.
