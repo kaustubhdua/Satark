@@ -59,10 +59,23 @@ def upgrade() -> None:
             ), {"sequence": sequence, "id": row["id"]})
             sequence += 1
 
-    op.alter_column("satark_audit_events", "sequence", existing_type=sa.Integer(), nullable=False)
-    constraints = {item.get("name") for item in sa.inspect(bind).get_unique_constraints("satark_audit_events")}
-    if "uq_satark_audit_sequence" not in constraints:
-        op.create_unique_constraint("uq_satark_audit_sequence", "satark_audit_events", ["tenant_id", "sequence"])
+    refreshed = sa.inspect(bind)
+    sequence_column = next(column for column in refreshed.get_columns("satark_audit_events") if column["name"] == "sequence")
+    constraints = {item.get("name") for item in refreshed.get_unique_constraints("satark_audit_events")}
+    needs_unique = "uq_satark_audit_sequence" not in constraints
+    if bind.dialect.name == "sqlite":
+        # SQLite needs a batch table rebuild to add NOT NULL / UNIQUE safely.
+        if sequence_column["nullable"] or needs_unique:
+            with op.batch_alter_table("satark_audit_events") as batch:
+                if sequence_column["nullable"]:
+                    batch.alter_column("sequence", existing_type=sa.Integer(), nullable=False)
+                if needs_unique:
+                    batch.create_unique_constraint("uq_satark_audit_sequence", ["tenant_id", "sequence"])
+    else:
+        if sequence_column["nullable"]:
+            op.alter_column("satark_audit_events", "sequence", existing_type=sa.Integer(), nullable=False)
+        if needs_unique:
+            op.create_unique_constraint("uq_satark_audit_sequence", "satark_audit_events", ["tenant_id", "sequence"])
     if bind.dialect.name == "postgresql":
         op.execute("""
             CREATE TRIGGER satark_audit_events_append_only
