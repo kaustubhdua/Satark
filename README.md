@@ -196,7 +196,7 @@ These are implementation goals and demonstrated prototype behaviors. The reposit
 
 ### Self-hosted application backend (Supabase-independent)
 
-The web application's authenticated API is being moved to a SATARK-owned FastAPI service. The service owns password hashing (Argon2id), opaque revocable HttpOnly sessions, workspace membership, cases, notes, evidence metadata and private evidence bytes, findings, reports, approvals, hash-chained audit events, and the durable FIRSTLIGHT job queue. SQLAlchemy provides the relational persistence layer; PostgreSQL is the intended multi-instance database and SQLite is supported for local development and single-host evaluation. Alembic owns schema changes. The browser talks to the service through a same-origin Next.js rewrite and never receives a database credential.
+The web application's authenticated API now runs through a SATARK-owned FastAPI service. The service owns password hashing (Argon2id), opaque revocable HttpOnly sessions, workspace membership, cases, notes, evidence metadata and private evidence bytes, findings, reports, approvals, hash-chained audit events, and the durable FIRSTLIGHT job queue. SQLAlchemy provides the relational persistence layer; PostgreSQL is the intended multi-instance database and SQLite is supported for local development and single-host evaluation. Alembic owns schema changes. The browser talks to the service through same-origin Next.js API routes and never receives a database credential. The optional Wazuh ingestion worker writes source snapshots, evidence metadata, audit events, and checkpoints to this same backend and private volume; it no longer uses a hosted database or storage service.
 
 The local Compose stack persists the database and evidence files in the `satark_data` volume. A clean local setup is:
 
@@ -205,9 +205,9 @@ cp .env.example .env
 docker compose -f docker-compose.local.yml up --build
 ~~~
 
-The web UI is served at `http://localhost:3000`. For multi-instance or public deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and mount evidence storage on a private durable volume accessible to both the API and worker. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
+The web UI is served at `http://localhost:3000`. To enable the optional Wazuh ingestion worker, configure the `FIRSTLIGHT_WAZUH_*` target, read-only Indexer, and initial checkpoint values in `.env`, then run `docker compose -f docker-compose.local.yml --profile wazuh up --build`. For multi-instance deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and use a shared private durable evidence volume accessible to the API and workers. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
 
-This replacement is being validated on a dedicated branch. Until the complete API/UI regression suite and deployment acceptance checks pass, treat it as a migration candidate rather than a production-ready release. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
+The replacement is being validated on `remove-supabase-runtime-dependency`. Until the complete API/UI/PostgreSQL regression suite and deployment acceptance checks pass on the latest commit, treat it as a migration candidate rather than a production-ready release. Existing legacy Supabase data is not automatically imported or deleted; keep any old project intact until a separately validated export/import and backup process is complete. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
 
 ### Main trust boundaries
 
