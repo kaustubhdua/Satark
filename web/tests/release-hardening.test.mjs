@@ -41,19 +41,15 @@ test('baseline security headers and CSP directives are configured', () => {
   assert.match(securityHeaders, /form-action 'self'/);
 });
 
-test('CSP allows the configured Supabase auth origin without broad external access', async () => {
-  const { buildSecurityHeaders, supabaseConnectOrigin } = await import('../src/lib/security-headers.mjs');
-  const production = buildSecurityHeaders({
-    NODE_ENV: 'production',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
-  }).find(header => header.key === 'Content-Security-Policy').value;
-  assert.match(production, /connect-src 'self' https:\/\/igqgtlmnwssjaoxkkzbm\.supabase\.co/);
-  assert.doesNotMatch(production, /connect-src[^;]*\*/);
-  assert.equal(supabaseConnectOrigin('https://igqgtlmnwssjaoxkkzbm.supabase.co', 'production'), 'https://igqgtlmnwssjaoxkkzbm.supabase.co');
-  assert.equal(supabaseConnectOrigin('https://evil.example', 'production'), '');
-  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'production'), '');
-  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'development'), 'http://127.0.0.1:54321');
+test('CSP keeps browser API connections same-origin', async () => {
+  const { buildSecurityHeaders } = await import('../src/lib/security-headers.mjs');
+  const production = buildSecurityHeaders({ NODE_ENV: 'production' })
+    .find(header => header.key === 'Content-Security-Policy').value;
+  assert.match(production, /connect-src 'self'/);
+  assert.doesNotMatch(production, /supabase|https:\\/\\//i);
+  assert.doesNotMatch(production, /connect-src[^;]*\\*/);
 });
+
 
 test('analysis route uses only local analysis and has no third-party provider calls', () => {
   assert.match(analyze, /analyzeWithLocalModel\(input\.trim\(\)\)/);
