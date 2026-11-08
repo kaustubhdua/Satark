@@ -30,8 +30,8 @@ test('optional model and persistent storage require complete configuration pairs
   assert.equal(buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: 'http://localhost:11434' }).checks.localModel.configured, false);
   assert.equal(buildHealthSnapshot({ SATARK_OLLAMA_MODEL: 'local-model' }).checks.localModel.configured, false);
   assert.equal(buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: 'http://localhost:11434', SATARK_OLLAMA_MODEL: 'local-model' }).checks.localModel.configured, true);
-  assert.equal(buildHealthSnapshot({ SUPABASE_URL: 'https://example.supabase.co' }).checks.persistentStorage.configured, false);
-  assert.equal(buildHealthSnapshot({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'public-key' }).checks.persistentStorage.configured, true);
+  assert.equal(buildHealthSnapshot({ SATARK_API_INTERNAL_URL: 'http://firstlight-api:8788' }).checks.persistentStorage.configured, true);
+  assert.equal(buildHealthSnapshot({ SATARK_API_INTERNAL_URL: 'not-a-url' }).checks.persistentStorage.configured, false);
 });
 
 test('FIRSTLIGHT proxy readiness requires safe backend URL and strong server-side tokens', () => {
