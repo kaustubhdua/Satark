@@ -46,7 +46,8 @@ test('CSP keeps browser API connections same-origin', async () => {
   const production = buildSecurityHeaders({ NODE_ENV: 'production' })
     .find(header => header.key === 'Content-Security-Policy').value;
   assert.match(production, /connect-src 'self'/);
-  assert.ok(!/supabase/i.test(production));\n  assert.ok(!production.includes('https://'));
+  assert.ok(!/supabase/i.test(production));
+  assert.ok(!production.includes('https://'));
   assert.doesNotMatch(production, /connect-src[^;]*\\*/);
 });
 
