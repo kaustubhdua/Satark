@@ -101,7 +101,7 @@ def test_cookie_mutation_rejects_cross_origin(client):
     assert response.status_code == 403
 
 
-def test_health_does_not_require_supabase(client):
+def test_health_reports_self_hosted_storage(client):
     response = client.get("/api/health/storage")
     assert response.status_code == 200
     assert response.json()["provider"] == "self-hosted"
