@@ -11,6 +11,9 @@ import os
 import re
 import secrets
 import uuid
+import smtplib
+import ssl
+from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -85,6 +88,16 @@ class SessionRecord(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "satark_password_reset_tokens"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -325,6 +338,17 @@ class Credentials(BaseModel):
     password: str = Field(min_length=12, max_length=128)
 
 
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=254)
+
+
+class PasswordResetComplete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=32, max_length=256)
+    password: str = Field(min_length=12, max_length=128)
+
+
 class WorkspaceInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=160)
@@ -429,6 +453,114 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
     token = issue_session(db, user)
     db.commit()
     return response_with_session(request, {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}, token)
+
+
+def send_password_reset_email(recipient: str, reset_url: str) -> None:
+    host = os.getenv("SATARK_SMTP_HOST", "").strip()
+    sender = os.getenv("SATARK_SMTP_FROM", "").strip()
+    if not host or not sender:
+        raise RuntimeError("Password recovery email is not configured.")
+    port = int(os.getenv("SATARK_SMTP_PORT", "587"))
+    username = os.getenv("SATARK_SMTP_USERNAME", "")
+    password = os.getenv("SATARK_SMTP_PASSWORD", "")
+    message = EmailMessage()
+    message["Subject"] = "Reset your SATARK password"
+    message["From"] = sender
+    message["To"] = recipient
+    message.set_content(
+        "A password reset was requested for your SATARK account.\n\n"
+        f"Use this one-time link within 30 minutes: {reset_url}\n\n"
+        "If you did not request this, ignore this email. Your current password remains unchanged."
+    )
+    timeout = 10
+    if os.getenv("SATARK_SMTP_USE_SSL", "false").lower() == "true":
+        with smtplib.SMTP_SSL(host, port, timeout=timeout, context=ssl.create_default_context()) as smtp:
+            if username:
+                smtp.login(username, password)
+            smtp.send_message(message)
+    else:
+        with smtplib.SMTP(host, port, timeout=timeout) as smtp:
+            smtp.ehlo()
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
+            if username:
+                smtp.login(username, password)
+            smtp.send_message(message)
+
+
+@router.post("/auth/password-reset/request", status_code=202)
+def request_password_reset(body: PasswordResetRequest, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    email = body.email.strip().lower()
+    # Deliberately identical response for unknown accounts and unconfigured mail.
+    generic = {"ok": True, "message": "If the account exists and recovery email is configured, a one-time link will be sent."}
+    if not EMAIL_RE.fullmatch(email):
+        return generic
+    host = os.getenv("SATARK_SMTP_HOST", "").strip()
+    sender = os.getenv("SATARK_SMTP_FROM", "").strip()
+    public_base = os.getenv("SATARK_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if not host or not sender or not public_base:
+        return generic
+    from urllib.parse import urlsplit
+    try:
+        parsed = urlsplit(public_base)
+        local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
+        if not (parsed.scheme == "https" or local_http) or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            return generic
+    except ValueError:
+        return generic
+    user = db.scalar(select(User).where(User.email == email, User.is_active.is_(True)))
+    if not user:
+        return generic
+    now = utcnow()
+    db.execute(update(PasswordResetToken).where(
+        PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+    ).values(used_at=now))
+    token = secrets.token_urlsafe(48)
+    db.add(PasswordResetToken(
+        user_id=user.id, token_hash=token_digest(token),
+        expires_at=now + timedelta(minutes=30),
+    ))
+    db.commit()
+    reset_url = public_base + "/reset-password?token=" + token
+    try:
+        send_password_reset_email(user.email, reset_url)
+    except Exception:
+        # Invalidate an undelivered token. Never reveal SMTP/account state to callers.
+        db.execute(update(PasswordResetToken).where(
+            PasswordResetToken.token_hash == token_digest(token),
+            PasswordResetToken.used_at.is_(None),
+        ).values(used_at=utcnow()))
+        db.commit()
+    return generic
+
+
+@router.post("/auth/password-reset/complete")
+def complete_password_reset(body: PasswordResetComplete, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    now = utcnow()
+    digest = token_digest(body.token)
+    row = db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == digest))
+    if not row:
+        raise HTTPException(400, "The password reset link is invalid or expired.")
+    changed = db.execute(update(PasswordResetToken).where(
+        PasswordResetToken.id == row.id,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.expires_at > now,
+    ).values(used_at=now))
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(400, "The password reset link is invalid or expired.")
+    user = db.get(User, row.user_id)
+    if not user or not user.is_active:
+        db.rollback()
+        raise HTTPException(400, "The password reset link is invalid or expired.")
+    user.password_hash = PASSWORDS.hash(body.password)
+    db.execute(update(SessionRecord).where(
+        SessionRecord.user_id == user.id, SessionRecord.revoked_at.is_(None)
+    ).values(revoked_at=now))
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/auth/session")
