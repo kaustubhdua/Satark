@@ -26,3 +26,8 @@ test('mutating browser requests require a same-origin boundary', () => {
   assert.doesNotMatch(proxy, /&& !bearer/);
   assert.match(proxy, /Cross-origin API requests are not allowed/);
 });
+
+test('proxy forwards the browser scheme with the private upstream host for CSRF validation', () => {
+  assert.match(proxy, /headers\.set\('origin', `\$\{incoming\.protocol\}\/\/\$\{target\.host\}`\)/);
+  assert.match(proxy, /headers\.set\('x-forwarded-proto', incoming\.protocol\.slice\(0, -1\)\)/);
+});
