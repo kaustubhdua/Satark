@@ -277,11 +277,10 @@ def issue_session(db: Session, user: User) -> str:
 
 
 def current_user(request: Request, authorization: str | None = Header(default=None), db: Session = Depends(db_session)) -> User:
-    token = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    if not token:
-        token = request.cookies.get("satark_session")
+    bearer_token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else ""
+    # An empty Authorization header is not bearer authentication. Treat it as
+    # cookie authentication so the normal CSRF origin check still applies.
+    token = bearer_token or request.cookies.get("satark_session")
     if not token or len(token) > 256:
         raise HTTPException(401, "Sign in is required.")
     row = db.scalar(select(SessionRecord).where(SessionRecord.token_hash == token_digest(token), SessionRecord.revoked_at.is_(None)))
@@ -290,7 +289,7 @@ def current_user(request: Request, authorization: str | None = Header(default=No
         raise HTTPException(401, "Your session is invalid or expired.")
     # Cookie-authenticated unsafe requests must originate from this exact origin.
     # Bearer clients are not ambient-cookie authenticated and do not use this CSRF path.
-    if not (authorization and authorization.startswith("Bearer ")) and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+    if not bearer_token and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
         # Validate both origin host and scheme. Behind the Next.js BFF, the
         # forwarded scheme is set by the trusted same-origin proxy.
         enforce_same_origin(request)
