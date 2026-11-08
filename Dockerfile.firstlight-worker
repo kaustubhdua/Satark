@@ -10,5 +10,6 @@ COPY firstlight_engine.py ./firstlight_engine.py
 COPY firstlight_rules.py ./firstlight_rules.py
 COPY firstlight_wazuh.py ./firstlight_wazuh.py
 COPY firstlight_wazuh_worker.py ./firstlight_wazuh_worker.py
+COPY satark_backend.py ./satark_backend.py
 USER 10001:10001
 CMD ["python", "firstlight_wazuh_worker.py"]
