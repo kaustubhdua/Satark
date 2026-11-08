@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.exc import DBAPIError
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.orm import sessionmaker
 
 import satark_backend as backend
@@ -18,8 +22,10 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     engine = create_engine(url, pool_pre_ping=True)
     backend.SessionLocal.configure(bind=engine)
     backend.Base.metadata.drop_all(engine)
-    backend.Base.metadata.create_all(engine)
+    monkeypatch.setenv("SATARK_DATABASE_URL", url)
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "evidence"))
+    alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    command.upgrade(alembic_config, "head")
     try:
         with TestClient(app, base_url="http://testserver") as client:
             headers = {"Origin": "http://testserver"}
@@ -68,6 +74,23 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             )).all()
             assert len(findings) == 1
             assert evidence_id in findings[0].evidence_refs
+
+            audit_event = db.scalar(select(backend.AuditEvent).where(
+                backend.AuditEvent.tenant_id == tenant_id
+            ).limit(1))
+            assert audit_event is not None
+            with pytest.raises(DBAPIError, match="append-only"):
+                db.execute(text(
+                    "UPDATE satark_audit_events SET event_type = 'tampered' WHERE id = :event_id"
+                ), {"event_id": audit_event.id})
+                db.commit()
+            db.rollback()
+            with pytest.raises(DBAPIError, match="append-only"):
+                db.execute(text(
+                    "DELETE FROM satark_audit_events WHERE id = :event_id"
+                ), {"event_id": audit_event.id})
+                db.commit()
+            db.rollback()
             db.close()
     finally:
         backend.Base.metadata.drop_all(engine)
