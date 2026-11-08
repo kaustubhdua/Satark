@@ -1,23 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
 
-const source = fs.readFileSync(new URL('./tenant-isolation.integration.test.mjs', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
+const tests = await readFile(new URL('../../tests/test_satark_backend.py', import.meta.url), 'utf8');
 
-test('tenant integration probes have bounded network timeouts', () => {
-  assert.ok(source.includes('AbortSignal.timeout(REQUEST_TIMEOUT_MS)'));
-  assert.ok(source.includes('const REQUEST_TIMEOUT_MS = 8_000'));
+test('every tenant-scoped API resolves membership before reading or writing', () => {
+  assert.match(backend, /def require_membership/);
+  assert.match(backend, /Workspace access denied/);
+  assert.match(backend, /def list_cases[\s\S]*?require_membership/);
+  assert.match(backend, /def create_case[\s\S]*?require_membership/);
+  assert.match(backend, /def create_note[\s\S]*?require_membership/);
+  assert.match(backend, /def upload_evidence[\s\S]*?require_membership/);
 });
 
-test('cross-tenant create is accepted as denied only for authorization responses', () => {
-  assert.ok(source.includes('[401, 403]'));
-  assert.ok(source.includes('write.status'));
-  assert.doesNotMatch(source, /401,\\s*403,\\s*409,\\s*422/);
-});
-
-test('viewer create requires an authorization denial and viewer update cannot silently skip', () => {
-  assert.ok(source.includes('[401, 403]'));
-  assert.ok(source.includes('create.status'));
-  assert.ok(source.includes('rows.length > 0'));
-  assert.match(source, /assert\.deepEqual\(await update\.json\(\), \[\],/);
+test('SQLite integration tests prove cross-tenant read and write denial', () => {
+  assert.match(tests, /test_workspace_case_and_tenant_isolation/);
+  assert.match(tests, /outsider@example\.test/);
+  assert.match(tests, /denied\.status_code == 403/);
+  assert.match(tests, /denied_create\.status_code == 403/);
 });
