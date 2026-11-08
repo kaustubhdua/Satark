@@ -631,6 +631,10 @@ async def upload_evidence(
     audit(db, tenant_id, user.id, "evidence.uploaded", {"evidence_id": evidence_id, "sha256": digest, "size_bytes": len(raw)})
     try:
         db.commit()
+    except IntegrityError:
+        db.rollback()
+        object_path.unlink(missing_ok=True)
+        raise HTTPException(409, "Identical evidence already exists in this case.")
     except Exception:
         db.rollback()
         object_path.unlink(missing_ok=True)
