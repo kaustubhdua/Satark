@@ -177,7 +177,7 @@ export default function PersistentCasePanel({
         if (response.status === 409) {
           const query = new URLSearchParams({ tenant_id: tenant.id, case_id: caseId });
           const existingResponse = await fetch('/api/findings?' + query, {
-            headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+            cache: 'no-store',
           });
           if (!existingResponse.ok) throw new Error('Finding already exists, but its stored version could not be checked safely.');
           const existingPayload = await existingResponse.json() as {findings?: {finding_key:string;title:string;severity:string;detail:string;evidence_refs:string[];source:string}[]};
@@ -245,7 +245,7 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     try {
       const response = await fetch('/api/firstlight/approvals?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(caseId), {
-        headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+         cache: 'no-store',
       });
       const payload = await response.json().catch(() => ({}));
       setApprovals(response.ok && Array.isArray(payload.approvals) ? payload.approvals as ApprovalRow[] : []);
@@ -454,7 +454,7 @@ export default function PersistentCasePanel({
       form.set('file', file); form.set('tenant_id', tenant.id); form.set('case_id', currentCaseId);
       form.set('source_label', file.name.slice(0,160)); form.set('event_kind', 'source_file');
       form.set('observed_at', new Date().toISOString()); form.set('summary', 'Private original evidence file uploaded through FIRSTLIGHT.');
-      const response = await fetch('/api/evidence', { method:'POST', headers:{Authorization:'Bearer '+session.access_token}, body:form, cache:'no-store' });
+      const response = await fetch('/api/evidence', { method:'POST', body:form, cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Private evidence upload failed.');
       setUploadedId(result.evidence.id); setMessage('Private file uploaded. Server SHA-256: ' + result.integrity.source_sha256);
