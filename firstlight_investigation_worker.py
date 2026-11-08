@@ -88,7 +88,7 @@ class InvestigationJobWorker:
                     raw = handle.read(4 * 1024 * 1024 + 1)
                 if len(raw) > 4 * 1024 * 1024:
                     raise ValueError("evidence_object_too_large")
-                actual = hashlib.sha256(raw).hexdigest()
+                total_evidence_bytes += len(raw)\n                if total_evidence_bytes > MAX_TOTAL_EVIDENCE_BYTES:\n                    raise ValueError("case_evidence_bytes_exceeded")\n                actual = hashlib.sha256(raw).hexdigest()
                 valid = actual == item.source_sha256
                 integrity.append({"evidence_id": item.id, "valid": valid,
                     "status": "VERIFIED" if valid else "HASH MISMATCH"})
@@ -139,7 +139,7 @@ class InvestigationJobWorker:
             if job:
                 code = str(exc) if str(exc) in {
                     "case_not_found", "evidence_limit_exceeded", "evidence_object_missing",
-                    "evidence_object_too_large", "result_too_large",
+                    "evidence_object_too_large", "case_evidence_bytes_exceeded", "result_too_large",
                 } else "investigation_failed"
                 job.error_code = code
                 job.status = "queued" if job.attempts < job.max_attempts else "failed"
