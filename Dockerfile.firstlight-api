@@ -15,6 +15,7 @@ COPY firstlight_api.py ./firstlight_api.py
 COPY satark_backend.py ./satark_backend.py
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
+COPY scripts/satark_backup.py ./scripts/satark_backup.py
 RUN mkdir -p /data/evidence && chown -R 10001:10001 /data
 USER 10001:10001
 EXPOSE 8788
