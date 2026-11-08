@@ -19,6 +19,7 @@ from satark_backend import (
 )
 
 MAX_EVIDENCE = 500
+MAX_TOTAL_EVIDENCE_BYTES = 32 * 1024 * 1024
 MAX_RESULT_BYTES = 1024 * 1024
 
 
@@ -79,6 +80,7 @@ class InvestigationJobWorker:
                 raise ValueError("evidence_limit_exceeded")
             envelopes = []
             integrity = []
+            total_evidence_bytes = 0
             root = os.path.realpath(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence"))
             for item in evidence:
                 path = os.path.realpath(item.object_key)
@@ -88,7 +90,10 @@ class InvestigationJobWorker:
                     raw = handle.read(4 * 1024 * 1024 + 1)
                 if len(raw) > 4 * 1024 * 1024:
                     raise ValueError("evidence_object_too_large")
-                total_evidence_bytes += len(raw)\n                if total_evidence_bytes > MAX_TOTAL_EVIDENCE_BYTES:\n                    raise ValueError("case_evidence_bytes_exceeded")\n                actual = hashlib.sha256(raw).hexdigest()
+                total_evidence_bytes += len(raw)
+                if total_evidence_bytes > MAX_TOTAL_EVIDENCE_BYTES:
+                    raise ValueError("case_evidence_bytes_exceeded")
+                actual = hashlib.sha256(raw).hexdigest()
                 valid = actual == item.source_sha256
                 integrity.append({"evidence_id": item.id, "valid": valid,
                     "status": "VERIFIED" if valid else "HASH MISMATCH"})
@@ -122,6 +127,20 @@ class InvestigationJobWorker:
             report = Report(tenant_id=job.tenant_id, case_id=job.case_id,
                 title="FIRSTLIGHT investigation", snapshot=payload, snapshot_sha256=digest,
                 report_version=1, created_by=job.requested_by)
+            for index, finding in enumerate(result.get("findings", [])):
+                if not isinstance(finding, dict):
+                    continue
+                refs = finding.get("evidence_ids", [])
+                refs = [value for value in refs if isinstance(value, str) and value in {item.id for item in evidence}]
+                db.add(Finding(
+                    tenant_id=job.tenant_id, case_id=job.case_id,
+                    finding_key=str(finding.get("finding_id") or f"finding-{index}")[:160],
+                    title=str(finding.get("title") or "Untitled finding")[:240],
+                    severity=str(finding.get("severity") or "unknown")[:16],
+                    detail=str(finding.get("explanation") or "")[:8192],
+                    evidence_refs=refs, source="FIRSTLIGHT deterministic rules",
+                    confidence=None, created_by=job.requested_by,
+                ))
             db.add(report)
             job.status = "succeeded"
             job.result = payload
