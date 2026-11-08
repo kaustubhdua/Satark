@@ -63,15 +63,19 @@ Stop SATARK API and worker writers before creating a backup so the database and 
 
 ~~~bash
 docker compose -f docker-compose.local.yml stop web firstlight-wazuh-worker firstlight-investigation-worker streamlit firstlight-api
-python scripts/satark_backup.py create --output /secure-backups/satark-$(date -u +%Y%m%dT%H%M%SZ).tar.gz
-python scripts/satark_backup.py verify /secure-backups/<backup-file>.tar.gz
+docker compose -f docker-compose.local.yml run --rm --no-deps firstlight-api \
+  python /app/scripts/satark_backup.py create --output /data/backups/satark-$(date -u +%Y%m%dT%H%M%SZ).tar.gz
+docker compose -f docker-compose.local.yml run --rm --no-deps firstlight-api \
+  python /app/scripts/satark_backup.py verify /data/backups/<backup-file>.tar.gz
 ~~~
 
 Restore only into an empty target database and empty evidence directory:
 
 ~~~bash
-SATARK_DATABASE_URL=sqlite:////restore/satark.db SATARK_EVIDENCE_DIR=/restore/evidence \
-  python scripts/satark_backup.py restore /secure-backups/<backup-file>.tar.gz
+docker compose -f docker-compose.local.yml run --rm --no-deps \
+  -e SATARK_DATABASE_URL=sqlite:////data/restore/satark.db \
+  -e SATARK_EVIDENCE_DIR=/data/restore/evidence firstlight-api \
+  python /app/scripts/satark_backup.py restore /data/backups/<backup-file>.tar.gz
 ~~~
 
 For PostgreSQL, install the matching `pg_dump` and `pg_restore` client tools and set `SATARK_DATABASE_URL` to the empty target database. The restore command does not drop existing database objects. Test restores in an isolated environment before production use.
