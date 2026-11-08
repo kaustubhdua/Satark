@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 import time
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from sqlalchemy import or_, select
 
@@ -104,12 +104,12 @@ class InvestigationJobWorker:
                         details = item.metadata_json if isinstance(item.metadata_json, dict) and item.metadata_json else (parsed if isinstance(parsed, dict) else {})
                     except (ValueError, UnicodeDecodeError):
                         details = {}
-                record = {"event_id": item.id, "timestamp": item.observed_at.isoformat(),
+                observed_at = item.observed_at\n                created_at = item.created_at\n                if observed_at.tzinfo is None:\n                    observed_at = observed_at.replace(tzinfo=timezone.utc)\n                if created_at.tzinfo is None:\n                    created_at = created_at.replace(tzinfo=timezone.utc)\n                record = {"event_id": item.id, "timestamp": observed_at.isoformat(),
                     "source": item.source_label, "kind": item.event_kind, "summary": item.summary,
                     "details": details}
                 envelopes.append({"evidence_id": item.id, "record": record,
                     "sha256": sha256_record(record) if valid else "0" * 64,
-                    "collected_at": item.created_at.isoformat(),
+                    "collected_at": created_at.isoformat(),
                     "integrity_status": "verified" if valid else "mismatch"})
             result = investigate_case({"case_id": case.id, "title": case.title}, envelopes)
             payload = {"schema_version": "1.1", "case_id": case.id, "integrity": integrity,
