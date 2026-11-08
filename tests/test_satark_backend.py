@@ -99,6 +99,16 @@ def test_notes_findings_and_reports_are_workspace_scoped(client):
     assert report.status_code == 201
     assert len(report.json()["report"]["snapshot_sha256"]) == 64
 
+    audit_events = client.get("/api/audit/events", params={
+        "tenant_id": tenant_id, "case_id": case["id"],
+    })
+    assert audit_events.status_code == 200
+    sequences = [event["sequence"] for event in audit_events.json()["events"]]
+    assert sequences == sorted(set(sequences))
+    audit_check = client.get("/api/audit/verify", params={"tenant_id": tenant_id})
+    assert audit_check.status_code == 200
+    assert audit_check.json()["chain_valid"] is True
+
 
 def test_cookie_mutation_rejects_cross_origin(client):
     register(client, "csrf@example.test")
