@@ -147,6 +147,22 @@ jobs:
       - name: Validate Docker Compose environment template
         run: node scripts/check-compose-env-example.mjs
 
+      - name: Validate self-hosted Docker Compose stack
+        run: docker compose -f docker-compose.local.yml config --quiet
+
+      - name: Build SATARK and FIRSTLIGHT container images
+        run: |
+          docker build -f Dockerfile.streamlit -t satark-streamlit:ci .
+          docker build -f Dockerfile.firstlight-api -t satark-firstlight-api:ci .
+          docker build -f Dockerfile.firstlight-worker -t satark-firstlight-worker:ci .
+          docker build -f Dockerfile.firstlight-investigation-worker -t satark-firstlight-investigation-worker:ci .
+
+      - name: Smoke-test imports inside self-hosted container images
+        run: |
+          docker run --rm --entrypoint python satark-firstlight-api:ci -c "import firstlight_api, satark_backend, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider"
+          docker run --rm --entrypoint python satark-firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
+          docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_wazuh_worker"
+
       - name: Check source whitespace and accidental empty lines
         run: |
           python - <<'PY'
