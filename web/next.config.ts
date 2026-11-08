@@ -3,7 +3,12 @@ import { buildSecurityHeaders } from './src/lib/security-headers.mjs';
 
 const securityHeaders = buildSecurityHeaders(process.env);
 
+const satarkApi = (process.env.SATARK_API_INTERNAL_URL || 'http://firstlight-api:8788').replace(/\\/$/, '');
+
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return { beforeFiles: [{ source: '/api/:path*', destination: satarkApi + '/api/:path*' }] };
+  },
   output: 'standalone',
   async headers() {
     return [
