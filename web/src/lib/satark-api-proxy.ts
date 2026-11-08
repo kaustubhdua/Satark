@@ -23,7 +23,9 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
   const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase());
   const origin = request.headers.get('origin');
   const bearer = request.headers.get('authorization')?.startsWith('Bearer ');
-  if (unsafe && (!origin || new URL(origin).origin !== incoming.origin) && !bearer) {
+  let sameOrigin = false;
+  try { sameOrigin = Boolean(origin && new URL(origin).origin === incoming.origin); } catch { sameOrigin = false; }
+  if (unsafe && !sameOrigin && !bearer) {
     return NextResponse.json({ error: 'Cross-origin API requests are not allowed.' }, { status: 403 });
   }
 
@@ -31,7 +33,8 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
   if (unsafe) {
     const declared = Number(request.headers.get('content-length') || 0);
     if (declared > MAX_REQUEST_BYTES) return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
-    body = await request.arrayBuffer();
+    try { body = await request.arrayBuffer(); }
+    catch { return NextResponse.json({ error: 'The request body could not be read.' }, { status: 400 }); }
     if (body.byteLength > MAX_REQUEST_BYTES) return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
   }
 
