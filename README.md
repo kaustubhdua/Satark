@@ -395,7 +395,7 @@ The following is a forward-looking roadmap, not a claim that every item is imple
 - [ ] Keep the README, architecture notes, demo flow, and release sign-off aligned with the actual code.
 
 ### Next: stronger investigation workflow
-- [ ] Complete end-to-end production verification of the existing Supabase-backed case/evidence/findings/reports workflow, including retention/deletion behavior.
+- [ ] Complete end-to-end verification of the self-hosted case/evidence/findings/reports workflow, including retention/deletion behavior.
 - [ ] Finish and pass cross-tenant authorization/storage regression tests, then verify the same policies on the deployed release before multi-user sensitive use.
 - [ ] Design independently verifiable evidence manifests and durable audit records.
 - [ ] Add clear case lifecycle, export validation, and audit verification UX.
@@ -505,7 +505,7 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
-- [Dedicated Supabase tenant-isolation test setup](docs/SUPABASE_TENANT_TEST_SETUP.md)
+- [Self-hosted backend setup and migration guide](docs/SELF_HOSTED_BACKEND.md)
 - [Free API setup and optional threat-intelligence lookups](docs/FREE_API_SETUP.md)
 - [FIRSTLIGHT live-response adapter scope and prerequisites](docs/FIRSTLIGHT_LIVE_RESPONSE.md)
 - [Security policy](SECURITY.md)
@@ -524,4 +524,4 @@ Contributions are welcome, especially focused improvements to reliability, acces
 
 - [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
 - [Saathi live security catalog audit](docs/SAATHI_LIVE_SECURITY_CATALOG_2026-10-21.md) — read-only live RLS and approval-ACL evidence (not authenticated end-to-end proof).
-- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted Supabase + Ollama setup and no-internet acceptance steps.
+- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted SATARK + Ollama setup and no-internet acceptance steps.
