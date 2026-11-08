@@ -119,3 +119,12 @@ def test_cookie_mutation_rejects_same_host_wrong_scheme(client):
         headers={"Origin": "https://testserver"},
     )
     assert response.status_code == 403
+
+def test_empty_bearer_header_does_not_bypass_cookie_csrf(client):
+    register(client, "csrf-empty-bearer@example.test")
+    response = client.post(
+        "/api/workspaces",
+        json={"name": "Empty bearer bypass"},
+        headers={"Origin": "https://attacker.example", "Authorization": "Bearer "},
+    )
+    assert response.status_code == 403
