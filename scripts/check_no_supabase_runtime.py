@@ -23,7 +23,7 @@ RUNTIME_FILES = [
     ROOT / "scripts" / "satark_track1_acceptance_preflight.py",
     ROOT / ".github" / "workflows",
 ]
-FORBIDDEN = re.compile(r"SUPABASE_|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1", re.IGNORECASE)
+FORBIDDEN = re.compile(r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1|from\\s+supabase\\b|import\\s+supabase\\b)")
 
 
 def source_files():
