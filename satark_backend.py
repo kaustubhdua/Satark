@@ -432,8 +432,46 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
 
 
 @router.get("/auth/session")
-def session_info(user: User = Depends(current_user)):
-    return {"user": user_json(user)}
+def session_info(request: Request, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    token = request.cookies.get("satark_session") or ""
+    row = db.scalar(select(SessionRecord).where(
+        SessionRecord.user_id == user.id,
+        SessionRecord.token_hash == token_digest(token),
+        SessionRecord.revoked_at.is_(None),
+    )) if token else None
+    if not row:
+        raise HTTPException(401, "A cookie-backed SATARK session is required.")
+    expiry = row.expires_at.replace(tzinfo=timezone.utc) if row.expires_at.tzinfo is None else row.expires_at
+    return {"user": user_json(user), "expires_at": expiry.isoformat(),
+            "expires_in": max(0, int((expiry - utcnow()).total_seconds()))}
+
+
+@router.post("/auth/refresh")
+def refresh_session(request: Request, db: Session = Depends(db_session), user: User = Depends(current_user)):
+    enforce_same_origin(request)
+    token = request.cookies.get("satark_session") or ""
+    if not token:
+        raise HTTPException(401, "A cookie-backed SATARK session is required.")
+    now = utcnow()
+    # Atomic one-time rotation: a concurrent replay cannot mint a second session.
+    changed = db.execute(
+        __import__("sqlalchemy").update(SessionRecord)
+        .where(
+            SessionRecord.user_id == user.id,
+            SessionRecord.token_hash == token_digest(token),
+            SessionRecord.revoked_at.is_(None),
+            SessionRecord.expires_at > now,
+        )
+        .values(revoked_at=now)
+    )
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(409, "Session is expired, revoked, or has already been rotated.")
+    next_token = issue_session(db, user)
+    db.commit()
+    return response_with_session(request, {
+        "user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400,
+    }, next_token)
 
 
 @router.post("/auth/logout")
