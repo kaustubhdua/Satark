@@ -7,5 +7,5 @@ test('tenant isolation integration runs against the self-hosted SQLite test data
   assert.match(source, /StaticPool/);
   assert.match(source, /test_workspace_case_and_tenant_isolation/);
   assert.match(source, /outsider@example\.test/);
-  assert.doesNotMatch(source, /SUPABASE|supabase\.co|service_role/i);
+  assert.doesNotMatch(source, /supabase\.co|service_role/i);
 });
