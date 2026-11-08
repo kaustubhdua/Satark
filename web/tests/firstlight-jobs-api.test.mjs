@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
-const [nextConfig, worker, backend, compose] = await Promise.all([
-  read('../next.config.ts'),
+const [catchAll, worker, backend, compose] = await Promise.all([
+  read('../src/app/api/[...path]/route.ts'),
   read('../../firstlight_investigation_worker.py'),
   read('../../satark_backend.py'),
   read('../../docker-compose.local.yml'),
