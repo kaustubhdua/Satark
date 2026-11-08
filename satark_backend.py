@@ -588,7 +588,8 @@ async def upload_evidence(
     raw = await file.read(MAX_UPLOAD + 1)
     if not raw or len(raw) > MAX_UPLOAD:
         raise HTTPException(413, "Evidence must be between 1 byte and 4 MiB.")
-    content_type = (file.content_type or "application/octet-stream")[:160]
+    when = when.astimezone(timezone.utc)
+    content_type = (file.content_type or "application/octet-stream")[:160
     # Minimal magic checks prevent trusting the browser-supplied MIME type.
     signatures = {
         "application/pdf": raw.startswith(b"%PDF-"),
@@ -653,6 +654,7 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
             raise ValueError()
     except ValueError:
         raise HTTPException(400, "observed_at must include an explicit timezone.")
+    observed = observed.astimezone(timezone.utc)
     metadata = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
     raw = json.dumps(metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
     if len(raw) > MAX_UPLOAD:
@@ -843,7 +845,8 @@ def decide_approval(body: dict, user: User = Depends(current_user), db: Session 
     require_membership(db, user, row.tenant_id, {"owner", "responder"})
     if row.requested_by == user.id:
         raise HTTPException(403, "An approval requester cannot approve their own request.")
-    if row.status != "pending" or row.consumed_at is not None or row.expires_at <= utcnow():
+    expiry = row.expires_at.replace(tzinfo=timezone.utc) if row.expires_at.tzinfo is None else row.expires_at
+    if row.status != "pending" or row.consumed_at is not None or expiry <= utcnow():
         raise HTTPException(409, "Approval is expired, already decided, or already consumed.")
     row.status = decision
     row.decided_by = user.id
