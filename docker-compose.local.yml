@@ -34,6 +34,9 @@ services:
       context: .
       dockerfile: Dockerfile.firstlight-api
     environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      SATARK_AUTO_CREATE_SCHEMA: ${SATARK_AUTO_CREATE_SCHEMA:-true}
       FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:-}
       FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:-}
       FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
@@ -46,6 +49,8 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       FIRSTLIGHT_OLLAMA_MODEL: ${FIRSTLIGHT_OLLAMA_MODEL:-qwen2.5:3b}
       FIRSTLIGHT_MODEL_AGENTS_ENABLED: ${FIRSTLIGHT_MODEL_AGENTS_ENABLED:-false}
+    volumes:
+      - satark_data:/data
     expose:
       - "8788"
     healthcheck:
