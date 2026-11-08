@@ -32,7 +32,7 @@ def origin():
 
 def register(client, email):
     response = client.post("/api/auth/signup", json={"email": email, "password": "Correct-Horse-Battery-42"})
-    assert response.status_code == 200, response.text
+    assert response.status_code == 201, response.text
     assert "satark_session" in response.cookies
     assert "access_token" not in response.json()
     return response.json()["user"]["id"]
