@@ -15,7 +15,7 @@ from sqlalchemy import or_, select
 
 from firstlight_engine import investigate_case
 from satark_backend import (
-    Case, Evidence, InvestigationJob, Report, SessionLocal, audit, utcnow,
+    Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, utcnow,
 )
 
 MAX_EVIDENCE = 500
