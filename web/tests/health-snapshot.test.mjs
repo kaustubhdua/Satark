@@ -89,39 +89,17 @@ test('FIRSTLIGHT proxy readiness requires safe backend URL and strong server-sid
   assert.doesNotMatch(serialized, /firstlight\.internal\.example|aaaaaaaa|bbbbbbbb/i);
 });
 
-test('Supabase mapping confirms browser/server project equality without exposing URLs or keys', () => {
-  const snapshot = buildHealthSnapshot({
-    SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
-    SUPABASE_PUBLISHABLE_KEY: 'server-publishable-key',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'browser-publishable-key',
-  });
+test('self-hosted backend health exposes provider without connection details', () => {
+  const snapshot = buildHealthSnapshot({ SATARK_API_INTERNAL_URL: 'http://firstlight-api:8788' });
+  assert.equal(snapshot.checks.persistentStorage.provider, 'self-hosted');
   assert.equal(snapshot.checks.persistentStorage.configured, true);
-  assert.equal(snapshot.checks.persistentStorage.clientConfigured, true);
-  assert.equal(snapshot.checks.persistentStorage.serverClientMatch, true);
-  assert.equal(snapshot.checks.persistentStorage.serverProjectRef, 'igqgtlmnwssjaoxkkzbm');
-  assert.equal(snapshot.checks.persistentStorage.clientProjectRef, 'igqgtlmnwssjaoxkkzbm');
-  const serialized = JSON.stringify(snapshot);
-  assert.doesNotMatch(serialized, /https:\/\//i);
-  assert.doesNotMatch(serialized, /publishable-key/i);
-});
-
-test('Supabase mapping reports mismatched browser and server projects', () => {
-  const snapshot = buildHealthSnapshot({
-    SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
-    SUPABASE_PUBLISHABLE_KEY: 'server-publishable-key',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://ogbanmjokjlxfuktkicj.supabase.co',
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'browser-publishable-key',
-  });
-  assert.equal(snapshot.checks.persistentStorage.configured, true);
-  assert.equal(snapshot.checks.persistentStorage.clientConfigured, true);
+  assert.equal(snapshot.checks.persistentStorage.clientConfigured, false);
   assert.equal(snapshot.checks.persistentStorage.serverClientMatch, false);
-  assert.equal(snapshot.checks.persistentStorage.serverProjectRef, 'igqgtlmnwssjaoxkkzbm');
-  assert.equal(snapshot.checks.persistentStorage.clientProjectRef, 'ogbanmjokjlxfuktkicj');
+  assert.doesNotMatch(JSON.stringify(snapshot), /firstlight-api|SATARK_DATABASE_URL/);
 });
 
 test('blank environment values count as missing', () => {
-  const snapshot = buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: '  ', SATARK_OLLAMA_MODEL: 'model', SUPABASE_URL: 'url', SUPABASE_PUBLISHABLE_KEY: '' });
+  const snapshot = buildHealthSnapshot({ SATARK_OLLAMA_BASE_URL: '  ', SATARK_OLLAMA_MODEL: 'model', SATARK_API_INTERNAL_URL: '' });
   assert.equal(snapshot.checks.localModel.configured, false);
   assert.equal(snapshot.checks.persistentStorage.configured, false);
 });
@@ -145,7 +123,7 @@ test('unsafe or malformed dependency URLs are never reported as configured', () 
     });
     assert.equal(snapshot.checks.rateLimit.mode, 'misconfigured', 'unsafe Redis URL: ' + url);
     assert.equal(snapshot.checks.rateLimit.configured, false, 'unsafe Redis URL must fail closed: ' + url);
-    assert.equal(snapshot.checks.persistentStorage.configured, false, 'unsafe Supabase URL: ' + url);
+    assert.equal(snapshot.checks.persistentStorage.configured, false, 'unconfigured self-hosted API: ' + url);
   }
 });
 
