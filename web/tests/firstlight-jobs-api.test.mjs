@@ -11,11 +11,11 @@ const [nextConfig, worker, backend, compose] = await Promise.all([
 ]);
 
 test('all browser API requests are proxied to SATARK-owned FastAPI routes', () => {
-  assert.match(nextConfig, /SATARK_API_INTERNAL_URL/);
-  assert.ok(nextConfig.includes("source: '/api/firstlight/:path*'"));
-  assert.ok(nextConfig.includes("destination: satarkApi + '/api/firstlight/:path*'"));
-  assert.ok(nextConfig.includes("source: '/api/evidence/:path*'"));
-  assert.doesNotMatch(nextConfig, /SUPABASE|supabase\.co/i);
+  assert.match(catchAll, /proxySatarkApi/);
+  assert.match(catchAll, /export const GET = proxySatarkApi/);
+  assert.match(catchAll, /export const POST = proxySatarkApi/);
+  assert.match(catchAll, /export const DELETE = proxySatarkApi/);
+  assert.doesNotMatch(catchAll, /SUPABASE|supabase\\.co/i);
 });
 
 test('self-hosted job queue persists tenant-scoped jobs and bounded results', () => {
