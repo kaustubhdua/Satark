@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "scripts/check_no_supabase_runtime.py"
+      - "scripts/satark_backup.py"
+      - "tests/test_satark_backup.py"
       - "satark_backend.py"
       - "alembic.ini"
       - "migrations/**"
