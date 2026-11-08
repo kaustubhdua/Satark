@@ -18,18 +18,47 @@ def upgrade() -> None:
     columns = {column["name"] for column in inspector.get_columns("satark_audit_events")}
     if "sequence" not in columns:
         op.add_column("satark_audit_events", sa.Column("sequence", sa.Integer(), nullable=True))
-    op.execute(sa.text("""
-        WITH ordered AS (
-            SELECT id, ROW_NUMBER() OVER (
-                PARTITION BY tenant_id ORDER BY created_at ASC, id ASC
-            ) AS position
-            FROM satark_audit_events
-        )
-        UPDATE satark_audit_events AS target
-        SET sequence = ordered.position
-        FROM ordered
-        WHERE target.id = ordered.id
-    """))
+
+    # Reconstruct the original hash-chain order rather than assuming timestamps
+    # are unique. This preserves verification for existing audit histories.
+    rows = bind.execute(sa.text("""
+        SELECT id, tenant_id, previous_hash, event_hash, created_at
+        FROM satark_audit_events
+        ORDER BY tenant_id, created_at, id
+    """)).mappings().all()
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(row["tenant_id"], []).append(row)
+    for tenant_rows in grouped.values():
+        by_previous = {}
+        for row in tenant_rows:
+            by_previous.setdefault(row["previous_hash"], []).append(row)
+        for candidates in by_previous.values():
+            candidates.sort(key=lambda row: (row["created_at"], row["id"]))
+        previous_hash = "0" * 64
+        sequence = 1
+        assigned = set()
+        while previous_hash in by_previous:
+            candidates = [row for row in by_previous[previous_hash] if row["id"] not in assigned]
+            if not candidates:
+                break
+            row = candidates[0]
+            bind.execute(sa.text(
+                "UPDATE satark_audit_events SET sequence = :sequence WHERE id = :id"
+            ), {"sequence": sequence, "id": row["id"]})
+            assigned.add(row["id"])
+            previous_hash = row["event_hash"]
+            sequence += 1
+        # Preserve visibility of any pre-existing fork/orphan. The verifier will
+        # report it; the migration must not silently discard an audit record.
+        remaining = [row for row in tenant_rows if row["id"] not in assigned]
+        remaining.sort(key=lambda row: (row["created_at"], row["id"]))
+        for row in remaining:
+            bind.execute(sa.text(
+                "UPDATE satark_audit_events SET sequence = :sequence WHERE id = :id"
+            ), {"sequence": sequence, "id": row["id"]})
+            sequence += 1
+
     op.alter_column("satark_audit_events", "sequence", existing_type=sa.Integer(), nullable=False)
     constraints = {item.get("name") for item in sa.inspect(bind).get_unique_constraints("satark_audit_events")}
     if "uq_satark_audit_sequence" not in constraints:
