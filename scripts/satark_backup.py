@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 import shutil
@@ -166,7 +167,7 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
             if source is None:
                 raise ValueError(f"Backup file cannot be read: {name}")
             digest = hashlib.sha256(source.read()).hexdigest()
-            if not hashlib.compare_digest(digest, manifest["files"][name]):
+            if not hmac.compare_digest(digest, manifest["files"][name]):
                 raise ValueError(f"Backup checksum mismatch: {name}")
         return manifest
 
@@ -210,7 +211,8 @@ def restore_backup(
             raise RuntimeError("pg_restore is required to restore PostgreSQL.")
         target_db = None
 
-    with tempfile.TemporaryDirectory(prefix="satark-restore-") as temporary:
+    target_evidence_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="satark-restore-", dir=target_evidence_dir.parent) as temporary:
         work = Path(temporary)
         with tarfile.open(archive_path, "r:gz") as archive:
             for name in ("database.sqlite" if manifest["database_engine"] == "sqlite" else "database.dump", "evidence.tar.gz"):
@@ -223,7 +225,11 @@ def restore_backup(
         _extract_evidence_archive(work / "evidence.tar.gz", staged_evidence)
         if manifest["database_engine"] == "sqlite":
             target_db.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(work / "database.sqlite", target_db)
+            staged_db = target_db.with_name(target_db.name + ".satark-restore.tmp")
+            if staged_db.exists():
+                staged_db.unlink()
+            shutil.copy2(work / "database.sqlite", staged_db)
+            os.replace(staged_db, target_db)
         else:
             safe_url, env = _pg_env(target_url)
             subprocess.run(
