@@ -88,7 +88,7 @@ export default function LoginPage() {
           <div className="auth-aside">
             <div className="eyebrow">Secure workspace access</div>
             <h1>Investigations that <span>remember.</span></h1>
-            <p className="lead">Sign in to access tenant-scoped incidents, evidence, and investigation history. Your access is enforced by Supabase authentication and database row-level security.</p>
+            <p className="lead">Sign in to access tenant-scoped incidents, evidence, and investigation history. Your access is enforced by SATARK-managed authentication and tenant-scoped backend authorization.</p>
             <div className="info-panel">
               <strong>Access model</strong>
               <p className="muted">Workspace membership controls access. The browser never receives a service-role credential. A newly created workspace grants owner access only to the signed-in account.</p>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             {!session ? <>
               <div className="card-head"><span>Identity</span><span className="pill">{mode === 'signin' ? 'Sign in' : 'Create account'}</span></div>
               <h2 id="auth-title">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
-              <p className="muted">Use your workspace account. Email confirmation may be required depending on the Supabase Auth configuration.</p>
+              <p className="muted">Use your workspace account. Email confirmation may be required according to the self-hosted SATARK account policy.</p>
               {recovering ? <>
                 <h2 id="auth-title">Recover your account</h2>
                 <p className="muted">Enter your account email. For privacy, we show the same confirmation whether or not an account exists.</p>
@@ -114,10 +114,9 @@ export default function LoginPage() {
                   <label className="field-label" htmlFor="email">Email address</label>
                   <input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
                   <label className="field-label" htmlFor="password">Password</label>
-                  <input id="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} />
+                  <input id="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={12} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} />
                   <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create account'}</button>
                 </form>
-                {mode === 'signin' && <p className="muted"><button type="button" className="text-button" onClick={() => { setRecovering(true); setError(''); setNotice(''); }}>Forgot password?</button></p>}
                 <p className="muted">{mode === 'signin' ? 'New to SATARK?' : 'Already have an account?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
               </>}
             </> : <>
