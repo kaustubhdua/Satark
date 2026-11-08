@@ -194,3 +194,60 @@ def test_workspace_owner_can_add_change_and_remove_members(client):
         headers=origin(),
     )
     assert last_owner.status_code == 409
+
+def test_password_recovery_uses_single_use_token_and_revokes_sessions(client, monkeypatch):
+    register(client, "recover@example.test")
+    captured = {}
+    monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+    monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+    monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "http://localhost:3000")
+    monkeypatch.setattr(
+        backend, "send_password_reset_email",
+        lambda recipient, url: captured.update({"recipient": recipient, "url": url}),
+    )
+
+    requested = client.post(
+        "/api/auth/password-reset/request",
+        json={"email": "recover@example.test"},
+        headers=origin(),
+    )
+    assert requested.status_code == 202
+    assert requested.json()["ok"] is True
+    assert captured["recipient"] == "recover@example.test"
+    token = captured["url"].split("token=", 1)[1]
+    assert token
+
+    completed = client.post(
+        "/api/auth/password-reset/complete",
+        json={"token": token, "password": "New-Correct-Horse-42"},
+        headers=origin(),
+    )
+    assert completed.status_code == 200, completed.text
+    assert client.get("/api/auth/session").status_code == 401
+    assert client.post("/api/auth/login", json={
+        "email": "recover@example.test", "password": "Correct-Horse-Battery-42",
+    }, headers=origin()).status_code == 401
+    assert client.post("/api/auth/login", json={
+        "email": "recover@example.test", "password": "New-Correct-Horse-42",
+    }, headers=origin()).status_code == 200
+
+    replay = client.post(
+        "/api/auth/password-reset/complete",
+        json={"token": token, "password": "Another-Correct-Horse-43"},
+        headers=origin(),
+    )
+    assert replay.status_code == 400
+
+
+def test_password_recovery_response_does_not_enumerate_unknown_accounts(client, monkeypatch):
+    monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+    monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+    monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "http://localhost:3000")
+    monkeypatch.setattr(backend, "send_password_reset_email", lambda *_: pytest.fail("must not send for unknown account"))
+    response = client.post(
+        "/api/auth/password-reset/request",
+        json={"email": "missing@example.test"},
+        headers=origin(),
+    )
+    assert response.status_code == 202
+    assert response.json()["ok"] is True
