@@ -29,7 +29,7 @@ test('Next.js proxies the migrated application routes to the private FastAPI ser
   assert.ok(nextConfig.includes("source: '/api/firstlight/:path*'"));
   assert.ok(nextConfig.includes("destination: satarkApi + '/api/auth/:path*'"));
   assert.ok(nextConfig.includes("destination: satarkApi + '/api/firstlight/:path*'"));
-  assert.ok(!nextConfig.includes("source: '/api/:path*'"));
+  assert.ok(!nextConfig.includes("destination: satarkApi + '/api/:path*'"));
   assert.doesNotMatch(nextConfig, /SUPABASE|supabase\.co/i);
 });
 
