@@ -34,7 +34,7 @@ test('authentication never relies on external identity providers or browser-stor
 test('near-expiry cookie sessions rotate through the self-hosted backend', async () => {
   const auth = await readFile(new URL('../src/lib/satark-auth.ts', import.meta.url), 'utf8');
   assert.match(backend, /@router\.post\("\/auth\/refresh"\)/);
-  assert.match(backend, /changed\.rowcount !== 1/);
+  assert.match(backend, /changed\.rowcount != 1/);
   assert.match(auth, /\/api\/auth\/refresh/);
   assert.match(auth, /session\.expires_at - Date\.now\(\) < 24 \* 60 \* 60 \* 1000/);
   assert.doesNotMatch(auth, /localStorage\.setItem\([^,]*(?:token|session)/i);
