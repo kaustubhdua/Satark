@@ -464,6 +464,19 @@ def create_workspace(body: WorkspaceInput, user: User = Depends(current_user), d
     return {"id": tenant.id, "name": tenant.name, "role": "owner"}
 
 
+@router.get("/workspaces/members")
+def list_workspace_members(tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    rows = db.execute(
+        select(User.id, User.email, Membership.role)
+        .join(Membership, Membership.user_id == User.id)
+        .where(Membership.tenant_id == tenant_id)
+        .order_by(User.email.asc())
+        .limit(500)
+    ).all()
+    return {"members": [{"user_id": user_id, "email": email, "role": role} for user_id, email, role in rows]}
+
+
 @router.get("/workspaces")
 def list_workspaces(user: User = Depends(current_user), db: Session = Depends(db_session)):
     rows = db.execute(select(Tenant, Membership.role).join(Membership, Membership.tenant_id == Tenant.id).where(Membership.user_id == user.id).order_by(Tenant.created_at.asc())).all()
