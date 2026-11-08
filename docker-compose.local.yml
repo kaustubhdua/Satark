@@ -66,6 +66,29 @@ services:
     tmpfs:
       - /tmp:size=32m,mode=1777
 
+  firstlight-investigation-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-investigation-worker
+    environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_JOB_POLL_SECONDS: ${FIRSTLIGHT_JOB_POLL_SECONDS:-5}
+      FIRSTLIGHT_JOB_LEASE_SECONDS: ${FIRSTLIGHT_JOB_LEASE_SECONDS:-120}
+    volumes:
+      - satark_data:/data
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+
   streamlit:
     build:
       context: .
