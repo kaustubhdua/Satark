@@ -3,6 +3,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        SATARK_API_INTERNAL_URL: ${SATARK_API_INTERNAL_URL:-http://firstlight-api:8788}
     environment:
       NODE_ENV: production
       SATARK_ANALYSIS_MODE: local
