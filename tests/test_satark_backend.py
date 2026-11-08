@@ -146,3 +146,51 @@ def test_session_refresh_rotates_and_revokes_previous_cookie(client):
     stale_client.cookies.set("satark_session", old_token)
     assert stale_client.get("/api/auth/session").status_code == 401
     assert client.get("/api/auth/session").status_code == 200
+
+def test_workspace_owner_can_add_change_and_remove_members(client):
+    owner_id = register(client, "workspace-owner@example.test")
+    tenant_id = client.post(
+        "/api/workspaces", json={"name": "Managed Team"}, headers=origin()
+    ).json()["id"]
+
+    member_client = TestClient(app, base_url="http://testserver")
+    member_id = register(member_client, "workspace-member@example.test")
+
+    added = client.post("/api/workspaces/members", json={
+        "tenant_id": tenant_id, "email": "workspace-member@example.test", "role": "viewer",
+    }, headers=origin())
+    assert added.status_code == 201, added.text
+    assert added.json()["member"]["user_id"] == member_id
+    assert added.json()["member"]["role"] == "viewer"
+
+    workspaces = member_client.get("/api/workspaces")
+    assert workspaces.status_code == 200
+    assert workspaces.json()["workspaces"][0]["role"] == "viewer"
+    denied_write = member_client.post("/api/cases", json={
+        "tenant_id": tenant_id, "title": "Viewer cannot create",
+    }, headers=origin())
+    assert denied_write.status_code == 403
+
+    changed = client.patch("/api/workspaces/members", json={
+        "tenant_id": tenant_id, "user_id": member_id, "role": "analyst",
+    }, headers=origin())
+    assert changed.status_code == 200, changed.text
+    allowed_write = member_client.post("/api/cases", json={
+        "tenant_id": tenant_id, "title": "Analyst can create",
+    }, headers=origin())
+    assert allowed_write.status_code == 201, allowed_write.text
+
+    removed = client.delete(
+        "/api/workspaces/members",
+        params={"tenant_id": tenant_id, "user_id": member_id},
+        headers=origin(),
+    )
+    assert removed.status_code == 200, removed.text
+    assert member_client.get("/api/cases", params={"tenant_id": tenant_id}).status_code == 403
+
+    last_owner = client.delete(
+        "/api/workspaces/members",
+        params={"tenant_id": tenant_id, "user_id": owner_id},
+        headers=origin(),
+    )
+    assert last_owner.status_code == 409
