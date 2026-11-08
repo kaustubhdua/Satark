@@ -350,6 +350,7 @@ def initialize_self_hosted_backend():
         Base.metadata.create_all(engine)
 
 
+@router.get("/health")
 @router.get("/health/storage")
 def storage_health():
     try:
