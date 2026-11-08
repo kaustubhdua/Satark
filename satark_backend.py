@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import IntegrityError
+from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session\nfrom sqlalchemy import event
 
 router = APIRouter(prefix="/api", tags=["SATARK self-hosted"])
@@ -910,3 +911,32 @@ def investigate_persisted_case(body: dict, user: User = Depends(current_user), d
         "limitations": ["Only evidence already stored in this SATARK case was analyzed.",
         "Evidence digest verification is limited to the stored bytes and does not independently prove original source authenticity.",
         "No live response action was executed."]}
+
+
+
+@router.get("/firstlight/wazuh/alerts")
+def list_wazuh_alerts(tenant_id: str, limit: int = 100, since: str | None = None,
+                      user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id)
+    if not 1 <= limit <= 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    configured_tenant = os.getenv("FIRSTLIGHT_WAZUH_TENANT_ID", "").strip().lower()
+    if not UUID_RE.fullmatch(configured_tenant):
+        raise HTTPException(503, "Wazuh connector tenant is not configured.")
+    if not hmac.compare_digest(tenant_id.lower(), configured_tenant):
+        raise HTTPException(403, "Wazuh source is not configured for this workspace.")
+    if len(os.getenv("FIRSTLIGHT_WAZUH_INDEXER_USERNAME", "")) == 0 or len(os.getenv("FIRSTLIGHT_WAZUH_INDEXER_PASSWORD", "")) == 0:
+        raise HTTPException(503, "Wazuh connector is not configured.")
+    try:
+        events = fetch_configured_alerts(limit=limit, since=since, order="desc")
+    except WazuhConfigurationError as exc:
+        raise HTTPException(503, "Wazuh connector configuration is invalid.") from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except WazuhConnectorError as exc:
+        raise HTTPException(502, "Wazuh Indexer is temporarily unavailable.") from exc
+    return {"source": "wazuh-indexer", "mode": "read_only_fetch", "persisted": False,
+        "count": len(events), "events": events,
+        "limitations": ["One bounded page only; alerts are not automatically persisted.",
+            "Requires a dedicated read-only Wazuh Indexer account.",
+            "A source digest does not independently prove authenticity."]}
