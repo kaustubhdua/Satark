@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
+import FirstlightReadiness from '../../components/firstlight-readiness';
 import { createTenant, getSession, listMyTenants, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
@@ -93,6 +94,7 @@ export default function LoginPage() {
               <strong>Access model</strong>
               <p className="muted">Workspace membership controls access. The browser never receives a service-role credential. A newly created workspace grants owner access only to the signed-in account.</p>
             </div>
+            <FirstlightReadiness />
             <Link className="btn btn-secondary" href="/investigate">Continue to public investigation tools ↗</Link>
           </div>
           <section className="form-panel auth-card" aria-labelledby="auth-title">
