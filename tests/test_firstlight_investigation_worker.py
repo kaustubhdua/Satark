@@ -77,11 +77,11 @@ def test_worker_retries_failure_then_marks_job_failed(database, monkeypatch):
     job.max_attempts = 1
     db.commit()
     db.close()
-    assert worker.run_once()["status"] == "failed"
+    assert worker.run_once()["status"] == "idle"
     db = backend.SessionLocal()
     job = db.get(backend.InvestigationJob, job_id)
     assert job.status == "failed"
-    assert job.error_code == "retry_limit_reached" or job.error_code == "investigation_failed"
+    assert job.error_code == "retry_limit_reached"
     db.close()
 
 
