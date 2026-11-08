@@ -5,33 +5,17 @@
 
 This file records the external actions that cannot be completed safely from repository-only access. It is intentionally explicit: a green build is not a substitute for tenant-isolation or deployment acceptance.
 
-## Verified repository checks
+## Superseded persistence instructions
 
-- Next.js production browser and accessibility smoke: passed on `ed4df88`.
-- Next.js web validation: passed on `ed4df88`.
-- Python/core validation: passed on `ed4df88`.
-- CodeQL: passed on `ed4df88`.
-- Supabase tenant-isolation integration: **blocked**; the job correctly fails closed when its dedicated test environment is absent.
+The original main-branch release checklist below was written for a Supabase-backed deployment. The migration branch replaces that runtime with SATARK-owned FastAPI, SQLAlchemy, PostgreSQL/SQLite, private evidence storage, and cookie-backed sessions. **Do not configure or add Supabase secrets.** The old Supabase test-project instructions have been retired.
 
-## 1. Configure the isolated Supabase test project
+The replacement acceptance suite is:
+- `tests/test_satark_backend.py`: self-hosted signup/login, cookie sessions, tenant isolation, notes, findings, reports, and CSRF checks.
+- `tests/test_satark_postgres.py`: PostgreSQL integration for evidence upload/verification, idempotent jobs, worker persistence, and evidence-linked findings.
+- `tests/test_firstlight_investigation_worker.py` and `tests/test_firstlight_wazuh_worker.py`: durable queue and Wazuh ingestion behavior.
+- Web CI and browser/accessibility smoke: same-origin API proxy, security headers, mobile/browser behavior.
 
-In GitHub repository Actions secrets, configure these exact names using a dedicated non-production Supabase project and least-privilege test users:
-
-| Secret | Purpose |
-| --- | --- |
-| `SATARK_TEST_SUPABASE_URL` | Dedicated test project URL |
-| `SATARK_TEST_SUPABASE_PUBLISHABLE_KEY` | Public/publishable key for test project |
-| `SATARK_TEST_USER_A_EMAIL` | Tenant A owner test account |
-| `SATARK_TEST_USER_A_PASSWORD` | Tenant A owner test password |
-| `SATARK_TEST_TENANT_A_ID` | Tenant A fixture UUID |
-| `SATARK_TEST_USER_B_EMAIL` | Tenant B owner test account |
-| `SATARK_TEST_USER_B_PASSWORD` | Tenant B owner test password |
-| `SATARK_TEST_TENANT_B_ID` | Tenant B fixture UUID |
-| `SATARK_TEST_VIEWER_EMAIL` | Read-only viewer test account |
-| `SATARK_TEST_VIEWER_PASSWORD` | Read-only viewer test password |
-| `SATARK_TEST_VIEWER_TENANT_ID` | Viewer tenant fixture UUID |
-
-Use separate accounts with no production data. Do not use a service-role key in this integration job. Confirm the test fixtures have the intended owner/viewer memberships, then run the `CI` workflow on the release commit. The tenant job must demonstrate cross-tenant read/write denial and viewer write denial. Do not convert missing credentials into a skipped/successful required check.
+The migration branch is not a production release until these checks pass on its latest commit and a private FastAPI deployment is configured and smoke-tested. Existing Supabase data is not deleted or automatically imported by this branch; preserve the old project until a separately validated export/import and backup plan is complete.
 
 ## 2. Resolve the web dependency audit finding
 
@@ -51,7 +35,7 @@ Reference: [Next.js security update, 2026-10-14](https://nextjs.org/blog/nextjs-
 
 Do not use real incident evidence until all of the following have been verified against the exact deployed SHA:
 
-- Tenant isolation, owner authorization, viewer permissions, session expiry and token refresh.
+- Tenant isolation, owner authorization, viewer permissions, session expiry and revocation.
 - Durable case/evidence persistence, retention and deletion behavior.
 - Shared/global rate limits, request-size limits, concurrency limits and provider cost controls.
 - Secret storage and rotation; no provider credentials in browser bundles or logs.
