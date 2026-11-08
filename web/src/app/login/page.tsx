@@ -99,7 +99,7 @@ export default function LoginPage() {
             {!session ? <>
               <div className="card-head"><span>Identity</span><span className="pill">{mode === 'signin' ? 'Sign in' : 'Create account'}</span></div>
               <h2 id="auth-title">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
-              <p className="muted">Use your workspace account. Email confirmation may be required according to the self-hosted SATARK account policy.</p>
+              <p className="muted">SATARK manages your password and session. Account recovery requires configured SMTP email delivery.</p>
               {recovering ? <>
                 <h2 id="auth-title">Recover your account</h2>
                 <p className="muted">Enter your account email. For privacy, we show the same confirmation whether or not an account exists.</p>
