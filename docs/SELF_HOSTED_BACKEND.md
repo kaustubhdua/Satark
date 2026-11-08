@@ -42,6 +42,7 @@ SQLite is intended for local development and single-host use, not horizontally s
 - Passwords are hashed using Argon2id; plaintext passwords are never stored.
 - Session tokens are generated with a cryptographically secure random generator, stored as SHA-256 digests, and delivered in HttpOnly, SameSite=Lax cookies.
 - Session expiry and revocation are checked on every authenticated request. Near-expiry sessions rotate through a one-time atomic refresh endpoint; old session tokens are revoked.
+- Failed sign-ins are counted in SATARK's database by a one-way email key; ten failures in a 15-minute window trigger a 15-minute cooldown. Password-reset delivery is capped per account.
 - Cookie-authenticated mutations validate both the Origin host and scheme. Empty bearer headers cannot bypass cookie CSRF checks.
 - Password recovery uses single-use, 30-minute SHA-256-digested tokens, invalidates prior reset links, and revokes all sessions after a successful reset. SMTP delivery is optional and must be explicitly configured with `SATARK_SMTP_*`; `SATARK_PUBLIC_BASE_URL` must be the trusted public origin. Requests return a generic response whether the account exists or email is unavailable.
 - Every tenant-scoped API verifies a membership row and allowed role before accessing a case or workspace.
@@ -79,7 +80,7 @@ The archive is **not encrypted**. Encrypt it with an approved KMS, age, or GPG w
 
 ## Current limitations
 
-- Email verification and MFA are not implemented. Password recovery is implemented but is disabled until SMTP and the trusted public base URL are configured.
+- Email verification and MFA are not implemented. Password recovery is implemented but is disabled until SMTP and the trusted public base URL are configured. Login throttling is per normalized email, not a global per-IP or edge rate limit; deploy an edge/WAF limit as an additional control.
 - Workspace owners can add existing SATARK accounts and manage member roles/removal. Email invitations for users who have not registered are not implemented.
 - Database-level PostgreSQL RLS policies are not yet part of this migration. Tenant isolation currently depends on the API's membership checks and tenant-scoped SQL queries; do not treat this as independently audited multi-tenant production isolation until DB-level policies and adversarial integration tests are added.
 - The hash-linked audit stream is application-managed and PostgreSQL rejects ordinary UPDATE/DELETE mutations through a trigger. It is not externally anchored and is not a certified chain-of-custody service.
