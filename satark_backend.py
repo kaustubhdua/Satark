@@ -291,12 +291,9 @@ def current_user(request: Request, authorization: str | None = Header(default=No
     # Cookie-authenticated unsafe requests must originate from this exact origin.
     # Bearer clients are not ambient-cookie authenticated and do not use this CSRF path.
     if not (authorization and authorization.startswith("Bearer ")) and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        origin = request.headers.get("origin", "")
-        try:
-            if not origin or __import__("urllib.parse", fromlist=["urlsplit"]).urlsplit(origin).netloc.lower() != request.headers.get("host", "").lower():
-                raise HTTPException(403, "Cross-origin mutation is not allowed.")
-        except ValueError:
-            raise HTTPException(403, "Cross-origin mutation is not allowed.")
+        # Validate both origin host and scheme. Behind the Next.js BFF, the
+        # forwarded scheme is set by the trusted same-origin proxy.
+        enforce_same_origin(request)
     user = db.get(User, row.user_id)
     if not user or not user.is_active:
         raise HTTPException(401, "Your account is disabled.")
