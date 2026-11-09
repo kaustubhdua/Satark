@@ -467,17 +467,18 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     }, headers=origin())
     assert missing_code.status_code == 401
 
+    next_code = backend.totp_at(secret, int(backend.time.time()) + 30)
     totp_login = client.post("/api/auth/login", json={
         "email": "mfa-user@example.test",
         "password": "Correct-Horse-Battery-42",
-        "mfa_code": code,
+        "mfa_code": next_code,
     }, headers=origin())
     assert totp_login.status_code == 200, totp_login.text
     client.post("/api/auth/logout", headers=origin())
     replayed_totp = client.post("/api/auth/login", json={
         "email": "mfa-user@example.test",
         "password": "Correct-Horse-Battery-42",
-        "mfa_code": code,
+        "mfa_code": next_code,
     }, headers=origin())
     assert replayed_totp.status_code == 401
 
@@ -489,7 +490,7 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     assert recovery_login.status_code == 200, recovery_login.text
     assert client.get("/api/auth/mfa/status").json()["recovery_codes_remaining"] == 9
 
-    current_code = backend.totp_at(secret, int(backend.time.time()) + 30)
+    current_code = backend.totp_at(secret, int(backend.time.time()) + 60)
     disabled = client.post("/api/auth/mfa/disable", json={
         "password": "Correct-Horse-Battery-42", "code": current_code,
     }, headers=origin())
