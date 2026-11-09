@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
 import FirstlightReadiness from '../../components/firstlight-readiness';
-import { confirmMfaEnrollment, createTenant, disableMfa, getMfaStatus, getSession, listMyTenants, requestEmailVerification, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, startMfaEnrollment, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
+import { confirmMfaEnrollment, createTenant, disableMfa, getMfaStatus, getSession, listMyTenants, listWorkspaceInvitations, requestEmailVerification, requestPasswordReset, revokeWorkspaceInvitation, sendWorkspaceInvitation, setActiveTenant, signIn, signOut, signUp, startMfaEnrollment, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
   const [session, setSession] = useState<SatarkSession | null>(null);
@@ -23,6 +23,10 @@ export default function LoginPage() {
   const [mfaDisablePassword, setMfaDisablePassword] = useState('');
   const [mfaDisableCode, setMfaDisableCode] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
+  const [inviteTenantId, setInviteTenantId] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'responder' | 'analyst' | 'viewer'>('analyst');
+  const [pendingInvitations, setPendingInvitations] = useState<Array<{ id: string; email: string; role: string; expires_at: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -30,9 +34,20 @@ export default function LoginPage() {
   async function loadWorkspaces() {
     const current = await getSession();
     setSession(current);
-    if (!current) { setTenants([]); setMfaStatus(null); return; }
-    try { setTenants(await listMyTenants()); setMfaStatus(await getMfaStatus()); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not load workspaces.'); }
+    if (!current) { setTenants([]); setMfaStatus(null); setInviteTenantId(''); setPendingInvitations([]); return; }
+    try {
+      const available = await listMyTenants();
+      setTenants(available);
+      const ownerWorkspace = available.find(tenant => tenant.role === 'owner');
+      if (ownerWorkspace) {
+        setInviteTenantId(ownerWorkspace.id);
+        setPendingInvitations(await listWorkspaceInvitations(ownerWorkspace.id));
+      } else {
+        setInviteTenantId('');
+        setPendingInvitations([]);
+      }
+      setMfaStatus(await getMfaStatus());
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load workspaces.'); }
   }
 
   useEffect(() => { void loadWorkspaces(); }, []);
@@ -113,6 +128,35 @@ export default function LoginPage() {
       setNotice('MFA disabled. Your sessions were revoked; sign in again.');
       window.location.assign('/login');
     } catch (e) { setError(e instanceof Error ? e.message : 'MFA could not be disabled.'); }
+    finally { setBusy(false); }
+  }
+
+  async function submitInvitation(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      await sendWorkspaceInvitation(inviteTenantId, inviteEmail, inviteRole);
+      setInviteEmail('');
+      setPendingInvitations(await listWorkspaceInvitations(inviteTenantId));
+      setNotice('Invitation sent. The recipient must sign in with the invited email to accept it.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace invitation could not be sent.'); }
+    finally { setBusy(false); }
+  }
+
+  async function changeInviteTenant(tenantId: string) {
+    setInviteTenantId(tenantId);
+    setBusy(true); setError('');
+    try { setPendingInvitations(await listWorkspaceInvitations(tenantId)); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Pending invitations could not be loaded.'); }
+    finally { setBusy(false); }
+  }
+
+  async function cancelInvitation(invitationId: string) {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await revokeWorkspaceInvitation(inviteTenantId, invitationId);
+      setPendingInvitations(await listWorkspaceInvitations(inviteTenantId));
+      setNotice('Invitation revoked.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Invitation could not be revoked.'); }
     finally { setBusy(false); }
   }
 
@@ -197,6 +241,35 @@ export default function LoginPage() {
                 <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create workspace'}</button>
               </form>
               <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy}>Sign out</button>
+              {tenants.some(tenant => tenant.role === 'owner') && <section className="info-panel" aria-labelledby="invite-title">
+                <strong id="invite-title">Invite a teammate</strong>
+                <p className="muted">Invite existing or new SATARK accounts by email. Invitations expire after seven days.</p>
+                <form onSubmit={submitInvitation} className="private-upload">
+                  <label className="field-label" htmlFor="invite-workspace">Workspace</label>
+                  <select id="invite-workspace" value={inviteTenantId} onChange={e => void changeInviteTenant(e.target.value)}>
+                    {tenants.filter(tenant => tenant.role === 'owner').map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}
+                  </select>
+                  <label className="field-label" htmlFor="invite-email">Email address</label>
+                  <input id="invite-email" type="email" autoComplete="email" required maxLength={254} value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="teammate@example.com" />
+                  <label className="field-label" htmlFor="invite-role">Workspace role</label>
+                  <select id="invite-role" value={inviteRole} onChange={e => setInviteRole(e.target.value as 'responder' | 'analyst' | 'viewer')}>
+                    <option value="responder">Responder</option>
+                    <option value="analyst">Analyst</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                  <button className="btn btn-secondary" type="submit" disabled={busy || !inviteTenantId}>Send invitation</button>
+                </form>
+                {pendingInvitations.length > 0 && <>
+                  <p><strong>Pending invitations</strong></p>
+                  <ul className="workspace-list">
+                    {pendingInvitations.map(invitation => <li key={invitation.id}>
+                      <span><strong>{invitation.email}</strong><small>{invitation.role} · expires {new Date(invitation.expires_at).toLocaleDateString()}</small></span>
+                      <button type="button" className="text-button" onClick={() => void cancelInvitation(invitation.id)} disabled={busy}>Revoke</button>
+                    </li>)}
+                  </ul>
+                </>}
+              </section>}
+
               <section className="info-panel" aria-labelledby="mfa-title">
                 <strong id="mfa-title">Account security · Authenticator MFA</strong>
                 {mfaStatus?.enabled ? <>
