@@ -1,6 +1,6 @@
 # SATARK — remaining release actions
 
-**Snapshot:** 2026-11-08  
+**Snapshot:** 2026-11-09  
 **Decision:** no-go for production use with sensitive or multi-tenant incident evidence.
 
 This file records the external actions that cannot be completed safely from repository-only access. It is intentionally explicit: a green build is not a substitute for tenant-isolation or deployment acceptance.
@@ -17,19 +17,18 @@ The replacement acceptance suite is:
 
 The migration branch is not a production release until these checks pass on its latest commit and a private FastAPI deployment is configured and smoke-tested. Existing Supabase data is not deleted or automatically imported by this branch; preserve the old project until a separately validated export/import and backup plan is complete.
 
-## 2. Resolve the web dependency audit finding
+## 2. Web dependency security status
 
-The 2026-11-08 CI install reported one critical-severity npm advisory. The lockfile currently resolves Next.js `15.5.27`; the upstream 2026-10-14 Next.js security update identifies `15.5.28` as the patched 15.5 maintenance release.
+The branch's `web/package.json` and `web/package-lock.json` now pin Next.js **15.5.29**. This is the patched 15.5 maintenance release for the November 3, 2026 advisories affecting versions through 15.5.28, and it is above the October 14 critical-fix floor of 15.5.28.
 
-Before release:
+Verified from the checked-in manifests:
+- `next` is pinned to `15.5.29` in the package manifest.
+- The lockfile resolves `node_modules/next` to `15.5.29` and its matching `@next/*` packages.
+- The November advisories affecting the 15.5 line list 15.5.29 as patched. The remaining November advisories shown on the upstream security page affect 16.x-only Cache Components features.
 
-1. In `web/`, update Next.js to at least `15.5.28` (or a currently supported patched stable release).
-2. Regenerate `package-lock.json` with the project's supported Node/npm toolchain; do not hand-edit integrity hashes or package metadata.
-3. Run `npm ci`, `npm audit`, `npm run test:ci`, and `npm run test:browser`.
-4. Review all advisories, including transitive dependencies. Do not use `npm audit fix --force` or suppress critical findings to obtain a green check.
-5. Record the audit output and exact dependency tree on the release commit.
+This manifest check does **not** replace a fresh dependency audit. Before release, run `npm ci`, `npm audit`, `npm run test:ci`, and `npm run test:browser` on the exact release commit, review all transitive advisories, and retain the output. Do not use `npm audit fix --force` or suppress critical findings to obtain a green check.
 
-Reference: [Next.js security update, 2026-10-14](https://nextjs.org/blog/nextjs-security-update-october-14-2026).
+References: [Next.js security advisories](https://github.com/vercel/next.js/security/advisories), [November 3 advisory — response injection](https://github.com/vercel/next.js/security/advisories/GHSA-pc58-hwjq-p385), [November 3 advisory — SVG rejection bypass](https://github.com/vercel/next.js/security/advisories/GHSA-7qx7-33qx-rqx2), [November 3 advisory — HttpOnly cookie exposure](https://github.com/vercel/next.js/security/advisories/GHSA-f3mh-rxg3-f5g2).
 
 ## 3. Production deployment acceptance
 
