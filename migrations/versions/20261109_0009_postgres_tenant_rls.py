@@ -45,10 +45,7 @@ def upgrade() -> None:
     op.execute("ALTER TABLE public.satark_tenants FORCE ROW LEVEL SECURITY")
     op.execute("""
         CREATE POLICY satark_tenants_isolation ON public.satark_tenants
-        USING (
-            public.satark_has_tenant_access(id)
-            OR created_by = NULLIF(current_setting('satark.user_id', true), '')
-        )
+        USING (public.satark_has_tenant_access(id))
         WITH CHECK (
             created_by = NULLIF(current_setting('satark.user_id', true), '')
         )
