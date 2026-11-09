@@ -424,3 +424,55 @@ def test_email_verification_requires_delivery_configuration_before_signup(client
         json={"email": "no-mail@example.test", "password": "Correct-Horse-Battery-42"},
         headers=origin(),
     ).status_code == 401
+
+
+def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch):
+    key = backend.Fernet.generate_key().decode("ascii")
+    monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", key)
+    register(client, "mfa-user@example.test")
+
+    status = client.get("/api/auth/mfa/status")
+    assert status.status_code == 200
+    assert status.json()["enabled"] is False
+
+    started = client.post("/api/auth/mfa/enroll/start", headers=origin())
+    assert started.status_code == 200, started.text
+    secret = started.json()["secret"]
+    assert started.json()["otpauth_uri"].startswith("otpauth://totp/")
+
+    code = backend.totp_at(secret, int(backend.time.time()))
+    confirmed = client.post("/api/auth/mfa/enroll/confirm", json={"code": code}, headers=origin())
+    assert confirmed.status_code == 200, confirmed.text
+    recovery_codes = confirmed.json()["recovery_codes"]
+    assert len(recovery_codes) == 10
+    assert len(set(recovery_codes)) == 10
+    assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "recovery_codes_remaining": 10}
+
+    client.post("/api/auth/logout", headers=origin())
+    missing_code = client.post("/api/auth/login", json={
+        "email": "mfa-user@example.test", "password": "Correct-Horse-Battery-42",
+    }, headers=origin())
+    assert missing_code.status_code == 401
+
+    recovery_login = client.post("/api/auth/login", json={
+        "email": "mfa-user@example.test",
+        "password": "Correct-Horse-Battery-42",
+        "mfa_code": recovery_codes[0],
+    }, headers=origin())
+    assert recovery_login.status_code == 200, recovery_login.text
+    assert client.get("/api/auth/mfa/status").json()["recovery_codes_remaining"] == 9
+
+    current_code = backend.totp_at(secret, int(backend.time.time()))
+    disabled = client.post("/api/auth/mfa/disable", json={
+        "password": "Correct-Horse-Battery-42", "code": current_code,
+    }, headers=origin())
+    assert disabled.status_code == 200, disabled.text
+    assert disabled.json()["enabled"] is False
+    assert client.get("/api/auth/session").status_code == 401
+
+
+def test_totp_mfa_fails_closed_without_encryption_key(client, monkeypatch):
+    monkeypatch.delenv("SATARK_MFA_ENCRYPTION_KEY", raising=False)
+    register(client, "mfa-unconfigured@example.test")
+    response = client.post("/api/auth/mfa/enroll/start", headers=origin())
+    assert response.status_code == 503
