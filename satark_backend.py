@@ -888,6 +888,7 @@ def confirm_mfa_enrollment(body: MfaCodeInput, user: User = Depends(current_user
     except (InvalidToken, UnicodeDecodeError, ValueError):
         raise HTTPException(503, "The pending MFA factor could not be decrypted.")
     if not verify_totp(secret, body.code):
+        record_login_failure(db, user.email)
         raise HTTPException(400, "The authenticator code is invalid or expired.")
     recovery_codes = [secrets.token_hex(8) for _ in range(10)]
     factor.recovery_code_hashes = [hashlib.sha256(code.encode("utf-8")).hexdigest() for code in recovery_codes]
@@ -908,6 +909,7 @@ def disable_mfa(body: MfaDisableInput, request: Request, user: User = Depends(cu
     except VerifyMismatchError:
         password_valid = False
     if not password_valid or not verify_mfa_code(db, user, body.code):
+        record_login_failure(db, user.email)
         raise HTTPException(401, "Password or authenticator/recovery code is incorrect.")
     db.delete(factor)
     db.execute(update(SessionRecord).where(
