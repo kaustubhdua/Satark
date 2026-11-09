@@ -4,12 +4,15 @@ PostgreSQL is the production database; SQLite is supported for local use/tests.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
 import os
 import re
 import secrets
+import struct
+import time
 import uuid
 import smtplib
 import ssl
@@ -19,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from argon2 import PasswordHasher
+from cryptography.fernet import Fernet, InvalidToken
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
@@ -159,6 +163,15 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(512))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MfaFactor(Base):
+    __tablename__ = "satark_mfa_factors"
+    user_id: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="CASCADE"), primary_key=True)
+    secret_encrypted: Mapped[str] = mapped_column(String(512))
+    recovery_code_hashes: Mapped[list] = mapped_column(JSON, default=list)
+    enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -381,6 +394,58 @@ def enforce_same_origin(request: Request) -> None:
     except ValueError:
         raise HTTPException(403, "Cross-origin authentication requests are not allowed.")
 
+def mfa_fernet() -> Fernet:
+    key = os.getenv("SATARK_MFA_ENCRYPTION_KEY", "").strip()
+    if not key:
+        raise HTTPException(503, "MFA encryption is not configured on this SATARK server.")
+    try:
+        return Fernet(key.encode("ascii"))
+    except (ValueError, UnicodeEncodeError):
+        raise HTTPException(503, "SATARK_MFA_ENCRYPTION_KEY is invalid; use a Fernet-generated key.")
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def totp_at(secret: str, timestamp: int) -> str:
+    padded = secret.upper() + ("=" * ((8 - len(secret) % 8) % 8))
+    key = base64.b32decode(padded, casefold=True)
+    counter = int(timestamp // 30)
+    digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    binary = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return str(binary % 1_000_000).zfill(6)
+
+
+def verify_totp(secret: str, code: str, now: int | None = None) -> bool:
+    if not isinstance(code, str) or len(code) != 6 or not code.isascii() or not code.isdigit():
+        return False
+    timestamp = int(time.time()) if now is None else int(now)
+    return any(hmac.compare_digest(totp_at(secret, timestamp + offset), code) for offset in (-30, 0, 30))
+
+
+def verify_mfa_code(db: Session, user: User, code: str | None) -> bool:
+    factor = db.get(MfaFactor, user.id)
+    if not factor or factor.enabled_at is None or not code:
+        return False
+    try:
+        secret = mfa_fernet().decrypt(factor.secret_encrypted.encode("ascii")).decode("ascii")
+    except (InvalidToken, UnicodeDecodeError, ValueError):
+        raise HTTPException(503, "The stored MFA factor could not be decrypted.")
+    if verify_totp(secret, code):
+        return True
+    digest = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    hashes = list(factor.recovery_code_hashes or [])
+    for index, candidate in enumerate(hashes):
+        if isinstance(candidate, str) and hmac.compare_digest(candidate, digest):
+            hashes.pop(index)
+            factor.recovery_code_hashes = hashes
+            db.flush()
+            return True
+    return False
+
+
 def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -483,6 +548,18 @@ class Credentials(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=12, max_length=128)
+    mfa_code: str | None = Field(default=None, min_length=6, max_length=64)
+
+
+class MfaCodeInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    code: str = Field(min_length=6, max_length=64)
+
+
+class MfaDisableInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: str = Field(min_length=12, max_length=128)
+    code: str = Field(min_length=6, max_length=64)
 
 
 class EmailVerificationComplete(BaseModel):
