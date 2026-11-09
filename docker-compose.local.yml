@@ -3,16 +3,13 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
     environment:
       NODE_ENV: production
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
       SATARK_ANALYSIS_MODE: local
       SATARK_OLLAMA_BASE_URL: http://ollama:11434
       SATARK_OLLAMA_MODEL: ${SATARK_OLLAMA_MODEL:-qwen2.5:3b}
+      SATARK_API_INTERNAL_URL: http://firstlight-api:8788
+      SATARK_PUBLIC_ORIGIN: ${SATARK_PUBLIC_ORIGIN:-}
       FIRSTLIGHT_API_URL: http://firstlight-api:8788
       FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:-}
       FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:-}
@@ -21,8 +18,6 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
-      ollama:
-        condition: service_healthy
       firstlight-api:
         condition: service_healthy
     restart: unless-stopped
@@ -33,11 +28,46 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
 
+  rate-limit-proxy:
+    profiles: ["edge"]
+    image: nginx:1.28-alpine
+    ports:
+      - "${SATARK_EDGE_BIND:-127.0.0.1}:8080:8080"
+    volumes:
+      - ./deploy/nginx/satark.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      web:
+        condition: service_started
+    user: "101:101"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16m,uid=101,gid=101,mode=0750
+      - /var/run:size=1m,uid=101,gid=101,mode=0750
+      - /tmp:size=16m,uid=101,gid=101,mode=1777
+
   firstlight-api:
     build:
       context: .
       dockerfile: Dockerfile.firstlight-api
     environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      SATARK_AUTO_CREATE_SCHEMA: ${SATARK_AUTO_CREATE_SCHEMA:-false}
+      SATARK_PUBLIC_BASE_URL: ${SATARK_PUBLIC_BASE_URL:-http://localhost:3000}
+      SATARK_REQUIRE_EMAIL_VERIFICATION: ${SATARK_REQUIRE_EMAIL_VERIFICATION:-false}
+      SATARK_REQUIRE_MFA: ${SATARK_REQUIRE_MFA:-false}
+      SATARK_MFA_ENCRYPTION_KEY: ${SATARK_MFA_ENCRYPTION_KEY:-}
+      SATARK_SMTP_HOST: ${SATARK_SMTP_HOST:-}
+      SATARK_SMTP_PORT: ${SATARK_SMTP_PORT:-587}
+      SATARK_SMTP_USERNAME: ${SATARK_SMTP_USERNAME:-}
+      SATARK_SMTP_PASSWORD: ${SATARK_SMTP_PASSWORD:-}
+      SATARK_SMTP_FROM: ${SATARK_SMTP_FROM:-}
+      SATARK_SMTP_USE_SSL: ${SATARK_SMTP_USE_SSL:-false}
       FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:-}
       FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:-}
       FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
@@ -50,10 +80,12 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       FIRSTLIGHT_OLLAMA_MODEL: ${FIRSTLIGHT_OLLAMA_MODEL:-qwen2.5:3b}
       FIRSTLIGHT_MODEL_AGENTS_ENABLED: ${FIRSTLIGHT_MODEL_AGENTS_ENABLED:-false}
+    volumes:
+      - satark_data:/data
     expose:
       - "8788"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8788/health', timeout=2)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8788/api/health/storage', timeout=2)"]
       interval: 10s
       timeout: 3s
       retries: 8
@@ -66,28 +98,31 @@ services:
       - /tmp:size=32m,mode=1777
 
   firstlight-wazuh-worker:
-    profiles: ["wazuh-worker"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    profiles: ["wazuh"]
     build:
       context: .
       dockerfile: Dockerfile.firstlight-worker
     environment:
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
-      FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
-      FIRSTLIGHT_WAZUH_CASE_ID: ${FIRSTLIGHT_WAZUH_CASE_ID:-}
-      FIRSTLIGHT_WAZUH_ACTOR_ID: ${FIRSTLIGHT_WAZUH_ACTOR_ID:-}
-      FIRSTLIGHT_WAZUH_INITIAL_SINCE: ${FIRSTLIGHT_WAZUH_INITIAL_SINCE:-}
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
+      SATARK_EVIDENCE_DIR: /data/evidence
       FIRSTLIGHT_WAZUH_INDEXER_URL: ${FIRSTLIGHT_WAZUH_INDEXER_URL:-}
       FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ${FIRSTLIGHT_WAZUH_INDEXER_USERNAME:-}
       FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: ${FIRSTLIGHT_WAZUH_INDEXER_PASSWORD:-}
       FIRSTLIGHT_WAZUH_INDEX_PATTERN: ${FIRSTLIGHT_WAZUH_INDEX_PATTERN:-wazuh-alerts-*}
       FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: ${FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS:-}
       FIRSTLIGHT_WAZUH_ALLOW_HTTP: ${FIRSTLIGHT_WAZUH_ALLOW_HTTP:-false}
+      FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:-}
+      FIRSTLIGHT_WAZUH_CASE_ID: ${FIRSTLIGHT_WAZUH_CASE_ID:-}
+      FIRSTLIGHT_WAZUH_ACTOR_ID: ${FIRSTLIGHT_WAZUH_ACTOR_ID:-}
+      FIRSTLIGHT_WAZUH_INITIAL_SINCE: ${FIRSTLIGHT_WAZUH_INITIAL_SINCE:-}
       FIRSTLIGHT_WAZUH_PAGE_SIZE: ${FIRSTLIGHT_WAZUH_PAGE_SIZE:-100}
       FIRSTLIGHT_WAZUH_OVERLAP_SECONDS: ${FIRSTLIGHT_WAZUH_OVERLAP_SECONDS:-300}
       FIRSTLIGHT_WAZUH_POLL_SECONDS: ${FIRSTLIGHT_WAZUH_POLL_SECONDS:-60}
+    volumes:
+      - satark_data:/data
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -98,17 +133,19 @@ services:
       - /tmp:size=32m,mode=1777
 
   firstlight-investigation-worker:
-    profiles: ["investigation-worker"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: Dockerfile.firstlight-investigation-worker
     environment:
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
+      SATARK_EVIDENCE_DIR: /data/evidence
       FIRSTLIGHT_JOB_POLL_SECONDS: ${FIRSTLIGHT_JOB_POLL_SECONDS:-5}
       FIRSTLIGHT_JOB_LEASE_SECONDS: ${FIRSTLIGHT_JOB_LEASE_SECONDS:-120}
+    volumes:
+      - satark_data:/data
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -129,9 +166,6 @@ services:
       SATARK_WHISPER_COMPUTE_TYPE: int8
     ports:
       - "127.0.0.1:8501:8501"
-    depends_on:
-      ollama:
-        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -141,6 +175,7 @@ services:
       - /tmp:size=64m,mode=1777
 
   ollama:
+    profiles: ["ai"]
     image: ollama/ollama:latest
     volumes:
       - ollama_models:/root/.ollama
@@ -157,3 +192,4 @@ services:
 
 volumes:
   ollama_models:
+  satark_data:

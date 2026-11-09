@@ -162,8 +162,8 @@ jobs:
             exit 1
           fi
           jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
-          if ! jq -e '.checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == true and .checks.persistentStorage.serverClientMatch == true and .checks.persistentStorage.serverProjectRef == "igqgtlmnwssjaoxkkzbm" and .checks.persistentStorage.clientProjectRef == "igqgtlmnwssjaoxkkzbm"' "$body" >/dev/null; then
-            echo "::error::Production browser/server Supabase configuration is missing or mismatched; expected the verified SATARK project igqgtlmnwssjaoxkkzbm."
+          if ! jq -e '.checks.persistentStorage.provider == "self-hosted" and .checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == false' "$body" >/dev/null; then
+            echo "::error::Production self-hosted SATARK API is not configured; set SATARK_API_INTERNAL_URL to the private FastAPI service."
             exit 1
           fi
           rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"

@@ -43,57 +43,30 @@ test('rejects invalid limits and malformed length headers', async () => {
   assert.deepEqual(await readBoundedResponseText(response, 8), { ok: false, reason: 'unreadable' });
 });
 
-test('FIRSTLIGHT proxy bounds authentication and investigation responses and validates schema', async () => {
-  const source = await readFile(new URL('../src/app/api/firstlight/investigate/route.ts', import.meta.url), 'utf8');
-  assert.match(source, /readBoundedResponseText\(response,\s*MAX_BODY_BYTES\)/);
-  assert.match(source, /MAX_BODY_BYTES\s*=\s*2\s*\*\s*1024\s*\*\s*1024/);
-  assert.match(source, /readBoundedResponseText\(response,\s*MAX_AUTH_RESPONSE_BYTES\)/);
-  assert.match(source, /MAX_AUTH_RESPONSE_BYTES\s*=\s*16\s*\*\s*1024/);
-  assert.match(source, /new TextDecoder\('utf-8',\s*\{\s*fatal:\s*true\s*\}\)/);
-  assert.match(source, /function isInvestigationResponse\(value: unknown\)/);
-  assert.match(source, /integrity_summary/);
-  assert.match(source, /agent_analysis/);
-  assert.match(source, /value\.limitations\.every/);
-  assert.doesNotMatch(source, /await\s+response\.(?:text|json)\(\)/);
+test('self-hosted API proxy bounds request and response bytes and rejects redirects', async () => {
+  const source = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
+  assert.match(source, /MAX_REQUEST_BYTES = 8 \* 1024 \* 1024/);
+  assert.match(source, /MAX_RESPONSE_BYTES = 16 \* 1024 \* 1024/);
+  assert.match(source, /request\.arrayBuffer\(\)/);
+  assert.match(source, /upstream\.arrayBuffer\(\)/);
+  assert.match(source, /redirect: 'error'/);
+  assert.match(source, /AbortSignal\.timeout\(15000\)/);
 });
 
-test('report retrieval has a bounded response, timeout, UUID validation, and integrity verification', async () => {
-  const source = await readFile(new URL('../src/app/api/reports/[id]/route.ts', import.meta.url), 'utf8');
-  assert.match(source, /readBoundedResponseText\(response,\s*MAX_REPORT_RESPONSE_BYTES\)/);
-  assert.match(source, /MAX_REPORT_RESPONSE_BYTES\s*=\s*2\s*\*\s*1024\s*\*\s*1024/);
-  assert.match(source, /AbortSignal\.timeout\(8_000\)/);
-  assert.match(source, /redirect:\s*'error'/);
-  assert.match(source, /UUID\.test\(id\)/);
-  assert.match(source, /SHA256\.test\(report\.snapshot_sha256\)/);
-  assert.match(source, /integrityMatches\s*\?\s*200\s*:\s*409/);
-  assert.doesNotMatch(source, /await\s+response\.(?:text|json)\(\)/);
-});
-
-test('upstream API routes do not parse unbounded JSON responses', async () => {
-  const routes = [
-    'api/audit/verify/route.ts',
-    'api/auth/session/route.ts',
-    'api/cases/notes/route.ts',
-    'api/cases/route.ts',
-    'api/evidence/[id]/verify/route.ts',
-    'api/evidence/records/route.ts',
-    'api/evidence/route.ts',
-    'api/findings/route.ts',
-    'api/firstlight/approvals/route.ts',
-    'api/firstlight/evidence/source/route.ts',
-    'api/firstlight/investigate/route.ts',
-    'api/firstlight/jobs/route.ts',
-    'api/firstlight/wazuh/alerts/route.ts',
-    'api/reports/[id]/route.ts',
-    'api/reports/route.ts',
-  ];
-  for (const route of routes) {
+test('persistent report and investigation routes delegate to the bounded self-hosted proxy', async () => {
+  for (const route of ['api/reports/[id]/route.ts', 'api/firstlight/investigate/route.ts', 'api/firstlight/jobs/route.ts']) {
     const source = await readFile(new URL('../src/app/' + route, import.meta.url), 'utf8');
-    assert.doesNotMatch(source, /await\s+[A-Za-z_$][\w$]*\.json\(\)/, route + ' must not parse an upstream response without a byte limit');
-    if (/\bfetch\s*\(/.test(source)) {
-      assert.match(source, /readBoundedResponse(?:Json|Text)/, route + ' must use a bounded upstream response reader');
-    }
+    assert.match(source, /proxySatarkApi/);
+    assert.doesNotMatch(source, /SUPABASE|supabase\.co|await\s+response\.(?:text|json)\(\)/i);
   }
+});
+
+test('persistent evidence upload is bounded by proxy and backend file-size limits', async () => {
+  const proxy = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
+  const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
+  assert.match(proxy, /MAX_REQUEST_BYTES = 8 \* 1024 \* 1024/);
+  assert.match(backend, /MAX_UPLOAD = 4 \* 1024 \* 1024/);
+  assert.match(backend, /read\(MAX_UPLOAD \+ 1\)/);
 });
 
 test('bounded response JSON helper enforces the shared byte cap before parsing', async () => {
@@ -104,12 +77,12 @@ test('bounded response JSON helper enforces the shared byte cap before parsing',
   assert.match(source, /bounded\.reason === 'too_large'/);
 });
 
-test('evidence multipart upload is byte-bounded before form-data parsing', async () => {
-  const source = await readFile(new URL('../src/app/api/evidence/route.ts', import.meta.url), 'utf8');
-  assert.match(source, /readBoundedBody\(request,\s*MAX_FILE_BYTES\s*\+\s*64\s*\*\s*1024\)/);
-  assert.match(source, /new Request\(request\.url,[\s\S]*body:\s*Buffer\.from\(boundedBody\.bytes\)/);
-  assert.match(source, /contentEncoding\.toLowerCase\(\)\s*!==\s*'identity'/);
-  assert.doesNotMatch(source, /await\s+request\.formData\(\)/);
+test('evidence multipart upload is bounded before FastAPI form parsing', async () => {
+  const proxy = await readFile(new URL('../src/lib/satark-api-proxy.ts', import.meta.url), 'utf8');
+  const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
+  assert.match(proxy, /MAX_REQUEST_BYTES = 8 \* 1024 \* 1024/);
+  assert.match(backend, /MAX_UPLOAD = 4 \* 1024 \* 1024/);
+  assert.match(backend, /await file\.read\(MAX_UPLOAD \+ 1\)/);
 });
 
 test('shared bounded request reader caps streamed bytes and parses JSON only after the cap', async () => {

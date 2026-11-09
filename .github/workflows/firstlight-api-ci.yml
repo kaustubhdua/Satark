@@ -3,6 +3,15 @@ name: FIRSTLIGHT API CI
 on:
   pull_request:
     paths:
+      - "scripts/check_no_supabase_runtime.py"
+      - "scripts/satark_backup.py"
+      - "tests/test_satark_backup.py"
+      - "satark_backend.py"
+      - "alembic.ini"
+      - "migrations/**"
+      - "tests/test_satark_backend.py"
+      - "tests/test_satark_postgres.py"
+      - "tests/test_satark_migrations.py"
       - "firstlight_engine.py"
       - "firstlight_rules.py"
       - "firstlight_api.py"
@@ -13,14 +22,6 @@ on:
       - "firstlight_wazuh_worker.py"
       - "firstlight_investigation_worker.py"
       - "Dockerfile.firstlight-investigation-worker"
-      - "supabase/migrations/20261020031055_satark_investigation_jobs.sql"
-      - "supabase/migrations/20261020031618_satark_investigation_job_audit.sql"
-      - "supabase/migrations/20261020032710_satark_case_assignment_notes.sql"
-      - "supabase/migrations/20261020033104_satark_assignable_members_rpc.sql"
-      - "supabase/migrations/20261020035814_satark_durable_approvals.sql"
-      - "supabase/migrations/20261020035832_satark_simulation_only_approvals.sql"
-      - "supabase/migrations/20261020035848_satark_trigger_acl_hardening.sql"
-      - "supabase/migrations/20261020040028_satark_approval_trigger_acl.sql"
       - "docker-compose.local.yml"
       - "tests/test_firstlight_investigation_worker.py"
       - "firstlight_response_executor.py"
@@ -28,11 +29,12 @@ on:
       - "tests/test_ai_provider.py"
       - "docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md"
       - "web/src/app/api/firstlight/jobs/route.ts"
+      - "web/src/app/api/[...path]/route.ts"
+      - "web/src/lib/satark-api-proxy.ts"
+      - "web/next.config.ts"
+      - "web/Dockerfile"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
-      - "supabase/migrations/20261020023851_satark_wazuh_ingestion_checkpoints.sql"
-      - "supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql"
-      - "supabase/migrations/20261020042449_satark_evidence_storage_dual_path_policy.sql"
       - "Dockerfile.firstlight-worker"
       - "tests/test_firstlight_api.py"
       - "tests/test_firstlight_agents.py"
@@ -50,33 +52,32 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/check_no_supabase_runtime.py"
+      - "satark_backend.py"
+      - "alembic.ini"
+      - "migrations/**"
+      - "tests/test_satark_backend.py"
+      - "tests/test_satark_postgres.py"
       - "firstlight_engine.py"
       - "firstlight_api.py"
       - "firstlight_agents.py"
       - "ai_provider.py"
       - "firstlight_wazuh.py"
       - "tests/test_firstlight_wazuh_worker.py"
-      - "supabase/migrations/20261020023851_satark_wazuh_ingestion_checkpoints.sql"
-      - "supabase/migrations/20261020030059_satark_evidence_storage_role_scope.sql"
-      - "supabase/migrations/20261020042449_satark_evidence_storage_dual_path_policy.sql"
       - "Dockerfile.firstlight-worker"
       - "firstlight_wazuh_worker.py"
       - "firstlight_investigation_worker.py"
       - "Dockerfile.firstlight-investigation-worker"
-      - "supabase/migrations/20261020031055_satark_investigation_jobs.sql"
-      - "supabase/migrations/20261020031618_satark_investigation_job_audit.sql"
-      - "supabase/migrations/20261020032710_satark_case_assignment_notes.sql"
-      - "supabase/migrations/20261020033104_satark_assignable_members_rpc.sql"
-      - "supabase/migrations/20261020035814_satark_durable_approvals.sql"
-      - "supabase/migrations/20261020035832_satark_simulation_only_approvals.sql"
-      - "supabase/migrations/20261020035848_satark_trigger_acl_hardening.sql"
-      - "supabase/migrations/20261020040028_satark_approval_trigger_acl.sql"
       - "docker-compose.local.yml"
       - "tests/test_firstlight_investigation_worker.py"
       - "firstlight_response_executor.py"
       - "tests/test_firstlight_response_executor.py"
       - "docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md"
       - "web/src/app/api/firstlight/jobs/route.ts"
+      - "web/src/app/api/[...path]/route.ts"
+      - "web/src/lib/satark-api-proxy.ts"
+      - "web/next.config.ts"
+      - "web/Dockerfile"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "tests/test_firstlight_api.py"
@@ -98,7 +99,21 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: satark
+          POSTGRES_PASSWORD: satark
+          POSTGRES_DB: satark_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satark -d satark_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -111,8 +126,13 @@ jobs:
       - name: Run shared API and engine tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py tests/test_firstlight_response_executor.py tests/test_ai_provider.py
+          SATARK_TEST_POSTGRES_URL: postgresql+psycopg://satark:satark@localhost:5432/satark_test
+        run: python -m pytest -q tests/test_satark_migrations.py tests/test_satark_postgres.py tests/test_satark_backend.py tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py tests/test_firstlight_response_executor.py tests/test_ai_provider.py
 
+      - name: Verify no Supabase runtime dependency remains
+        run: python scripts/check_no_supabase_runtime.py
+      - name: Validate self-hosted Compose stack
+        run: docker compose -f docker-compose.local.yml config --quiet
       - name: Build FIRSTLIGHT API and worker images
         run: |
           docker build -f Dockerfile.firstlight-api -t firstlight-api:ci .

@@ -4,38 +4,23 @@ import { readFileSync } from 'node:fs';
 import { buildSecurityHeaders } from '../src/lib/security-headers.mjs';
 
 const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
-
 function cspFor(env) {
-  return buildSecurityHeaders(env).find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
+  return buildSecurityHeaders(env).find(header => header.key === 'Content-Security-Policy')?.value ?? '';
 }
 
-test('Next.js wires CSP to the validated Supabase origin helper', () => {
+test('Next.js wires a same-origin CSP without hosted database origins', () => {
   assert.ok(config.includes("import { buildSecurityHeaders } from './src/lib/security-headers.mjs';"));
   assert.ok(config.includes('const securityHeaders = buildSecurityHeaders(process.env);'));
-  assert.ok(!config.includes('https://*.supabase.co'));
-  assert.ok(!config.includes('wss://*.supabase.co'));
+  const csp = cspFor({ NODE_ENV: 'production' });
+  assert.match(csp, /connect-src 'self'/);
+  assert.doesNotMatch(csp, /supabase|https:\/\//i);
+  assert.doesNotMatch(csp, /connect-src[^;]*\*/);
 });
 
-test('production CSP allows only the configured valid Supabase HTTPS origin', () => {
-  const csp = cspFor({
-    NODE_ENV: 'production',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://project-ref.supabase.co',
-  });
-  assert.match(csp, /connect-src 'self' https:\/\/project-ref\.supabase\.co(?:;|$)/);
-  assert.doesNotMatch(csp, /\*\.supabase\.co/);
-  assert.doesNotMatch(csp, /wss:\/\//);
-});
-
-test('production CSP fails closed for malformed or non-Supabase origins', () => {
-  for (const value of [
-    'https://attacker.example',
-    'https://project-ref.supabase.co.evil.example',
-    'https://project-ref.supabase.co/path',
-    'http://project-ref.supabase.co',
-    'not a URL',
-  ]) {
-    const csp = cspFor({ NODE_ENV: 'production', NEXT_PUBLIC_SUPABASE_URL: value });
-    assert.match(csp, /connect-src 'self'(?:;|$)/);
-    assert.doesNotMatch(csp, /supabase\.co|attacker\.example/);
+test('untrusted backend origins cannot be added to the browser CSP', () => {
+  for (const value of ['https://attacker.example', 'http://firstlight-api:8788', 'not a URL']) {
+    const csp = cspFor({ NODE_ENV: 'production', SATARK_API_INTERNAL_URL: value });
+    assert.match(csp, /connect-src 'self'/);
+    assert.doesNotMatch(csp, /attacker\.example|firstlight-api|supabase/i);
   }
 });

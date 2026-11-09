@@ -27,6 +27,10 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_EVIDENCE = 500
 app = FastAPI(title="FIRSTLIGHT Investigation API", version="1.0.0", docs_url=None, redoc_url=None)
 
+# SATARK application persistence and identity are provided by the self-hosted API.
+from satark_backend import router as satark_router
+app.include_router(satark_router)
+
 
 class EvidenceInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

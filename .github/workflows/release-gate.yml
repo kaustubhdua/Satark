@@ -7,12 +7,12 @@ on:
         description: "Exact commit SHA currently deployed to production"
         required: true
         type: string
-      supabase_migrations_verified:
-        description: "Reviewed SATARK-only migration dry-run and live schema verification passed"
+      self_hosted_schema_verified:
+        description: "Self-hosted PostgreSQL schema migration and backup/restore verification passed"
         required: true
         type: boolean
       tenant_isolation_passed:
-        description: "Dedicated non-production Supabase tenant/role integration suite passed (not skipped)"
+        description: "Isolated self-hosted PostgreSQL tenant/role integration suite passed (not skipped)"
         required: true
         type: boolean
       windows_linux_telemetry_verified:
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${WORKFLOW_SHA}&per_page=100")"
-          for workflow in "CI" "Web CI" "CodeQL"; do
+          for workflow in "CI" "Web CI" "CodeQL" "FIRSTLIGHT API CI"; do
             run_id="$(jq -r --arg name "$workflow" --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
             if [[ -z "$run_id" ]]; then
               echo "::error::No successful completed $workflow run exists for exact release commit $WORKFLOW_SHA."
@@ -64,14 +64,14 @@ jobs:
           done
           ci_run="$(jq -r --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == "CI" and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
           jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run}/jobs?per_page=100")"
-          tenant_job="$(jq -c '[.jobs[] | select(.name == "Supabase tenant-isolation integration")] | first // empty' <<< "$jobs")"
+          tenant_job="$(jq -c '[.jobs[] | select(.name == "Self-hosted SATARK auth and tenant-isolation integration")] | first // empty' <<< "$jobs")"
           if [[ -z "$tenant_job" || "$tenant_job" == "null" || "$(jq -r '.conclusion' <<< "$tenant_job")" != "success" ]]; then
             echo "::error::Tenant-isolation job is missing or did not pass."
             exit 1
           fi
-          test_step="$(jq -c '[.steps[] | select(.name == "Run real Supabase tenant and role isolation tests")] | first // empty' <<< "$tenant_job")"
+          test_step="$(jq -c '[.steps[] | select(.name == "Run SQLite identity, tenant isolation, and persistence tests")] | first // empty' <<< "$tenant_job")"
           if [[ -z "$test_step" || "$test_step" == "null" || "$(jq -r '.conclusion' <<< "$test_step")" != "success" ]]; then
-            echo "::error::Real Supabase tenant-isolation tests were skipped, absent, or failed. A green job with a skipped step is not sufficient."
+            echo "::error::Real self-hosted tenant-isolation tests were skipped, absent, or failed. A green job with a skipped step is not sufficient."
             exit 1
           fi
           echo "Real tenant-isolation test step passed on the exact release commit."
@@ -79,7 +79,7 @@ jobs:
         env:
           REQUESTED_SHA: ${{ inputs.production_deployed_sha }}
           WORKFLOW_SHA: ${{ github.sha }}
-          MIGRATIONS: ${{ inputs.supabase_migrations_verified }}
+          MIGRATIONS: ${{ inputs.self_hosted_schema_verified }}
           TENANCY: ${{ inputs.tenant_isolation_passed }}
           TELEMETRY: ${{ inputs.windows_linux_telemetry_verified }}
           DETECTION: ${{ inputs.detection_positive_negative_verified }}
@@ -95,7 +95,7 @@ jobs:
             fail=1
           fi
           for pair in \
-            "Supabase migration/schema verification:${MIGRATIONS}" \
+            "Self-hosted schema and backup verification:${MIGRATIONS}" \
             "tenant isolation integration tests:${TENANCY}" \
             "real Windows/Linux telemetry:${TELEMETRY}" \
             "detection positive/negative controls:${DETECTION}" \
@@ -114,14 +114,14 @@ jobs:
             exit 1
           fi
           echo "All manually attested release gates are marked verified for ${WORKFLOW_SHA}."
-          echo "::warning::This workflow validates supplied attestations and commit identity; it does not independently probe production, Supabase, endpoint telemetry, AI inference, or responder providers."
+          echo "::warning::This workflow validates supplied attestations and commit identity; it does not independently probe production, self-hosted API/PostgreSQL, endpoint telemetry, AI inference, or responder providers."
 
       - name: Publish release-gate summary
         if: always()
         env:
           REQUESTED_SHA: ${{ inputs.production_deployed_sha }}
           WORKFLOW_SHA: ${{ github.sha }}
-          MIGRATIONS: ${{ inputs.supabase_migrations_verified }}
+          MIGRATIONS: ${{ inputs.self_hosted_schema_verified }}
           TENANCY: ${{ inputs.tenant_isolation_passed }}
           TELEMETRY: ${{ inputs.windows_linux_telemetry_verified }}
           DETECTION: ${{ inputs.detection_positive_negative_verified }}

@@ -21,7 +21,7 @@ type Snapshot = {
 const priority = [
   'telemetry.wazuh',
   'firstlight.investigation',
-  'storage.supabase',
+  'storage.self_hosted',
   'detection.rules',
   'response.live',
 ];

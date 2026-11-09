@@ -10,7 +10,7 @@ import {
 type EvidenceRow = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
 type FindingRow = { title: string; detail: string; severity: string; refs: string[] };
 type CaseRow = { id: string; tenant_id: string; title: string; status: string; severity: string; assigned_to?: string | null; created_at: string; updated_at: string };
-type MemberRow = { user_id: string; role: string };
+type MemberRow = { user_id: string; email?: string; role: string };
 type CaseNote = { id: string; tenant_id: string; case_id: string; body: string; created_by: string; created_at: string };
 type ApprovalRow = { id: string; action_key: string; action_payload: Record<string, unknown>; payload_sha256: string; status: string; requested_by: string; decided_by?: string | null; decision_reason?: string | null; created_at: string; expires_at: string };
 type AuditRow = { time: string; action: string; detail: string };
@@ -39,6 +39,8 @@ export default function PersistentCasePanel({
   const [message, setMessage] = useState('');
   const [jobStatus, setJobStatus] = useState('');
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberRole, setMemberRole] = useState('analyst');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [notes, setNotes] = useState<CaseNote[]>([]);
   const [noteDraft, setNoteDraft] = useState('');
@@ -71,13 +73,13 @@ export default function PersistentCasePanel({
     if (selected) {
       setCases(await listCases(selected.id));
       try {
-        const memberResponse = await authenticatedFetch('/rest/v1/rpc/satark_list_assignable_members', {
-          method: 'POST', body: JSON.stringify({ p_tenant_id: selected.id }),
-        });
-        const memberRows: unknown = memberResponse.ok ? await memberResponse.json() : [];
-        setMembers(Array.isArray(memberRows) ? memberRows.filter((row): row is MemberRow =>
+        const memberResponse = await authenticatedFetch('/api/workspaces/members?tenant_id=' + encodeURIComponent(selected.id));
+        const memberPayload = memberResponse.ok ? await memberResponse.json() as { members?: unknown } : {};
+        const memberRows = Array.isArray(memberPayload.members) ? memberPayload.members : [];
+        setMembers(memberRows.filter((row): row is MemberRow =>
           !!row && typeof row === 'object' && 'user_id' in row && typeof row.user_id === 'string' &&
-          'role' in row && typeof row.role === 'string') : []);
+          'role' in row && typeof row.role === 'string' &&
+          (!('email' in row) || typeof row.email === 'string')));
       } catch { setMembers([]); }
     } else {
       setCases([]);
@@ -85,6 +87,53 @@ export default function PersistentCasePanel({
     }
     setCaseListLoaded(true);
   }
+  async function addWorkspaceMember() {
+    if (!tenant || tenant.role !== 'owner' || !memberEmail.trim()) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await authenticatedFetch('/api/workspaces/members', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, email: memberEmail.trim(), role: memberRole }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace member could not be added.');
+      setMembers(previous => [...previous, payload.member as MemberRow].sort((a,b) => (a.email || '').localeCompare(b.email || '')));
+      setMemberEmail('');
+      setMessage('Workspace member added. They can now sign in and access this workspace.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace member could not be added.'); }
+    finally { setBusy(false); }
+  }
+
+  async function changeWorkspaceRole(member: MemberRow, role: string) {
+    if (!tenant || tenant.role !== 'owner' || role === member.role) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await authenticatedFetch('/api/workspaces/members', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, user_id: member.user_id, role }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace role could not be changed.');
+      setMembers(previous => previous.map(item => item.user_id === member.user_id ? { ...item, role } : item));
+      setMessage('Workspace role updated.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace role could not be changed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function removeWorkspaceMember(member: MemberRow) {
+    if (!tenant || tenant.role !== 'owner') return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const query = new URLSearchParams({ tenant_id: tenant.id, user_id: member.user_id });
+      const response = await authenticatedFetch('/api/workspaces/members?' + query.toString(), { method: 'DELETE' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload?.detail === 'string' ? payload.detail : 'Workspace member could not be removed.');
+      setMembers(previous => previous.filter(item => item.user_id !== member.user_id));
+      setMessage('Workspace membership removed.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Workspace member could not be removed.'); }
+    finally { setBusy(false); }
+  }
+
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('case_id') || '';
     if (requested) setRequestedCaseId(requested);
@@ -131,7 +180,7 @@ export default function PersistentCasePanel({
         }
         const response = await fetch('/api/evidence/records', {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenant_id: tenant.id, case_id: caseId, source_label: item.source, event_kind: item.kind,
             observed_at: item.time, summary: item.summary,
@@ -141,13 +190,11 @@ export default function PersistentCasePanel({
         if (response.status === 409) {
           // A conflict is not proof of an identical retry. Compare the persisted
           // browser digest and normalized fields before treating it as idempotent.
-          const query = new URLSearchParams({
-            select: 'id,observed_at,source_label,event_kind,summary,metadata',
-            tenant_id: 'eq.' + tenant.id, case_id: 'eq.' + caseId, limit: '500',
-          });
-          const existingResponse = await authenticatedFetch('/rest/v1/satark_evidence?' + query);
+          const query = new URLSearchParams({ tenant_id: tenant.id, case_id: caseId });
+          const existingResponse = await authenticatedFetch('/api/evidence/records?' + query);
           if (!existingResponse.ok) throw new Error('Evidence already exists, but its stored version could not be checked safely.');
-          const existingRows = await existingResponse.json() as {observed_at:string;source_label:string;event_kind:string;summary:string;metadata:Record<string,unknown>}[];
+          const existingPayload = await existingResponse.json() as { evidence?: {observed_at:string;source_label:string;event_kind:string;summary:string;metadata:Record<string,unknown>}[] };
+          const existingRows = existingPayload.evidence || [];
           const existing = existingRows.find(row => row.metadata?.local_evidence_id === item.id);
           if (!existing ||
               existing.metadata?.browser_record_sha256 !== item.digest ||
@@ -170,7 +217,7 @@ export default function PersistentCasePanel({
       for (const [i, finding] of findings.entries()) {
         const response = await fetch('/api/findings', {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenant_id: tenant.id, case_id: caseId, finding_key: finding.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 160) || 'finding-' + i,
             title: finding.title, severity: finding.severity, detail: finding.detail,
@@ -180,7 +227,7 @@ export default function PersistentCasePanel({
         if (response.status === 409) {
           const query = new URLSearchParams({ tenant_id: tenant.id, case_id: caseId });
           const existingResponse = await fetch('/api/findings?' + query, {
-            headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+            cache: 'no-store',
           });
           if (!existingResponse.ok) throw new Error('Finding already exists, but its stored version could not be checked safely.');
           const existingPayload = await existingResponse.json() as {findings?: {finding_key:string;title:string;severity:string;detail:string;evidence_refs:string[];source:string}[]};
@@ -217,7 +264,7 @@ export default function PersistentCasePanel({
         ],
       };
       const reportResponse = await fetch('/api/reports', {
-        method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenant.id, case_id: caseId, title: snapshot.title, snapshot }), cache: 'no-store',
       });
       const reportData = await reportResponse.json().catch(() => ({}));
@@ -235,7 +282,7 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const response = await fetch('/api/cases', { method:'PATCH', headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'}, body:JSON.stringify({id:item.id,tenant_id:tenant.id,status}), cache:'no-store' });
+      const response = await fetch('/api/cases', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:item.id,tenant_id:tenant.id,status}), cache:'no-store' });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Case status could not be updated.');
       setCases(prev=>prev.map(c=>c.id===item.id?{...c,status:data.case.status,updated_at:data.case.updated_at}:c));
@@ -248,7 +295,7 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     try {
       const response = await fetch('/api/firstlight/approvals?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(caseId), {
-        headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+         cache: 'no-store',
       });
       const payload = await response.json().catch(() => ({}));
       setApprovals(response.ok && Array.isArray(payload.approvals) ? payload.approvals as ApprovalRow[] : []);
@@ -274,7 +321,7 @@ export default function PersistentCasePanel({
     try {
       const response = await fetch('/api/firstlight/approvals', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_id: tenant.id, case_id: currentCaseId, action_key: 'simulation.mark_case_contained',
           action_payload: { mode: 'simulation', operation: 'mark_case_contained', target: { tenant_id: tenant.id, case_id: currentCaseId }, reason },
@@ -299,7 +346,7 @@ export default function PersistentCasePanel({
     try {
       const response = await fetch('/api/firstlight/approvals', {
         method: 'PATCH',
-        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approval_id: approvalId, decision, reason: approvalDecisionReason.trim() || null }),
         cache: 'no-store',
       });
@@ -316,13 +363,11 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const query = new URLSearchParams({
-        select: 'id,observed_at,source_label,event_kind,summary,record_sha256,metadata',
-        tenant_id: 'eq.' + tenant.id, case_id: 'eq.' + item.id, order: 'observed_at.asc', limit: '500',
-      });
-      const evidenceResponse = await authenticatedFetch('/rest/v1/satark_evidence?' + query);
+      const query = new URLSearchParams({ tenant_id: tenant.id, case_id: item.id });
+      const evidenceResponse = await authenticatedFetch('/api/evidence/records?' + query);
       if (!evidenceResponse.ok) throw new Error('Saved evidence could not be loaded.');
-      const rows = await evidenceResponse.json() as {id:string;observed_at:string;source_label:string;event_kind:string;summary:string;record_sha256:string;metadata:Record<string,unknown>}[];
+      const evidencePayload = await evidenceResponse.json() as { evidence?: {id:string;observed_at:string;source_label:string;event_kind:string;summary:string;source_sha256:string;metadata:Record<string,unknown>}[] };
+      const rows = evidencePayload.evidence || [];
       const mapped = rows.map((row, i) => ({
         id: typeof row.metadata?.local_evidence_id === 'string' ? row.metadata.local_evidence_id : row.id,
         time: typeof row.metadata?.browser_event_timestamp === "string" ? row.metadata.browser_event_timestamp : row.observed_at, source: row.source_label, kind: row.event_kind, summary: row.summary, details: row.metadata?.source_details && typeof row.metadata.source_details === "object" && !Array.isArray(row.metadata.source_details) ? row.metadata.source_details as Record<string, unknown> : {}, metadata: row.metadata,
@@ -333,16 +378,15 @@ export default function PersistentCasePanel({
         digest: typeof row.metadata?.browser_record_sha256 === 'string' ? row.metadata.browser_record_sha256 : '',
         tampered: Boolean(row.metadata?.simulated_tamper),
       }));
-      const auditQuery = new URLSearchParams({ select:'action,details,created_at',tenant_id:'eq.'+tenant.id,case_id:'eq.'+item.id,order:'id.asc',limit:'500' });
-      const auditResponse = await authenticatedFetch('/rest/v1/satark_audit_events?' + auditQuery);
-      const audit = auditResponse.ok ? (await auditResponse.json() as {action:string;details:Record<string,unknown>;created_at:string}[]).map(a => ({
-        time:a.created_at, action:a.action, detail:JSON.stringify(a.details),
-      })) : [];
+      const auditQuery = new URLSearchParams({ tenant_id: tenant.id, case_id: item.id });
+      const auditResponse = await authenticatedFetch('/api/audit/events?' + auditQuery);
+      const auditPayload = auditResponse.ok ? await auditResponse.json() as { events: { action:string; details:Record<string,unknown>; created_at:string }[] } : { events: [] };
+      const audit = auditPayload.events.map(a => ({ time:a.created_at, action:a.action, detail:JSON.stringify(a.details) }));
       onLoaded(item.id, mapped, audit);
       setSelectedAssignee(item.assigned_to || '');
       try {
         const notesResponse = await fetch('/api/cases/notes?tenant_id=' + encodeURIComponent(tenant.id) + '&case_id=' + encodeURIComponent(item.id), {
-          headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+          cache: 'no-store',
         });
         const notesPayload = await notesResponse.json().catch(() => ({}));
         setNotes(notesResponse.ok && Array.isArray(notesPayload.notes) ? notesPayload.notes as CaseNote[] : []);
@@ -362,7 +406,7 @@ export default function PersistentCasePanel({
     try {
       const queuedResponse = await fetch('/api/firstlight/jobs', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_id: tenant.id, case_id: currentCaseId,
           idempotency_key: crypto.randomUUID(),
@@ -377,7 +421,6 @@ export default function PersistentCasePanel({
       setJobStatus('Job ' + jobId.slice(0, 8) + ' · ' + String(queued.job.status || 'queued'));
       for (let attempt = 0; attempt < 30; attempt++) {
         const statusResponse = await fetch('/api/firstlight/jobs?tenant_id=' + encodeURIComponent(tenant.id) + '&job_id=' + encodeURIComponent(jobId), {
-          headers: { Authorization: 'Bearer ' + session.access_token },
           cache: 'no-store',
         });
         const statusPayload = await statusResponse.json().catch(() => ({}));
@@ -414,7 +457,7 @@ export default function PersistentCasePanel({
     try {
       const response = await fetch('/api/cases', {
         method: 'PATCH',
-        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: currentCaseId, tenant_id: tenant.id, assigned_to: selectedAssignee || null }),
         cache: 'no-store',
       });
@@ -439,7 +482,7 @@ export default function PersistentCasePanel({
     try {
       const response = await fetch('/api/cases/notes', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenant.id, case_id: currentCaseId, body: noteDraft.trim() }),
         cache: 'no-store',
       });
@@ -460,7 +503,7 @@ export default function PersistentCasePanel({
       form.set('file', file); form.set('tenant_id', tenant.id); form.set('case_id', currentCaseId);
       form.set('source_label', file.name.slice(0,160)); form.set('event_kind', 'source_file');
       form.set('observed_at', new Date().toISOString()); form.set('summary', 'Private original evidence file uploaded through FIRSTLIGHT.');
-      const response = await fetch('/api/evidence', { method:'POST', headers:{Authorization:'Bearer '+session.access_token}, body:form, cache:'no-store' });
+      const response = await fetch('/api/evidence', { method:'POST', body:form, cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Private evidence upload failed.');
       setUploadedId(result.evidence.id); setMessage('Private file uploaded. Server SHA-256: ' + result.integrity.source_sha256);
@@ -473,7 +516,7 @@ export default function PersistentCasePanel({
     if (!tenant || !session) return;
     setBusy(true); setError(''); setAuditVerification('');
     try {
-      const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { headers:{Authorization:'Bearer '+session.access_token}, cache:'no-store' });
+      const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Audit verification failed.');
       setAuditVerification((result.chain_valid ? 'Audit chain valid' : 'Audit chain invalid') + ' · ' + result.event_count + ' events · verified ' + result.verified_at + (result.first_invalid_event_id ? ' · first invalid event ' + result.first_invalid_event_id : ''));
@@ -485,7 +528,7 @@ export default function PersistentCasePanel({
     if (!uploadedId || !session) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify', { headers:{Authorization:'Bearer '+session.access_token}, cache:'no-store' });
+      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify', { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Integrity verification failed.');
       setMessage((result.matched ? 'Integrity match' : 'INTEGRITY MISMATCH') + ' · ' + result.actual_sha256 + ' · ' + result.note);
@@ -496,7 +539,7 @@ export default function PersistentCasePanel({
   return <section className="persistent-case-panel panel" aria-labelledby="persistent-case-heading">
     <div className="panel-heading"><div><div className="panel-kicker">Persistent case workspace</div><h2 id="persistent-case-heading">Save beyond this browser session</h2></div><span className={session ? 'safe-chip' : 'review-chip'}>{session ? 'Authenticated' : 'Local mode'}</span></div>
     {!session ? <p className="empty-state">Training and imports still work locally. <Link href="/login">Sign in or create a workspace</Link> to save cases, evidence, findings, reports, and audit events in persistent storage.</p> : !tenant ? <p className="empty-state">This account has no workspace membership. <Link href="/login">Create a workspace</Link> to begin.</p> : <>
-      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. Case and evidence reads are tenant-scoped by database row-level security.</p>
+      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. Case and evidence access is checked by the SATARK backend against workspace membership.</p>
       <div className="persistent-controls">
         <label className="field-label" htmlFor="persistent-case-title">Incident title</label>
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
@@ -504,6 +547,27 @@ export default function PersistentCasePanel({
         <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
       </div>
       {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
+      {tenant.role === 'owner' && <div className="private-upload" aria-labelledby="workspace-members-heading">
+        <strong id="workspace-members-heading">Workspace members & roles</strong>
+        <p className="hint">Add an existing SATARK account by email. Invitations for accounts that have not registered are not enabled yet. Keep at least one owner in the workspace.</p>
+        <label className="field-label" htmlFor="workspace-member-email">Account email</label>
+        <input id="workspace-member-email" type="email" maxLength={254} value={memberEmail} onChange={e=>setMemberEmail(e.target.value)} disabled={busy} placeholder="teammate@example.com" />
+        <label className="field-label" htmlFor="workspace-member-role">Initial role</label>
+        <select id="workspace-member-role" value={memberRole} onChange={e=>setMemberRole(e.target.value)} disabled={busy}>
+          <option value="viewer">Viewer</option><option value="analyst">Analyst</option><option value="responder">Responder</option><option value="owner">Owner</option>
+        </select>
+        <button className="btn btn-secondary" type="button" disabled={busy || !memberEmail.trim()} onClick={()=>void addWorkspaceMember()}>Add workspace member</button>
+        <div className="case-notes-list">{members.map(member=><div className="case-note" key={member.user_id}>
+          <p><strong>{member.email || member.user_id.slice(0,8)}</strong> · {member.user_id === session.user.id ? 'You' : 'Member'}</p>
+          <div className="actions">
+            <label className="sr-only" htmlFor={'workspace-role-'+member.user_id}>Role for {member.email || member.user_id}</label>
+            <select id={'workspace-role-'+member.user_id} value={member.role} disabled={busy} onChange={e=>void changeWorkspaceRole(member,e.target.value)}>
+              <option value="viewer">Viewer</option><option value="analyst">Analyst</option><option value="responder">Responder</option><option value="owner">Owner</option>
+            </select>
+            <button className="mini-btn" type="button" disabled={busy} onClick={()=>void removeWorkspaceMember(member)}>Remove</button>
+          </div>
+        </div>)}</div>
+      </div>}
       {currentCaseId && cases.some(c => c.id === currentCaseId) && <>
         <div className="private-upload">
           <label className="field-label" htmlFor="case-assignee">Assign case (owner/responder only)</label>
@@ -543,7 +607,7 @@ export default function PersistentCasePanel({
         </div>
       </>}
       <div className="saved-cases"><strong>Saved cases</strong>{cases.length ? cases.map(item=><div className="saved-case-row" key={item.id}><button type="button" className="workspace-choice" disabled={busy} onClick={()=>void loadSavedCase(item)}><span><strong>{item.title}</strong><small>{item.status} · {item.severity} · updated {new Date(item.updated_at).toLocaleString()}</small></span><span aria-hidden="true">→</span></button><label className="sr-only" htmlFor={'status-'+item.id}>Update status for {item.title}</label><select id={'status-'+item.id} value={item.status} disabled={busy} onChange={e=>void updateCaseStatus(item,e.target.value)}><option value="open">Open</option><option value="contained">Contained</option><option value="resolved">Resolved</option><option value="archived">Archived</option></select></div>) : <p className="empty-state">No saved cases yet. Load or import evidence and save the incident.</p>}</div>
-      <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in a private bucket. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
+      <div className="private-upload"><div className="panel-heading"><strong>Audit history integrity</strong><button className="mini-btn" type="button" disabled={busy} onClick={()=>void verifyAuditChain()}>Verify audit chain</button></div>{auditVerification && <p className={auditVerification.startsWith('Audit chain valid')?'success-message':'error-message'} role="status">{auditVerification}</p>}<label className="field-label" htmlFor="private-evidence-file">Upload original evidence privately</label><input id="private-evidence-file" type="file" onChange={e=>setFile(e.currentTarget.files?.[0] || null)} disabled={busy} /><p className="hint">Maximum 4 MiB. The server hashes uploaded bytes and stores them in private evidence storage. A saved case must be selected first.</p><div className="actions"><button className="btn btn-secondary" type="button" disabled={busy || !file || !currentCaseId} onClick={()=>void uploadOriginal()}>Upload private file</button><button className="btn btn-secondary" type="button" disabled={busy || !uploadedId} onClick={()=>void verifyOriginal()}>Verify last uploaded file</button></div></div>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
     {message && <p className="success-message" role="status">{message}</p>}

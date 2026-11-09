@@ -1,57 +1,46 @@
 # SATARK — remaining release actions
 
-**Snapshot:** 2026-11-08  
+**Snapshot:** 2026-11-09  
 **Decision:** no-go for production use with sensitive or multi-tenant incident evidence.
 
 This file records the external actions that cannot be completed safely from repository-only access. It is intentionally explicit: a green build is not a substitute for tenant-isolation or deployment acceptance.
 
-## Verified repository checks
+## Superseded persistence instructions
 
-- Next.js production browser and accessibility smoke: passed on `ed4df88`.
-- Next.js web validation: passed on `ed4df88`.
-- Python/core validation: passed on `ed4df88`.
-- CodeQL: passed on `ed4df88`.
-- Supabase tenant-isolation integration: **blocked**; the job correctly fails closed when its dedicated test environment is absent.
+The original main-branch release checklist below was written for a Supabase-backed deployment. The migration branch replaces that runtime with SATARK-owned FastAPI, SQLAlchemy, PostgreSQL/SQLite, private evidence storage, and cookie-backed sessions. **Do not configure or add Supabase secrets.** The old Supabase test-project instructions have been retired.
 
-## 1. Configure the isolated Supabase test project
+The replacement acceptance suite is:
+- `tests/test_satark_backend.py`: self-hosted signup/login, cookie sessions, tenant isolation, notes, findings, reports, and CSRF checks.
+- `tests/test_satark_postgres.py`: PostgreSQL integration for evidence upload/verification, idempotent jobs, worker persistence, and evidence-linked findings.
+- `tests/test_firstlight_investigation_worker.py` and `tests/test_firstlight_wazuh_worker.py`: durable queue and Wazuh ingestion behavior.
+- Web CI and browser/accessibility smoke: same-origin API proxy, security headers, mobile/browser behavior.
 
-In GitHub repository Actions secrets, configure these exact names using a dedicated non-production Supabase project and least-privilege test users:
+The migration branch is not a production release until these checks pass on its latest commit and a private FastAPI deployment is configured and smoke-tested. Existing Supabase data is not deleted or automatically imported by this branch; preserve the old project until a separately validated export/import and backup plan is complete.
 
-| Secret | Purpose |
-| --- | --- |
-| `SATARK_TEST_SUPABASE_URL` | Dedicated test project URL |
-| `SATARK_TEST_SUPABASE_PUBLISHABLE_KEY` | Public/publishable key for test project |
-| `SATARK_TEST_USER_A_EMAIL` | Tenant A owner test account |
-| `SATARK_TEST_USER_A_PASSWORD` | Tenant A owner test password |
-| `SATARK_TEST_TENANT_A_ID` | Tenant A fixture UUID |
-| `SATARK_TEST_USER_B_EMAIL` | Tenant B owner test account |
-| `SATARK_TEST_USER_B_PASSWORD` | Tenant B owner test password |
-| `SATARK_TEST_TENANT_B_ID` | Tenant B fixture UUID |
-| `SATARK_TEST_VIEWER_EMAIL` | Read-only viewer test account |
-| `SATARK_TEST_VIEWER_PASSWORD` | Read-only viewer test password |
-| `SATARK_TEST_VIEWER_TENANT_ID` | Viewer tenant fixture UUID |
+## 2. Web dependency security status
 
-Use separate accounts with no production data. Do not use a service-role key in this integration job. Confirm the test fixtures have the intended owner/viewer memberships, then run the `CI` workflow on the release commit. The tenant job must demonstrate cross-tenant read/write denial and viewer write denial. Do not convert missing credentials into a skipped/successful required check.
+The branch's `web/package.json` and `web/package-lock.json` now pin Next.js **15.5.29**. This is the patched 15.5 maintenance release for the November 3, 2026 advisories affecting versions through 15.5.28, and it is above the October 14 critical-fix floor of 15.5.28.
 
-## 2. Web dependency security patch — implemented on this branch
 
-The 2026-11-08 CI install reported one critical-severity npm advisory. This branch now updates `web/package.json` and regenerates the lockfile using npm's resolver:
+- Evidence objects and tenant/case directories are written with restrictive filesystem permissions (files 0600, private directories 0700), exclusive no-follow creation, atomic replacement, and directory fsync.
+- Unrecognized uploaded content types are stored and downloaded as `application/octet-stream`; downloads include `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a sandbox content security policy.
+- Optional email verification is implemented with single-use 30-minute token digests, resend cooldowns, SMTP preflight, a browser verification page, and a migration that grandfather-verifies accounts that predate the feature. Enable only after SMTP and the trusted public base URL are configured.
+- Optional TOTP MFA is implemented with encrypted secrets, time-window verification, hashed single-use recovery codes, authenticated enrollment/disable flows, session revocation on disable, and a browser account-security panel. Configure a persistent `SATARK_MFA_ENCRYPTION_KEY` before enrollment.
 
-- Next.js: `15.5.27` → `15.5.28` (maintenance security release).
-- Sharp: pinned through the declared dependency range to `^0.35.5`, resolving to `0.35.5` to address the SVG image-optimization vulnerability.
-- `npm audit --audit-level=critical`: passed.
-- `npm run test:ci`: passed (typecheck, unit tests and production build).
-- `npm run test:browser`: passed at desktop and mobile viewports, including the local-analysis smoke.
+## Remaining code and operational limitations
 
-The patch has not yet been merged into `main`; run the full branch CI and review the resulting PR before merging. Continue to review all non-critical advisories and transitive dependencies. Do not use `npm audit fix --force` or suppress findings.
-
-Reference: [Next.js security update, 2026-10-14](https://nextjs.org/blog/nextjs-security-update-october-14-2026).
+- An optional Nginx edge profile now provides per-IP authentication, invitation, and general API rate limits. Production must enable it (or an equivalent WAF), configure exact trusted proxy CIDRs, and terminate TLS; the template does not automatically protect a deployment that bypasses the proxy. Organization-wide mandatory MFA can be enforced with `SATARK_REQUIRE_MFA=true` after a persistent `SATARK_MFA_ENCRYPTION_KEY` is configured; Docker Compose now passes both settings into the API container. Workspace invitations for unregistered accounts are implemented with expiring single-use tokens and token-scoped PostgreSQL RLS. Session-family reuse detection now revokes the full family when a rotated token is replayed. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
+- SQLite backup/restore and PostgreSQL dump/restore with evidence-object-key rebasing are tested in CI. Production restore drills, crash recovery, RPO/RTO, and retention/deletion policy still require operator acceptance.
+- PostgreSQL RLS is implemented and forced on core tenant content tables, with a non-owner application-role integration test. A production role/privilege review and adversarial concurrency review remain necessary; the membership mapping table is also protected by RLS, with self-only visibility and owner-scoped management context.
+- Existing Supabase data is not imported or deleted. A validated export/import and reconciliation run remains necessary if legacy data must be preserved.
+- Evidence storage remains a private local filesystem volume; an S3-compatible object-store adapter is not implemented.
+- Production restore drills, Wazuh Indexer acceptance, audit anchoring, and deployed-host smoke tests remain outstanding.
 
 ## 3. Production deployment acceptance
 
 Do not use real incident evidence until all of the following have been verified against the exact deployed SHA:
 
-- Tenant isolation, owner authorization, viewer permissions, session expiry and token refresh.
+- Tenant isolation, owner authorization, viewer permissions, session expiry and revocation.
 - Durable case/evidence persistence, retention and deletion behavior.
 - Shared/global rate limits, request-size limits, concurrency limits and provider cost controls.
 - Secret storage and rotation; no provider credentials in browser bundles or logs.

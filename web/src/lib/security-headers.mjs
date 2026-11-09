@@ -8,27 +8,8 @@ const baseHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
 ];
 
-export function supabaseConnectOrigin(value, nodeEnv = 'production') {
-  if (typeof value !== 'string' || !value.trim()) return '';
-  try {
-    const url = new URL(value.trim());
-    if (url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) return '';
-    if (url.protocol === 'https:' && /^[a-z0-9-]+[.]supabase[.]co$/i.test(url.hostname) && !url.port) {
-      return url.origin;
-    }
-    if (nodeEnv !== 'production' && url.protocol === 'http:'
-      && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
-      return url.origin;
-    }
-    return '';
-  } catch {
-    return '';
-  }
-}
-
 export function buildSecurityHeaders(env = process.env) {
-  const supabaseOrigin = supabaseConnectOrigin(env.NEXT_PUBLIC_SUPABASE_URL, env.NODE_ENV);
-  const connectSources = ["'self'", supabaseOrigin].filter(Boolean).join(' ');
+  const connectSources = "'self'";
   const csp = [
     "default-src 'self'",
     "base-uri 'none'",

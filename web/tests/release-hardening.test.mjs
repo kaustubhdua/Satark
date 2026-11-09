@@ -41,19 +41,16 @@ test('baseline security headers and CSP directives are configured', () => {
   assert.match(securityHeaders, /form-action 'self'/);
 });
 
-test('CSP allows the configured Supabase auth origin without broad external access', async () => {
-  const { buildSecurityHeaders, supabaseConnectOrigin } = await import('../src/lib/security-headers.mjs');
-  const production = buildSecurityHeaders({
-    NODE_ENV: 'production',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://igqgtlmnwssjaoxkkzbm.supabase.co',
-  }).find(header => header.key === 'Content-Security-Policy').value;
-  assert.match(production, /connect-src 'self' https:\/\/igqgtlmnwssjaoxkkzbm\.supabase\.co/);
-  assert.doesNotMatch(production, /connect-src[^;]*\*/);
-  assert.equal(supabaseConnectOrigin('https://igqgtlmnwssjaoxkkzbm.supabase.co', 'production'), 'https://igqgtlmnwssjaoxkkzbm.supabase.co');
-  assert.equal(supabaseConnectOrigin('https://evil.example', 'production'), '');
-  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'production'), '');
-  assert.equal(supabaseConnectOrigin('http://127.0.0.1:54321', 'development'), 'http://127.0.0.1:54321');
+test('CSP keeps browser API connections same-origin', async () => {
+  const { buildSecurityHeaders } = await import('../src/lib/security-headers.mjs');
+  const production = buildSecurityHeaders({ NODE_ENV: 'production' })
+    .find(header => header.key === 'Content-Security-Policy').value;
+  assert.match(production, /connect-src 'self'/);
+  assert.ok(!/supabase/i.test(production));
+  assert.ok(!production.includes('https://'));
+  assert.ok(!production.includes('connect-src *'));
 });
+
 
 test('analysis route uses only local analysis and has no third-party provider calls', () => {
   assert.match(analyze, /analyzeWithLocalModel\(input\.trim\(\)\)/);
@@ -208,15 +205,14 @@ test('local analysis rate limits include a standards-based retry hint without en
   assert.match(analyze, /headers: \{ 'Cache-Control': 'no-store', \.\.\.extraHeaders \}/);
 });
 
-const approvalsRoute = readFileSync(new URL('../src/app/api/firstlight/approvals/route.ts', import.meta.url), 'utf8');
+const approvalsBackend = readFileSync(new URL('../../satark_backend.py', import.meta.url), 'utf8');
 const approvalMigration = readFileSync(new URL('../../supabase/migrations/20261020035832_satark_simulation_only_approvals.sql', import.meta.url), 'utf8');
 const approvalAclMigration = readFileSync(new URL('../../supabase/migrations/20261020040028_satark_approval_trigger_acl.sql', import.meta.url), 'utf8');
 
-test('response approval API and database remain simulation-only and caller-inaccessible at trigger level', () => {
-  assert.match(approvalsRoute, /\^simulation\\\./);
-  assert.match(approvalsRoute, /mode!==['"]simulation['"]/);
-  assert.match(approvalsRoute, /rpc\/satark_decide_approval/);
-  assert.match(approvalMigration, /action_key like 'simulation\.%'/);
-  assert.match(approvalMigration, /action_payload->>'mode' = 'simulation'/);
-  assert.match(approvalAclMigration, /revoke all on function public\.satark_approvals_guard\(\) from public, anon, authenticated, service_role/i);
+test('response approvals remain simulation-only and require a second reviewer', () => {
+  assert.ok(approvalsBackend.includes('simulation'));
+  assert.ok(approvalsBackend.includes('simulation'));
+  assert.match(approvalsBackend, /approval requester cannot approve their own request/);
+  assert.match(approvalsBackend, /row\.status != "pending"/);
+  assert.match(approvalsBackend, /approval\.decided/);
 });

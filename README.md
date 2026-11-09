@@ -12,7 +12,6 @@ SATARK is evolving into an **app-oriented, Python-based, offline-first file secu
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
 [![FIRSTLIGHT API CI](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml)
 [![Web CI](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml)
-[![Supabase local validation](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
@@ -209,13 +208,28 @@ These are implementation goals and demonstrated prototype behaviors. The reposit
                     Streamlit interface/session
 ~~~
 
+### Self-hosted application backend (Supabase-independent)
+
+The web application's authenticated API now runs through a SATARK-owned FastAPI service. The service owns password hashing (Argon2id), opaque revocable HttpOnly sessions, workspace membership, cases, notes, evidence metadata and private evidence bytes, findings, reports, approvals, hash-chained audit events, and the durable FIRSTLIGHT job queue. SQLAlchemy provides the relational persistence layer; PostgreSQL is the intended multi-instance database and SQLite is supported for local development and single-host evaluation. Alembic owns schema changes. The browser talks to the service through same-origin Next.js API routes and never receives a database credential. The optional Wazuh ingestion worker writes source snapshots, evidence metadata, audit events, and checkpoints to this same backend and private volume; it no longer uses a hosted database or storage service.
+
+The local Compose stack persists the database and evidence files in the `satark_data` volume. A clean local setup is:
+
+~~~bash
+cp .env.example .env
+docker compose -f docker-compose.local.yml up --build
+~~~
+
+The web UI is served at `http://localhost:3000`. To enable the optional Wazuh ingestion worker, configure the `FIRSTLIGHT_WAZUH_*` target, read-only Indexer, and initial checkpoint values in `.env`, then run `docker compose -f docker-compose.local.yml --profile wazuh up --build`. For multi-instance deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and use a shared private durable evidence volume accessible to the API and workers. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
+
+The replacement is being validated on `remove-supabase-runtime-dependency`. Until the complete API/UI/PostgreSQL regression suite and deployment acceptance checks pass on the latest commit, treat it as a migration candidate rather than a production-ready release. Existing legacy Supabase data is not automatically imported or deleted; keep any old project intact until a separately validated export/import and backup process is complete. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
+
 ### Main trust boundaries
 
 1. **Browser to Streamlit:** browser/UI state is presentation state and is not trusted as durable evidence.
 2. **Input to preprocessing:** uploaded and pasted content is subject to format-specific bounds and validation.
 3. **Server to user-supplied URL:** URL retrieval is an SSRF-sensitive operation. The implementation validates eligible HTTP(S) destinations, checks DNS results, pins connections to validated IPs, revalidates redirects, blocks HTTPS-to-HTTP downgrade redirects, and limits response size/type.
 4. **Application to local model:** prepared evidence is sent only to the operator-controlled Ollama endpoint when local model inference is configured; no hosted AI provider is used.
-5. **Session state to persistence:** current history and FIRSTLIGHT audit events are session-scoped, not durable multi-user case storage.
+5. **Browser to application backend:** same-origin HttpOnly sessions are checked by FastAPI; each case/evidence/report/job query is scoped through the user's workspace membership. The backend owns relational persistence and private evidence bytes; PostgreSQL is recommended for multi-instance deployments.
 
 ### Processing flow for a scanner
 
@@ -367,7 +381,7 @@ GitHub Actions also runs dependency/compile/test checks, browser smoke and layou
 ### Known limitations and release gates
 
 - **Release verification is still required:** the Next.js web workspace has authenticated persistence APIs and tenant-scoped database policies, but the latest `main` revision has not yet been verified on the production alias. Do not use the live deployment for confidential multi-user cases until the exact deployed SHA, production smoke tests, and isolated authorization tests pass.
-- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. Use the Next.js web workspace for the persistent Supabase-backed case/evidence/findings/reports workflow, subject to the release gates above.
+- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. The self-hosted FastAPI + SQLAlchemy backend is the replacement for the former self-hosted case/evidence/findings/reports workflow. Its migration branch still requires complete API compatibility, regression tests, and deployment acceptance before confidential use.
 - **Evidence provenance is not independently anchored:** SHA-256 hashes support integrity comparison, but they do not by themselves prove original source, collection procedure, or independent chain of custody.
 - **Audit boundaries differ by workflow:** FIRSTLIGHT's demo/session audit trail is not an enterprise audit service. The web database has persistent hash-chained audit records, but production policy consistency and end-to-end verification still require successful isolated and deployed tests.
 - **Shared rate limiting must be verified:** Vercel analysis fails closed without a working Upstash Redis REST configuration. Process-local limits are for local development only and are not a distributed/global quota.
@@ -394,7 +408,7 @@ The following is a forward-looking roadmap, not a claim that every item is imple
 - [ ] Keep the README, architecture notes, demo flow, and release sign-off aligned with the actual code.
 
 ### Next: stronger investigation workflow
-- [ ] Complete end-to-end production verification of the existing Supabase-backed case/evidence/findings/reports workflow, including retention/deletion behavior.
+- [ ] Complete end-to-end verification of the self-hosted case/evidence/findings/reports workflow, including retention/deletion behavior.
 - [ ] Finish and pass cross-tenant authorization/storage regression tests, then verify the same policies on the deployed release before multi-user sensitive use.
 - [ ] Design independently verifiable evidence manifests and durable audit records.
 - [ ] Add clear case lifecycle, export validation, and audit verification UX.
@@ -504,7 +518,7 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
-- [Dedicated Supabase tenant-isolation test setup](docs/SUPABASE_TENANT_TEST_SETUP.md)
+- [Self-hosted backend setup and migration guide](docs/SELF_HOSTED_BACKEND.md)
 - [Free API setup and optional threat-intelligence lookups](docs/FREE_API_SETUP.md)
 - [FIRSTLIGHT live-response adapter scope and prerequisites](docs/FIRSTLIGHT_LIVE_RESPONSE.md)
 - [Security policy](SECURITY.md)
@@ -523,4 +537,4 @@ Contributions are welcome, especially focused improvements to reliability, acces
 
 - [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
 - [Saathi live security catalog audit](docs/SAATHI_LIVE_SECURITY_CATALOG_2026-10-21.md) — read-only live RLS and approval-ACL evidence (not authenticated end-to-end proof).
-- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted Supabase + Ollama setup and no-internet acceptance steps.
+- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted SATARK + Ollama setup and no-internet acceptance steps.
