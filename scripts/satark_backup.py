@@ -56,8 +56,11 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
 def _sqlite_path(url) -> Path:
     if not url.database or url.database == ":memory:":
         raise ValueError("A file-backed SQLite database is required for backups.")
-    path = Path(url.database).expanduser().resolve()
-    if not path.is_file() or path.is_symlink():
+    raw_path = Path(url.database).expanduser()
+    if raw_path.is_symlink():
+        raise FileNotFoundError("The configured SQLite database file does not exist or is unsafe.")
+    path = raw_path.resolve()
+    if not path.is_file():
         raise FileNotFoundError("The configured SQLite database file does not exist or is unsafe.")
     return path
 
@@ -83,7 +86,10 @@ def _copy_database(database_url: str, destination: Path) -> str:
 
 
 def _archive_evidence(evidence_dir: Path, destination: Path) -> None:
-    root = evidence_dir.expanduser().resolve()
+    raw_root = evidence_dir.expanduser()
+    if raw_root.is_symlink():
+        raise ValueError("Evidence directory must not be a symbolic link.")
+    root = raw_root.resolve()
     if not root.exists():
         root.mkdir(parents=True, exist_ok=True)
     if root.is_symlink() or not root.is_dir():
@@ -129,7 +135,9 @@ def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[s
             with tarfile.open(temporary_output, "w:gz") as archive:
                 for name in (database_name, "evidence.tar.gz", "manifest.json"):
                     archive.add(work / name, arcname=name, recursive=False)
+            os.chmod(temporary_output, 0o600)
             os.replace(temporary_output, output)
+            os.chmod(output, 0o600)
         finally:
             if temporary_output.exists():
                 temporary_output.unlink()
@@ -181,7 +189,8 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
 
 
 def _extract_evidence_archive(archive_path: Path, destination: Path) -> None:
-    destination.mkdir(parents=True, exist_ok=True)
+    destination.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(destination, 0o700)
     with tarfile.open(archive_path, "r:gz") as archive:
         for member in archive.getmembers():
             if not member.isfile() or not _safe_member_name(member.name):
@@ -189,12 +198,22 @@ def _extract_evidence_archive(archive_path: Path, destination: Path) -> None:
             target = (destination / member.name).resolve()
             if destination.resolve() not in target.parents:
                 raise ValueError("Evidence archive path escapes its destination.")
-            target.parent.mkdir(parents=True, exist_ok=True)
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(target.parent, 0o700)
             source = archive.extractfile(member)
             if source is None:
                 raise ValueError("Evidence archive entry cannot be read.")
-            with target.open("xb") as handle:
-                shutil.copyfileobj(source, handle)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(target, flags, 0o600)
+            try:
+                with os.fdopen(descriptor, "wb") as handle:
+                    shutil.copyfileobj(source, handle)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.chmod(target, 0o600)
+            except Exception:
+                target.unlink(missing_ok=True)
+                raise
 
 
 def restore_backup(
@@ -203,8 +222,11 @@ def restore_backup(
     target_evidence_dir: Path,
 ) -> dict[str, Any]:
     manifest = verify_backup(archive_path)
-    target_evidence_dir = target_evidence_dir.expanduser().resolve()
-    if target_evidence_dir.exists() and any(target_evidence_dir.iterdir()):
+    raw_evidence_target = target_evidence_dir.expanduser()
+    if raw_evidence_target.is_symlink():
+        raise ValueError("Target evidence directory must not be a symbolic link.")
+    target_evidence_dir = raw_evidence_target.resolve()
+    if target_evidence_dir.exists() and (not target_evidence_dir.is_dir() or any(target_evidence_dir.iterdir())):
         raise FileExistsError("Target evidence directory must be empty.")
     target_evidence_dir.parent.mkdir(parents=True, exist_ok=True)
     target_url = make_url(target_database_url)
@@ -229,6 +251,7 @@ def restore_backup(
                     raise ValueError(f"Backup file cannot be read: {name}")
                 with (work / name).open("xb") as handle:
                     shutil.copyfileobj(source, handle)
+                os.chmod(work / name, 0o600)
         staged_evidence = work / "evidence"
         _extract_evidence_archive(work / "evidence.tar.gz", staged_evidence)
         if manifest["database_engine"] == "sqlite":
@@ -237,7 +260,9 @@ def restore_backup(
             if staged_db.exists():
                 staged_db.unlink()
             shutil.copy2(work / "database.sqlite", staged_db)
+            os.chmod(staged_db, 0o600)
             os.replace(staged_db, target_db)
+            os.chmod(target_db, 0o600)
         else:
             safe_url, env = _pg_env(target_url)
             subprocess.run(
@@ -254,7 +279,10 @@ def restore_backup(
 def _sqlite_target_path(url) -> Path:
     if not url.drivername.startswith("sqlite") or not url.database or url.database == ":memory:":
         raise ValueError("A file-backed SQLite target URL is required.")
-    return Path(url.database).expanduser().resolve()
+    raw_path = Path(url.database).expanduser()
+    if raw_path.is_symlink():
+        raise ValueError("Target SQLite database must not be a symbolic link.")
+    return raw_path.resolve()
 
 
 def main() -> int:
