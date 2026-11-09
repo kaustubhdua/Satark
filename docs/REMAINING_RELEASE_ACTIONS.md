@@ -34,11 +34,11 @@ References: [Next.js security advisories](https://github.com/vercel/next.js/secu
 
 - Evidence objects and tenant/case directories are written with restrictive filesystem permissions (files 0600, private directories 0700), exclusive no-follow creation, atomic replacement, and directory fsync.
 - Unrecognized uploaded content types are stored and downloaded as `application/octet-stream`; downloads include `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a sandbox content security policy.
-- Optional email verification is implemented with single-use 30-minute token digests, resend cooldowns, SMTP preflight, a browser verification page, and a migration that grandfather-verifies accounts that predate the feature. Enable only after SMTP and the trusted public base URL are configured.
+- Optional email verification is implemented with single-use 30-minute token digests, resend cooldowns, SMTP preflight, a browser verification page, and a migration that grandfather-verifies accounts that predate the feature. Enable only after SMTP and the trusted public base URL are configured.\n- Optional TOTP MFA is implemented with encrypted secrets, time-window verification, hashed single-use recovery codes, authenticated enrollment/disable flows, session revocation on disable, and a browser account-security panel. Configure a persistent `SATARK_MFA_ENCRYPTION_KEY` before enrollment.
 
 ## Remaining code and operational limitations
 
-- MFA, session-family reuse detection, invitations for users who have not registered, and per-IP/global edge rate limiting remain outstanding. Email verification is implemented but opt-in; production must explicitly enable `SATARK_REQUIRE_EMAIL_VERIFICATION=true` after configuring SMTP and `SATARK_PUBLIC_BASE_URL`.
+- Session-family reuse detection, invitations for users who have not registered, organization-wide mandatory MFA policy, and per-IP/global edge rate limiting remain outstanding. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
 - PostgreSQL row-level security and adversarial concurrency testing are not yet implemented for the self-hosted database.
 - Existing Supabase data is not imported or deleted. A validated export/import and reconciliation run remains necessary if legacy data must be preserved.
 - Evidence storage remains a private local filesystem volume; an S3-compatible object-store adapter is not implemented.
