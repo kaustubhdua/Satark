@@ -35,6 +35,7 @@ PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2, hash_l
 SESSION_TTL_DAYS = 14
 DUMMY_PASSWORD_HASH = PASSWORDS.hash("not-a-real-user-password-for-timing-equalization")
 MAX_UPLOAD = 4 * 1024 * 1024
+EVIDENCE_CONTENT_TYPES = frozenset({"application/pdf", "image/png", "image/jpeg", "application/zip", "text/plain", "application/json"})
 
 
 def utcnow() -> datetime:
@@ -58,6 +59,12 @@ def stored_evidence_path(object_key: str) -> Path:
     if root not in candidate.parents or not candidate.is_file():
         raise HTTPException(404, "Evidence object not found.")
     return candidate
+
+
+def safe_evidence_content_type(value: str | None) -> str:
+    """Allow only explicitly inspected evidence types; serve everything else as binary."""
+    declared = (value or "").split(";", 1)[0].strip().lower()
+    return declared if declared in EVIDENCE_CONTENT_TYPES else "application/octet-stream"
 
 
 def write_private_evidence_object(object_dir: Path, evidence_id: str, raw: bytes) -> Path:
@@ -1019,7 +1026,7 @@ async def upload_evidence(
     raw = await file.read(MAX_UPLOAD + 1)
     if not raw or len(raw) > MAX_UPLOAD:
         raise HTTPException(413, "Evidence must be between 1 byte and 4 MiB.")
-    content_type = (file.content_type or "application/octet-stream")[:160]
+    declared_content_type = (file.content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
     # Minimal magic checks prevent trusting the browser-supplied MIME type.
     signatures = {
         "application/pdf": raw.startswith(b"%PDF-"),
@@ -1029,8 +1036,9 @@ async def upload_evidence(
         "text/plain": b"\x00" not in raw[:8192],
         "application/json": b"\x00" not in raw[:8192],
     }
-    if content_type in signatures and not signatures[content_type]:
+    if declared_content_type in signatures and not signatures[declared_content_type]:
         raise HTTPException(415, "File content does not match its declared type.")
+    content_type = safe_evidence_content_type(declared_content_type)
     digest = hashlib.sha256(raw).hexdigest()
     evidence_id = str(uuid.uuid4())
     object_dir = evidence_directory(tenant_id, case_id)
@@ -1158,7 +1166,7 @@ def download_evidence(evidence_id: str, tenant_id: str, user: User = Depends(cur
     path = stored_evidence_path(row.object_key)
     if hashlib.sha256(path.read_bytes()).hexdigest() != row.source_sha256:
         raise HTTPException(409, "Evidence integrity verification failed.")
-    return FileResponse(path, media_type=row.content_type, filename=row.original_filename, headers={"Cache-Control": "no-store"})
+    return FileResponse(path, media_type=safe_evidence_content_type(row.content_type), filename=row.original_filename, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
 
 
 
