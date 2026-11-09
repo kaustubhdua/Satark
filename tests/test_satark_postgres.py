@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, select, text, event
 from sqlalchemy.exc import DBAPIError
 from alembic import command
 from alembic.config import Config
@@ -28,6 +28,30 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "evidence"))
     alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(alembic_config, "head")
+    # Exercise RLS as a non-owner, non-superuser application role. PostgreSQL
+    # superusers bypass RLS even when FORCE ROW LEVEL SECURITY is enabled.
+    with engine.begin() as connection:
+        connection.exec_driver_sql("""
+            DO $
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'satark_app_test') THEN
+                    EXECUTE 'DROP OWNED BY satark_app_test';
+                    EXECUTE 'DROP ROLE satark_app_test';
+                END IF;
+                CREATE ROLE satark_app_test NOLOGIN;
+            END
+            $
+        """)
+        connection.exec_driver_sql("GRANT USAGE ON SCHEMA public TO satark_app_test")
+        connection.exec_driver_sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO satark_app_test")
+
+    def use_application_role(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET ROLE satark_app_test")
+        cursor.close()
+
+    event.listen(engine, "connect", use_application_role)
+    engine.dispose()
     try:
         with TestClient(app, base_url="http://testserver") as client:
             headers = {"Origin": "http://testserver"}
@@ -35,6 +59,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 "email": "postgres@example.test", "password": "Correct-Horse-Battery-42"
             }, headers=headers)
             assert signup.status_code == 201, signup.text
+            user_id = signup.json()["user"]["id"]
             workspace = client.post("/api/workspaces", json={"name": "PostgreSQL IR"}, headers=headers)
             assert workspace.status_code == 201, workspace.text
             tenant_id = workspace.json()["id"]
@@ -71,6 +96,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert status.json()["job"]["status"] == "succeeded"
             assert len(status.json()["job"]["result_sha256"]) == 64
             db = backend.SessionLocal()
+            backend.set_rls_user_context(db, user_id)
             findings = db.scalars(select(backend.Finding).where(
                 backend.Finding.tenant_id == tenant_id, backend.Finding.case_id == case_id
             )).all()
@@ -94,8 +120,37 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 db.commit()
             db.rollback()
             db.close()
+
+            # A different account and tenant must remain invisible even when
+            # application code issues an unscoped SQL query.
+            outsider = TestClient(app, base_url="http://testserver")
+            outsider_signup = outsider.post("/api/auth/signup", json={
+                "email": "postgres-outsider@example.test", "password": "Correct-Horse-Battery-42"
+            }, headers=headers)
+            assert outsider_signup.status_code == 201
+            outsider_workspace = outsider.post("/api/workspaces", json={"name": "Other Tenant"}, headers=headers)
+            assert outsider_workspace.status_code == 201
+            outsider_tenant_id = outsider_workspace.json()["id"]
+            db = backend.SessionLocal()
+            backend.set_rls_user_context(db, user_id)
+            assert db.scalar(select(backend.Case).where(
+                backend.Case.tenant_id == outsider_tenant_id
+            )) is None
+            db.add(backend.Case(
+                tenant_id=outsider_tenant_id, title="RLS write attempt",
+                created_by=user_id,
+            ))
+            with pytest.raises(DBAPIError):
+                db.flush()
+            db.rollback()
+            db.close()
+            outsider.close()
     finally:
+        event.remove(engine, "connect", use_application_role)
+        engine.dispose()
         backend.Base.metadata.drop_all(engine)
         with engine.begin() as connection:
             connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+            connection.exec_driver_sql("DROP OWNED BY satark_app_test")
+            connection.exec_driver_sql("DROP ROLE IF EXISTS satark_app_test")
         engine.dispose()
