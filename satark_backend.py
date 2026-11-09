@@ -773,7 +773,8 @@ def storage_health():
                 protected = connection.execute(text("""
                     SELECT relname, relrowsecurity, relforcerowsecurity
                     FROM pg_class
-                    WHERE relname IN (
+                    WHERE relnamespace = 'public'::regnamespace
+                      AND relname IN (
                         'satark_tenants', 'satark_cases', 'satark_case_notes',
                         'satark_evidence', 'satark_findings', 'satark_reports',
                         'satark_audit_events', 'satark_approvals',
