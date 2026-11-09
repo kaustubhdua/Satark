@@ -308,3 +308,16 @@ def test_stored_evidence_path_rejects_paths_outside_private_root(monkeypatch, tm
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(private))
     with pytest.raises(backend.HTTPException):
         backend.stored_evidence_path(str(outside))
+
+
+def test_evidence_objects_are_written_with_private_permissions(monkeypatch, tmp_path):
+    root = tmp_path / "private-evidence"
+    monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(root))
+    tenant_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    case_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    object_dir = backend.evidence_directory(tenant_id, case_id)
+    object_path = backend.write_private_evidence_object(object_dir, "evidence-1", b"private evidence")
+    assert object_path.read_bytes() == b"private evidence"
+    assert object_path.stat().st_mode & 0o777 == 0o600
+    assert object_dir.stat().st_mode & 0o777 == 0o700
+    assert root.stat().st_mode & 0o777 == 0o700
