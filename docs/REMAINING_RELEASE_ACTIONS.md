@@ -21,16 +21,6 @@ The migration branch is not a production release until these checks pass on its 
 
 The branch's `web/package.json` and `web/package-lock.json` now pin Next.js **15.5.29**. This is the patched 15.5 maintenance release for the November 3, 2026 advisories affecting versions through 15.5.28, and it is above the October 14 critical-fix floor of 15.5.28.
 
-Verified from the checked-in manifests:
-- `next` is pinned to `15.5.29` in the package manifest.
-- The lockfile resolves `node_modules/next` to `15.5.29` and its matching `@next/*` packages.
-- The November advisories affecting the 15.5 line list 15.5.29 as patched. The remaining November advisories shown on the upstream security page affect 16.x-only Cache Components features.
-
-This manifest check does **not** replace a fresh dependency audit. Before release, run `npm ci`, `npm audit`, `npm run test:ci`, and `npm run test:browser` on the exact release commit, review all transitive advisories, and retain the output. Do not use `npm audit fix --force` or suppress critical findings to obtain a green check.
-
-References: [Next.js security advisories](https://github.com/vercel/next.js/security/advisories), [November 3 advisory — response injection](https://github.com/vercel/next.js/security/advisories/GHSA-pc58-hwjq-p385), [November 3 advisory — SVG rejection bypass](https://github.com/vercel/next.js/security/advisories/GHSA-7qx7-33qx-rqx2), [November 3 advisory — HttpOnly cookie exposure](https://github.com/vercel/next.js/security/advisories/GHSA-f3mh-rxg3-f5g2).
-
-## Additional repository hardening completed
 
 - Evidence objects and tenant/case directories are written with restrictive filesystem permissions (files 0600, private directories 0700), exclusive no-follow creation, atomic replacement, and directory fsync.
 - Unrecognized uploaded content types are stored and downloaded as `application/octet-stream`; downloads include `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a sandbox content security policy.
