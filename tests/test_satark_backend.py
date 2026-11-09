@@ -354,3 +354,73 @@ def test_untrusted_evidence_download_is_attachment_with_nosniff(client):
     assert downloaded.headers["content-security-policy"] == "sandbox"
     assert downloaded.headers["content-disposition"].startswith("attachment;")
     assert downloaded.content == b"<script>alert(1)</script>"
+
+
+def test_email_verification_is_single_use_and_blocks_unverified_login(client, monkeypatch):
+    monkeypatch.setenv("SATARK_REQUIRE_EMAIL_VERIFICATION", "true")
+    monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+    monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+    monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "https://satark.example")
+    captured = {}
+    monkeypatch.setattr(
+        backend, "send_email_verification_email",
+        lambda recipient, url: captured.update({"recipient": recipient, "url": url}),
+    )
+    created = client.post(
+        "/api/auth/signup",
+        json={"email": "verify@example.test", "password": "Correct-Horse-Battery-42"},
+        headers=origin(),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["verification_required"] is True
+    assert "satark_session" not in client.cookies
+    assert captured["recipient"] == "verify@example.test"
+    token = captured["url"].split("token=", 1)[1]
+
+    blocked = client.post(
+        "/api/auth/login",
+        json={"email": "verify@example.test", "password": "Correct-Horse-Battery-42"},
+        headers=origin(),
+    )
+    assert blocked.status_code == 403
+
+    completed = client.post(
+        "/api/auth/email-verification/complete",
+        json={"token": token},
+        headers=origin(),
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["ok"] is True
+
+    replay = client.post(
+        "/api/auth/email-verification/complete",
+        json={"token": token},
+        headers=origin(),
+    )
+    assert replay.status_code == 400
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "verify@example.test", "password": "Correct-Horse-Battery-42"},
+        headers=origin(),
+    )
+    assert login.status_code == 200, login.text
+    assert client.get("/api/auth/session").status_code == 200
+
+
+def test_email_verification_requires_delivery_configuration_before_signup(client, monkeypatch):
+    monkeypatch.setenv("SATARK_REQUIRE_EMAIL_VERIFICATION", "true")
+    monkeypatch.delenv("SATARK_SMTP_HOST", raising=False)
+    monkeypatch.delenv("SATARK_SMTP_FROM", raising=False)
+    monkeypatch.delenv("SATARK_PUBLIC_BASE_URL", raising=False)
+    response = client.post(
+        "/api/auth/signup",
+        json={"email": "no-mail@example.test", "password": "Correct-Horse-Battery-42"},
+        headers=origin(),
+    )
+    assert response.status_code == 503
+    assert client.post(
+        "/api/auth/login",
+        json={"email": "no-mail@example.test", "password": "Correct-Horse-Battery-42"},
+        headers=origin(),
+    ).status_code == 401
