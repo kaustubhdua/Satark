@@ -54,6 +54,10 @@ def test_existing_sqlite_audit_chain_backfill_follows_hash_links_not_timestamps(
                 created_at DATETIME NOT NULL
             )
         """)
+        connection.execute(text("""
+            INSERT INTO satark_users (id, email, password_hash, is_active, created_at)
+            VALUES ('legacy-user', 'legacy@example.test', 'hash', 1, '2026-11-08 12:00:00')
+        """))
         connection.exec_driver_sql("""
             CREATE TABLE satark_audit_events (
                 id VARCHAR(36) PRIMARY KEY,
@@ -90,5 +94,9 @@ def test_existing_sqlite_audit_chain_backfill_follows_hash_links_not_timestamps(
         rows = connection.execute(text("""
             SELECT id, sequence FROM satark_audit_events ORDER BY sequence
         """)).all()
+        verified = connection.execute(text("""
+            SELECT email_verified_at FROM satark_users WHERE id = 'legacy-user'
+        """)).scalar_one()
     assert rows == [("z-first", 1), ("a-second", 2)]
+    assert str(verified).startswith("2026-11-08 12:00:00")
     engine.dispose()
