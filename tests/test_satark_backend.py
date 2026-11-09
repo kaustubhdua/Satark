@@ -497,3 +497,73 @@ def test_totp_mfa_fails_closed_without_encryption_key(client, monkeypatch):
     register(client, "mfa-unconfigured@example.test")
     response = client.post("/api/auth/mfa/enroll/start", headers=origin())
     assert response.status_code == 503
+
+
+def test_workspace_invitation_can_onboard_unregistered_account_and_is_single_use(client, monkeypatch):
+    register(client, "invite-owner@example.test")
+    tenant_id = client.post(
+        "/api/workspaces", json={"name": "Invitations"}, headers=origin()
+    ).json()["id"]
+    monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+    monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+    monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "https://satark.example")
+    sent = {}
+    monkeypatch.setattr(
+        backend, "send_workspace_invitation_email",
+        lambda recipient, url, role: sent.update({"recipient": recipient, "url": url, "role": role}),
+    )
+
+    created = client.post("/api/workspaces/invitations", json={
+        "tenant_id": tenant_id, "email": "new-member@example.test", "role": "analyst",
+    }, headers=origin())
+    assert created.status_code == 201, created.text
+    invitation_id = created.json()["invitation"]["id"]
+    token = sent["url"].split("token=", 1)[1]
+    assert sent["recipient"] == "new-member@example.test"
+    assert sent["role"] == "analyst"
+
+    listed = client.get("/api/workspaces/invitations", params={"tenant_id": tenant_id})
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["invitations"]] == [invitation_id]
+
+    outsider = TestClient(app, base_url="http://testserver")
+    register(outsider, "wrong-recipient@example.test")
+    wrong_account = outsider.post(
+        "/api/workspaces/invitations/accept", json={"token": token}, headers=origin()
+    )
+    assert wrong_account.status_code == 403
+
+    invitee = TestClient(app, base_url="http://testserver")
+    register(invitee, "new-member@example.test")
+    accepted = invitee.post(
+        "/api/workspaces/invitations/accept", json={"token": token}, headers=origin()
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["tenant"]["id"] == tenant_id
+    assert accepted.json()["tenant"]["role"] == "analyst"
+    assert invitee.get("/api/workspaces").json()["workspaces"][0]["id"] == tenant_id
+
+    replay = invitee.post(
+        "/api/workspaces/invitations/accept", json={"token": token}, headers=origin()
+    )
+    assert replay.status_code == 400
+
+    second = client.post("/api/workspaces/invitations", json={
+        "tenant_id": tenant_id, "email": "revoke-member@example.test", "role": "viewer",
+    }, headers=origin())
+    assert second.status_code == 201
+    second_token = sent["url"].split("token=", 1)[1]
+    revoked = client.delete("/api/workspaces/invitations", params={
+        "tenant_id": tenant_id, "invitation_id": second.json()["invitation"]["id"],
+    }, headers=origin())
+    assert revoked.status_code == 200
+
+    revoked_user = TestClient(app, base_url="http://testserver")
+    register(revoked_user, "revoke-member@example.test")
+    rejected = revoked_user.post(
+        "/api/workspaces/invitations/accept", json={"token": second_token}, headers=origin()
+    )
+    assert rejected.status_code == 400
+    outsider.close()
+    invitee.close()
+    revoked_user.close()
