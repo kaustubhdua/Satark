@@ -120,6 +120,8 @@ def test_health_reports_self_hosted_storage(client):
     response = client.get("/api/health/storage")
     assert response.status_code == 200
     assert response.json()["provider"] == "self-hosted"
+    assert response.json()["schema_ready"] is True
+    assert response.json()["tenant_rls"] is False
 
 def test_cookie_mutation_rejects_same_host_wrong_scheme(client):
     register(client, "csrf-scheme@example.test")
@@ -593,3 +595,9 @@ def test_auto_schema_bootstrap_refuses_postgresql_without_alembic_migrations(mon
     monkeypatch.setattr(backend, "DB_URL", "postgresql+psycopg://satark:secret@localhost/satark")
     with pytest.raises(RuntimeError, match="Apply reviewed Alembic migrations"):
         backend.initialize_self_hosted_backend()
+
+
+def test_storage_health_fails_when_local_schema_is_incomplete(client):
+    backend.Base.metadata.tables["satark_mfa_factors"].drop(backend.engine)
+    response = client.get("/api/health/storage")
+    assert response.status_code == 503
