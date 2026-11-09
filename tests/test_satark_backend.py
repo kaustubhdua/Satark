@@ -607,3 +607,25 @@ def test_storage_health_fails_when_local_schema_is_incomplete(client):
     backend.Base.metadata.tables["satark_mfa_factors"].drop(backend.engine)
     response = client.get("/api/health/storage")
     assert response.status_code == 503
+
+def test_storage_health_fails_when_mandatory_security_controls_are_misconfigured(client, monkeypatch):
+    monkeypatch.setenv("SATARK_REQUIRE_MFA", "true")
+    monkeypatch.delenv("SATARK_MFA_ENCRYPTION_KEY", raising=False)
+    response = client.get("/api/health/storage")
+    assert response.status_code == 503
+
+    monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", backend.Fernet.generate_key().decode("ascii"))
+    monkeypatch.setenv("SATARK_REQUIRE_EMAIL_VERIFICATION", "true")
+    monkeypatch.delenv("SATARK_SMTP_HOST", raising=False)
+    monkeypatch.delenv("SATARK_SMTP_FROM", raising=False)
+    response = client.get("/api/health/storage")
+    assert response.status_code == 503
+
+    monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+    monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+    monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "https://satark.example")
+    response = client.get("/api/health/storage")
+    assert response.status_code == 200
+    assert response.json()["security_controls"] == {
+        "mandatory_mfa": True, "mandatory_email_verification": True,
+    }
