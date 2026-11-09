@@ -778,6 +778,17 @@ def initialize_self_hosted_backend():
 @router.get("/health/storage")
 def storage_health():
     try:
+        # A database can be healthy while required authentication controls are
+        # unusable. Fail readiness rather than advertising a secure deployment
+        # when mandatory MFA or email verification cannot actually operate.
+        if mfa_required():
+            mfa_fernet()
+        if email_verification_required() and not email_verification_public_base():
+            raise HTTPException(503, "Mandatory email verification requires valid public URL and SMTP configuration.")
+        security_controls = {
+            "mandatory_mfa": mfa_required(),
+            "mandatory_email_verification": email_verification_required(),
+        }
         with engine.connect() as connection:
             connection.exec_driver_sql("SELECT 1")
             if DB_URL.startswith("postgresql"):
@@ -820,7 +831,7 @@ def storage_health():
                         or policies != len(POSTGRES_RLS_TABLES) or not function_ready):
                     raise HTTPException(503, "PostgreSQL migrations or tenant row-level security are incomplete.")
                 return {"status": "ok", "database": "connected", "provider": "self-hosted",
-                    "schema_ready": True, "schema_revision": revision, "tenant_rls": True}
+                    "schema_ready": True, "schema_revision": revision, "tenant_rls": True, "security_controls": security_controls}
             tables = set(connection.exec_driver_sql(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).scalars().all())
@@ -834,7 +845,7 @@ def storage_health():
                 ).scalar_one_or_none()
             return {"status": "ok", "database": "connected", "provider": "self-hosted",
                 "schema_ready": True, "schema_revision": revision or "local-bootstrap",
-                "tenant_rls": False}
+                "tenant_rls": False, "security_controls": security_controls}
     except HTTPException:
         raise
     except Exception:
