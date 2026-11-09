@@ -296,7 +296,7 @@ def test_evidence_directory_rejects_untrusted_path_segments(monkeypatch, tmp_pat
     case_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     directory = backend.evidence_directory(tenant_id, case_id)
     assert directory == (tmp_path / "private" / tenant_id / case_id).resolve()
-    with pytest.raises(Exception):
+    with pytest.raises(backend.HTTPException):
         backend.evidence_directory("../../outside", case_id)
 
 
@@ -306,5 +306,5 @@ def test_stored_evidence_path_rejects_paths_outside_private_root(monkeypatch, tm
     outside = tmp_path / "outside.txt"
     outside.write_text("not evidence", encoding="utf-8")
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(private))
-    with pytest.raises(Exception):
+    with pytest.raises(backend.HTTPException):
         backend.stored_evidence_path(str(outside))
