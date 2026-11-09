@@ -369,14 +369,14 @@ def main() -> int:
     verify.add_argument("archive", type=Path)
     restore = commands.add_parser("restore", help="Restore into an empty database and evidence directory")
     restore.add_argument("archive", type=Path)
-    restore.add_argument("--database-url", default=os.getenv("SATARK_DATABASE_URL", ""))
+    restore.add_argument("--database-url", default=os.getenv("SATARK_BACKUP_DATABASE_URL") or os.getenv("SATARK_DATABASE_URL", ""))
     restore.add_argument("--evidence-dir", type=Path, default=Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")))
     args = parser.parse_args()
     try:
         if args.command == "create":
             manifest = create_backup(
                 args.output,
-                os.getenv("SATARK_DATABASE_URL", ""),
+                os.getenv("SATARK_BACKUP_DATABASE_URL") or os.getenv("SATARK_DATABASE_URL", ""),
                 Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")),
             )
             print(json.dumps({"status": "created", "output": str(args.output), "manifest": manifest}, indent=2))
