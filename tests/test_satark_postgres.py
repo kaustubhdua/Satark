@@ -28,6 +28,17 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "evidence"))
     alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(alembic_config, "head")
+    with engine.connect() as connection:
+        protected = connection.execute(text("""
+            SELECT relname, relrowsecurity, relforcerowsecurity
+            FROM pg_class
+            WHERE relname IN ('satark_tenants', 'satark_cases', 'satark_case_notes',
+                'satark_evidence', 'satark_findings', 'satark_reports',
+                'satark_audit_events', 'satark_approvals',
+                'satark_ingestion_checkpoints', 'satark_investigation_jobs')
+        """)).all()
+        assert len(protected) == 10
+        assert all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
     # Exercise RLS as a non-owner, non-superuser application role. PostgreSQL
     # superusers bypass RLS even when FORCE ROW LEVEL SECURITY is enabled.
     with engine.begin() as connection:
