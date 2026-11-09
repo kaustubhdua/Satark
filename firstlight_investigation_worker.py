@@ -15,7 +15,7 @@ from sqlalchemy import or_, select
 
 from firstlight_engine import investigate_case, sha256_record
 from satark_backend import (
-    Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, utcnow,
+    Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, set_rls_user_context, utcnow,
 )
 
 MAX_EVIDENCE = 500
@@ -70,6 +70,7 @@ class InvestigationJobWorker:
             job = db.get(InvestigationJob, job_id)
             if not job or job.status != "running":
                 return {"status": "lost_lease", "job_id": job_id}
+            set_rls_user_context(db, job.requested_by)
             case = db.scalar(select(Case).where(Case.id == job.case_id, Case.tenant_id == job.tenant_id))
             if not case:
                 raise ValueError("case_not_found")
