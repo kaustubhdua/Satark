@@ -58,7 +58,7 @@ Investigation processing is limited to 500 evidence records, 32 MiB total eviden
 
 ## Backup, verification, and restore
 
-The repository includes `scripts/satark_backup.py` for a versioned archive containing a consistent database export, the private evidence tree, and a SHA-256 manifest. The utility rejects symlinks and unsafe archive paths, restores evidence with 0600/0700 permissions, and rebases stored absolute evidence keys to the restored volume. PostgreSQL dump/restore and evidence rebasing are covered by CI. For PostgreSQL, set `SATARK_BACKUP_DATABASE_URL` to a separate superuser or BYPASSRLS-capable connection; never reuse that credential for the runtime API.
+The repository includes `scripts/satark_backup.py` for a versioned archive containing a consistent database export, the private evidence tree, and a SHA-256 manifest. The utility rejects symlinks and unsafe archive paths, restores evidence with 0600/0700 permissions, and rebases stored absolute evidence keys to the restored volume. PostgreSQL dump/restore and evidence rebasing are covered by CI. For PostgreSQL, set `SATARK_BACKUP_DATABASE_URL` to a separate superuser or BYPASSRLS-capable backup/restore connection with the necessary target-database creation privileges; restore into a pre-created empty target database. Never reuse that credential for the runtime API.
 
 Stop SATARK API and worker writers before creating a backup so the database and evidence files represent the same point in time:
 
