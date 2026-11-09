@@ -39,6 +39,11 @@ class SatarkBackupTests(unittest.TestCase):
                 (restored_evidence / "case-1.json").read_text(encoding="utf-8"),
                 '{"event":"login"}',
             )
+            import stat
+            self.assertEqual(stat.S_IMODE(archive.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(restored_database.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(restored_evidence.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE((restored_evidence / "case-1.json").stat().st_mode), 0o600)
 
     def test_backup_checksum_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -70,6 +75,38 @@ class SatarkBackupTests(unittest.TestCase):
         self.assertTrue(safe_url.startswith("postgresql://"))
         self.assertNotIn("private-secret", safe_url)
         self.assertEqual(env["PGPASSWORD"], "private-secret")
+
+
+
+    def test_restore_refuses_symlink_targets_and_source_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database = root / "source.db"
+            evidence = root / "source-evidence"
+            evidence.mkdir()
+            with sqlite3.connect(database) as connection:
+                connection.execute("CREATE TABLE test (value TEXT)")
+            archive = root / "backup.tar.gz"
+            create_backup(archive, f"sqlite:///{database}", evidence)
+
+            real_target = root / "real-evidence"
+            real_target.mkdir()
+            evidence_link = root / "evidence-link"
+            evidence_link.symlink_to(real_target, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "symbolic link"):
+                restore_backup(archive, f"sqlite:///{root / 'target.db'}", evidence_link)
+
+            database_link = root / "database-link.db"
+            database_link.symlink_to(database)
+            with self.assertRaisesRegex(FileNotFoundError, "unsafe"):
+                create_backup(root / "linked-source-backup.tar.gz", f"sqlite:///{database_link}", evidence)
+
+            evidence_source_link = root / "evidence-source-link"
+            evidence_source_link.symlink_to(evidence, target_is_directory=True)
+            with sqlite3.connect(root / "another.db") as connection:
+                connection.execute("CREATE TABLE test (value TEXT)")
+            with self.assertRaisesRegex(ValueError, "symbolic link"):
+                create_backup(root / "linked-evidence-backup.tar.gz", f"sqlite:///{root / 'another.db'}", evidence_source_link)
 
     def test_restore_refuses_nonempty_evidence_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
