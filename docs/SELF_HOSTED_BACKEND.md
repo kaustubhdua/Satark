@@ -113,3 +113,6 @@ npm run test:ci
 npm run test:browser
 ~~~
 
+
+
+`/api/health/storage` also fails closed when mandatory MFA or email verification is misconfigured. When an enrolled MFA factor exists, readiness verifies that the configured Fernet key can decrypt it; rotating or losing the key without a planned re-enrollment procedure prevents sign-in and causes readiness failure.
