@@ -169,6 +169,9 @@ def _apply_satark_rls_identity(session, transaction, connection):
         invitation_token = session.info.get("satark_invitation_token")
         if invitation_token:
             connection.execute(text("SELECT set_config('satark.invitation_token', :token_hash, true)"), {"token_hash": invitation_token})
+        admin_tenant = session.info.get("satark_membership_admin_tenant")
+        if admin_tenant:
+            connection.execute(text("SELECT set_config('satark.membership_admin_tenant', :tenant_id, true)"), {"tenant_id": admin_tenant})
 
 
 def set_rls_user_context(db: Session, user_id: str) -> None:
@@ -194,6 +197,15 @@ def set_rls_invitation_context(db: Session, token_hash: str) -> None:
     db.info["satark_invitation_token"] = token_hash
     if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(text("SELECT set_config('satark.invitation_token', :token_hash, true)"), {"token_hash": token_hash})
+
+
+def set_rls_membership_admin_context(db: Session, tenant_id: str) -> None:
+    """Allow an authorized workspace owner to manage membership rows in one tenant."""
+    if not UUID_RE.fullmatch(tenant_id):
+        raise HTTPException(400, "A valid tenant_id is required.")
+    db.info["satark_membership_admin_tenant"] = tenant_id
+    if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(text("SELECT set_config('satark.membership_admin_tenant', :tenant_id, true)"), {"tenant_id": tenant_id})
 
 
 if DB_URL.startswith("sqlite"):
@@ -637,6 +649,8 @@ def require_membership(db: Session, user: User, tenant_id: str, roles: set[str] 
     membership = db.scalar(select(Membership).where(Membership.tenant_id == tenant_id, Membership.user_id == user.id))
     if not membership or (roles and membership.role not in roles):
         raise HTTPException(403, "Workspace access denied.")
+    if membership.role == "owner":
+        set_rls_membership_admin_context(db, tenant_id)
     return membership
 
 
