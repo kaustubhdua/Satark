@@ -23,7 +23,7 @@ test('self-hosted API proxy rejects redirects and untrusted upstreams', () => {
 
 test('mutating browser requests require a same-origin boundary', () => {
   assert.match(proxy, /let sameOrigin = false/);
-  assert.match(proxy, /new URL\(origin\)\.origin === incoming\.origin/);
+  assert.match(proxy, /new URL\(origin\)\.origin === expectedOrigin\.origin/);
   assert.match(proxy, /if \(unsafe && !sameOrigin\)/);
   assert.doesNotMatch(proxy, /&& !bearer/);
   assert.match(proxy, /Cross-origin API requests are not allowed/);
