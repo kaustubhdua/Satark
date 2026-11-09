@@ -1226,6 +1226,12 @@ def create_workspace_invitation(body: WorkspaceInvitationInput, user: User = Dep
     if not public_base:
         raise HTTPException(503, "Workspace invitations require configured SMTP and SATARK_PUBLIC_BASE_URL.")
     now = utcnow()
+    recent_invites = db.scalar(select(func.count()).select_from(WorkspaceInvitation).where(
+        WorkspaceInvitation.tenant_id == body.tenant_id,
+        WorkspaceInvitation.created_at >= now - timedelta(hours=1),
+    )) or 0
+    if recent_invites >= 20:
+        raise HTTPException(429, "This workspace has reached its invitation email limit. Try again later.")
     db.execute(update(WorkspaceInvitation).where(
         WorkspaceInvitation.tenant_id == body.tenant_id,
         WorkspaceInvitation.invited_email == email,
