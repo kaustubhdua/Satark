@@ -457,6 +457,10 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     assert confirmed.status_code == 200, confirmed.text
     assert client.get("/api/workspaces").status_code == 200
     recovery_codes = confirmed.json()["recovery_codes"]
+    monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", backend.Fernet.generate_key().decode("ascii"))
+    assert client.get("/api/health/storage").status_code == 503
+    monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", key)
+    assert client.get("/api/health/storage").status_code == 200
     assert len(recovery_codes) == 10
     assert len(set(recovery_codes)) == 10
     assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "required": True, "recovery_codes_remaining": 10}
