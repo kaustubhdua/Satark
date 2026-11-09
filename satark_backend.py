@@ -31,7 +31,7 @@ from sqlalchemy import event
 
 router = APIRouter(prefix="/api", tags=["SATARK self-hosted"])
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
-EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+EMAIL_RE = None  # Validation uses valid_email_address below.
 PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2, hash_len=32, salt_len=16)
 SESSION_TTL_DAYS = 14
 DUMMY_PASSWORD_HASH = PASSWORDS.hash("not-a-real-user-password-for-timing-equalization")
@@ -40,6 +40,28 @@ MAX_UPLOAD = 4 * 1024 * 1024
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+def valid_email_address(value: str) -> bool:
+    """Validate a mailbox with bounded, linear-time parsing."""
+    if not isinstance(value, str) or len(value) > 254 or value.count("@") != 1:
+        return False
+    local, domain = value.split("@", 1)
+    if not local or len(local) > 64 or not domain or len(domain) > 253:
+        return False
+    if local.startswith(".") or local.endswith(".") or ".." in local:
+        return False
+    allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._+-"
+    if any(char not in allowed for char in local):
+        return False
+    labels = domain.split(".")
+    if len(labels) < 2:
+        return False
+    for label in labels:
+        if not label or len(label) > 63 or label.startswith("-") or label.endswith("-"):
+            return False
+        if any(not (char.isascii() and (char.isalnum() or char == "-")) for char in label):
+            return False
+    return True
 
 
 def database_url() -> str:
@@ -472,7 +494,7 @@ def storage_health():
 def signup(body: Credentials, request: Request, db: Session = Depends(db_session)):
     enforce_same_origin(request)
     email = body.email.strip().lower()
-    if not EMAIL_RE.fullmatch(email):
+    if not valid_email_address(email):
         raise HTTPException(400, "Enter a valid email address.")
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "An account with this email already exists.")
@@ -554,7 +576,7 @@ def request_password_reset(body: PasswordResetRequest, request: Request, db: Ses
     email = body.email.strip().lower()
     # Deliberately identical response for unknown accounts and unconfigured mail.
     generic = {"ok": True, "message": "If the account exists and recovery email is configured, a one-time link will be sent."}
-    if not EMAIL_RE.fullmatch(email):
+    if not valid_email_address(email):
         return generic
     host = os.getenv("SATARK_SMTP_HOST", "").strip()
     sender = os.getenv("SATARK_SMTP_FROM", "").strip()
@@ -721,7 +743,7 @@ def add_workspace_member(body: dict, user: User = Depends(current_user), db: Ses
     role = body.get("role", "analyst")
     require_membership(db, user, str(tenant_id), {"owner"})
     db.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
-    if not isinstance(email, str) or not EMAIL_RE.fullmatch(email.strip().lower()):
+    if not isinstance(email, str) or not valid_email_address(email.strip().lower()):
         raise HTTPException(400, "A valid existing account email is required.")
     if role not in {"owner", "responder", "analyst", "viewer"}:
         raise HTTPException(400, "Role must be owner, responder, analyst, or viewer.")
