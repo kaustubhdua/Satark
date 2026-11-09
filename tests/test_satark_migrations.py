@@ -24,6 +24,7 @@ def test_fresh_sqlite_database_upgrades_and_downgrades_all_revisions(tmp_path, m
     assert "satark_password_reset_tokens" in inspector.get_table_names()
     assert "satark_email_verification_tokens" in inspector.get_table_names()
     assert "satark_mfa_factors" in inspector.get_table_names()
+    assert "satark_workspace_invitations" in inspector.get_table_names()
     session_columns = {column["name"] for column in inspector.get_columns("satark_sessions")}
     assert {"family_id", "revoked_reason"} <= session_columns
     assert "email_verified_at" in {column["name"] for column in inspector.get_columns("satark_users")}
