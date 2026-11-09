@@ -15,7 +15,7 @@ from sqlalchemy import or_, select
 
 from firstlight_engine import investigate_case, sha256_record
 from satark_backend import (
-    Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, set_rls_user_context, utcnow,
+    Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, set_rls_user_context, set_rls_worker_context, utcnow,
 )
 
 MAX_EVIDENCE = 500
@@ -35,6 +35,7 @@ class InvestigationJobWorker:
 
     def claim(self):
         db = SessionLocal()
+        set_rls_worker_context(db)
         try:
             now = utcnow()
             query = (select(InvestigationJob)
@@ -66,6 +67,7 @@ class InvestigationJobWorker:
         if not job_id:
             return {"status": "idle"}
         db = SessionLocal()
+        set_rls_worker_context(db)
         try:
             job = db.get(InvestigationJob, job_id)
             if not job or job.status != "running":
