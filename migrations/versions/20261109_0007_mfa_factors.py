@@ -16,6 +16,7 @@ def upgrade() -> None:
             sa.Column("user_id", sa.String(length=36), sa.ForeignKey("satark_users.id", ondelete="CASCADE"), primary_key=True),
             sa.Column("secret_encrypted", sa.String(length=512), nullable=False),
             sa.Column("recovery_code_hashes", sa.JSON(), nullable=False),
+            sa.Column("last_totp_counter", sa.Integer(), nullable=True),
             sa.Column("enabled_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         )
