@@ -567,3 +567,22 @@ def test_workspace_invitation_can_onboard_unregistered_account_and_is_single_use
     outsider.close()
     invitee.close()
     revoked_user.close()
+
+
+def test_mandatory_mfa_gate_allows_only_enrollment_until_factor_is_enabled(client, monkeypatch):
+    monkeypatch.setenv("SATARK_REQUIRE_MFA", "true")
+    monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", backend.Fernet.generate_key().decode("ascii"))
+    register(client, "mandatory-mfa@example.test")
+    assert client.get("/api/auth/session").status_code == 200
+    assert client.get("/api/auth/mfa/status").json()["enabled"] is False
+    blocked = client.post("/api/workspaces", json={"name": "Must enroll first"}, headers=origin())
+    assert blocked.status_code == 403
+
+    started = client.post("/api/auth/mfa/enroll/start", headers=origin())
+    assert started.status_code == 200, started.text
+    code = backend.totp_at(started.json()["secret"], int(backend.time.time()))
+    confirmed = client.post("/api/auth/mfa/enroll/confirm", json={"code": code}, headers=origin())
+    assert confirmed.status_code == 200, confirmed.text
+
+    allowed = client.post("/api/workspaces", json={"name": "MFA protected"}, headers=origin())
+    assert allowed.status_code == 201, allowed.text
