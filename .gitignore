@@ -24,3 +24,18 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+
+# Android / Gradle
+.gradle/
+**/.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+
+# Local File Guard databases
+data/*.sqlite3
+
+# Locally downloaded historical datasets and converted hash snapshots
+data/ember2024/
+data/ember2024-csv/

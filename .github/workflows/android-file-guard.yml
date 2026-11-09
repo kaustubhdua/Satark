@@ -1,0 +1,95 @@
+name: Android File Guard
+on:
+  push:
+    paths:
+      - "android/**"
+      - "file_guard/**"
+      - "tests/test_file_guard.py"
+      - "tests/test_ember_import.py"
+      - "tests/test_ember_download.py"
+      - "scripts/import_ember2024.py"
+      - "scripts/download_ember2024.py"
+      - ".github/workflows/android-file-guard.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - "file_guard/**"
+      - "tests/test_file_guard.py"
+      - ".github/workflows/android-file-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-file-guard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-engine:
+    name: Offline Python engine tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify Android Python engine stays in sync with desktop engine
+        run: |
+          cmp file_guard/agents.py android/app/src/main/python/file_guard/agents.py
+          cmp file_guard/__init__.py android/app/src/main/python/file_guard/__init__.py
+          cmp file_guard/engine.py android/app/src/main/python/file_guard/engine.py
+          cmp file_guard/intelligence.py android/app/src/main/python/file_guard/intelligence.py
+          cmp file_guard/history.py android/app/src/main/python/file_guard/history.py
+      - name: Compile File Guard
+        run: python -m compileall -q file_guard android/app/src/main/python
+      - name: Run deterministic File Guard tests
+        run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Run EMBER2024 converter tests
+        run: python -m unittest discover -s tests -p "test_ember_import.py" -v
+      - name: Run EMBER2024 downloader tests
+        run: python -m unittest discover -s tests -p "test_ember_download.py" -v
+
+  android-build:
+    name: Build native Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Android SDK platform and build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Verify Android privacy and integration boundaries
+        run: |
+          ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.POST_NOTIFICATIONS' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.intent.action.SEND' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.intent.action.SEND_MULTIPLE' android/app/src/main/AndroidManifest.xml
+          grep -q 'ACTION_OPEN_DOCUMENT_TREE' android/app/src/main/java/com/satark/mobile/MainActivity.kt
+          grep -q 'PeriodicWorkRequestBuilder' android/app/src/main/java/com/satark/mobile/MainActivity.kt
+      - name: Compile Android app
+        run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: satark-file-guard-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

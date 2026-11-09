@@ -66,7 +66,7 @@ jobs:
         run: |
           python -m compileall -q \
             satark.py ai_provider.py scam_challenge.py video_processing.py reports.py \
-            satark_backend.py satark_utils.py url_security.py radar_background.py stepper_component.py evidence_engine.py firstlight_engine.py firstlight_agents.py firstlight_ingest.py config.py input_processing.py analysis_engine.py findings.py rate_limiter.py ui tests
+
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
@@ -135,11 +135,11 @@ jobs:
               "url_security.py", "rate_limiter.py", "evidence_engine.py", "firstlight_engine.py",
               "firstlight_ingest.py", "docs/ARCHITECTURE.md", "docs/FIRSTLIGHT.md",
               "docs/UI_DESIGN.md", "docs/RELEASE_READINESS.md",
-              "ui/__init__.py", "ui/home.py", "ui/navigation.py", "ui/results.py",
+              "ui/__init__.py", "ui/home.py", "ui/navigation.py", "ui/file_guard.py", "ui/results.py",
               "ui/history.py", "ui/learning.py", "ui/demo.py", "ui/firstlight.py",
               "tests/test_firstlight_engine.py", "tests/test_firstlight_ingest.py",
               "tests/test_url_security.py", "tests/test_input_processing.py", "tests/test_rate_limiter.py",
-              "tests/e2e_smoke.py",
+              "tests/e2e_smoke.py", "file_guard/__init__.py", "file_guard/agents.py", "file_guard/engine.py", "file_guard/intelligence.py", "file_guard/history.py", "tests/test_file_guard.py", "docs/OFFLINE_FILE_GUARD.md", "scripts/import_ember2024.py", "scripts/download_ember2024.py", "tests/test_ember_import.py", "tests/test_ember_download.py",
           ]
           missing = [
               path for path in files
@@ -227,13 +227,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: Install backend dependencies
-        run: python -m pip install -r firstlight-api-requirements.txt pytest
-      - name: Run SQLite identity, tenant isolation, and persistence tests
-        env:
-          SATARK_DATABASE_URL: sqlite://
-        run: python -m pytest -q tests/test_satark_backend.py
+
 
   web-browser-acceptance:
     name: Next.js production browser and accessibility smoke

@@ -60,6 +60,7 @@ from ui.home import render_home
 from ui.firstlight import render_firstlight
 from ui.loading import render_intro_loader
 from ui.navigation import render_sidebar
+from ui.file_guard import render_file_guard
 from ui.results import render_threat_analysis, render_verification_sources, render_evidence_ledger, render_evidence_review, render_investigation_timeline, render_threat_intelligence
 from evidence_engine import extract_deterministic_evidence
 from ui.history import render_history
@@ -638,6 +639,10 @@ if st.session_state.page == "FIRSTLIGHT":
 
 elif st.session_state.page == "Home":
     render_home()
+
+
+elif st.session_state.page == "File Guard":
+    render_file_guard()
 
 
 elif st.session_state.page == "Analyze":

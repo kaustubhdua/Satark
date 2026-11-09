@@ -403,7 +403,9 @@ async function inspectViewport(viewport, label) {
         await page.getByRole('button', { name: /sign in securely/i }).waitFor();
         continue;
       }
-      const launch = page.locator('.firstlight-hero .btn-primary');
+      // The primary action now uses real telemetry. Browser smoke must explicitly
+      // choose the optional synthetic fixture instead of pretending Wazuh is connected.
+      const launch = page.getByRole('button', { name: 'Open synthetic training scenario', exact: true });
       await launch.waitFor();
       await launch.click();
       await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
@@ -420,7 +422,7 @@ async function inspectViewport(viewport, label) {
       });
       await tamper.click();
       await page.getByText('MISMATCH').first().waitFor();
-      await page.getByRole('button', { name: /restore demo/i }).first().click();
+      await page.getByRole('button', { name: /restore training record/i }).first().click();
       await page.getByText('HASHED').first().waitFor();
       assert.equal(await page.getByText('MISMATCH', { exact: true }).count(), 0, 'restore demo must clear every tamper mismatch');
       assert.equal(await page.getByText('[SIMULATED TAMPER]', { exact: false }).count(), 0, 'restore demo must remove the simulated tamper marker from the record');
@@ -439,6 +441,11 @@ async function inspectViewport(viewport, label) {
       await page.getByText(/SIMULATED_RESPONSE_APPROVED/i).waitFor();
       await page.getByText(/SIMULATED_RESPONSE_REJECTED/i).waitFor();
 
+      page.on('dialog', async dialog => {
+        assert.match(dialog.message(), /replace the current in-memory evidence/i,
+          'replacing evidence must require explicit confirmation');
+        await dialog.accept();
+      });
       const fileInput = page.locator('input[type="file"]');
       const jsonBuffer = Buffer.from(JSON.stringify([{ id: 'QA-001', timestamp: '2026-10-11T10:00:00Z', source: 'QA test', kind: 'message', summary: 'Urgent account verification request' }]));
       const originalFileHash = createHash('sha256').update(jsonBuffer).digest('hex');
@@ -474,7 +481,7 @@ async function inspectViewport(viewport, label) {
       await page.getByText(originalFileHash, { exact: false }).waitFor();
       await page.getByText(/no external anchor or custody log/i).waitFor();
 
-      await page.getByRole('button', { name: /load synthetic case/i }).click();
+      await page.getByRole('button', { name: 'Open synthetic training scenario', exact: true }).click();
       await page.getByText('TRAINING CASE', { exact: true }).waitFor();
       assert.equal(await page.locator('.evidence-table tbody tr').count(), 5,
         'switching from imported data to the synthetic case should reset the evidence source label and rows');
