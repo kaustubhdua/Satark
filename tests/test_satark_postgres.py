@@ -45,7 +45,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             WHERE relname IN ('satark_tenants', 'satark_memberships', 'satark_cases', 'satark_case_notes',
                 'satark_evidence', 'satark_findings', 'satark_reports',
                 'satark_audit_events', 'satark_approvals',
-                'satark_ingestion_checkpoints', 'satark_investigation_jobs', 'satark_workspace_invitations')
+                'satark_ingestion_checkpoints', 'satark_investigation_jobs', 'satark_workspace_invitations', 'satark_memberships')
         """)).all()
         assert len(protected) == 12
         assert all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
