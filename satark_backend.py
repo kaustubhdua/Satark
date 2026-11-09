@@ -736,6 +736,11 @@ def initialize_self_hosted_backend():
     # create_all is a bootstrap for local mode only. Production schema changes
     # must be applied by reviewed Alembic migrations before deployment.
     if os.getenv("SATARK_AUTO_CREATE_SCHEMA", "false").lower() == "true":
+        if not DB_URL.startswith("sqlite"):
+            raise RuntimeError(
+                "SATARK_AUTO_CREATE_SCHEMA is local SQLite bootstrap only. "
+                "Apply reviewed Alembic migrations for PostgreSQL so RLS and audit triggers are installed."
+            )
         Base.metadata.create_all(engine)
 
 
