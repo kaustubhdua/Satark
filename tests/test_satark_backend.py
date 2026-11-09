@@ -321,3 +321,35 @@ def test_evidence_objects_are_written_with_private_permissions(monkeypatch, tmp_
     assert object_path.stat().st_mode & 0o777 == 0o600
     assert object_dir.stat().st_mode & 0o777 == 0o700
     assert root.stat().st_mode & 0o777 == 0o700
+
+
+def test_untrusted_evidence_download_is_attachment_with_nosniff(client):
+    register(client, "evidence-content@example.test")
+    tenant_id = client.post("/api/workspaces", json={"name": "Evidence"}, headers=origin()).json()["id"]
+    case = client.post("/api/cases", json={
+        "tenant_id": tenant_id, "title": "Untrusted upload",
+    }, headers=origin()).json()["case"]
+    uploaded = client.post(
+        "/api/evidence",
+        data={
+            "tenant_id": tenant_id,
+            "case_id": case["id"],
+            "observed_at": "2026-11-09T00:00:00+00:00",
+            "source_label": "Untrusted HTML",
+            "event_kind": "file",
+            "summary": "Test active content handling",
+        },
+        files={"file": ("payload.html", b"<script>alert(1)</script>", "text/html")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    evidence = uploaded.json()["evidence"]
+    assert evidence["content_type"] == "application/octet-stream"
+    downloaded = client.get(
+        f"/api/evidence/{evidence['id']}/download",
+        params={"tenant_id": tenant_id},
+    )
+    assert downloaded.status_code == 200
+    assert downloaded.headers["x-content-type-options"] == "nosniff"
+    assert downloaded.headers["content-security-policy"] == "sandbox"
+    assert downloaded.headers["content-disposition"].startswith("attachment;")
+    assert downloaded.content == b"<script>alert(1)</script>"
