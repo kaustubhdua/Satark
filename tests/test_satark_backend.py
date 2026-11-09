@@ -279,3 +279,32 @@ def test_login_failures_trigger_database_backed_cooldown(client, monkeypatch):
         "email": "throttle@example.test", "password": "Correct-Horse-Battery-42",
     }, headers=origin())
     assert locked.status_code == 429
+
+
+def test_email_validation_is_bounded_and_accepts_common_addresses():
+    assert backend.valid_email_address("analyst+alerts@example.test")
+    assert backend.valid_email_address("a.b-c_d@example.co")
+    assert not backend.valid_email_address("!@!." + "!.".join(["x"] * 1000))
+    assert not backend.valid_email_address("missing-at.example.test")
+    assert not backend.valid_email_address("a..b@example.test")
+    assert not backend.valid_email_address("user@-example.test")
+
+
+def test_evidence_directory_rejects_untrusted_path_segments(monkeypatch, tmp_path):
+    monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "private"))
+    tenant_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    case_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    directory = backend.evidence_directory(tenant_id, case_id)
+    assert directory == (tmp_path / "private" / tenant_id / case_id).resolve()
+    with pytest.raises(Exception):
+        backend.evidence_directory("../../outside", case_id)
+
+
+def test_stored_evidence_path_rejects_paths_outside_private_root(monkeypatch, tmp_path):
+    private = tmp_path / "private"
+    private.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("not evidence", encoding="utf-8")
+    monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(private))
+    with pytest.raises(Exception):
+        backend.stored_evidence_path(str(outside))
