@@ -49,8 +49,8 @@ export function clearSession() {
   if (typeof window !== 'undefined') localStorage.removeItem(TENANT_KEY);
 }
 
-export async function signIn(email: string, password: string) {
-  const result = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: email.trim(), password }) });
+export async function signIn(email: string, password: string, mfaCode = '') {
+  const result = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: email.trim(), password, ...(mfaCode ? { mfa_code: mfaCode.trim() } : {}) }) });
   currentSession = sessionFrom(result);
   return currentSession;
 }
