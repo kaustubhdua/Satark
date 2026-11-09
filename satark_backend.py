@@ -1186,6 +1186,126 @@ def create_workspace(body: WorkspaceInput, user: User = Depends(current_user), d
     return {"id": tenant.id, "name": tenant.name, "role": "owner"}
 
 
+def send_workspace_invitation_email(recipient: str, invitation_url: str, role: str) -> None:
+    send_smtp_email(recipient, "You are invited to a SATARK workspace",
+        f"You have been invited to join a SATARK workspace as {role}.\n\n"
+        f"Open this one-time invitation link within 7 days: {invitation_url}\n\n"
+        "Sign in or create an account using this invited email address to accept the invitation.")
+
+
+@router.post("/workspaces/invitations", status_code=201)
+def create_workspace_invitation(body: WorkspaceInvitationInput, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, body.tenant_id, {"owner"})
+    tenant = db.scalar(select(Tenant).where(Tenant.id == body.tenant_id).with_for_update())
+    if not tenant:
+        raise HTTPException(404, "Workspace not found.")
+    email = body.email.strip().lower()
+    if not valid_email_address(email):
+        raise HTTPException(400, "Enter a valid invitation email address.")
+    if body.role not in {"responder", "analyst", "viewer"}:
+        raise HTTPException(400, "Invitation role must be responder, analyst, or viewer.")
+    existing_user = db.scalar(select(User).where(User.email == email, User.is_active.is_(True)))
+    if existing_user and db.scalar(select(Membership).where(
+        Membership.tenant_id == body.tenant_id, Membership.user_id == existing_user.id
+    )):
+        raise HTTPException(409, "This account is already a workspace member.")
+    public_base = email_verification_public_base()
+    if not public_base:
+        raise HTTPException(503, "Workspace invitations require configured SMTP and SATARK_PUBLIC_BASE_URL.")
+    now = utcnow()
+    db.execute(update(WorkspaceInvitation).where(
+        WorkspaceInvitation.tenant_id == body.tenant_id,
+        WorkspaceInvitation.invited_email == email,
+        WorkspaceInvitation.accepted_at.is_(None),
+        WorkspaceInvitation.revoked_at.is_(None),
+    ).values(revoked_at=now))
+    token = secrets.token_urlsafe(48)
+    invitation = WorkspaceInvitation(
+        tenant_id=body.tenant_id, invited_email=email, role=body.role,
+        token_hash=token_digest(token), expires_at=now + timedelta(days=7),
+        created_by=user.id,
+    )
+    db.add(invitation)
+    db.flush()
+    audit(db, body.tenant_id, user.id, "workspace.invitation.created", {
+        "invitation_id": invitation.id, "invited_email": email, "role": body.role,
+    })
+    db.commit()
+    try:
+        send_workspace_invitation_email(email, public_base + "/accept-invitation?token=" + token, body.role)
+    except Exception:
+        invitation.revoked_at = utcnow()
+        audit(db, body.tenant_id, user.id, "workspace.invitation.delivery_failed", {
+            "invitation_id": invitation.id,
+        })
+        db.commit()
+        raise HTTPException(503, "The invitation email could not be delivered. Check SMTP configuration and retry.")
+    return {"invitation": {"id": invitation.id, "email": email, "role": body.role,
+        "expires_at": invitation.expires_at.isoformat(), "created_at": invitation.created_at.isoformat()}}
+
+
+@router.get("/workspaces/invitations")
+def list_workspace_invitations(tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id, {"owner"})
+    rows = db.scalars(select(WorkspaceInvitation).where(
+        WorkspaceInvitation.tenant_id == tenant_id,
+        WorkspaceInvitation.accepted_at.is_(None),
+        WorkspaceInvitation.revoked_at.is_(None),
+        WorkspaceInvitation.expires_at > utcnow(),
+    ).order_by(WorkspaceInvitation.created_at.desc()).limit(100)).all()
+    return {"invitations": [{"id": row.id, "email": row.invited_email, "role": row.role,
+        "expires_at": row.expires_at.isoformat(), "created_at": row.created_at.isoformat()} for row in rows]}
+
+
+@router.delete("/workspaces/invitations")
+def revoke_workspace_invitation(tenant_id: str, invitation_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    require_membership(db, user, tenant_id, {"owner"})
+    row = db.scalar(select(WorkspaceInvitation).where(
+        WorkspaceInvitation.id == invitation_id,
+        WorkspaceInvitation.tenant_id == tenant_id,
+        WorkspaceInvitation.accepted_at.is_(None),
+        WorkspaceInvitation.revoked_at.is_(None),
+    ).with_for_update())
+    if not row:
+        raise HTTPException(404, "Pending invitation not found.")
+    row.revoked_at = utcnow()
+    audit(db, tenant_id, user.id, "workspace.invitation.revoked", {"invitation_id": row.id})
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/workspaces/invitations/accept")
+def accept_workspace_invitation(body: WorkspaceInvitationAccept, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    digest = token_digest(body.token)
+    set_rls_invitation_context(db, digest)
+    row = db.scalar(select(WorkspaceInvitation).where(
+        WorkspaceInvitation.token_hash == digest,
+    ).with_for_update())
+    expires = row.expires_at.replace(tzinfo=timezone.utc) if row and row.expires_at.tzinfo is None else (row.expires_at if row else None)
+    now = utcnow()
+    if not row or row.accepted_at is not None or row.revoked_at is not None or expires <= now:
+        raise HTTPException(400, "This workspace invitation is invalid, expired, or already used.")
+    if not hmac.compare_digest(row.invited_email, user.email):
+        raise HTTPException(403, "Sign in using the email address that received this invitation.")
+    if email_verification_required() and user.email_verified_at is None:
+        raise HTTPException(403, "Verify your email address before accepting a workspace invitation.")
+    existing = db.scalar(select(Membership).where(
+        Membership.tenant_id == row.tenant_id, Membership.user_id == user.id
+    ))
+    if existing:
+        raise HTTPException(409, "This account is already a workspace member.")
+    db.add(Membership(tenant_id=row.tenant_id, user_id=user.id, role=row.role))
+    db.flush()
+    row.accepted_at = now
+    audit(db, row.tenant_id, user.id, "workspace.invitation.accepted", {
+        "invitation_id": row.id, "role": row.role,
+    })
+    tenant_id = row.tenant_id
+    db.commit()
+    tenant = db.get(Tenant, tenant_id)
+    return {"ok": True, "tenant": {"id": tenant_id, "name": tenant.name if tenant else "Workspace", "role": row.role}}
+
+
 @router.get("/workspaces/members")
 def list_workspace_members(tenant_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
