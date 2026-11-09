@@ -23,6 +23,7 @@ def test_fresh_sqlite_database_upgrades_and_downgrades_all_revisions(tmp_path, m
     inspector = inspect(engine)
     assert "satark_password_reset_tokens" in inspector.get_table_names()
     assert "satark_email_verification_tokens" in inspector.get_table_names()
+    assert "satark_mfa_factors" in inspector.get_table_names()
     assert "email_verified_at" in {column["name"] for column in inspector.get_columns("satark_users")}
     assert "satark_auth_throttles" in inspector.get_table_names()
     audit_columns = {column["name"]: column for column in inspector.get_columns("satark_audit_events")}
