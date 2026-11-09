@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
+
+import psycopg
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +13,9 @@ from sqlalchemy.exc import DBAPIError
 from alembic import command
 from alembic.config import Config
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import make_url
+
+from scripts.satark_backup import create_backup, restore_backup, verify_backup
 
 import satark_backend as backend
 from firstlight_api import app
@@ -181,6 +187,40 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             db.close()
             outsider.close()
             invitee.close()
+
+            # Exercise a real PostgreSQL dump/restore and verify absolute evidence
+            # object keys are rebased to the restored private volume.
+            backup_archive = tmp_path / "postgres-backup.tar.gz"
+            backup_manifest = create_backup(backup_archive, url, tmp_path / "evidence")
+            assert backup_manifest["database_engine"] == "postgresql"
+            assert verify_backup(backup_archive)["format"] == "satark-backup-v1"
+            target_name = "satark_restore_" + uuid.uuid4().hex[:12]
+            admin_url = make_url(url).set(drivername="postgresql", database="postgres")
+            target_url = str(make_url(url).set(database=target_name))
+            target_engine = None
+            try:
+                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                    admin.execute(f'CREATE DATABASE "{target_name}"')
+                restored_evidence = tmp_path / "restored-postgres-evidence"
+                restored_manifest = restore_backup(backup_archive, target_url, restored_evidence)
+                assert restored_manifest["evidence_objects_rebased"] >= 1
+                target_engine = create_engine(target_url, pool_pre_ping=True)
+                with target_engine.connect() as connection:
+                    object_keys = connection.execute(text(
+                        "SELECT object_key FROM satark_evidence"
+                    )).scalars().all()
+                assert object_keys
+                assert all(Path(key).is_file() for key in object_keys)
+                assert all(restored_evidence.resolve() in Path(key).resolve().parents for key in object_keys)
+            finally:
+                if target_engine is not None:
+                    target_engine.dispose()
+                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                    admin.execute(
+                        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()",
+                        (target_name,),
+                    )
+                    admin.execute(f'DROP DATABASE IF EXISTS "{target_name}"')
     finally:
         event.remove(engine, "connect", use_application_role)
         engine.dispose()
