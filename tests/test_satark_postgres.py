@@ -69,8 +69,14 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
 
     event.listen(engine, "connect", use_application_role)
     engine.dispose()
+    monkeypatch.setattr(backend, "engine", engine)
+    monkeypatch.setattr(backend, "DB_URL", url)
     try:
         with TestClient(app, base_url="http://testserver") as client:
+            readiness = client.get("/api/health/storage")
+            assert readiness.status_code == 200, readiness.text
+            assert readiness.json()["schema_revision"] == "20261109_0010"
+            assert readiness.json()["tenant_rls"] is True
             headers = {"Origin": "http://testserver"}
             signup = client.post("/api/auth/signup", json={
                 "email": "postgres@example.test", "password": "Correct-Horse-Battery-42"
