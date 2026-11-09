@@ -155,6 +155,13 @@ def test_session_refresh_rotates_and_revokes_previous_cookie(client):
     stale_client = TestClient(app, base_url="http://testserver")
     stale_client.cookies.set("satark_session", old_token)
     assert stale_client.get("/api/auth/session").status_code == 401
+    # Reuse of a rotated token revokes the rest of that login family.
+    assert client.get("/api/auth/session").status_code == 401
+    # A new login creates a fresh family and is not affected by the old replay.
+    fresh_login = client.post("/api/auth/login", json={
+        "email": "rotate@example.test", "password": "Correct-Horse-Battery-42",
+    }, headers=origin())
+    assert fresh_login.status_code == 200
     assert client.get("/api/auth/session").status_code == 200
 
 def test_workspace_owner_can_add_change_and_remove_members(client):
