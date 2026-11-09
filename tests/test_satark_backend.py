@@ -459,7 +459,7 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     recovery_codes = confirmed.json()["recovery_codes"]
     assert len(recovery_codes) == 10
     assert len(set(recovery_codes)) == 10
-    assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "required": False, "recovery_codes_remaining": 10}
+    assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "required": True, "recovery_codes_remaining": 10}
 
     client.post("/api/auth/logout", headers=origin())
     missing_code = client.post("/api/auth/login", json={
