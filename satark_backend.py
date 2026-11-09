@@ -826,10 +826,85 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
         raise HTTPException(401, "Email or password is incorrect.")
     if email_verification_required() and user.email_verified_at is None:
         raise HTTPException(403, "Verify your email address before signing in.")
+    factor = db.get(MfaFactor, user.id)
+    if factor and factor.enabled_at is not None and not verify_mfa_code(db, user, body.mfa_code):
+        record_login_failure(db, email)
+        raise HTTPException(401, "Authenticator code or recovery code is required or invalid.")
     clear_login_failures(db, email)
     token = issue_session(db, user)
     db.commit()
     return response_with_session(request, {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}, token)
+
+
+@router.get("/auth/mfa/status")
+def mfa_status(user: User = Depends(current_user), db: Session = Depends(db_session)):
+    factor = db.get(MfaFactor, user.id)
+    return {"enabled": bool(factor and factor.enabled_at), "recovery_codes_remaining": len(factor.recovery_code_hashes or []) if factor and factor.enabled_at else 0}
+
+
+@router.post("/auth/mfa/enroll/start")
+def start_mfa_enrollment(user: User = Depends(current_user), db: Session = Depends(db_session)):
+    cipher = mfa_fernet()
+    existing = db.get(MfaFactor, user.id)
+    if existing and existing.enabled_at is not None:
+        raise HTTPException(409, "MFA is already enabled. Disable it before enrolling a new authenticator.")
+    secret = new_totp_secret()
+    encrypted = cipher.encrypt(secret.encode("ascii")).decode("ascii")
+    if existing:
+        existing.secret_encrypted = encrypted
+        existing.recovery_code_hashes = []
+    else:
+        db.add(MfaFactor(user_id=user.id, secret_encrypted=encrypted, recovery_code_hashes=[], enabled_at=None))
+    db.commit()
+    from urllib.parse import quote
+    label = quote("SATARK:" + user.email, safe="")
+    issuer = quote("SATARK", safe="")
+    uri = f"otpauth://totp/{label}?secret={secret}&issuer={issuer}&algorithm=SHA1&digits=6&period=30"
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"secret": secret, "otpauth_uri": uri, "algorithm": "SHA1", "digits": 6, "period": 30},
+        headers={"Cache-Control": "no-store", "Pragma": "no-cache"})
+
+
+@router.post("/auth/mfa/enroll/confirm")
+def confirm_mfa_enrollment(body: MfaCodeInput, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    factor = db.get(MfaFactor, user.id)
+    if not factor or factor.enabled_at is not None:
+        raise HTTPException(409, "Start MFA enrollment before confirming it.")
+    try:
+        secret = mfa_fernet().decrypt(factor.secret_encrypted.encode("ascii")).decode("ascii")
+    except (InvalidToken, UnicodeDecodeError, ValueError):
+        raise HTTPException(503, "The pending MFA factor could not be decrypted.")
+    if not verify_totp(secret, body.code):
+        raise HTTPException(400, "The authenticator code is invalid or expired.")
+    recovery_codes = [secrets.token_hex(8) for _ in range(10)]
+    factor.recovery_code_hashes = [hashlib.sha256(code.encode("utf-8")).hexdigest() for code in recovery_codes]
+    factor.enabled_at = utcnow()
+    db.commit()
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"enabled": True, "recovery_codes": recovery_codes},
+        headers={"Cache-Control": "no-store", "Pragma": "no-cache"})
+
+
+@router.post("/auth/mfa/disable")
+def disable_mfa(body: MfaDisableInput, request: Request, user: User = Depends(current_user), db: Session = Depends(db_session)):
+    factor = db.get(MfaFactor, user.id)
+    if not factor or factor.enabled_at is None:
+        raise HTTPException(409, "MFA is not enabled.")
+    try:
+        password_valid = PASSWORDS.verify(user.password_hash, body.password)
+    except VerifyMismatchError:
+        password_valid = False
+    if not password_valid or not verify_mfa_code(db, user, body.code):
+        raise HTTPException(401, "Password or authenticator/recovery code is incorrect.")
+    db.delete(factor)
+    db.execute(update(SessionRecord).where(
+        SessionRecord.user_id == user.id, SessionRecord.revoked_at.is_(None)
+    ).values(revoked_at=utcnow()))
+    db.commit()
+    from fastapi.responses import JSONResponse
+    response = JSONResponse({"enabled": False, "message": "MFA disabled. Sign in again to continue."})
+    response.delete_cookie("satark_session", path="/")
+    return response
 
 
 def send_password_reset_email(recipient: str, reset_url: str) -> None:
