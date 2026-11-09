@@ -35,6 +35,8 @@ export default function LoginPage() {
     const current = await getSession();
     setSession(current);
     if (!current) { setTenants([]); setMfaStatus(null); setInviteTenantId(''); setPendingInvitations([]); return; }
+    try { setMfaStatus(await getMfaStatus()); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not load account security settings.'); }
     try {
       const available = await listMyTenants();
       setTenants(available);
@@ -46,8 +48,10 @@ export default function LoginPage() {
         setInviteTenantId('');
         setPendingInvitations([]);
       }
-      setMfaStatus(await getMfaStatus());
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load workspaces.'); }
+    } catch (e) {
+      setTenants([]);
+      setError(e instanceof Error ? e.message : 'Could not load workspaces.');
+    }
   }
 
   useEffect(() => { void loadWorkspaces(); }, []);
@@ -116,6 +120,7 @@ export default function LoginPage() {
       setMfaOtpUri('');
       setMfaEnrollCode('');
       setMfaStatus({ enabled: true, recovery_codes_remaining: result.recovery_codes.length });
+      await loadWorkspaces();
       setNotice('MFA is enabled. Save these recovery codes now; they are shown only once.');
     } catch (e) { setError(e instanceof Error ? e.message : 'The authenticator code was not accepted.'); }
     finally { setBusy(false); }
