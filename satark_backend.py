@@ -23,7 +23,7 @@ from typing import Any
 
 from argon2 import PasswordHasher
 from cryptography.fernet import Fernet, InvalidToken
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
@@ -450,10 +450,15 @@ def verify_mfa_code(db: Session, user: User, code: str | None) -> bool:
         factor.last_totp_counter = counter
         db.flush()
         return True
-    digest = hashlib.sha256(code.encode("utf-8")).hexdigest()
     hashes = list(factor.recovery_code_hashes or [])
     for index, candidate in enumerate(hashes):
-        if isinstance(candidate, str) and hmac.compare_digest(candidate, digest):
+        if not isinstance(candidate, str):
+            continue
+        try:
+            matched = PASSWORDS.verify(candidate, code)
+        except VerificationError:
+            matched = False
+        if matched:
             hashes.pop(index)
             factor.recovery_code_hashes = hashes
             db.flush()
@@ -902,7 +907,7 @@ def confirm_mfa_enrollment(body: MfaCodeInput, user: User = Depends(current_user
         record_login_failure(db, user.email)
         raise HTTPException(400, "The authenticator code is invalid or expired.")
     recovery_codes = [secrets.token_hex(8) for _ in range(10)]
-    factor.recovery_code_hashes = [hashlib.sha256(code.encode("utf-8")).hexdigest() for code in recovery_codes]
+    factor.recovery_code_hashes = [PASSWORDS.hash(code) for code in recovery_codes]
     factor.enabled_at = utcnow()
     db.commit()
     from fastapi.responses import JSONResponse
