@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [verificationPending, setVerificationPending] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +34,7 @@ export default function LoginPage() {
     event.preventDefault(); setBusy(true); setError(''); setNotice('');
     try {
       if (mode === 'signin') {
-        await signIn(email.trim(), password);
+        await signIn(email.trim(), password, mfaCode);
         await loadWorkspaces();
         setNotice('Signed in. Choose a workspace or create one to continue.');
       } else {
@@ -128,6 +129,10 @@ export default function LoginPage() {
                   <input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
                   <label className="field-label" htmlFor="password">Password</label>
                   <input id="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={12} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} />
+                  {mode === 'signin' && <>
+                    <label className="field-label" htmlFor="mfa-code">Authenticator code or recovery code <span className="muted">(if enabled)</span></label>
+                    <input id="mfa-code" type="text" inputMode="text" autoComplete="one-time-code" maxLength={64} value={mfaCode} onChange={e => setMfaCode(e.target.value)} />
+                  </>}
                   <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create account'}</button>
                 </form>
                 <p className="muted">{mode === 'signin' ? 'New to SATARK?' : 'Already have an account?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
