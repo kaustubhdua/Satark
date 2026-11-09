@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
 import FirstlightReadiness from '../../components/firstlight-readiness';
-import { createTenant, getSession, listMyTenants, requestEmailVerification, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
+import { confirmMfaEnrollment, createTenant, disableMfa, getMfaStatus, getSession, listMyTenants, requestEmailVerification, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, startMfaEnrollment, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
   const [session, setSession] = useState<SatarkSession | null>(null);
@@ -15,6 +15,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
+  const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; recovery_codes_remaining: number } | null>(null);
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaEnrollCode, setMfaEnrollCode] = useState('');
+  const [mfaRecoveryCodes, setMfaRecoveryCodes] = useState<string[]>([]);
+  const [mfaDisablePassword, setMfaDisablePassword] = useState('');
+  const [mfaDisableCode, setMfaDisableCode] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +29,8 @@ export default function LoginPage() {
   async function loadWorkspaces() {
     const current = await getSession();
     setSession(current);
-    if (!current) { setTenants([]); return; }
-    try { setTenants(await listMyTenants()); }
+    if (!current) { setTenants([]); setMfaStatus(null); return; }
+    try { setTenants(await listMyTenants()); setMfaStatus(await getMfaStatus()); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load workspaces.'); }
   }
 
@@ -70,6 +76,41 @@ export default function LoginPage() {
     } catch {
       setNotice('If an account exists for that email, a recovery link will be sent. If it does not arrive, check the address or try again later.');
     } finally { setBusy(false); }
+  }
+
+  async function beginMfaEnrollment() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await startMfaEnrollment();
+      setMfaSecret(result.secret);
+      setMfaEnrollCode('');
+      setMfaRecoveryCodes([]);
+      setNotice('Add this account to an authenticator app, then enter the six-digit code to confirm.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'MFA enrollment could not start.'); }
+    finally { setBusy(false); }
+  }
+
+  async function finishMfaEnrollment(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await confirmMfaEnrollment(mfaEnrollCode.trim());
+      setMfaRecoveryCodes(result.recovery_codes);
+      setMfaSecret('');
+      setMfaEnrollCode('');
+      setMfaStatus({ enabled: true, recovery_codes_remaining: result.recovery_codes.length });
+      setNotice('MFA is enabled. Save these recovery codes now; they are shown only once.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'The authenticator code was not accepted.'); }
+    finally { setBusy(false); }
+  }
+
+  async function turnOffMfa(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      await disableMfa(mfaDisablePassword, mfaDisableCode.trim());
+      setNotice('MFA disabled. Your sessions were revoked; sign in again.');
+      window.location.assign('/login');
+    } catch (e) { setError(e instanceof Error ? e.message : 'MFA could not be disabled.'); }
+    finally { setBusy(false); }
   }
 
   async function submitWorkspace(event: FormEvent) {
@@ -153,6 +194,36 @@ export default function LoginPage() {
                 <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create workspace'}</button>
               </form>
               <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy}>Sign out</button>
+              <section className="info-panel" aria-labelledby="mfa-title">
+                <strong id="mfa-title">Account security · Authenticator MFA</strong>
+                {mfaStatus?.enabled ? <>
+                  <p className="muted">MFA is enabled. {mfaStatus.recovery_codes_remaining} recovery codes remain.</p>
+                  <form onSubmit={turnOffMfa} className="private-upload">
+                    <label className="field-label" htmlFor="mfa-disable-password">Confirm your password</label>
+                    <input id="mfa-disable-password" type="password" autoComplete="current-password" minLength={12} maxLength={128} required value={mfaDisablePassword} onChange={e => setMfaDisablePassword(e.target.value)} />
+                    <label className="field-label" htmlFor="mfa-disable-code">Authenticator or unused recovery code</label>
+                    <input id="mfa-disable-code" autoComplete="one-time-code" maxLength={64} required value={mfaDisableCode} onChange={e => setMfaDisableCode(e.target.value)} />
+                    <button className="btn btn-secondary" type="submit" disabled={busy}>Disable MFA and revoke sessions</button>
+                  </form>
+                </> : mfaSecret ? <>
+                  <p className="muted">Enter this setup key in your authenticator app. Keep it private.</p>
+                  <code>{mfaSecret}</code>
+                  <p className="muted">Or use this provisioning URI in an authenticator that supports manual URI import:</p>
+                  <p className="muted"><code>otpauth://totp/SATARK</code> · issuer SATARK · SHA-1 · 6 digits · 30 seconds</p>
+                  <form onSubmit={finishMfaEnrollment} className="private-upload">
+                    <label className="field-label" htmlFor="mfa-enroll-code">Six-digit authenticator code</label>
+                    <input id="mfa-enroll-code" inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} required value={mfaEnrollCode} onChange={e => setMfaEnrollCode(e.target.value)} />
+                    <button className="btn btn-primary" type="submit" disabled={busy}>Confirm and enable MFA</button>
+                  </form>
+                </> : <>
+                  <p className="muted">Add a time-based authenticator and save one-time recovery codes. The server encrypts the shared secret at rest.</p>
+                  <button className="btn btn-secondary" type="button" onClick={() => void beginMfaEnrollment()} disabled={busy}>Set up authenticator MFA</button>
+                </>}
+                {mfaRecoveryCodes.length > 0 && <div role="status">
+                  <p><strong>Save these recovery codes now. Each code works once.</strong></p>
+                  <ul>{mfaRecoveryCodes.map(code => <li key={code}><code>{code}</code></li>)}</ul>
+                </div>}
+              </section>
             </>}
             {error && <p className="error-message" role="alert">{error}</p>}
             {notice && <p className="success-message" role="status">{notice}</p>}
