@@ -1132,6 +1132,7 @@ def create_workspace(body: WorkspaceInput, user: User = Depends(current_user), d
     db.add(tenant)
     db.flush()
     db.add(Membership(tenant_id=tenant.id, user_id=user.id, role="owner"))
+    db.flush()  # Make the owner membership visible to PostgreSQL RLS before audit writes.
     audit(db, tenant.id, user.id, "workspace.created", {"workspace_id": tenant.id})
     db.commit()
     return {"id": tenant.id, "name": tenant.name, "role": "owner"}
