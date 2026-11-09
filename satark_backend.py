@@ -50,7 +50,7 @@ REQUIRED_SCHEMA_TABLES = (
     "satark_auth_throttles", "satark_mfa_factors", "satark_workspace_invitations",
 )
 POSTGRES_RLS_TABLES = (
-    "satark_tenants", "satark_cases", "satark_case_notes", "satark_evidence",
+    "satark_tenants", "satark_memberships", "satark_cases", "satark_case_notes", "satark_evidence",
     "satark_findings", "satark_reports", "satark_audit_events", "satark_approvals",
     "satark_ingestion_checkpoints", "satark_investigation_jobs",
     "satark_workspace_invitations",
@@ -789,7 +789,7 @@ def storage_health():
                     FROM pg_class
                     WHERE relnamespace = 'public'::regnamespace
                       AND relname IN (
-                        'satark_tenants', 'satark_cases', 'satark_case_notes',
+                        'satark_tenants', 'satark_memberships', 'satark_cases', 'satark_case_notes',
                         'satark_evidence', 'satark_findings', 'satark_reports',
                         'satark_audit_events', 'satark_approvals',
                         'satark_ingestion_checkpoints', 'satark_investigation_jobs',
