@@ -490,6 +490,11 @@ class EmailVerificationComplete(BaseModel):
     token: str = Field(min_length=32, max_length=256)
 
 
+class EmailVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=254)
+
+
 class PasswordResetRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(min_length=3, max_length=254)
@@ -564,70 +569,40 @@ def storage_health():
         raise HTTPException(503, "Self-hosted database is unavailable.")
 
 
-@router.post("/auth/signup", status_code=201)
-def signup(body: Credentials, request: Request, db: Session = Depends(db_session)):
-    enforce_same_origin(request)
-    email = body.email.strip().lower()
-    if not valid_email_address(email):
-        raise HTTPException(400, "Enter a valid email address.")
-    if db.scalar(select(User).where(User.email == email)):
-        raise HTTPException(409, "An account with this email already exists.")
-    user = User(email=email, password_hash=PASSWORDS.hash(body.password))
-    db.add(user)
-    db.flush()
-    token = issue_session(db, user)
-    db.commit()
-    response = {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}
-    return response_with_session(request, response, token, status_code=201)
+def email_verification_required() -> bool:
+    return os.getenv("SATARK_REQUIRE_EMAIL_VERIFICATION", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def response_with_session(request: Request, body: dict, token: str, status_code: int = 200):
-    from fastapi.responses import JSONResponse
-    response = JSONResponse(body, status_code=status_code)
-    response.set_cookie("satark_session", token, httponly=True, secure=request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip() == "https", samesite="lax",
-                        max_age=SESSION_TTL_DAYS * 86400, path="/")
-    return response
-
-
-@router.post("/auth/login")
-def login(body: Credentials, request: Request, db: Session = Depends(db_session)):
-    enforce_same_origin(request)
-    email = body.email.strip().lower()
-    if login_is_locked(db, email):
-        raise HTTPException(429, "Too many unsuccessful sign-in attempts. Try again in 15 minutes.")
-    user = db.scalar(select(User).where(User.email == email))
-    valid = False
+def email_verification_public_base() -> str | None:
+    host = os.getenv("SATARK_SMTP_HOST", "").strip()
+    sender = os.getenv("SATARK_SMTP_FROM", "").strip()
+    public_base = os.getenv("SATARK_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if not host or not sender or not public_base:
+        return None
+    from urllib.parse import urlsplit
     try:
-        valid = PASSWORDS.verify(user.password_hash if user and user.is_active else DUMMY_PASSWORD_HASH, body.password)
-    except VerifyMismatchError:
-        valid = False
-    if not valid or not user or not user.is_active:
-        # Failed attempts are stored by a one-way email key in SATARK's database.
-        record_login_failure(db, email)
-        raise HTTPException(401, "Email or password is incorrect.")
-    clear_login_failures(db, email)
-    token = issue_session(db, user)
-    db.commit()
-    return response_with_session(request, {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}, token)
+        parsed = urlsplit(public_base)
+        local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
+        if not (parsed.scheme == "https" or local_http) or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            return None
+    except ValueError:
+        return None
+    return public_base
 
 
-def send_password_reset_email(recipient: str, reset_url: str) -> None:
+def send_smtp_email(recipient: str, subject: str, content: str) -> None:
     host = os.getenv("SATARK_SMTP_HOST", "").strip()
     sender = os.getenv("SATARK_SMTP_FROM", "").strip()
     if not host or not sender:
-        raise RuntimeError("Password recovery email is not configured.")
+        raise RuntimeError("SATARK email delivery is not configured.")
     port = int(os.getenv("SATARK_SMTP_PORT", "587"))
     username = os.getenv("SATARK_SMTP_USERNAME", "")
     password = os.getenv("SATARK_SMTP_PASSWORD", "")
     message = EmailMessage()
-    message["Subject"] = "Reset your SATARK password"
+    message["Subject"] = subject
     message["From"] = sender
     message["To"] = recipient
-    message.set_content(
-        "A password reset was requested for your SATARK account.\n\n"
-        f"Use this one-time link within 30 minutes: {reset_url}\n\n"
-        "If you did not request this, ignore this email. Your current password remains unchanged."
-    )
+    message.set_content(content)
     timeout = 10
     if os.getenv("SATARK_SMTP_USE_SSL", "false").lower() == "true":
         with smtplib.SMTP_SSL(host, port, timeout=timeout, context=ssl.create_default_context()) as smtp:
