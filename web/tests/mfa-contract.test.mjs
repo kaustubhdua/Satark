@@ -10,7 +10,8 @@ test('TOTP MFA secrets are encrypted and recovery codes are stored only as hashe
   assert.match(backend, /SATARK_MFA_ENCRYPTION_KEY/);
   assert.match(backend, /Fernet\(/);
   assert.match(backend, /secret_encrypted/);
-  assert.match(backend, /hashlib\.sha256\(code\.encode\("utf-8"\)\)\.hexdigest\(\)/);
+  assert.match(backend, /PASSWORDS\.hash\(code\)/);
+  assert.match(backend, /PASSWORDS\.verify\(candidate, code\)/);
   assert.match(backend, /factor\.recovery_code_hashes = hashes/);
   assert.match(backend, /def verify_totp\(/);
 });
