@@ -37,6 +37,7 @@ services:
     depends_on:
       web:
         condition: service_started
+    user: "101:101"
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -44,9 +45,9 @@ services:
       - ALL
     read_only: true
     tmpfs:
-      - /var/cache/nginx:size=16m
-      - /var/run:size=1m
-      - /tmp:size=16m,mode=1777
+      - /var/cache/nginx:size=16m,uid=101,gid=101,mode=0750
+      - /var/run:size=1m,uid=101,gid=101,mode=0750
+      - /tmp:size=16m,uid=101,gid=101,mode=1777
 
   firstlight-api:
     build:
