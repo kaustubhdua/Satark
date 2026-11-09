@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
-  const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; recovery_codes_remaining: number } | null>(null);
+  const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; required: boolean; recovery_codes_remaining: number } | null>(null);
   const [mfaSecret, setMfaSecret] = useState('');
   const [mfaOtpUri, setMfaOtpUri] = useState('');
   const [mfaEnrollCode, setMfaEnrollCode] = useState('');
@@ -35,8 +35,13 @@ export default function LoginPage() {
     const current = await getSession();
     setSession(current);
     if (!current) { setTenants([]); setMfaStatus(null); setInviteTenantId(''); setPendingInvitations([]); return; }
-    try { setMfaStatus(await getMfaStatus()); }
+    let security: { enabled: boolean; required: boolean; recovery_codes_remaining: number } | null = null;
+    try { security = await getMfaStatus(); setMfaStatus(security); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load account security settings.'); }
+    if (security?.required && !security.enabled) {
+      setTenants([]); setInviteTenantId(''); setPendingInvitations([]);
+      return;
+    }
     try {
       const available = await listMyTenants();
       setTenants(available);
@@ -119,7 +124,7 @@ export default function LoginPage() {
       setMfaSecret('');
       setMfaOtpUri('');
       setMfaEnrollCode('');
-      setMfaStatus({ enabled: true, recovery_codes_remaining: result.recovery_codes.length });
+      setMfaStatus({ enabled: true, required: mfaStatus?.required ?? false, recovery_codes_remaining: result.recovery_codes.length });
       await loadWorkspaces();
       setNotice('MFA is enabled. Save these recovery codes now; they are shown only once.');
     } catch (e) { setError(e instanceof Error ? e.message : 'The authenticator code was not accepted.'); }
@@ -235,18 +240,18 @@ export default function LoginPage() {
               <div className="card-head"><span>Authenticated</span><span className="pill">Session active</span></div>
               <h2 id="auth-title">Your workspaces</h2>
               <p className="muted">Signed in as {session.user.email || session.user.id}</p>
-              {tenants.length ? <div className="workspace-list" aria-label="Available workspaces">
-                {tenants.map(tenant => <button type="button" className="workspace-choice" key={tenant.id} onClick={() => void chooseTenant(tenant)}>
-                  <span><strong>{tenant.name}</strong><small>{tenant.role} · {tenant.id.slice(0, 8)}</small></span><span aria-hidden="true">→</span>
-                </button>)}
-              </div> : <p className="empty-state">No workspace membership found yet. Create a workspace to begin.</p>}
-              <form onSubmit={submitWorkspace} className="private-upload">
-                <label className="field-label" htmlFor="workspace">New workspace name</label>
-                <input id="workspace" required minLength={1} maxLength={160} value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} placeholder="e.g. Incident Response Team" />
-                <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create workspace'}</button>
-              </form>
-              <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy}>Sign out</button>
-              {tenants.some(tenant => tenant.role === 'owner') && <section className="info-panel" aria-labelledby="invite-title">
+              {mfaStatus?.required && !mfaStatus.enabled ? <p className="empty-state">Organization policy requires authenticator MFA before workspace data can be accessed. Complete setup below.</p> : <>
+                {tenants.length ? <div className="workspace-list" aria-label="Available workspaces">
+                  {tenants.map(tenant => <button type="button" className="workspace-choice" key={tenant.id} onClick={() => void chooseTenant(tenant)}>
+                    <span><strong>{tenant.name}</strong><small>{tenant.role} · {tenant.id.slice(0, 8)}</small></span><span aria-hidden="true">→</span>
+                  </button>)}
+                </div> : <p className="empty-state">No workspace membership found yet. Create a workspace to begin.</p>}
+                <form onSubmit={submitWorkspace} className="private-upload">
+                  <label className="field-label" htmlFor="workspace">New workspace name</label>
+                  <input id="workspace" required minLength={1} maxLength={160} value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} placeholder="e.g. Incident Response Team" />
+                  <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create workspace'}</button>
+                </form>
+                {tenants.some(tenant => tenant.role === 'owner') && <section className="info-panel" aria-labelledby="invite-title">
                 <strong id="invite-title">Invite a teammate</strong>
                 <p className="muted">Invite existing or new SATARK accounts by email. Invitations expire after seven days.</p>
                 <form onSubmit={submitInvitation} className="private-upload">
@@ -273,7 +278,9 @@ export default function LoginPage() {
                     </li>)}
                   </ul>
                 </>}
-              </section>}
+                </section>}
+              </>}
+              <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy}>Sign out</button>
 
               <section className="info-panel" aria-labelledby="mfa-title">
                 <strong id="mfa-title">Account security · Authenticator MFA</strong>
