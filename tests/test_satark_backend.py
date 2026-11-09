@@ -455,7 +455,7 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     recovery_codes = confirmed.json()["recovery_codes"]
     assert len(recovery_codes) == 10
     assert len(set(recovery_codes)) == 10
-    assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "recovery_codes_remaining": 10}
+    assert client.get("/api/auth/mfa/status").json() == {"enabled": True, "required": False, "recovery_codes_remaining": 10}
 
     client.post("/api/auth/logout", headers=origin())
     missing_code = client.post("/api/auth/login", json={
@@ -577,6 +577,7 @@ def test_mandatory_mfa_gate_allows_only_enrollment_until_factor_is_enabled(clien
     register(client, "mandatory-mfa@example.test")
     assert client.get("/api/auth/session").status_code == 200
     assert client.get("/api/auth/mfa/status").json()["enabled"] is False
+    assert client.get("/api/auth/mfa/status").json()["required"] is True
     blocked = client.post("/api/workspaces", json={"name": "Must enroll first"}, headers=origin())
     assert blocked.status_code == 403
 
