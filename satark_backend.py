@@ -60,6 +60,38 @@ def stored_evidence_path(object_key: str) -> Path:
     return candidate
 
 
+def write_private_evidence_object(object_dir: Path, evidence_id: str, raw: bytes) -> Path:
+    """Atomically persist evidence with private directory and file permissions."""
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(root, 0o700)
+    object_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(object_dir, 0o700)
+    object_path = object_dir / evidence_id
+    temporary = object_dir / (evidence_id + ".part")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(str(temporary), flags, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, object_path)
+        os.chmod(object_path, 0o600)
+        directory_fd = os.open(str(object_dir), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+        return object_path
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        object_path.unlink(missing_ok=True)
+        raise
+
+
 def valid_email_address(value: str) -> bool:
     """Validate a mailbox with bounded, linear-time parsing."""
     if not isinstance(value, str) or len(value) > 254 or value.count("@") != 1:
@@ -1002,17 +1034,9 @@ async def upload_evidence(
     digest = hashlib.sha256(raw).hexdigest()
     evidence_id = str(uuid.uuid4())
     object_dir = evidence_directory(tenant_id, case_id)
-    object_dir.mkdir(parents=True, exist_ok=True)
-    object_path = object_dir / evidence_id
-    temporary = object_dir / (evidence_id + ".part")
     try:
-        with temporary.open("xb") as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, object_path)
+        object_path = write_private_evidence_object(object_dir, evidence_id, raw)
     except OSError:
-        temporary.unlink(missing_ok=True)
         raise HTTPException(503, "Private evidence storage is unavailable.")
     name = re.sub(r"[^A-Za-z0-9._-]", "_", (file.filename or "evidence.bin"))[-100:]
     try:
