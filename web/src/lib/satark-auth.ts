@@ -65,6 +65,23 @@ export async function signUp(email: string, password: string) {
   return { session: currentSession, confirmationRequired: false };
 }
 
+export async function getMfaStatus(): Promise<{ enabled: boolean; recovery_codes_remaining: number }> {
+  const result = await api('/api/auth/mfa/status');
+  return { enabled: result.enabled === true, recovery_codes_remaining: Number(result.recovery_codes_remaining) || 0 };
+}
+
+export async function startMfaEnrollment(): Promise<{ secret: string; otpauth_uri: string }> {
+  return api('/api/auth/mfa/enroll/start', { method: 'POST' });
+}
+
+export async function confirmMfaEnrollment(code: string): Promise<{ enabled: boolean; recovery_codes: string[] }> {
+  return api('/api/auth/mfa/enroll/confirm', { method: 'POST', body: JSON.stringify({ code }) });
+}
+
+export async function disableMfa(password: string, code: string) {
+  return api('/api/auth/mfa/disable', { method: 'POST', body: JSON.stringify({ password, code }) });
+}
+
 export async function requestEmailVerification(email: string) {
   return api('/api/auth/email-verification/request', {
     method: 'POST', body: JSON.stringify({ email: email.trim() }),
