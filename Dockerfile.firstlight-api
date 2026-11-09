@@ -19,4 +19,4 @@ COPY scripts/satark_backup.py ./scripts/satark_backup.py
 RUN mkdir -p /data/evidence && chown -R 10001:10001 /data
 USER 10001:10001
 EXPOSE 8788
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn firstlight_api:app --host 0.0.0.0 --port 8788"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn firstlight_api:app --host 0.0.0.0 --port 8788 --proxy-headers --forwarded-allow-ips=\"${SATARK_TRUSTED_PROXY_IPS:-*}\""]
