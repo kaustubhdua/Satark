@@ -8,7 +8,7 @@ Start the stack through the edge proxy:
 docker compose -f docker-compose.local.yml --profile edge up --build
 ```
 
-Open the app through `http://localhost:8080`. The Next.js container still has its development/local port mapping on `127.0.0.1:3000`; do not expose that port directly to the public internet when using the edge profile. For production, terminate TLS at this proxy or at a trusted upstream load balancer and expose only the intended public listener.
+Open the app through `http://localhost:8080`. The Next.js container still has its development/local port mapping on `127.0.0.1:3000`; do not expose that port directly to the public internet when using the edge profile. For production, terminate TLS at this proxy or at a trusted upstream load balancer and expose only the intended public listener. If TLS terminates before Next.js, set `SATARK_PUBLIC_ORIGIN` to the canonical external origin (for example `https://satark.example`) so the same-origin CSRF boundary uses the browser-visible scheme rather than the internal HTTP hop.
 
 ## Trusted client IPs
 
