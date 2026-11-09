@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode] = useState('');
   const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; recovery_codes_remaining: number } | null>(null);
   const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaOtpUri, setMfaOtpUri] = useState('');
   const [mfaEnrollCode, setMfaEnrollCode] = useState('');
   const [mfaRecoveryCodes, setMfaRecoveryCodes] = useState<string[]>([]);
   const [mfaDisablePassword, setMfaDisablePassword] = useState('');
@@ -83,6 +84,7 @@ export default function LoginPage() {
     try {
       const result = await startMfaEnrollment();
       setMfaSecret(result.secret);
+      setMfaOtpUri(result.otpauth_uri);
       setMfaEnrollCode('');
       setMfaRecoveryCodes([]);
       setNotice('Add this account to an authenticator app, then enter the six-digit code to confirm.');
@@ -96,6 +98,7 @@ export default function LoginPage() {
       const result = await confirmMfaEnrollment(mfaEnrollCode.trim());
       setMfaRecoveryCodes(result.recovery_codes);
       setMfaSecret('');
+      setMfaOtpUri('');
       setMfaEnrollCode('');
       setMfaStatus({ enabled: true, recovery_codes_remaining: result.recovery_codes.length });
       setNotice('MFA is enabled. Save these recovery codes now; they are shown only once.');
@@ -209,7 +212,7 @@ export default function LoginPage() {
                   <p className="muted">Enter this setup key in your authenticator app. Keep it private.</p>
                   <code>{mfaSecret}</code>
                   <p className="muted">Or use this provisioning URI in an authenticator that supports manual URI import:</p>
-                  <p className="muted"><code>otpauth://totp/SATARK</code> · issuer SATARK · SHA-1 · 6 digits · 30 seconds</p>
+                  <p className="muted"><code>{mfaOtpUri}</code></p>
                   <form onSubmit={finishMfaEnrollment} className="private-upload">
                     <label className="field-label" htmlFor="mfa-enroll-code">Six-digit authenticator code</label>
                     <input id="mfa-enroll-code" inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} required value={mfaEnrollCode} onChange={e => setMfaEnrollCode(e.target.value)} />
