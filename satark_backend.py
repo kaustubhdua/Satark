@@ -41,6 +41,26 @@ MAX_UPLOAD = 4 * 1024 * 1024
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+def evidence_directory(tenant_id: str, case_id: str) -> Path:
+    """Build a private evidence directory from canonical UUID identifiers."""
+    if not UUID_RE.fullmatch(tenant_id) or not UUID_RE.fullmatch(case_id):
+        raise HTTPException(400, "A valid tenant and case identifier are required.")
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    directory = (root / str(uuid.UUID(tenant_id)) / str(uuid.UUID(case_id))).resolve()
+    if root not in directory.parents:
+        raise HTTPException(400, "Evidence storage path is invalid.")
+    return directory
+
+
+def stored_evidence_path(object_key: str) -> Path:
+    """Resolve a stored key while enforcing the private evidence root."""
+    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
+    candidate = Path(object_key).resolve()
+    if root not in candidate.parents or not candidate.is_file():
+        raise HTTPException(404, "Evidence object not found.")
+    return candidate
+
+
 def valid_email_address(value: str) -> bool:
     """Validate a mailbox with bounded, linear-time parsing."""
     if not isinstance(value, str) or len(value) > 254 or value.count("@") != 1:
@@ -982,8 +1002,7 @@ async def upload_evidence(
         raise HTTPException(415, "File content does not match its declared type.")
     digest = hashlib.sha256(raw).hexdigest()
     evidence_id = str(uuid.uuid4())
-    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-    object_dir = root / tenant_id / case_id
+    object_dir = evidence_directory(tenant_id, case_id)
     object_dir.mkdir(parents=True, exist_ok=True)
     object_path = object_dir / evidence_id
     temporary = object_dir / (evidence_id + ".part")
@@ -1044,8 +1063,7 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
     if len(raw) > MAX_UPLOAD:
         raise HTTPException(413, "Evidence metadata exceeds 4 MiB.")
     evidence_id = str(uuid.uuid4())
-    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-    object_dir = root / tenant_id / case_id
+    object_dir = evidence_directory(tenant_id, case_id)
     object_dir.mkdir(parents=True, exist_ok=True)
     object_path = object_dir / evidence_id
     temporary = object_dir / (evidence_id + ".part")
@@ -1081,18 +1099,19 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
 @router.get("/firstlight/evidence/source")
 def download_wazuh_source(tenant_id: str, case_id: str, path: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
     require_membership(db, user, tenant_id)
-    expected = re.fullmatch(rf"{re.escape(tenant_id)}/{re.escape(case_id)}/wazuh/([0-9a-f]{{64}})\.json", path)
-    if not expected:
+    parts = path.split("/") if isinstance(path, str) else []
+    if (len(parts) != 4 or parts[0] != tenant_id or parts[1] != case_id
+            or parts[2] != "wazuh" or not parts[3].endswith(".json")):
+        raise HTTPException(400, "The source-object path is invalid for this case.")
+    digest = parts[3][:-5]
+    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
         raise HTTPException(400, "The source-object path is invalid for this case.")
     row = db.scalar(select(Evidence).where(Evidence.tenant_id == tenant_id,
-        Evidence.case_id == case_id, Evidence.source_sha256 == expected.group(1),
+        Evidence.case_id == case_id, Evidence.source_sha256 == digest,
         Evidence.content_type == "application/json"))
     if not row:
         raise HTTPException(404, "The preserved source object was not found.")
-    object_path = Path(row.object_key).resolve()
-    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-    if root not in object_path.parents or not object_path.is_file():
-        raise HTTPException(404, "The source object was not found.")
+    object_path = stored_evidence_path(row.object_key)
     raw = object_path.read_bytes()
     if not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), row.source_sha256):
         raise HTTPException(409, "Source-object integrity verification failed.")
@@ -1113,10 +1132,7 @@ def download_evidence(evidence_id: str, tenant_id: str, user: User = Depends(cur
     if not row or row.tenant_id != tenant_id:
         raise HTTPException(404, "Evidence not found.")
     require_membership(db, user, tenant_id)
-    path = Path(row.object_key).resolve()
-    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-    if root not in path.parents or not path.is_file():
-        raise HTTPException(404, "Evidence object not found.")
+    path = stored_evidence_path(row.object_key)
     if hashlib.sha256(path.read_bytes()).hexdigest() != row.source_sha256:
         raise HTTPException(409, "Evidence integrity verification failed.")
     return FileResponse(path, media_type=row.content_type, filename=row.original_filename, headers={"Cache-Control": "no-store"})
@@ -1165,10 +1181,7 @@ def verify_evidence(evidence_id: str, tenant_id: str, user: User = Depends(curre
     if not row or row.tenant_id != tenant_id:
         raise HTTPException(404, "Evidence not found.")
     require_membership(db, user, tenant_id)
-    path = Path(row.object_key).resolve()
-    root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-    if root not in path.parents or not path.is_file():
-        raise HTTPException(404, "Evidence object not found.")
+    path = stored_evidence_path(row.object_key)
     actual = hashlib.sha256(path.read_bytes()).hexdigest()
     matched = hmac.compare_digest(actual, row.source_sha256)
     return {"evidence_id": row.id, "algorithm": "SHA-256", "expected_sha256": row.source_sha256,
@@ -1326,10 +1339,7 @@ def investigate_persisted_case(body: dict, user: User = Depends(current_user), d
     envelopes = []
     integrity = []
     for row in rows:
-        path = Path(row.object_key).resolve()
-        root = Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")).resolve()
-        if root not in path.parents or not path.is_file():
-            continue
+        path = stored_evidence_path(row.object_key)
         raw = path.read_bytes()
         actual = hashlib.sha256(raw).hexdigest()
         valid = hmac.compare_digest(actual, row.source_sha256)
