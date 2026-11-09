@@ -171,6 +171,7 @@ class MfaFactor(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="CASCADE"), primary_key=True)
     secret_encrypted: Mapped[str] = mapped_column(String(512))
     recovery_code_hashes: Mapped[list] = mapped_column(JSON, default=list)
+    last_totp_counter: Mapped[int | None] = mapped_column(Integer, nullable=True)
     enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -418,22 +419,34 @@ def totp_at(secret: str, timestamp: int) -> str:
     return str(binary % 1_000_000).zfill(6)
 
 
-def verify_totp(secret: str, code: str, now: int | None = None) -> bool:
+def matching_totp_counter(secret: str, code: str, now: int | None = None) -> int | None:
     if not isinstance(code, str) or len(code) != 6 or not code.isascii() or not code.isdigit():
-        return False
+        return None
     timestamp = int(time.time()) if now is None else int(now)
-    return any(hmac.compare_digest(totp_at(secret, timestamp + offset), code) for offset in (-30, 0, 30))
+    for offset in (-30, 0, 30):
+        candidate_time = timestamp + offset
+        if hmac.compare_digest(totp_at(secret, candidate_time), code):
+            return candidate_time // 30
+    return None
 
+
+def verify_totp(secret: str, code: str, now: int | None = None) -> bool:
+    return matching_totp_counter(secret, code, now) is not None
 
 def verify_mfa_code(db: Session, user: User, code: str | None) -> bool:
-    factor = db.get(MfaFactor, user.id)
+    factor = db.scalar(select(MfaFactor).where(MfaFactor.user_id == user.id).with_for_update())
     if not factor or factor.enabled_at is None or not code:
         return False
     try:
         secret = mfa_fernet().decrypt(factor.secret_encrypted.encode("ascii")).decode("ascii")
     except (InvalidToken, UnicodeDecodeError, ValueError):
         raise HTTPException(503, "The stored MFA factor could not be decrypted.")
-    if verify_totp(secret, code):
+    counter = matching_totp_counter(secret, code)
+    if counter is not None:
+        if factor.last_totp_counter is not None and counter <= factor.last_totp_counter:
+            return False
+        factor.last_totp_counter = counter
+        db.flush()
         return True
     digest = hashlib.sha256(code.encode("utf-8")).hexdigest()
     hashes = list(factor.recovery_code_hashes or [])
