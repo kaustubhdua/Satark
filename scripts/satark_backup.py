@@ -66,6 +66,24 @@ def _sqlite_path(url) -> Path:
     return path
 
 
+def _require_postgres_bypass_rls(database_url: str, operation: str) -> None:
+    engine = create_engine(database_url, pool_pre_ping=True)
+    try:
+        with engine.connect() as connection:
+            allowed = connection.execute(text("""
+                SELECT rolsuper OR rolbypassrls
+                FROM pg_roles
+                WHERE rolname = current_user
+            """)).scalar()
+        if not allowed:
+            raise RuntimeError(
+                f"PostgreSQL {operation} requires a superuser or BYPASSRLS-capable backup role; "
+                "do not use the runtime API database credential."
+            )
+    finally:
+        engine.dispose()
+
+
 def _copy_database(database_url: str, destination: Path) -> str:
     url = make_url(database_url)
     if url.drivername.startswith("sqlite"):
@@ -75,6 +93,7 @@ def _copy_database(database_url: str, destination: Path) -> str:
                 src.backup(dst)
         return "sqlite"
     if url.drivername.startswith("postgresql"):
+        _require_postgres_bypass_rls(database_url, "backup")
         if not shutil.which("pg_dump"):
             raise RuntimeError("pg_dump is required to back up PostgreSQL.")
         safe_url, env = _pg_env(url)
@@ -307,6 +326,7 @@ def restore_backup(
     else:
         if not target_url.drivername.startswith("postgresql"):
             raise ValueError("A PostgreSQL backup requires a PostgreSQL target URL.")
+        _require_postgres_bypass_rls(target_database_url, "restore")
         if not shutil.which("pg_restore"):
             raise RuntimeError("pg_restore is required to restore PostgreSQL.")
         target_db = None
