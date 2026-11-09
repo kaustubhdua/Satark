@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
 import FirstlightReadiness from '../../components/firstlight-readiness';
-import { createTenant, getSession, listMyTenants, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
+import { createTenant, getSession, listMyTenants, requestEmailVerification, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenants, setTenants] = useState<SatarkTenant[]>([]);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [recovering, setRecovering] = useState(false);
+  const [recovering, setRecovering] = useState(false);\n  const [verificationPending, setVerificationPending] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
@@ -48,6 +48,16 @@ export default function LoginPage() {
       }
     } catch (e) { setError(e instanceof Error ? e.message : 'Authentication failed.'); }
     finally { setBusy(false); }
+  }
+
+  async function resendVerification() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await requestEmailVerification(email.trim());
+      setNotice('If verification is still required for that account, a fresh link will be sent. Check your inbox.');
+    } catch {
+      setNotice('If verification is still required for that account, a fresh link will be sent. Check your inbox or try again later.');
+    } finally { setBusy(false); }
   }
 
   async function submitRecovery(event: FormEvent) {
@@ -120,6 +130,7 @@ export default function LoginPage() {
                   <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create account'}</button>
                 </form>
                 <p className="muted">{mode === 'signin' ? 'New to SATARK?' : 'Already have an account?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
+                {verificationPending && mode === 'signin' && <p className="muted"><button type="button" className="text-button" onClick={() => void resendVerification()} disabled={busy}>Resend verification email</button></p>}
               </>}
             </> : <>
               <div className="card-head"><span>Authenticated</span><span className="pill">Session active</span></div>
