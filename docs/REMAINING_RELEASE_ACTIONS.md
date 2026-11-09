@@ -30,6 +30,20 @@ This manifest check does **not** replace a fresh dependency audit. Before releas
 
 References: [Next.js security advisories](https://github.com/vercel/next.js/security/advisories), [November 3 advisory — response injection](https://github.com/vercel/next.js/security/advisories/GHSA-pc58-hwjq-p385), [November 3 advisory — SVG rejection bypass](https://github.com/vercel/next.js/security/advisories/GHSA-7qx7-33qx-rqx2), [November 3 advisory — HttpOnly cookie exposure](https://github.com/vercel/next.js/security/advisories/GHSA-f3mh-rxg3-f5g2).
 
+## Additional repository hardening completed
+
+- Evidence objects and tenant/case directories are written with restrictive filesystem permissions (files 0600, private directories 0700), exclusive no-follow creation, atomic replacement, and directory fsync.
+- Unrecognized uploaded content types are stored and downloaded as `application/octet-stream`; downloads include `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a sandbox content security policy.
+- Optional email verification is implemented with single-use 30-minute token digests, resend cooldowns, SMTP preflight, a browser verification page, and a migration that grandfather-verifies accounts that predate the feature. Enable only after SMTP and the trusted public base URL are configured.
+
+## Remaining code and operational limitations
+
+- MFA, session-family reuse detection, invitations for users who have not registered, and per-IP/global edge rate limiting remain outstanding. Email verification is implemented but opt-in; production must explicitly enable `SATARK_REQUIRE_EMAIL_VERIFICATION=true` after configuring SMTP and `SATARK_PUBLIC_BASE_URL`.
+- PostgreSQL row-level security and adversarial concurrency testing are not yet implemented for the self-hosted database.
+- Existing Supabase data is not imported or deleted. A validated export/import and reconciliation run remains necessary if legacy data must be preserved.
+- Evidence storage remains a private local filesystem volume; an S3-compatible object-store adapter is not implemented.
+- Production restore drills, Wazuh Indexer acceptance, audit anchoring, and deployed-host smoke tests remain outstanding.
+
 ## 3. Production deployment acceptance
 
 Do not use real incident evidence until all of the following have been verified against the exact deployed SHA:
