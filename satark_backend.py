@@ -791,6 +791,14 @@ def storage_health():
         }
         with engine.connect() as connection:
             connection.exec_driver_sql("SELECT 1")
+            enabled_factor = connection.execute(text(
+                "SELECT secret_encrypted FROM satark_mfa_factors WHERE enabled_at IS NOT NULL LIMIT 1"
+            )).scalar_one_or_none()
+            if enabled_factor:
+                try:
+                    mfa_fernet().decrypt(enabled_factor.encode("ascii"))
+                except (InvalidToken, UnicodeDecodeError, ValueError):
+                    raise HTTPException(503, "The configured MFA encryption key cannot decrypt enrolled factors.")
             if DB_URL.startswith("postgresql"):
                 revision = connection.execute(text(
                     "SELECT version_num FROM alembic_version"
