@@ -38,7 +38,7 @@ References: [Next.js security advisories](https://github.com/vercel/next.js/secu
 
 ## Remaining code and operational limitations
 
-- Invitations for users who have not registered, organization-wide mandatory MFA policy, and per-IP/global edge rate limiting remain outstanding. Session-family reuse detection now revokes the full family when a rotated token is replayed. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
+- Organization-wide mandatory MFA policy and per-IP/global edge rate limiting remain outstanding. Workspace invitations for unregistered accounts are implemented with expiring single-use tokens and token-scoped PostgreSQL RLS. Session-family reuse detection now revokes the full family when a rotated token is replayed. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
 - PostgreSQL RLS is implemented and forced on core tenant content tables, with a non-owner application-role integration test. A production role/privilege review and adversarial concurrency review remain necessary; the membership mapping table is internal and remains governed by backend authorization.
 - Existing Supabase data is not imported or deleted. A validated export/import and reconciliation run remains necessary if legacy data must be preserved.
 - Evidence storage remains a private local filesystem volume; an S3-compatible object-store adapter is not implemented.
