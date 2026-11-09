@@ -794,10 +794,10 @@ def storage_health():
                 """)).scalar_one()
                 function_ready = connection.execute(text("""
                     SELECT EXISTS (
-                        SELECT 1 FROM pg_proc AS procedure
-                        JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
-                        WHERE namespace.nspname = 'public'
-                          AND procedure.proname = 'satark_has_tenant_access'
+                        SELECT 1 FROM pg_proc AS p
+                        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+                        WHERE n.nspname = 'public'
+                          AND p.proname = 'satark_has_tenant_access'
                     )
                 """)).scalar_one()
                 if (revision != EXPECTED_SCHEMA_REVISION or len(protected) != len(POSTGRES_RLS_TABLES)
