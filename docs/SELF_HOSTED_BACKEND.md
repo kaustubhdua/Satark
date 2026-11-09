@@ -35,7 +35,7 @@ postgresql+psycopg://satark:REDACTED@db.internal:5432/satark
 
 Mount a private durable evidence volume at `SATARK_EVIDENCE_DIR` and share it between the API and investigation worker. The filesystem must not be exposed by a public static route. Use a managed secret store for database credentials. Configure TLS to PostgreSQL, least-privilege database roles, backups, restore drills, retention/deletion, and monitoring.
 
-SQLite is intended for local development and single-host use, not horizontally scaled production. PostgreSQL is required for multiple API/worker instances because queue claims and tenant audit writes rely on row-level transaction locks.
+SQLite is intended for local development and single-host use, not horizontally scaled production. PostgreSQL is required for multiple API/worker instances because queue claims and tenant audit writes rely on row-level transaction locks. The runtime database role must not be PostgreSQL superuser or have `BYPASSRLS`; `FORCE ROW LEVEL SECURITY` does not constrain superusers. Run migrations with a controlled schema-owner role and give the runtime role only the required DML privileges.
 
 ## Authentication and authorization
 
