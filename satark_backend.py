@@ -1028,7 +1028,7 @@ def complete_password_reset(body: PasswordResetComplete, request: Request, db: S
     user.password_hash = PASSWORDS.hash(body.password)
     db.execute(update(SessionRecord).where(
         SessionRecord.user_id == user.id, SessionRecord.revoked_at.is_(None)
-    ).values(revoked_at=now))
+    ).values(revoked_at=now, revoked_reason="password_reset"))
     db.commit()
     return {"ok": True}
 
@@ -1076,7 +1076,12 @@ def refresh_session(request: Request, db: Session = Depends(db_session), user: U
     )
     if changed.rowcount != 1:
         db.rollback()
-        raise HTTPException(409, "Session is expired, revoked, or has already been rotated.")
+        db.execute(update(SessionRecord).where(
+            SessionRecord.family_id == family_id,
+            SessionRecord.revoked_at.is_(None),
+        ).values(revoked_at=utcnow(), revoked_reason="reuse_detected"))
+        db.commit()
+        raise HTTPException(401, "Session family revoked after a concurrent or reused refresh token.")
     next_token = issue_session(db, user, family_id=family_id)
     db.commit()
     return response_with_session(request, {
