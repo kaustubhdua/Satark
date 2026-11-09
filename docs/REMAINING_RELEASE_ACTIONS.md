@@ -33,17 +33,17 @@ In GitHub repository Actions secrets, configure these exact names using a dedica
 
 Use separate accounts with no production data. Do not use a service-role key in this integration job. Confirm the test fixtures have the intended owner/viewer memberships, then run the `CI` workflow on the release commit. The tenant job must demonstrate cross-tenant read/write denial and viewer write denial. Do not convert missing credentials into a skipped/successful required check.
 
-## 2. Resolve the web dependency audit finding
+## 2. Web dependency security patch — implemented on this branch
 
-The 2026-11-08 CI install reported one critical-severity npm advisory. The lockfile currently resolves Next.js `15.5.27`; the upstream 2026-10-14 Next.js security update identifies `15.5.28` as the patched 15.5 maintenance release.
+The 2026-11-08 CI install reported one critical-severity npm advisory. This branch now updates `web/package.json` and regenerates the lockfile using npm's resolver:
 
-Before release:
+- Next.js: `15.5.27` → `15.5.28` (maintenance security release).
+- Sharp: pinned through the declared dependency range to `^0.35.5`, resolving to `0.35.5` to address the SVG image-optimization vulnerability.
+- `npm audit --audit-level=critical`: passed.
+- `npm run test:ci`: passed (typecheck, unit tests and production build).
+- `npm run test:browser`: passed at desktop and mobile viewports, including the local-analysis smoke.
 
-1. In `web/`, update Next.js to at least `15.5.28` (or a currently supported patched stable release).
-2. Regenerate `package-lock.json` with the project's supported Node/npm toolchain; do not hand-edit integrity hashes or package metadata.
-3. Run `npm ci`, `npm audit`, `npm run test:ci`, and `npm run test:browser`.
-4. Review all advisories, including transitive dependencies. Do not use `npm audit fix --force` or suppress critical findings to obtain a green check.
-5. Record the audit output and exact dependency tree on the release commit.
+The patch has not yet been merged into `main`; run the full branch CI and review the resulting PR before merging. Continue to review all non-critical advisories and transitive dependencies. Do not use `npm audit fix --force` or suppress findings.
 
 Reference: [Next.js security update, 2026-10-14](https://nextjs.org/blog/nextjs-security-update-october-14-2026).
 
