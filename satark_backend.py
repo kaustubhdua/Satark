@@ -181,8 +181,10 @@ class SessionRecord(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="CASCADE"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    family_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -507,9 +509,10 @@ def clear_login_failures(db: Session, email: str) -> None:
     db.commit()
 
 
-def issue_session(db: Session, user: User) -> str:
+def issue_session(db: Session, user: User, family_id: str | None = None) -> str:
     token = secrets.token_urlsafe(48)
-    db.add(SessionRecord(user_id=user.id, token_hash=token_digest(token), expires_at=utcnow() + timedelta(days=SESSION_TTL_DAYS)))
+    db.add(SessionRecord(user_id=user.id, family_id=family_id or str(uuid.uuid4()),
+        token_hash=token_digest(token), expires_at=utcnow() + timedelta(days=SESSION_TTL_DAYS)))
     return token
 
 
@@ -520,10 +523,18 @@ def current_user(request: Request, authorization: str | None = Header(default=No
     token = bearer_token or request.cookies.get("satark_session")
     if not token or len(token) > 256:
         raise HTTPException(401, "Sign in is required.")
-    row = db.scalar(select(SessionRecord).where(SessionRecord.token_hash == token_digest(token), SessionRecord.revoked_at.is_(None)))
+    row = db.scalar(select(SessionRecord).where(SessionRecord.token_hash == token_digest(token)))
+    if row and row.revoked_at is not None:
+        if row.revoked_reason == "rotated" and row.family_id:
+            db.execute(update(SessionRecord).where(
+                SessionRecord.family_id == row.family_id,
+                SessionRecord.revoked_at.is_(None),
+            ).values(revoked_at=utcnow(), revoked_reason="reuse_detected"))
+            db.commit()
+        raise HTTPException(401, "Your session is invalid, revoked, or expired.")
     expiry = row.expires_at.replace(tzinfo=timezone.utc) if row and row.expires_at.tzinfo is None else (row.expires_at if row else None)
     if not row or expiry <= utcnow():
-        raise HTTPException(401, "Your session is invalid or expired.")
+        raise HTTPException(401, "Your session is invalid, revoked, or expired.")
     # Cookie-authenticated unsafe requests must originate from this exact origin.
     # Bearer clients are not ambient-cookie authenticated and do not use this CSRF path.
     if not bearer_token and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -914,7 +925,7 @@ def disable_mfa(body: MfaDisableInput, request: Request, user: User = Depends(cu
     db.delete(factor)
     db.execute(update(SessionRecord).where(
         SessionRecord.user_id == user.id, SessionRecord.revoked_at.is_(None)
-    ).values(revoked_at=utcnow()))
+    ).values(revoked_at=utcnow(), revoked_reason="mfa_disabled"))
     db.commit()
     from fastapi.responses import JSONResponse
     response = JSONResponse({"enabled": False, "message": "MFA disabled. Sign in again to continue."})
@@ -1044,6 +1055,13 @@ def refresh_session(request: Request, db: Session = Depends(db_session), user: U
     if not token:
         raise HTTPException(401, "A cookie-backed SATARK session is required.")
     now = utcnow()
+    current_record = db.scalar(select(SessionRecord).where(
+        SessionRecord.user_id == user.id,
+        SessionRecord.token_hash == token_digest(token),
+    ))
+    if not current_record or not current_record.family_id:
+        raise HTTPException(409, "The session family could not be verified.")
+    family_id = current_record.family_id
     # Atomic one-time rotation: a concurrent replay cannot mint a second session.
     changed = db.execute(
         update(SessionRecord)
@@ -1054,12 +1072,12 @@ def refresh_session(request: Request, db: Session = Depends(db_session), user: U
             SessionRecord.expires_at > now,
         )
         .execution_options(synchronize_session=False)
-        .values(revoked_at=now)
+        .values(revoked_at=now, revoked_reason="rotated")
     )
     if changed.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "Session is expired, revoked, or has already been rotated.")
-    next_token = issue_session(db, user)
+    next_token = issue_session(db, user, family_id=family_id)
     db.commit()
     return response_with_session(request, {
         "user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400,
@@ -1072,6 +1090,7 @@ def logout(request: Request, db: Session = Depends(db_session), user: User = Dep
     row = db.scalar(select(SessionRecord).where(SessionRecord.user_id == user.id, SessionRecord.token_hash == token_digest(token))) if token else None
     if row:
         row.revoked_at = utcnow()
+        row.revoked_reason = "logout"
         db.commit()
     from fastapi.responses import JSONResponse
     response = JSONResponse({"ok": True})
