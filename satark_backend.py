@@ -144,9 +144,12 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False
 
 @event.listens_for(Session, "after_begin")
 def _apply_satark_rls_identity(session, transaction, connection):
-    user_id = session.info.get("satark_user_id")
-    if user_id and connection.dialect.name == "postgresql":
-        connection.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
+    if connection.dialect.name == "postgresql":
+        user_id = session.info.get("satark_user_id")
+        if user_id:
+            connection.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
+        if session.info.get("satark_worker"):
+            connection.execute(text("SELECT set_config('satark.worker', 'on', true)"))
 
 
 def set_rls_user_context(db: Session, user_id: str) -> None:
@@ -156,6 +159,13 @@ def set_rls_user_context(db: Session, user_id: str) -> None:
     db.info["satark_user_id"] = user_id
     if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
+
+
+def set_rls_worker_context(db: Session) -> None:
+    """Mark an internal worker transaction so it can claim durable queue rows."""
+    db.info["satark_worker"] = True
+    if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(text("SELECT set_config('satark.worker', 'on', true)"))
 
 
 if DB_URL.startswith("sqlite"):
