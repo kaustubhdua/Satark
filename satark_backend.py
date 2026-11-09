@@ -39,6 +39,22 @@ PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2, hash_l
 SESSION_TTL_DAYS = 14
 DUMMY_PASSWORD_HASH = PASSWORDS.hash("not-a-real-user-password-for-timing-equalization")
 MAX_UPLOAD = 4 * 1024 * 1024
+
+EXPECTED_SCHEMA_REVISION = "20261109_0010"
+REQUIRED_SCHEMA_TABLES = (
+    "satark_users", "satark_sessions", "satark_tenants", "satark_memberships",
+    "satark_cases", "satark_case_notes", "satark_evidence", "satark_findings",
+    "satark_reports", "satark_audit_events", "satark_approvals",
+    "satark_investigation_jobs", "satark_ingestion_checkpoints",
+    "satark_email_verification_tokens", "satark_password_reset_tokens",
+    "satark_auth_throttles", "satark_mfa_factors", "satark_workspace_invitations",
+)
+POSTGRES_RLS_TABLES = (
+    "satark_tenants", "satark_cases", "satark_case_notes", "satark_evidence",
+    "satark_findings", "satark_reports", "satark_audit_events", "satark_approvals",
+    "satark_ingestion_checkpoints", "satark_investigation_jobs",
+    "satark_workspace_invitations",
+)
 EVIDENCE_CONTENT_TYPES = frozenset({"application/pdf", "image/png", "image/jpeg", "application/zip", "text/plain", "application/json"})
 
 
@@ -750,9 +766,64 @@ def storage_health():
     try:
         with engine.connect() as connection:
             connection.exec_driver_sql("SELECT 1")
-        return {"status": "ok", "database": "connected", "provider": "self-hosted"}
+            if DB_URL.startswith("postgresql"):
+                revision = connection.execute(text(
+                    "SELECT version_num FROM alembic_version"
+                )).scalar_one_or_none()
+                protected = connection.execute(text("""
+                    SELECT relname, relrowsecurity, relforcerowsecurity
+                    FROM pg_class
+                    WHERE relname IN (
+                        'satark_tenants', 'satark_cases', 'satark_case_notes',
+                        'satark_evidence', 'satark_findings', 'satark_reports',
+                        'satark_audit_events', 'satark_approvals',
+                        'satark_ingestion_checkpoints', 'satark_investigation_jobs',
+                        'satark_workspace_invitations'
+                    )
+                """)).all()
+                policies = connection.execute(text("""
+                    SELECT count(*) FROM pg_policies
+                    WHERE schemaname = 'public'
+                      AND tablename IN (
+                        'satark_tenants', 'satark_cases', 'satark_case_notes',
+                        'satark_evidence', 'satark_findings', 'satark_reports',
+                        'satark_audit_events', 'satark_approvals',
+                        'satark_ingestion_checkpoints', 'satark_investigation_jobs',
+                        'satark_workspace_invitations'
+                      )
+                """)).scalar_one()
+                function_ready = connection.execute(text("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_proc AS procedure
+                        JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+                        WHERE namespace.nspname = 'public'
+                          AND procedure.proname = 'satark_has_tenant_access'
+                    )
+                """)).scalar_one()
+                if (revision != EXPECTED_SCHEMA_REVISION or len(protected) != len(POSTGRES_RLS_TABLES)
+                        or not all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
+                        or policies != len(POSTGRES_RLS_TABLES) or not function_ready):
+                    raise HTTPException(503, "PostgreSQL migrations or tenant row-level security are incomplete.")
+                return {"status": "ok", "database": "connected", "provider": "self-hosted",
+                    "schema_ready": True, "schema_revision": revision, "tenant_rls": True}
+            tables = set(connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).scalars().all())
+            missing = set(REQUIRED_SCHEMA_TABLES) - tables
+            if missing:
+                raise HTTPException(503, "The local SATARK database schema is incomplete.")
+            revision = None
+            if "alembic_version" in tables:
+                revision = connection.exec_driver_sql(
+                    "SELECT version_num FROM alembic_version"
+                ).scalar_one_or_none()
+            return {"status": "ok", "database": "connected", "provider": "self-hosted",
+                "schema_ready": True, "schema_revision": revision or "local-bootstrap",
+                "tenant_rls": False}
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(503, "Self-hosted database is unavailable.")
+        raise HTTPException(503, "Self-hosted database or schema readiness check failed.")
 
 
 def email_verification_required() -> bool:
