@@ -1073,9 +1073,11 @@ def confirm_mfa_enrollment(body: MfaCodeInput, user: User = Depends(current_user
         secret = mfa_fernet().decrypt(factor.secret_encrypted.encode("ascii")).decode("ascii")
     except (InvalidToken, UnicodeDecodeError, ValueError):
         raise HTTPException(503, "The pending MFA factor could not be decrypted.")
-    if not verify_totp(secret, body.code):
+    enrollment_counter = matching_totp_counter(secret, body.code)
+    if enrollment_counter is None:
         record_login_failure(db, user.email)
         raise HTTPException(400, "The authenticator code is invalid or expired.")
+    factor.last_totp_counter = enrollment_counter
     recovery_codes = [secrets.token_hex(8) for _ in range(10)]
     factor.recovery_code_hashes = [PASSWORDS.hash(code) for code in recovery_codes]
     factor.enabled_at = utcnow()
