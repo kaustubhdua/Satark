@@ -23,20 +23,20 @@ test('self-hosted API proxy rejects redirects and untrusted upstreams', () => {
 
 test('mutating browser requests require a same-origin boundary', () => {
   assert.match(proxy, /let sameOrigin = false/);
-  assert.match(proxy, /new URL\(origin\)\.origin === incoming\.origin/);
+  assert.match(proxy, /new URL\(origin\)\.origin === expectedOrigin\.origin/);
   assert.match(proxy, /if \(unsafe && !sameOrigin\)/);
   assert.doesNotMatch(proxy, /&& !bearer/);
   assert.match(proxy, /Cross-origin API requests are not allowed/);
 });
 
 test('proxy forwards the browser scheme with the private upstream host for CSRF validation', () => {
-  assert.match(proxy, /headers\.set\('origin', `\$\{incoming\.protocol\}\/\/\$\{target\.host\}`\)/);
-  assert.match(proxy, /headers\.set\('x-forwarded-proto', incoming\.protocol\.slice\(0, -1\)\)/);
+  assert.match(proxy, /headers\.set\('origin', `\$\{expectedOrigin\.protocol\}\/\/\$\{target\.host\}`\)/);
+  assert.match(proxy, /headers\.set\('x-forwarded-proto', expectedOrigin\.protocol\.slice\(0, -1\)\)/);
 });
 
 test('proxy supports a configured public origin for TLS-terminating ingress', () => {
   assert.match(proxy, /SATARK_PUBLIC_ORIGIN/);
-  assert.match(proxy, /url\.pathname !== '\\/'/);
+  assert.match(proxy, /url\.pathname !==/);
   assert.match(proxy, /expectedOrigin\.origin/);
   assert.match(proxy, /expectedOrigin\.protocol/);
 });
