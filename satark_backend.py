@@ -1024,7 +1024,7 @@ def login(body: Credentials, request: Request, db: Session = Depends(db_session)
 @router.get("/auth/mfa/status")
 def mfa_status(user: User = Depends(current_user), db: Session = Depends(db_session)):
     factor = db.get(MfaFactor, user.id)
-    return {"enabled": bool(factor and factor.enabled_at), "recovery_codes_remaining": len(factor.recovery_code_hashes or []) if factor and factor.enabled_at else 0}
+    return {"enabled": bool(factor and factor.enabled_at), "required": mfa_required(), "recovery_codes_remaining": len(factor.recovery_code_hashes or []) if factor and factor.enabled_at else 0}
 
 
 @router.post("/auth/mfa/enroll/start")
