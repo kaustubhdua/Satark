@@ -87,9 +87,9 @@ export async function acceptWorkspaceInvitation(token: string) {
   });
 }
 
-export async function getMfaStatus(): Promise<{ enabled: boolean; recovery_codes_remaining: number }> {
+export async function getMfaStatus(): Promise<{ enabled: boolean; required: boolean; recovery_codes_remaining: number }> {
   const result = await api('/api/auth/mfa/status');
-  return { enabled: result.enabled === true, recovery_codes_remaining: Number(result.recovery_codes_remaining) || 0 };
+  return { enabled: result.enabled === true, required: result.required === true, recovery_codes_remaining: Number(result.recovery_codes_remaining) || 0 };
 }
 
 export async function startMfaEnrollment(): Promise<{ secret: string; otpauth_uri: string }> {
