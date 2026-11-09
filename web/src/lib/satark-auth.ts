@@ -57,8 +57,24 @@ export async function signIn(email: string, password: string) {
 
 export async function signUp(email: string, password: string) {
   const result = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ email: email.trim(), password }) });
+  if (result && result.verification_required === true) {
+    currentSession = null;
+    return { session: null, confirmationRequired: true };
+  }
   currentSession = sessionFrom(result);
   return { session: currentSession, confirmationRequired: false };
+}
+
+export async function requestEmailVerification(email: string) {
+  return api('/api/auth/email-verification/request', {
+    method: 'POST', body: JSON.stringify({ email: email.trim() }),
+  });
+}
+
+export async function completeEmailVerification(token: string) {
+  return api('/api/auth/email-verification/complete', {
+    method: 'POST', body: JSON.stringify({ token }),
+  });
 }
 
 export async function requestPasswordReset(email: string, _redirectTo: string) {
