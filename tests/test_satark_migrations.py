@@ -22,6 +22,8 @@ def test_fresh_sqlite_database_upgrades_and_downgrades_all_revisions(tmp_path, m
     engine = create_engine(f"sqlite:///{database}")
     inspector = inspect(engine)
     assert "satark_password_reset_tokens" in inspector.get_table_names()
+    assert "satark_email_verification_tokens" in inspector.get_table_names()
+    assert "email_verified_at" in {column["name"] for column in inspector.get_columns("satark_users")}
     assert "satark_auth_throttles" in inspector.get_table_names()
     audit_columns = {column["name"]: column for column in inspector.get_columns("satark_audit_events")}
     assert audit_columns["sequence"]["nullable"] is False
@@ -43,6 +45,15 @@ def test_existing_sqlite_audit_chain_backfill_follows_hash_links_not_timestamps(
             CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)
         """)
         connection.execute(text("INSERT INTO alembic_version(version_num) VALUES ('20261109_0004')"))
+        connection.exec_driver_sql("""
+            CREATE TABLE satark_users (
+                id VARCHAR(36) PRIMARY KEY,
+                email VARCHAR(254) NOT NULL,
+                password_hash VARCHAR(512) NOT NULL,
+                is_active BOOLEAN NOT NULL,
+                created_at DATETIME NOT NULL
+            )
+        """)
         connection.exec_driver_sql("""
             CREATE TABLE satark_audit_events (
                 id VARCHAR(36) PRIMARY KEY,
