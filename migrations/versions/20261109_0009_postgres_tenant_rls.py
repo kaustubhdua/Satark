@@ -7,6 +7,7 @@ branch_labels = None
 depends_on = None
 
 TENANT_TABLES = (
+    "satark_memberships",
     "satark_cases",
     "satark_case_notes",
     "satark_evidence",
@@ -55,7 +56,20 @@ def upgrade() -> None:
     for table in TENANT_TABLES:
         op.execute(f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY")
-        if table == "satark_investigation_jobs":
+        if table == "satark_memberships":
+            policy = """
+                USING (
+                    user_id = NULLIF(current_setting('satark.user_id', true), '')
+                    OR tenant_id = NULLIF(current_setting('satark.membership_admin_tenant', true), '')
+                    OR current_setting('satark.worker', true) = 'on'
+                )
+                WITH CHECK (
+                    user_id = NULLIF(current_setting('satark.user_id', true), '')
+                    OR tenant_id = NULLIF(current_setting('satark.membership_admin_tenant', true), '')
+                    OR current_setting('satark.worker', true) = 'on'
+                )
+            """
+        elif table == "satark_investigation_jobs":
             policy = """
                 USING (
                     public.satark_has_tenant_access(tenant_id)
