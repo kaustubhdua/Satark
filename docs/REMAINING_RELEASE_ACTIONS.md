@@ -38,7 +38,7 @@ References: [Next.js security advisories](https://github.com/vercel/next.js/secu
 
 ## Remaining code and operational limitations
 
-- Session-family reuse detection, invitations for users who have not registered, organization-wide mandatory MFA policy, and per-IP/global edge rate limiting remain outstanding. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
+- Invitations for users who have not registered, organization-wide mandatory MFA policy, and per-IP/global edge rate limiting remain outstanding. Session-family reuse detection now revokes the full family when a rotated token is replayed. Email verification and per-account TOTP MFA are implemented but opt-in; production must enable email verification and configure a persistent MFA encryption key according to its security policy.
 - PostgreSQL row-level security and adversarial concurrency testing are not yet implemented for the self-hosted database.
 - Existing Supabase data is not imported or deleted. A validated export/import and reconciliation run remains necessary if legacy data must be preserved.
 - Evidence storage remains a private local filesystem volume; an S3-compatible object-store adapter is not implemented.
