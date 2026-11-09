@@ -33,3 +33,10 @@ test('proxy forwards the browser scheme with the private upstream host for CSRF 
   assert.match(proxy, /headers\.set\('origin', `\$\{incoming\.protocol\}\/\/\$\{target\.host\}`\)/);
   assert.match(proxy, /headers\.set\('x-forwarded-proto', incoming\.protocol\.slice\(0, -1\)\)/);
 });
+
+test('proxy supports a configured public origin for TLS-terminating ingress', () => {
+  assert.match(proxy, /SATARK_PUBLIC_ORIGIN/);
+  assert.match(proxy, /url\.pathname !== '\\/'/);
+  assert.match(proxy, /expectedOrigin\.origin/);
+  assert.match(proxy, /expectedOrigin\.protocol/);
+});
