@@ -603,6 +603,15 @@ def current_user(request: Request, authorization: str | None = Header(default=No
     if not user or not user.is_active:
         raise HTTPException(401, "Your account is disabled.")
     set_rls_user_context(db, user.id)
+    if mfa_required():
+        factor = db.get(MfaFactor, user.id)
+        allowed_setup_paths = {
+            "/api/auth/session", "/api/auth/refresh", "/api/auth/logout",
+            "/api/auth/mfa/status", "/api/auth/mfa/enroll/start",
+            "/api/auth/mfa/enroll/confirm",
+        }
+        if (not factor or factor.enabled_at is None) and request.url.path not in allowed_setup_paths:
+            raise HTTPException(403, "Multi-factor authentication setup is required before accessing SATARK workspaces.")
     return user
 
 
@@ -743,6 +752,10 @@ def storage_health():
 
 def email_verification_required() -> bool:
     return os.getenv("SATARK_REQUIRE_EMAIL_VERIFICATION", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def mfa_required() -> bool:
+    return os.getenv("SATARK_REQUIRE_MFA", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def email_verification_public_base() -> str | None:
