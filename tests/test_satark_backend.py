@@ -340,6 +340,7 @@ def test_untrusted_evidence_download_is_attachment_with_nosniff(client):
             "summary": "Test active content handling",
         },
         files={"file": ("payload.html", b"<script>alert(1)</script>", "text/html")},
+        headers=origin(),
     )
     assert uploaded.status_code == 201, uploaded.text
     evidence = uploaded.json()["evidence"]
