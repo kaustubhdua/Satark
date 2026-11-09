@@ -619,6 +619,91 @@ def send_smtp_email(recipient: str, subject: str, content: str) -> None:
             smtp.send_message(message)
 
 
+@router.post("/auth/signup", status_code=201)
+def signup(body: Credentials, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    email = body.email.strip().lower()
+    if not valid_email_address(email):
+        raise HTTPException(400, "Enter a valid email address.")
+    if db.scalar(select(User).where(User.email == email)):
+        raise HTTPException(409, "An account with this email already exists.")
+    verification_required = email_verification_required()
+    public_base = email_verification_public_base() if verification_required else None
+    if verification_required and not public_base:
+        raise HTTPException(503, "Email verification is required but SMTP and SATARK_PUBLIC_BASE_URL are not configured.")
+    user = User(email=email, password_hash=PASSWORDS.hash(body.password),
+        email_verified_at=None if verification_required else utcnow())
+    db.add(user)
+    db.flush()
+    if verification_required:
+        token = secrets.token_urlsafe(48)
+        db.add(EmailVerificationToken(user_id=user.id, token_hash=token_digest(token),
+            expires_at=utcnow() + timedelta(minutes=30)))
+        db.commit()
+        try:
+            send_email_verification_email(user.email, public_base + "/verify-email?token=" + token)
+        except Exception:
+            db.execute(update(EmailVerificationToken).where(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.used_at.is_(None),
+            ).values(used_at=utcnow()))
+            db.commit()
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"user": user_json(user), "verification_required": True,
+            "message": "Check your email for a one-time verification link. You can request another link if it does not arrive."}, status_code=201)
+    token = issue_session(db, user)
+    db.commit()
+    response = {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}
+    return response_with_session(request, response, token, status_code=201)
+
+
+def response_with_session(request: Request, body: dict, token: str, status_code: int = 200):
+    from fastapi.responses import JSONResponse
+    response = JSONResponse(body, status_code=status_code)
+    response.set_cookie("satark_session", token, httponly=True, secure=request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip() == "https", samesite="lax",
+                        max_age=SESSION_TTL_DAYS * 86400, path="/")
+    return response
+
+
+@router.post("/auth/login")
+def login(body: Credentials, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    email = body.email.strip().lower()
+    if login_is_locked(db, email):
+        raise HTTPException(429, "Too many unsuccessful sign-in attempts. Try again in 15 minutes.")
+    user = db.scalar(select(User).where(User.email == email))
+    valid = False
+    try:
+        valid = PASSWORDS.verify(user.password_hash if user and user.is_active else DUMMY_PASSWORD_HASH, body.password)
+    except VerifyMismatchError:
+        valid = False
+    if not valid or not user or not user.is_active:
+        # Failed attempts are stored by a one-way email key in SATARK's database.
+        record_login_failure(db, email)
+        raise HTTPException(401, "Email or password is incorrect.")
+    if email_verification_required() and user.email_verified_at is None:
+        raise HTTPException(403, "Verify your email address before signing in.")
+    clear_login_failures(db, email)
+    token = issue_session(db, user)
+    db.commit()
+    return response_with_session(request, {"user": user_json(user), "expires_in": SESSION_TTL_DAYS * 86400}, token)
+
+
+def send_password_reset_email(recipient: str, reset_url: str) -> None:
+    send_smtp_email(recipient, "Reset your SATARK password",
+        "A password reset was requested for your SATARK account.\n\n"
+        f"Use this one-time link within 30 minutes: {reset_url}\n\n"
+        "If you did not request this, ignore this email. Your current password remains unchanged.")
+
+
+def send_email_verification_email(recipient: str, verification_url: str) -> None:
+    send_smtp_email(recipient, "Verify your SATARK email address",
+        "Verify your email address to activate your SATARK sign-in.\n\n"
+        f"Use this one-time link within 30 minutes: {verification_url}\n\n"
+        "If you did not create this account, ignore this email.")
+
+
+
 @router.post("/auth/password-reset/request", status_code=202)
 def request_password_reset(body: PasswordResetRequest, request: Request, db: Session = Depends(db_session)):
     enforce_same_origin(request)
