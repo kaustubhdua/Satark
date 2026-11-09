@@ -37,7 +37,17 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
     if (body.byteLength > MAX_REQUEST_BYTES) return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
   }
 
-  const target = new URL(incoming.pathname + incoming.search, base);
+  // Never let a request-target beginning with // reinterpret the upstream URL
+  // as an authority. Keep the configured upstream origin immutable.
+  if (!incoming.pathname.startsWith('/api/') || incoming.pathname.startsWith('//')) {
+    return NextResponse.json({ error: 'Invalid API route.' }, { status: 400 });
+  }
+  const target = new URL(base.toString());
+  target.pathname = incoming.pathname;
+  target.search = incoming.search;
+  if (target.origin !== base.origin) {
+    return NextResponse.json({ error: 'Invalid API destination.' }, { status: 400 });
+  }
   const headers = new Headers();
   for (const name of ['accept', 'content-type', 'cookie', 'authorization']) {
     const value = request.headers.get(name);
