@@ -22,7 +22,7 @@ def upgrade() -> None:
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("created_by", sa.String(length=36), nullable=False),
+            sa.Column("created_by", sa.String(length=36), sa.ForeignKey("satark_users.id", ondelete="RESTRICT"), nullable=False),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         )
         op.create_index("ix_satark_workspace_invitations_tenant_id", "satark_workspace_invitations", ["tenant_id"])
