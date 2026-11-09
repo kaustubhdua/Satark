@@ -23,3 +23,22 @@ test('browser recovery sends and completes the SATARK-owned reset flow', () => {
   assert.match(resetPage, /minLength=\{12\}/);
   assert.doesNotMatch(resetPage, /access_token/);
 });
+
+
+test('optional email verification uses one-time digested tokens and requires SMTP configuration', () => {
+  assert.match(backend, /class EmailVerificationToken\(Base\)/);
+  assert.match(backend, /SATARK_REQUIRE_EMAIL_VERIFICATION/);
+  assert.match(backend, /email_verification_public_base\(\)/);
+  assert.match(backend, /EmailVerificationToken\.token_hash == token_digest\(body\.token\)/);
+  assert.match(backend, /Verify your email address before signing in/);
+});
+
+test('browser email verification removes the token from history and supports resend', async () => {
+  const page = await readFile(new URL('../src/app/verify-email/page.tsx', import.meta.url), 'utf8');
+  const login = await readFile(new URL('../src/app/login/page.tsx', import.meta.url), 'utf8');
+  assert.match(auth, /\/api\/auth\/email-verification\/complete/);
+  assert.match(auth, /\/api\/auth\/email-verification\/request/);
+  assert.match(page, /params\.get\('token'\)/);
+  assert.match(page, /window\.history\.replaceState/);
+  assert.match(login, /Resend verification email/);
+});
