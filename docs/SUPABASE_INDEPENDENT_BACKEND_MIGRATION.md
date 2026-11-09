@@ -1,6 +1,6 @@
 # Supabase-independent backend migration
 
-**Status:** Core Supabase runtime replacement is implemented on the draft branch. Session rotation, email-based password recovery, persistent sign-in throttling, workspace member/role administration, append-only PostgreSQL audit enforcement, audit sequencing, and backup/restore tooling have also been added. Latest-commit CI and production acceptance are not yet verified.
+**Status:** Core Supabase runtime replacement is implemented on the draft branch. Session rotation, email-based password recovery, persistent sign-in throttling, workspace member/role administration, append-only PostgreSQL audit enforcement, audit sequencing, and backup/restore tooling have also been added. Full GitHub CI passed on commit aa6faa33 (Python, SQLite/PostgreSQL migrations and integration, Node, browser/accessibility, Docker image builds/import smoke, and CodeQL). The Vercel check is currently blocked by its build-rate-limit response; production cutover is not complete.
 **Target:** Remove all runtime dependency on Supabase Auth, PostgREST, Storage, database RPCs, and Supabase-specific environment variables.
 **Branch:** remove-supabase-runtime-dependency
 
@@ -79,7 +79,8 @@ Still outstanding before calling the migration complete:
 - [ ] One-way legacy data export/import with row-count, tenant, digest, audit-chain, and foreign-key reconciliation. The old project/data has not been deleted or imported.
 - [ ] Production PostgreSQL concurrency and full adversarial role-matrix acceptance; backup/restore tooling exists but restore drills, crash-recovery, retention/deletion, and operational recovery objectives remain unverified.
 - [ ] PostgreSQL rejects ordinary audit UPDATE/DELETE through a trigger, and the chain has deterministic sequence numbers. Independent privileged-operator immutability, database-level tenant RLS/defense-in-depth, and approval concurrency semantics still require review. Live response remains disabled.
-- [ ] Re-run the expanded Supabase runtime guard, full Python/Node/PostgreSQL/browser/accessibility suites on the latest branch commit, and complete end-to-end acceptance against a deployed private FastAPI service.
+- [x] Expanded Supabase runtime guard, Python/Node/SQLite/PostgreSQL tests, browser/accessibility checks, Docker Compose validation, container image builds/import smoke, CodeQL, and production smoke passed on commit aa6faa33.
+- [ ] Complete end-to-end acceptance against a deployed private FastAPI service, including real configured SMTP, evidence storage, Wazuh Indexer, backup restore drill, and production smoke on the exact deployed commit.
 
 Historical Supabase SQL migrations and migration notes may remain as read-only legacy material. They are not used by the new runtime; they must not be reintroduced into app startup, build, or deployment requirements.
 
