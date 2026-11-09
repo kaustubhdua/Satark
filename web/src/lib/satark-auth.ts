@@ -65,6 +65,28 @@ export async function signUp(email: string, password: string) {
   return { session: currentSession, confirmationRequired: false };
 }
 
+export async function sendWorkspaceInvitation(tenantId: string, email: string, role: string) {
+  return api('/api/workspaces/invitations', {
+    method: 'POST', body: JSON.stringify({ tenant_id: tenantId, email: email.trim(), role }),
+  });
+}
+
+export async function listWorkspaceInvitations(tenantId: string): Promise<Array<{ id: string; email: string; role: string; expires_at: string }>> {
+  const result = await api('/api/workspaces/invitations?tenant_id=' + encodeURIComponent(tenantId));
+  return Array.isArray(result.invitations) ? result.invitations : [];
+}
+
+export async function revokeWorkspaceInvitation(tenantId: string, invitationId: string) {
+  return api('/api/workspaces/invitations?tenant_id=' + encodeURIComponent(tenantId) +
+    '&invitation_id=' + encodeURIComponent(invitationId), { method: 'DELETE' });
+}
+
+export async function acceptWorkspaceInvitation(token: string) {
+  return api('/api/workspaces/invitations/accept', {
+    method: 'POST', body: JSON.stringify({ token }),
+  });
+}
+
 export async function getMfaStatus(): Promise<{ enabled: boolean; recovery_codes_remaining: number }> {
   const result = await api('/api/auth/mfa/status');
   return { enabled: result.enabled === true, recovery_codes_remaining: Number(result.recovery_codes_remaining) || 0 };
