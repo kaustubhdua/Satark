@@ -119,6 +119,9 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             )
             assert invitation_accept.status_code == 200, invitation_accept.text
             assert invitee.get("/api/workspaces").json()["workspaces"][0]["role"] == "viewer"
+            visible_members = client.get("/api/workspaces/members", params={"tenant_id": tenant_id})
+            assert visible_members.status_code == 200, visible_members.text
+            assert len(visible_members.json()["members"]) == 2
 
             evidence = client.post("/api/evidence", data={
                 "tenant_id": tenant_id, "case_id": case_id, "source_label": "test sensor",
@@ -231,6 +234,9 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert db.scalar(select(backend.Case).where(
                 backend.Case.tenant_id == outsider_tenant_id
             )) is None
+            visible_memberships = db.scalars(select(backend.Membership)).all()
+            assert visible_memberships
+            assert all(row.user_id == user_id for row in visible_memberships)
             db.add(backend.Case(
                 tenant_id=outsider_tenant_id, title="RLS write attempt",
                 created_by=user_id,
