@@ -49,7 +49,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                     EXECUTE 'DROP OWNED BY satark_app_test';
                     EXECUTE 'DROP ROLE satark_app_test';
                 END IF;
-                CREATE ROLE satark_app_test NOLOGIN;
+                EXECUTE 'CREATE ROLE satark_app_test NOLOGIN';
             END
             $body$
         """)
