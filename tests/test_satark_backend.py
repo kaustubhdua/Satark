@@ -438,11 +438,14 @@ def test_email_verification_requires_delivery_configuration_before_signup(client
 def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch):
     key = backend.Fernet.generate_key().decode("ascii")
     monkeypatch.setenv("SATARK_MFA_ENCRYPTION_KEY", key)
+    monkeypatch.setenv("SATARK_REQUIRE_MFA", "true")
     register(client, "mfa-user@example.test")
 
     status = client.get("/api/auth/mfa/status")
     assert status.status_code == 200
     assert status.json()["enabled"] is False
+    blocked_workspace = client.get("/api/workspaces")
+    assert blocked_workspace.status_code == 403
 
     started = client.post("/api/auth/mfa/enroll/start", headers=origin())
     assert started.status_code == 200, started.text
@@ -452,6 +455,7 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     code = backend.totp_at(secret, int(backend.time.time()))
     confirmed = client.post("/api/auth/mfa/enroll/confirm", json={"code": code}, headers=origin())
     assert confirmed.status_code == 200, confirmed.text
+    assert client.get("/api/workspaces").status_code == 200
     recovery_codes = confirmed.json()["recovery_codes"]
     assert len(recovery_codes) == 10
     assert len(set(recovery_codes)) == 10
