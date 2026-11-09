@@ -31,7 +31,6 @@ from sqlalchemy import event
 
 router = APIRouter(prefix="/api", tags=["SATARK self-hosted"])
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
-EMAIL_RE = None  # Validation uses valid_email_address below.
 PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2, hash_len=32, salt_len=16)
 SESSION_TTL_DAYS = 14
 DUMMY_PASSWORD_HASH = PASSWORDS.hash("not-a-real-user-password-for-timing-equalization")
