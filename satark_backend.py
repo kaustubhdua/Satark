@@ -619,6 +619,72 @@ def send_smtp_email(recipient: str, subject: str, content: str) -> None:
             smtp.send_message(message)
 
 
+@router.post("/auth/email-verification/request", status_code=202)
+def request_email_verification(body: EmailVerificationRequest, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    generic = {"ok": True, "message": "If the account exists and verification is required, a one-time link will be sent."}
+    email = body.email.strip().lower()
+    public_base = email_verification_public_base()
+    if not email_verification_required() or not public_base or not valid_email_address(email):
+        return generic
+    user = db.scalar(select(User).where(User.email == email, User.is_active.is_(True)))
+    if not user or user.email_verified_at is not None:
+        return generic
+    now = utcnow()
+    recent_count = db.scalar(select(func.count()).select_from(EmailVerificationToken).where(
+        EmailVerificationToken.user_id == user.id,
+        EmailVerificationToken.created_at >= now - timedelta(hours=1),
+    )) or 0
+    latest = db.scalar(select(EmailVerificationToken).where(
+        EmailVerificationToken.user_id == user.id
+    ).order_by(EmailVerificationToken.created_at.desc()).limit(1))
+    latest_created = latest.created_at.replace(tzinfo=timezone.utc) if latest and latest.created_at.tzinfo is None else (latest.created_at if latest else None)
+    if recent_count >= 3 or (latest_created and latest_created >= now - timedelta(minutes=1)):
+        return generic
+    db.execute(update(EmailVerificationToken).where(
+        EmailVerificationToken.user_id == user.id, EmailVerificationToken.used_at.is_(None)
+    ).values(used_at=now))
+    token = secrets.token_urlsafe(48)
+    db.add(EmailVerificationToken(user_id=user.id, token_hash=token_digest(token),
+        expires_at=now + timedelta(minutes=30)))
+    db.commit()
+    try:
+        send_email_verification_email(user.email, public_base + "/verify-email?token=" + token)
+    except Exception:
+        db.execute(update(EmailVerificationToken).where(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.token_hash == token_digest(token),
+            EmailVerificationToken.used_at.is_(None),
+        ).values(used_at=utcnow()))
+        db.commit()
+    return generic
+
+
+@router.post("/auth/email-verification/complete")
+def complete_email_verification(body: EmailVerificationComplete, request: Request, db: Session = Depends(db_session)):
+    enforce_same_origin(request)
+    now = utcnow()
+    row = db.scalar(select(EmailVerificationToken).where(
+        EmailVerificationToken.token_hash == token_digest(body.token),
+        EmailVerificationToken.used_at.is_(None),
+    ))
+    expires = row.expires_at.replace(tzinfo=timezone.utc) if row and row.expires_at.tzinfo is None else (row.expires_at if row else None)
+    if not row or expires <= now:
+        raise HTTPException(400, "This verification link is invalid or expired. Request a new one.")
+    user = db.get(User, row.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(400, "This verification link is invalid or expired. Request a new one.")
+    row.used_at = now
+    user.email_verified_at = now
+    db.execute(update(EmailVerificationToken).where(
+        EmailVerificationToken.user_id == user.id,
+        EmailVerificationToken.id != row.id,
+        EmailVerificationToken.used_at.is_(None),
+    ).values(used_at=now))
+    db.commit()
+    return {"ok": True, "message": "Email address verified. You can now sign in."}
+
+
 @router.post("/auth/signup", status_code=201)
 def signup(body: Credentials, request: Request, db: Session = Depends(db_session)):
     enforce_same_origin(request)
