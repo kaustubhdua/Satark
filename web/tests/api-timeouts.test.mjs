@@ -16,7 +16,9 @@ test('self-hosted API proxy rejects redirects and untrusted upstreams', () => {
   assert.match(proxy, /redirect: 'error'/);
   assert.match(proxy, /url\.username \|\| url\.password/);
   assert.match(proxy, /local\.has\(url\.hostname\)/);
-  assert.match(proxy, /new URL\(incoming\.pathname \+ incoming\.search, base\)/);
+  assert.match(proxy, /target\\.origin !== base\\.origin/);
+  assert.match(proxy, /incoming\\.pathname\\.startsWith\\('\\/\\/'\\)/);
+  assert.doesNotMatch(proxy, /new URL\\(incoming\\.pathname \\+ incoming\\.search, base\\)/);
 });
 
 test('mutating browser requests require a same-origin boundary', () => {
