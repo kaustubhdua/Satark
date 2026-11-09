@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 
 from firstlight_wazuh import MAX_PAGE_SIZE, WazuhConnectorError, WazuhIndexerClient, WazuhIndexerConfig
 from satark_backend import (
-    Case, Evidence, IngestionCheckpoint, Membership, SessionLocal, Tenant, audit, utcnow,
+    Case, Evidence, IngestionCheckpoint, Membership, SessionLocal, Tenant, audit, set_rls_user_context, utcnow,
 )
 
 MAX_SOURCE_BYTES = 4 * 1024 * 1024
@@ -96,6 +96,7 @@ class WazuhSatarkWorker:
 
     def _validate_target(self) -> None:
         db = SessionLocal()
+        set_rls_user_context(db, self.actor_id)
         try:
             case = db.scalar(select(Case).where(Case.id == self.case_id, Case.tenant_id == self.tenant_id))
             membership = db.scalar(select(Membership).where(
@@ -110,6 +111,7 @@ class WazuhSatarkWorker:
 
     def _load_checkpoint(self) -> datetime:
         db = SessionLocal()
+        set_rls_user_context(db, self.actor_id)
         try:
             membership = db.scalar(select(Membership).where(
                 Membership.tenant_id == self.tenant_id, Membership.user_id == self.actor_id,
@@ -223,6 +225,7 @@ class WazuhSatarkWorker:
         relative, byte_count, created_object = self._persist_source_snapshot(source_hash, snapshot)
         record["metadata"]["source_object_path"] = relative
         db = SessionLocal()
+        set_rls_user_context(db, self.actor_id)
         try:
             case = db.scalar(select(Case).where(Case.id == self.case_id, Case.tenant_id == self.tenant_id).with_for_update())
             membership = db.scalar(select(Membership).where(
@@ -273,6 +276,7 @@ class WazuhSatarkWorker:
 
     def _save_checkpoint(self, cursor: datetime, count: int, *, status: str = "ok", error: str | None = None) -> None:
         db = SessionLocal()
+        set_rls_user_context(db, self.actor_id)
         try:
             row = db.scalar(select(IngestionCheckpoint).where(
                 IngestionCheckpoint.tenant_id == self.tenant_id,
