@@ -3,6 +3,17 @@ import { NextResponse } from 'next/server';
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 
+function expectedPublicOrigin(incoming: URL): URL | null {
+  const raw = process.env.SATARK_PUBLIC_ORIGIN?.trim();
+  if (!raw) return new URL(incoming.origin);
+  try {
+    const url = new URL(raw);
+    if (url.username || url.password || url.pathname !== '/' || url.search || url.hash ||
+        (url.protocol !== 'https:' && url.protocol !== 'http:')) return null;
+    return url;
+  } catch { return null; }
+}
+
 function upstreamBase(): URL | null {
   const raw = process.env.SATARK_API_INTERNAL_URL;
   if (!raw) return null;
@@ -20,10 +31,12 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
   const base = upstreamBase();
   if (!base) return NextResponse.json({ error: 'The self-hosted SATARK API is not configured.' }, { status: 503 });
   const incoming = new URL(request.url);
+  const expectedOrigin = expectedPublicOrigin(incoming);
+  if (!expectedOrigin) return NextResponse.json({ error: 'The public SATARK origin is invalid.' }, { status: 503 });
   const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase());
   const origin = request.headers.get('origin');
   let sameOrigin = false;
-  try { sameOrigin = Boolean(origin && new URL(origin).origin === incoming.origin); } catch { sameOrigin = false; }
+  try { sameOrigin = Boolean(origin && new URL(origin).origin === expectedOrigin.origin); } catch { sameOrigin = false; }
   if (unsafe && !sameOrigin) {
     return NextResponse.json({ error: 'Cross-origin API requests are not allowed.' }, { status: 403 });
   }
@@ -55,8 +68,8 @@ export async function proxySatarkApi(request: Request): Promise<Response> {
   }
   // Match the forwarded browser scheme while targeting the private upstream host.
   // FastAPI validates Origin against Host and X-Forwarded-Proto at this boundary.
-  if (unsafe) headers.set('origin', `${incoming.protocol}//${target.host}`);
-  headers.set('x-forwarded-proto', incoming.protocol.slice(0, -1));
+  if (unsafe) headers.set('origin', `${expectedOrigin.protocol}//${target.host}`);
+  headers.set('x-forwarded-proto', expectedOrigin.protocol.slice(0, -1));
   try {
     const upstream = await fetch(target, {
       method: request.method,
