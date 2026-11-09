@@ -15,6 +15,7 @@ TENANT_TABLES = (
     "satark_audit_events",
     "satark_approvals",
     "satark_ingestion_checkpoints",
+    "satark_investigation_jobs",
 )
 
 
@@ -56,11 +57,23 @@ def upgrade() -> None:
     for table in TENANT_TABLES:
         op.execute(f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY")
-        op.execute(f"""
-            CREATE POLICY {table}_tenant_isolation ON public.{table}
-            USING (public.satark_has_tenant_access(tenant_id))
-            WITH CHECK (public.satark_has_tenant_access(tenant_id))
-        """)
+        if table == "satark_investigation_jobs":
+            policy = """
+                USING (
+                    public.satark_has_tenant_access(tenant_id)
+                    OR current_setting('satark.worker', true) = 'on'
+                )
+                WITH CHECK (
+                    public.satark_has_tenant_access(tenant_id)
+                    OR current_setting('satark.worker', true) = 'on'
+                )
+            """
+        else:
+            policy = """
+                USING (public.satark_has_tenant_access(tenant_id))
+                WITH CHECK (public.satark_has_tenant_access(tenant_id))
+            """
+        op.execute(f"CREATE POLICY {table}_tenant_isolation ON public.{table} {policy}")
 
 
 def downgrade() -> None:
