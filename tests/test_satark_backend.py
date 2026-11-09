@@ -490,9 +490,9 @@ def test_totp_mfa_enrollment_recovery_code_login_and_disable(client, monkeypatch
     assert recovery_login.status_code == 200, recovery_login.text
     assert client.get("/api/auth/mfa/status").json()["recovery_codes_remaining"] == 9
 
-    current_code = backend.totp_at(secret, int(backend.time.time()) + 60)
+    disable_recovery_code = recovery_codes[1]
     disabled = client.post("/api/auth/mfa/disable", json={
-        "password": "Correct-Horse-Battery-42", "code": current_code,
+        "password": "Correct-Horse-Battery-42", "code": disable_recovery_code,
     }, headers=origin())
     assert disabled.status_code == 200, disabled.text
     assert disabled.json()["enabled"] is False
