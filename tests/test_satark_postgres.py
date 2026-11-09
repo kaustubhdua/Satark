@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import uuid
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import psycopg
@@ -20,6 +23,7 @@ from scripts.satark_backup import create_backup, restore_backup, verify_backup
 import satark_backend as backend
 from firstlight_api import app
 from firstlight_investigation_worker import InvestigationJobWorker
+from firstlight_wazuh_worker import WazuhSatarkWorker
 
 
 @pytest.mark.skipif(not os.getenv("SATARK_TEST_POSTGRES_URL"), reason="PostgreSQL integration URL is not configured")
@@ -166,6 +170,50 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 ), {"event_id": audit_event.id})
                 db.commit()
             db.rollback()
+            db.close()
+
+            # The Wazuh worker must bind its actor identity before touching
+            # RLS-protected evidence, checkpoint and audit tables.
+            source = {"@timestamp": (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat(),
+                "_id": "postgres-wazuh-1", "rule": {"id": "5710", "level": 8, "description": "Postgres lab alert"}}
+            source_json = json.dumps(source, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            source_digest = hashlib.sha256(source_json.encode()).hexdigest()
+            wazuh_event = {
+                "source_snapshot_json": source_json,
+                "event_id": "wazuh-postgres-1",
+                "timestamp": source["@timestamp"],
+                "kind": "security_alert",
+                "summary": "Postgres lab alert",
+                "details": {"index": "wazuh-alerts-*", "document_id": "postgres-wazuh-1",
+                    "rule_id": "5710", "rule_level": 8, "rule_groups": ["authentication_failed"],
+                    "agent_id": "004", "agent_name": "lab", "manager_name": "mgr",
+                    "location": "test", "decoder_name": "test", "data": {},
+                    "source_record_sha256": source_digest},
+                "provenance": {"index": "wazuh-alerts-*", "document_id": "postgres-wazuh-1",
+                    "source_record_sha256": source_digest},
+            }
+            class FakeWazuh:
+                class Config:
+                    index_pattern = "wazuh-alerts-*"
+                    allowed_agent_ids = ("004",)
+                config = Config()
+                def fetch_alerts(self, *, limit, since, until, offset, include_source_snapshot=False):
+                    return [wazuh_event][offset:offset + limit]
+            wazuh_worker = WazuhSatarkWorker(
+                wazuh=FakeWazuh(), tenant_id=tenant_id, case_id=case_id,
+                actor_id=user_id, initial_since="2026-11-08T00:00:00Z", page_size=1,
+            )
+            wazuh_result = wazuh_worker.run_once()
+            assert wazuh_result["status"] == "ok", wazuh_result
+            db = backend.SessionLocal()
+            backend.set_rls_user_context(db, user_id)
+            assert db.scalar(select(backend.IngestionCheckpoint).where(
+                backend.IngestionCheckpoint.tenant_id == tenant_id
+            )) is not None
+            assert db.scalar(select(backend.Evidence.id).where(
+                backend.Evidence.tenant_id == tenant_id,
+                backend.Evidence.event_kind == "security_alert",
+            )) is not None
             db.close()
 
             # A different account and tenant must remain invisible even when
