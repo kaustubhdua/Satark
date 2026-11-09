@@ -80,6 +80,30 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert case.status_code == 201, case.text
             case_id = case.json()["case"]["id"]
 
+            monkeypatch.setenv("SATARK_SMTP_HOST", "smtp.example.test")
+            monkeypatch.setenv("SATARK_SMTP_FROM", "security@example.test")
+            monkeypatch.setenv("SATARK_PUBLIC_BASE_URL", "https://satark.example")
+            invitation_email = {}
+            monkeypatch.setattr(
+                backend, "send_workspace_invitation_email",
+                lambda recipient, url, role: invitation_email.update({"recipient": recipient, "url": url, "role": role}),
+            )
+            invitation = client.post("/api/workspaces/invitations", json={
+                "tenant_id": tenant_id, "email": "postgres-invitee@example.test", "role": "viewer",
+            }, headers=headers)
+            assert invitation.status_code == 201, invitation.text
+            invitation_token = invitation_email["url"].split("token=", 1)[1]
+            invitee = TestClient(app, base_url="http://testserver")
+            invitee_signup = invitee.post("/api/auth/signup", json={
+                "email": "postgres-invitee@example.test", "password": "Correct-Horse-Battery-42",
+            }, headers=headers)
+            assert invitee_signup.status_code == 201, invitee_signup.text
+            invitation_accept = invitee.post(
+                "/api/workspaces/invitations/accept", json={"token": invitation_token}, headers=headers,
+            )
+            assert invitation_accept.status_code == 200, invitation_accept.text
+            assert invitee.get("/api/workspaces").json()["workspaces"][0]["role"] == "viewer"
+
             evidence = client.post("/api/evidence", data={
                 "tenant_id": tenant_id, "case_id": case_id, "source_label": "test sensor",
                 "event_kind": "authentication", "observed_at": "2026-11-09T12:00:00+00:00",
@@ -156,6 +180,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             db.rollback()
             db.close()
             outsider.close()
+            invitee.close()
     finally:
         event.remove(engine, "connect", use_application_role)
         engine.dispose()
