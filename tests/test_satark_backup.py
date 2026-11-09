@@ -23,6 +23,11 @@ class SatarkBackupTests(unittest.TestCase):
             with sqlite3.connect(database) as connection:
                 connection.execute("CREATE TABLE incidents (id INTEGER PRIMARY KEY, title TEXT)")
                 connection.execute("INSERT INTO incidents(title) VALUES (?)", ("Synthetic incident",))
+                connection.execute("CREATE TABLE satark_evidence (id TEXT PRIMARY KEY, object_key TEXT)")
+                connection.execute(
+                    "INSERT INTO satark_evidence(id, object_key) VALUES (?, ?)",
+                    ("evidence-1", str(evidence / "case-1.json")),
+                )
 
             archive = root / "satark-backup.tar.gz"
             manifest = create_backup(archive, f"sqlite:///{database}", evidence)
@@ -31,10 +36,17 @@ class SatarkBackupTests(unittest.TestCase):
 
             restored_database = root / "restored.db"
             restored_evidence = root / "restored-evidence"
-            restore_backup(archive, f"sqlite:///{restored_database}", restored_evidence)
+            restored_manifest = restore_backup(archive, f"sqlite:///{restored_database}", restored_evidence)
+            self.assertEqual(restored_manifest["evidence_objects_rebased"], 1)
             with sqlite3.connect(restored_database) as connection:
                 row = connection.execute("SELECT title FROM incidents WHERE id = 1").fetchone()
             self.assertEqual(row[0], "Synthetic incident")
+            with sqlite3.connect(restored_database) as connection:
+                restored_object_key = connection.execute(
+                    "SELECT object_key FROM satark_evidence WHERE id = 'evidence-1'"
+                ).fetchone()[0]
+            self.assertEqual(restored_object_key, str(restored_evidence / "case-1.json"))
+            self.assertTrue(Path(restored_object_key).is_file())
             self.assertEqual(
                 (restored_evidence / "case-1.json").read_text(encoding="utf-8"),
                 '{"event":"login"}',
