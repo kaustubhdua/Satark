@@ -27,7 +27,7 @@ from argon2.exceptions import VerificationError, VerifyMismatchError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func, delete
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func, delete, text
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
@@ -140,6 +140,23 @@ def database_url() -> str:
 DB_URL = database_url()
 engine = create_engine(DB_URL, pool_pre_ping=True, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
+
+
+@event.listens_for(Session, "after_begin")
+def _apply_satark_rls_identity(session, transaction, connection):
+    user_id = session.info.get("satark_user_id")
+    if user_id and connection.dialect.name == "postgresql":
+        connection.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
+
+
+def set_rls_user_context(db: Session, user_id: str) -> None:
+    """Attach the authenticated identity to every PostgreSQL transaction in this session."""
+    if not UUID_RE.fullmatch(user_id):
+        raise HTTPException(400, "A valid user identity is required.")
+    db.info["satark_user_id"] = user_id
+    if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
+
 
 if DB_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
@@ -549,6 +566,7 @@ def current_user(request: Request, authorization: str | None = Header(default=No
     user = db.get(User, row.user_id)
     if not user or not user.is_active:
         raise HTTPException(401, "Your account is disabled.")
+    set_rls_user_context(db, user.id)
     return user
 
 
