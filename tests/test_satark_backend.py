@@ -586,3 +586,10 @@ def test_mandatory_mfa_gate_allows_only_enrollment_until_factor_is_enabled(clien
 
     allowed = client.post("/api/workspaces", json={"name": "MFA protected"}, headers=origin())
     assert allowed.status_code == 201, allowed.text
+
+
+def test_auto_schema_bootstrap_refuses_postgresql_without_alembic_migrations(monkeypatch):
+    monkeypatch.setenv("SATARK_AUTO_CREATE_SCHEMA", "true")
+    monkeypatch.setattr(backend, "DB_URL", "postgresql+psycopg://satark:secret@localhost/satark")
+    with pytest.raises(RuntimeError, match="Apply reviewed Alembic migrations"):
+        backend.initialize_self_hosted_backend()
