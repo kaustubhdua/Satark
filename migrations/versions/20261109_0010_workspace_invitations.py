@@ -18,7 +18,7 @@ def upgrade() -> None:
             sa.Column("tenant_id", sa.String(length=36), sa.ForeignKey("satark_tenants.id", ondelete="CASCADE"), nullable=False),
             sa.Column("invited_email", sa.String(length=254), nullable=False),
             sa.Column("role", sa.String(length=16), nullable=False),
-            sa.Column("token_hash", sa.String(length=64), nullable=False, unique=True),
+            sa.Column("token_hash", sa.String(length=64), nullable=False),
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
@@ -27,7 +27,7 @@ def upgrade() -> None:
         )
         op.create_index("ix_satark_workspace_invitations_tenant_id", "satark_workspace_invitations", ["tenant_id"])
         op.create_index("ix_satark_workspace_invitations_invited_email", "satark_workspace_invitations", ["invited_email"])
-        op.create_index("ix_satark_workspace_invitations_token_hash", "satark_workspace_invitations", ["token_hash"])
+        op.create_index("ix_satark_workspace_invitations_token_hash", "satark_workspace_invitations", ["token_hash"], unique=True)
         op.create_index("ix_satark_workspace_invitations_expires_at", "satark_workspace_invitations", ["expires_at"])
 
     if bind.dialect.name == "postgresql":
