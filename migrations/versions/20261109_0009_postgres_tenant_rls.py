@@ -47,7 +47,8 @@ def upgrade() -> None:
         CREATE POLICY satark_tenants_isolation ON public.satark_tenants
         USING (public.satark_has_tenant_access(id))
         WITH CHECK (
-            created_by = NULLIF(current_setting('satark.user_id', true), '')
+            public.satark_has_tenant_access(id)
+            OR created_by = NULLIF(current_setting('satark.user_id', true), '')
         )
     """)
 
