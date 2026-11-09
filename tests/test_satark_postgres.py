@@ -45,7 +45,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             WHERE relname IN ('satark_tenants', 'satark_memberships', 'satark_cases', 'satark_case_notes',
                 'satark_evidence', 'satark_findings', 'satark_reports',
                 'satark_audit_events', 'satark_approvals',
-                'satark_ingestion_checkpoints', 'satark_investigation_jobs', 'satark_workspace_invitations', 'satark_memberships')
+                'satark_ingestion_checkpoints', 'satark_investigation_jobs', 'satark_workspace_invitations')
         """)).all()
         assert len(protected) == 12
         assert all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
@@ -114,6 +114,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 "email": "postgres-invitee@example.test", "password": "Correct-Horse-Battery-42",
             }, headers=headers)
             assert invitee_signup.status_code == 201, invitee_signup.text
+            invitee_id = invitee_signup.json()["user"]["id"]
             invitation_accept = invitee.post(
                 "/api/workspaces/invitations/accept", json={"token": invitation_token}, headers=headers,
             )
@@ -122,6 +123,24 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             visible_members = client.get("/api/workspaces/members", params={"tenant_id": tenant_id})
             assert visible_members.status_code == 200, visible_members.text
             assert len(visible_members.json()["members"]) == 2
+
+            owner_db = backend.SessionLocal()
+            backend.set_rls_user_context(owner_db, user_id)
+            owner_user = owner_db.get(backend.User, user_id)
+            backend.require_membership(owner_db, owner_user, tenant_id, {"owner"})
+            invitee_membership = owner_db.scalar(select(backend.Membership).where(
+                backend.Membership.tenant_id == tenant_id,
+                backend.Membership.user_id == invitee_id,
+            ))
+            assert invitee_membership is not None and invitee_membership.role == "viewer"
+            owner_db.close()
+            invitee_db = backend.SessionLocal()
+            backend.set_rls_user_context(invitee_db, invitee_id)
+            assert invitee_db.scalar(select(backend.Membership).where(
+                backend.Membership.tenant_id == tenant_id,
+                backend.Membership.user_id == user_id,
+            )) is None
+            invitee_db.close()
 
             evidence = client.post("/api/evidence", data={
                 "tenant_id": tenant_id, "case_id": case_id, "source_label": "test sensor",
