@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 
 
@@ -122,6 +123,7 @@ def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[s
             "format": "satark-backup-v1",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "database_engine": database_kind,
+            "evidence_root": str(evidence_root),
             "files": {
                 database_name: sha256_file(work / database_name),
                 "evidence.tar.gz": sha256_file(evidence_file),
@@ -174,6 +176,9 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
             raise ValueError("Unsupported SATARK backup format.")
         if manifest.get("database_engine") not in {"sqlite", "postgresql"}:
             raise ValueError("Unsupported database engine in backup.")
+        evidence_root = manifest.get("evidence_root")
+        if evidence_root is not None and (not isinstance(evidence_root, str) or not Path(evidence_root).is_absolute()):
+            raise ValueError("Backup evidence root is invalid.")
         if (manifest["database_engine"] == "sqlite") != (database_name == "database.sqlite"):
             raise ValueError("Backup database file does not match its manifest.")
         if set(manifest.get("files", {})) != {database_name, "evidence.tar.gz"}:
@@ -214,6 +219,71 @@ def _extract_evidence_archive(archive_path: Path, destination: Path) -> None:
             except Exception:
                 target.unlink(missing_ok=True)
                 raise
+
+
+def _infer_evidence_root(database_url: str) -> Path | None:
+    """Infer the original evidence root for older v1 archives without metadata."""
+    engine = create_engine(database_url, pool_pre_ping=True)
+    try:
+        with engine.connect() as connection:
+            if "satark_evidence" not in inspect(connection).get_table_names():
+                return None
+            rows = connection.execute(text(
+                "SELECT tenant_id, case_id, object_key FROM satark_evidence"
+            )).all()
+        roots: set[Path] = set()
+        for tenant_id, case_id, object_key in rows:
+            path = Path(object_key)
+            if not path.is_absolute():
+                raise ValueError("Backup contains a non-absolute evidence object key.")
+            parts = path.parts
+            matches = [
+                index for index in range(len(parts) - 1)
+                if parts[index] == tenant_id and parts[index + 1] == case_id
+            ]
+            if len(matches) != 1:
+                raise ValueError("Cannot infer the source evidence root from a stored object key.")
+            roots.add(Path(*parts[:matches[0]]))
+        if not roots:
+            return None
+        if len(roots) != 1:
+            raise ValueError("Backup evidence rows reference more than one evidence root.")
+        return next(iter(roots))
+    finally:
+        engine.dispose()
+
+
+def _rebase_evidence_paths(database_url: str, source_root: Path | None, target_root: Path) -> int:
+    """Rewrite absolute evidence keys after restoring the archive to a new root."""
+    if source_root is None:
+        source_root = _infer_evidence_root(database_url)
+    if source_root is None:
+        return 0
+    source_root = source_root.resolve()
+    target_root = target_root.resolve()
+    engine = create_engine(database_url, pool_pre_ping=True)
+    try:
+        with engine.begin() as connection:
+            if "satark_evidence" not in inspect(connection).get_table_names():
+                return 0
+            rows = connection.execute(text(
+                "SELECT id, object_key FROM satark_evidence"
+            )).all()
+            for evidence_id, object_key in rows:
+                original = Path(object_key)
+                try:
+                    relative = original.relative_to(source_root)
+                except ValueError as exc:
+                    raise ValueError("An evidence object key is outside the backup evidence root.") from exc
+                rebased = (target_root / relative).resolve()
+                if target_root not in rebased.parents or not rebased.is_file():
+                    raise ValueError("A restored evidence object is missing or escapes its target root.")
+                connection.execute(text(
+                    "UPDATE satark_evidence SET object_key = :object_key WHERE id = :evidence_id"
+                ), {"object_key": str(rebased), "evidence_id": evidence_id})
+            return len(rows)
+    finally:
+        engine.dispose()
 
 
 def restore_backup(
@@ -273,6 +343,11 @@ def restore_backup(
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
+    source_root_value = manifest.get("evidence_root")
+    source_root = Path(source_root_value) if source_root_value else None
+    manifest["evidence_objects_rebased"] = _rebase_evidence_paths(
+        target_database_url, source_root, target_evidence_dir
+    )
     return manifest
 
 
