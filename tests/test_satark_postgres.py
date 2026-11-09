@@ -43,7 +43,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     # superusers bypass RLS even when FORCE ROW LEVEL SECURITY is enabled.
     with engine.begin() as connection:
         connection.exec_driver_sql("""
-            DO $
+            DO $body$
             BEGIN
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'satark_app_test') THEN
                     EXECUTE 'DROP OWNED BY satark_app_test';
@@ -51,7 +51,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 END IF;
                 CREATE ROLE satark_app_test NOLOGIN;
             END
-            $
+            $body$
         """)
         connection.exec_driver_sql("GRANT USAGE ON SCHEMA public TO satark_app_test")
         connection.exec_driver_sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO satark_app_test")
