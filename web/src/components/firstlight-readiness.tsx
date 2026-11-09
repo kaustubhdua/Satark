@@ -63,7 +63,7 @@ export default function FirstlightReadiness() {
     <section className="fl-readiness" aria-labelledby="fl-readiness-title">
       <div className="fl-readiness-heading">
         <div>
-          <div className="panel-kicker">Live integration readiness</div>
+          <div className="panel-kicker">Integration readiness snapshot</div>
           <h2 id="fl-readiness-title">Configuration is not proof of operation.</h2>
         </div>
         <span className="fl-readiness-state">{unavailable ? 'STATUS UNAVAILABLE' : !snapshot ? 'CHECKING…' : snapshot.healthProbesRun ? 'PROBE REPORTED · VERIFY RESULT' : 'CONFIGURATION ONLY'}</span>

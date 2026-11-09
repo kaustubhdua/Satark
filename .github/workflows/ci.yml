@@ -45,7 +45,7 @@ jobs:
         run: |
           python -m compileall -q \
             satark.py ai_provider.py scam_challenge.py video_processing.py reports.py \
-            satark_utils.py url_security.py radar_background.py stepper_component.py evidence_engine.py firstlight_engine.py firstlight_agents.py firstlight_ingest.py config.py input_processing.py analysis_engine.py findings.py rate_limiter.py ui tests
+            satark_utils.py url_security.py radar_background.py stepper_component.py evidence_engine.py firstlight_engine.py firstlight_agents.py firstlight_ingest.py config.py input_processing.py analysis_engine.py findings.py rate_limiter.py scripts/import_ember2024.py scripts/download_ember2024.py file_guard ui tests
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
@@ -109,11 +109,11 @@ jobs:
               "url_security.py", "rate_limiter.py", "evidence_engine.py", "firstlight_engine.py",
               "firstlight_ingest.py", "docs/ARCHITECTURE.md", "docs/FIRSTLIGHT.md",
               "docs/UI_DESIGN.md", "docs/RELEASE_READINESS.md",
-              "ui/__init__.py", "ui/home.py", "ui/navigation.py", "ui/results.py",
+              "ui/__init__.py", "ui/home.py", "ui/navigation.py", "ui/file_guard.py", "ui/results.py",
               "ui/history.py", "ui/learning.py", "ui/demo.py", "ui/firstlight.py",
               "tests/test_firstlight_engine.py", "tests/test_firstlight_ingest.py",
               "tests/test_url_security.py", "tests/test_input_processing.py", "tests/test_rate_limiter.py",
-              "tests/e2e_smoke.py",
+              "tests/e2e_smoke.py", "file_guard/__init__.py", "file_guard/agents.py", "file_guard/engine.py", "file_guard/intelligence.py", "file_guard/history.py", "tests/test_file_guard.py", "docs/OFFLINE_FILE_GUARD.md", "scripts/import_ember2024.py", "scripts/download_ember2024.py", "tests/test_ember_import.py", "tests/test_ember_download.py",
           ]
           missing = [
               path for path in files
@@ -208,16 +208,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          required=(SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SATARK_TEST_USER_A_EMAIL SATARK_TEST_USER_A_PASSWORD SATARK_TEST_TENANT_A_ID SATARK_TEST_USER_B_EMAIL SATARK_TEST_USER_B_PASSWORD SATARK_TEST_TENANT_B_ID SATARK_TEST_VIEWER_EMAIL SATARK_TEST_VIEWER_PASSWORD SATARK_TEST_VIEWER_TENANT_ID)
+          # Map runtime variable names to actual GitHub Actions secret names.
+          declare -A secret_for=(
+            [SUPABASE_URL]=SATARK_TEST_SUPABASE_URL
+            [SUPABASE_PUBLISHABLE_KEY]=SATARK_TEST_SUPABASE_PUBLISHABLE_KEY
+            [SATARK_TEST_USER_A_EMAIL]=SATARK_TEST_USER_A_EMAIL
+            [SATARK_TEST_USER_A_PASSWORD]=SATARK_TEST_USER_A_PASSWORD
+            [SATARK_TEST_TENANT_A_ID]=SATARK_TEST_TENANT_A_ID
+            [SATARK_TEST_USER_B_EMAIL]=SATARK_TEST_USER_B_EMAIL
+            [SATARK_TEST_USER_B_PASSWORD]=SATARK_TEST_USER_B_PASSWORD
+            [SATARK_TEST_TENANT_B_ID]=SATARK_TEST_TENANT_B_ID
+            [SATARK_TEST_VIEWER_EMAIL]=SATARK_TEST_VIEWER_EMAIL
+            [SATARK_TEST_VIEWER_PASSWORD]=SATARK_TEST_VIEWER_PASSWORD
+            [SATARK_TEST_VIEWER_TENANT_ID]=SATARK_TEST_VIEWER_TENANT_ID
+          )
           missing=()
-          for key in "${required[@]}"; do
-            if [[ -z "${!key:-}" ]]; then missing+=("$key"); fi
+          for key in "${!secret_for[@]}"; do
+            if [[ -z "${!key:-}" ]]; then missing+=("${secret_for[$key]}"); fi
           done
           if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            printf '::warning::Tenant-isolation integration was not run; configure these Actions secrets before release: %s\n' "${missing[*]}"
-            printf 'BLOCKED — tenant-isolation integration cannot run. Configure dedicated test credentials: %s. This required check must fail closed; production release remains blocked.\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Required tenant-isolation integration credentials are missing: ${missing[*]}"
+            printf '::warning::Tenant-isolation integration is blocked. Add these exact GitHub Actions secrets: %s\n' "${missing[*]}"
+            printf 'BLOCKED — tenant-isolation integration cannot run. Add the exact dedicated test secrets listed here: %s. This required check must fail closed; production release remains blocked.\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Missing required GitHub Actions secrets: ${missing[*]}"
             exit 1
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"

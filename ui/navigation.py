@@ -22,6 +22,7 @@ def render_sidebar(get_client, discover_models, choose_model, text_preferences, 
             ("FIRSTLIGHT", "FIRSTLIGHT · Incident Command"),
             ("Home", "Overview"),
             ("Analyze", "Investigate"),
+            ("File Guard", "File Guard · Local file security"),
             ("History", "Session history"),
         ])
 
