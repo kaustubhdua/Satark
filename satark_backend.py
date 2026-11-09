@@ -283,7 +283,7 @@ class WorkspaceInvitation(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_by: Mapped[str] = mapped_column(String(36))
+    created_by: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
