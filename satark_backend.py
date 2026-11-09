@@ -150,6 +150,9 @@ def _apply_satark_rls_identity(session, transaction, connection):
             connection.execute(text("SELECT set_config('satark.user_id', :user_id, true)"), {"user_id": user_id})
         if session.info.get("satark_worker"):
             connection.execute(text("SELECT set_config('satark.worker', 'on', true)"))
+        invitation_token = session.info.get("satark_invitation_token")
+        if invitation_token:
+            connection.execute(text("SELECT set_config('satark.invitation_token', :token_hash, true)"), {"token_hash": invitation_token})
 
 
 def set_rls_user_context(db: Session, user_id: str) -> None:
@@ -166,6 +169,15 @@ def set_rls_worker_context(db: Session) -> None:
     db.info["satark_worker"] = True
     if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(text("SELECT set_config('satark.worker', 'on', true)"))
+
+
+def set_rls_invitation_context(db: Session, token_hash: str) -> None:
+    """Allow a single invitation token to locate its row before membership exists."""
+    if not re.fullmatch(r"[0-9a-f]{64}", token_hash):
+        raise HTTPException(400, "The invitation token is invalid.")
+    db.info["satark_invitation_token"] = token_hash
+    if db.in_transaction() and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(text("SELECT set_config('satark.invitation_token', :token_hash, true)"), {"token_hash": token_hash})
 
 
 if DB_URL.startswith("sqlite"):
@@ -259,6 +271,20 @@ class Membership(Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey("satark_tenants.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("satark_users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(16))
+
+
+class WorkspaceInvitation(Base):
+    __tablename__ = "satark_workspace_invitations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("satark_tenants.id", ondelete="CASCADE"), index=True)
+    invited_email: Mapped[str] = mapped_column(String(254), index=True)
+    role: Mapped[str] = mapped_column(String(16))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Case(Base):
@@ -620,6 +646,18 @@ class MfaDisableInput(BaseModel):
 
 
 class EmailVerificationComplete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=32, max_length=256)
+
+
+class WorkspaceInvitationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tenant_id: str
+    email: str = Field(min_length=3, max_length=254)
+    role: str = Field(default="analyst", min_length=1, max_length=16)
+
+
+class WorkspaceInvitationAccept(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(min_length=32, max_length=256)
 
