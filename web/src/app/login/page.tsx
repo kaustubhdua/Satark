@@ -10,7 +10,8 @@ export default function LoginPage() {
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenants, setTenants] = useState<SatarkTenant[]>([]);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [recovering, setRecovering] = useState(false);\n  const [verificationPending, setVerificationPending] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
