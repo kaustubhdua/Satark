@@ -16,7 +16,6 @@ import androidx.work.WorkerParameters
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 
 class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
@@ -65,20 +64,26 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                         }
                         try {
                             val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-                            val bytes = readBounded(documentUri)
-                            if (totalBytes + bytes.size > MAX_TOTAL_BYTES) {
-                                hitLimit = true
-                                break
+                            val tempFile = copyUriToTemp(documentUri)
+                            try {
+                                val fileBytes = tempFile.length()
+                                if (totalBytes + fileBytes > MAX_TOTAL_BYTES) {
+                                    hitLimit = true
+                                    break
+                                }
+                                val scanJson = bridge.callAttr(
+                                    "scan_shared_file_path", tempFile.absolutePath, name,
+                                    applicationContext.filesDir.absolutePath
+                                ).toString()
+                                val verdict = JSONObject(scanJson).optString("verdict")
+                                if (verdict in setOf("Known threat", "Signature match", "Suspicious", "Needs review")) {
+                                    highRisk += 1
+                                }
+                                totalBytes += fileBytes
+                                scanned += 1
+                            } finally {
+                                tempFile.delete()
                             }
-                            val scanJson = bridge.callAttr(
-                                "scan_shared_file", bytes, name, applicationContext.filesDir.absolutePath
-                            ).toString()
-                            val verdict = JSONObject(scanJson).optString("verdict")
-                            if (verdict in setOf("Known threat", "Signature match", "Suspicious", "Needs review")) {
-                                highRisk += 1
-                            }
-                            totalBytes += bytes.size
-                            scanned += 1
                         } catch (_: Exception) {
                             skipped += 1
                         }
@@ -112,20 +117,27 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
     }
 
-    private fun readBounded(uri: Uri): ByteArray {
-        val output = ByteArrayOutputStream()
-        applicationContext.contentResolver.openInputStream(uri)?.use { input ->
-            val buffer = ByteArray(64 * 1024)
-            var total = 0L
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                total += count
-                if (total > MAX_FILE_BYTES) throw IllegalArgumentException("File size limit")
-                output.write(buffer, 0, count)
-            }
-        } ?: throw IllegalStateException("Provider cannot open URI")
-        return output.toByteArray()
+    private fun copyUriToTemp(uri: Uri): java.io.File {
+        val temp = java.io.File.createTempFile("satark-folder-", ".bin", applicationContext.cacheDir)
+        try {
+            applicationContext.contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        if (total > MAX_FILE_BYTES) throw IllegalArgumentException("File size limit")
+                        output.write(buffer, 0, count)
+                    }
+                }
+            } ?: throw IllegalStateException("Provider cannot open URI")
+            return temp
+        } catch (error: Exception) {
+            temp.delete()
+            throw error
+        }
     }
 
     private fun notifyThreats(count: Int) {

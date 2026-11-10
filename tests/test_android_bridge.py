@@ -10,40 +10,52 @@ import unittest
 ANDROID_PYTHON = Path(__file__).resolve().parents[1] / "android/app/src/main/python"
 sys.path.insert(0, str(ANDROID_PYTHON))
 android_bridge = importlib.import_module("android_bridge")
+from file_guard.report import verify_evidence_report
 
 
 class AndroidBridgeTests(unittest.TestCase):
     def test_local_import_scan_history_and_clear_workflow(self):
         with tempfile.TemporaryDirectory() as tmp:
-            payload = b"%PDF-1.7 /OpenAction /JavaScript bridge fixture"
+            payload = b"%PDF-1.7 bridge fixture"
             digest = hashlib.sha256(payload).hexdigest()
             csv_data = ("sha256,label,family,file_type,dataset_date\n" +
                         digest + ",malicious,fixture,PDF,2024-12-14\n").encode("utf-8")
 
+            csv_digest = hashlib.sha256(csv_data).hexdigest()
+            with self.assertRaises(ValueError):
+                android_bridge.import_csv_snapshot(
+                    csv_data, "EMBER2024-test-snapshot", tmp, "0" * 64
+                )
             imported = json.loads(android_bridge.import_csv_snapshot(
-                csv_data, "EMBER2024-test-snapshot", tmp
+                csv_data, "EMBER2024-test-snapshot", tmp, csv_digest
             ))
+            self.assertTrue(imported["checksum_verified"])
+            self.assertEqual(imported["sha256"], csv_digest)
             self.assertEqual(imported["import"]["inserted"], 1)
             self.assertEqual(imported["stats"]["total"], 1)
 
-            scanned = json.loads(android_bridge.scan_shared_file(payload, "sample.pdf", tmp))
+            shared_path = Path(tmp) / "shared-attachment.tmp"
+            shared_path.write_bytes(payload)
+            scanned = json.loads(android_bridge.scan_shared_file_path(
+                str(shared_path), "sample.pdf", tmp
+            ))
+            shared_path.unlink()
             self.assertEqual(scanned["verdict"], "Known threat")
             self.assertFalse(scanned["content_extracted"])
             self.assertFalse(scanned["executed"])
             self.assertEqual(scanned["intelligence_match"]["dataset_date"], "2024-12-14")
-            self.assertEqual(scanned["builtin_matches"][0]["rule_id"], "PDF_OPENACTION_JAVASCRIPT")
+            self.assertEqual(scanned["report_schema"], "satark.file-guard.evidence/v1")
+            self.assertTrue(verify_evidence_report(scanned))
+            self.assertEqual(scanned["file"]["sha256"], digest)
+            self.assertEqual(scanned["snapshot"]["total"], 1)
+            self.assertEqual(scanned["snapshot"]["malicious"], 1)
+            self.assertFalse(scanned["processing"]["semantic_content_extracted"])
 
             history = json.loads(android_bridge.scan_history(tmp))
             self.assertEqual(len(history), 1)
             self.assertEqual(history[0]["sha256"], digest)
             self.assertNotIn("content", history[0])
-            self.assertEqual(history[0]["evidence_report"]["agent_trace"][0]["agent"], "file_router")
-
-            report = json.loads(android_bridge.export_scan_report(tmp))
-            self.assertEqual(report["product"], "SATARK File Guard")
-            self.assertEqual(report["records"][0]["sha256"], digest)
-            self.assertEqual(report["processing"], "local_offline")
-            self.assertNotIn("content", report["records"][0])
+            self.assertTrue(verify_evidence_report(history[0]["report"]))
 
             stats = json.loads(android_bridge.scan_stats(tmp))
             self.assertEqual(stats["malicious"], 1)

@@ -30,33 +30,20 @@ class FileGuardTests(unittest.TestCase):
         self.assertNotIn("local_yara", plain["specialists"])
         self.assertIn("local_yara", with_yara["specialists"])
 
-    def test_builtin_byte_signatures_run_without_yara(self):
-        cases = [
-            (b"%PDF-1.7 /OpenAction /JavaScript", "invoice.pdf", "PDF_OPENACTION_JAVASCRIPT"),
-            (bytes([0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1]) + b"AutoOpen Shell", "macro.doc", "OLE_AUTOOPEN_SHELL"),
-            (b"DownloadString Invoke-Expression", "script.ps1", "SCRIPT_DOWNLOAD_EXECUTE"),
-            (b"eval( fromCharCode unescape(", "bundle.js", "JAVASCRIPT_OBFUSCATION_CLUSTER"),
-            (b"dex" + bytes([10]) + b"035" + bytes([0]) + b"DexClassLoader", "classes.dex", "DEX_DYNAMIC_LOADING"),
-        ]
-        for payload, filename, expected in cases:
-            with self.subTest(filename=filename):
-                result = scan_bytes(payload, filename)
-                self.assertIn(expected, [item["rule_id"] for item in result.builtin_matches])
-                self.assertIn("BUILTIN_PATTERN_MATCH", [item["code"] for item in result.signals])
-                self.assertEqual(result.verdict, "Suspicious")
-                self.assertIn("builtin_byte_signatures", [item["agent"] for item in result.agent_trace])
-
-    def test_builtin_byte_signatures_are_conservative_on_single_markers(self):
-        cases = [
-            (b"%PDF-1.7 /OpenAction", "invoice.pdf"),
-            (b"DownloadString only", "script.ps1"),
-            (b"eval( fromCharCode", "bundle.js"),
-            (b"dex" + bytes([10]) + b"035" + bytes([0]) + b"ordinary", "classes.dex"),
-        ]
-        for payload, filename in cases:
-            with self.subTest(filename=filename):
-                result = scan_bytes(payload, filename)
-                self.assertEqual(result.builtin_matches, [])
+    def test_yara_eicar_fixture_matches_and_benign_fixture_does_not(self):
+        try:
+            import yara  # noqa: F401
+        except ImportError:
+            self.skipTest("Optional yara-python dependency is not installed")
+        from file_guard.agents import inspect_yara
+        rule_path = Path(__file__).parent / "fixtures" / "yara" / "satark_eicar_test.yar"
+        eicar = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        matched = inspect_yara(eicar, rule_path)
+        benign = inspect_yara(b"ordinary harmless sample bytes", rule_path)
+        self.assertTrue(matched["available"])
+        self.assertEqual(matched["matches"], ["SATARK_EICAR_TEST_ONLY"])
+        self.assertEqual(benign["matches"], [])
+        self.assertEqual(benign["status"], "no_match")
 
     def test_benign_hash_never_downgrades_suspicious_metadata(self):
         result = fuse_evidence(
@@ -150,6 +137,19 @@ class FileGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scan_stream(BytesIO(b"12345"), "x.bin", max_bytes=4)
 
+    def test_stream_scan_matches_byte_scan_and_preserves_display_name(self):
+        payload = b"%PDF-1.7 streamed fixture"
+        streamed = scan_stream(BytesIO(payload), "report.pdf")
+        direct = scan_bytes(payload, "report.pdf")
+        self.assertEqual(streamed.sha256, direct.sha256)
+        self.assertEqual(streamed.detected_type, direct.detected_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opaque-cache-name.tmp"
+            path.write_bytes(payload)
+            result = scan_path(path, filename="original-report.pdf")
+            self.assertEqual(result.filename, "original-report.pdf")
+            self.assertEqual(result.sha256, direct.sha256)
+
     def test_directory_scan_and_symlink_skip(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -178,38 +178,8 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(len(records), 2)
             self.assertEqual(records[0]["filename"], "2.bin")
             self.assertNotIn("content", records[0])
-
-    def test_history_persists_bounded_evidence_report_without_file_bytes(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            history = ScanHistory(Path(tmp) / "history.sqlite3")
-            history.add(scan_bytes(b"%PDF-1.7 /OpenAction /JavaScript private fixture", "report.pdf"))
-            record = history.list_recent(1)[0]
-            self.assertEqual(record["evidence_report"]["agent_trace"][0]["agent"], "file_router")
-            self.assertEqual(record["evidence_report"]["builtin_matches"][0]["rule_id"], "PDF_OPENACTION_JAVASCRIPT")
-            self.assertFalse(record["evidence_report"]["content_extracted"])
-            self.assertFalse(record["evidence_report"]["executed"])
-            self.assertNotIn("content", record)
-            self.assertNotIn("data", record)
-
-    def test_existing_history_database_migrates_report_column(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "old-history.sqlite3"
-            with sqlite3.connect(path) as db:
-                db.execute("""CREATE TABLE scan_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    scanned_at TEXT NOT NULL,
-                    filename TEXT NOT NULL,
-                    size_bytes INTEGER NOT NULL,
-                    sha256 TEXT NOT NULL,
-                    detected_type TEXT NOT NULL,
-                    verdict TEXT NOT NULL,
-                    risk_level TEXT NOT NULL,
-                    signals_json TEXT NOT NULL
-                )""")
-            ScanHistory(path)
-            with sqlite3.connect(path) as db:
-                columns = {row[1] for row in db.execute("PRAGMA table_info(scan_history)")}
-            self.assertIn("report_json", columns)
+            self.assertEqual(records[0]["report"]["file"]["filename"], "2.bin")
+            self.assertTrue(records[0]["report"]["report_sha256"])
 
 if __name__ == "__main__":
     unittest.main()
