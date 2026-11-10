@@ -152,7 +152,7 @@ def _verify_manager_compatibility(token: str) -> str:
     )
     items = payload.get("data", {}).get("affected_items", []) if isinstance(payload, dict) else []
     version = items[0].get("version", "") if items and isinstance(items[0], dict) else ""
-    if status != 200 or not isinstance(version, str) or not re.fullmatch(r"v?4\\.14\\.\\d+", version):
+    if status != 200 or not isinstance(version, str) or not re.fullmatch(r"v?4\.14\.\d+", version):
         raise ResponseIntegrationError(
             "This Active Response adapter requires a verified Wazuh Manager 4.14.x version. "
             "Wazuh 5.x uses a different Active Response workflow and is not supported by this adapter."
