@@ -123,6 +123,7 @@ The mobile scanner does not need the repository's optional web backend. Supabase
 - JDK 17
 - Gradle 8.13 (the wrapper/CI build uses the pinned project configuration)
 - Python 3.13-compatible Chaquopy configuration
+- Supported Android ABIs: `arm64-v8a` phones and `x86_64` emulators. 32-bit ARM (`armeabi-v7a`) is not packaged; API 24 is the minimum OS version only on supported 64-bit ABIs.
 
 ### Build a debug APK
 
@@ -138,7 +139,7 @@ The APK is generated at:
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Install it on a test device or emulator:
+Install it on a supported 64-bit ARM Android device or an x86_64 emulator. The current APK does not include 32-bit ARM native libraries:
 
 ```bash
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
