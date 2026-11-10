@@ -179,7 +179,7 @@ jobs:
     name: Install and launch APK on Android emulator
     needs: android-build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Download the exact APK built above
         uses: actions/download-artifact@v4
@@ -188,13 +188,13 @@ jobs:
           path: artifacts/apk
       - name: Boot Android 16 emulator and smoke-test the app
         uses: reactivecircus/android-emulator-runner@v2
-        timeout-minutes: 15
+        timeout-minutes: 25
         with:
-          api-level: 36
-          target: google_apis
+          api-level: 35
+          target: default
           arch: x86_64
-          profile: pixel_7
-          emulator-boot-timeout: 600
+          profile: pixel_2
+          emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
