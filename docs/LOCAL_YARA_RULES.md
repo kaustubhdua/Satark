@@ -34,7 +34,7 @@ The tests compile the rules and run a labelled synthetic corpus. They calculate 
 | PDF auto-open JavaScript | PDF header plus OpenAction and JavaScript/JS marker | Legitimate active PDFs may match |
 | OLE AutoOpen + Shell | OLE header plus two macro automation strings | Legacy business macros may match |
 | JavaScript obfuscation cluster | At least two of eval, fromCharCode, unescape | Bundled/minified apps may match |
-| Android dynamic DEX loading | DEX header plus DexClassLoader/loadDex | Plugin and packer frameworks may match |
+| Standalone DEX dynamic loading | DEX header plus DexClassLoader/loadDex | Plugin and packer frameworks may match; this does not unpack APK archives |
 
 ## Upstream references
 
