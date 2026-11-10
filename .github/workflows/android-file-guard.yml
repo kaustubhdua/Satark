@@ -202,6 +202,7 @@ jobs:
             mkdir -p artifacts
             adb install -r artifacts/apk/app-debug.apk
             adb shell am start -W -n com.satark.mobile/.MainActivity
+            adb shell input swipe 540 1800 540 500 300
             for attempt in $(seq 1 45); do
               if adb shell dumpsys activity activities | grep -q 'com.satark.mobile/.MainActivity'; then
                 adb shell uiautomator dump /sdcard/satark-window.xml >/dev/null
