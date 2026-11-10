@@ -50,9 +50,13 @@ class ScanHistory:
         report = {key: record.get(key) for key in _REPORT_FIELDS}
         report_json = json.dumps(report, ensure_ascii=True, separators=(",", ":"))
         if len(report_json) > MAX_REPORT_JSON_CHARS:
-            report["agent_trace"] = (report.get("agent_trace") or [])[:4]
-            report["report_truncated"] = True
-            report_json = json.dumps(report, ensure_ascii=True, separators=(",", ":"))[:MAX_REPORT_JSON_CHARS]
+            report = {
+                "report_truncated": True,
+                "agent_trace": (report.get("agent_trace") or [])[:4],
+                "intelligence_match": report.get("intelligence_match"),
+                "yara_matches": (report.get("yara_matches") or [])[:8],
+            }
+            report_json = json.dumps(report, ensure_ascii=True, separators=(",", ":"))
         with self._connect() as db:
             db.execute("""INSERT INTO scan_history
                 (scanned_at,filename,size_bytes,sha256,detected_type,verdict,risk_level,signals_json,report_json)
