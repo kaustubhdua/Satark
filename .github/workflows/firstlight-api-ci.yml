@@ -136,6 +136,12 @@ jobs:
             tests/test_satark_migrations.py \
             tests/test_satark_postgres.py
 
+      - name: Perform isolated PostgreSQL backup and restore drill
+        env:
+          SATARK_TEST_POSTGRES_URL: postgresql+psycopg://satark:satark@localhost:5432/satark_test
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: python scripts/postgres_backup_restore_drill.py
+
       - name: Enforce Supabase-free application runtime
         run: python scripts/check_no_supabase_runtime.py
 
