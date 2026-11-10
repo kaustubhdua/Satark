@@ -33,7 +33,9 @@ def _metrics(tp, fp, tn, fn, abstained, total):
         "precision": precision,
         "recall_classified": recall,
         "specificity": specificity,
+        "false_positive_rate": fp / (fp + tn) if fp + tn else None,
         "accuracy_on_classified": accuracy,
+        "detection_coverage": classified / total if total else 0.0,
         "f1_classified": f1,
         "note": "Metrics describe only the supplied labelled corpus, not real-world protection.",
     }
