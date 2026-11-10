@@ -33,6 +33,24 @@ class EmberImportTests(unittest.TestCase):
             self.assertIn("benign", first)
             self.assertIn("Win32", first)
 
+    def test_challenge_split_exports_malicious_historical_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "challenge.jsonl").write_text(
+                json.dumps({"sha256": "c" * 64, "label": 1, "file_type": "APK"}) + "\\n",
+                encoding="utf-8",
+            )
+            (root / "APK_train.jsonl").write_text(
+                json.dumps({"sha256": "a" * 64, "label": 0, "file_type": "APK"}) + "\\n",
+                encoding="utf-8",
+            )
+            manifest = convert(root, root / "out", split="challenge", file_type="all")
+            self.assertEqual(manifest["source_files"], ["challenge.jsonl"])
+            self.assertEqual(manifest["rows"]["exported_rows"], 1)
+            csv_text = (root / "out" / manifest["parts"][0]["file"]).read_text(encoding="utf-8")
+            self.assertIn("malicious", csv_text)
+            self.assertNotIn("benign", csv_text)
+
     def test_file_type_and_split_filters(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
