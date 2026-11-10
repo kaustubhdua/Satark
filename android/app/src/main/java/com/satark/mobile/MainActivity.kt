@@ -16,6 +16,9 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -43,6 +46,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         ensurePython()
         buildScreen()
         refreshDatasetStats()
@@ -77,6 +83,11 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(28), dp(20), dp(32))
             setBackgroundColor(android.graphics.Color.rgb(8, 14, 27))
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { _, windowInsets ->
+            val bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            content.setPadding(dp(20), dp(28) + bars.top, dp(20), dp(32) + bars.bottom)
+            windowInsets
         }
 
         val brand = LinearLayout(this).apply {
@@ -176,6 +187,7 @@ class MainActivity : Activity() {
 
         scroll.addView(content)
         setContentView(scroll)
+        ViewCompat.requestApplyInsets(scroll)
     }
 
     private fun text(value: String, size: Float, color: Int, bold: Boolean): TextView =
