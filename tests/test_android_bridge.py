@@ -27,7 +27,12 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertEqual(imported["import"]["inserted"], 1)
             self.assertEqual(imported["stats"]["total"], 1)
 
-            scanned = json.loads(android_bridge.scan_shared_file(payload, "sample.pdf", tmp))
+            shared_path = Path(tmp) / "shared-attachment.tmp"
+            shared_path.write_bytes(payload)
+            scanned = json.loads(android_bridge.scan_shared_file_path(
+                str(shared_path), "sample.pdf", tmp
+            ))
+            shared_path.unlink()
             self.assertEqual(scanned["verdict"], "Known threat")
             self.assertFalse(scanned["content_extracted"])
             self.assertFalse(scanned["executed"])
