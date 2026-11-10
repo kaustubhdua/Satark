@@ -20,6 +20,9 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "rules/**"
+      - "requirements-yara.txt"
+      - "tests/test_file_guard_yara.py"
       - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
