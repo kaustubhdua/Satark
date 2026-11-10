@@ -150,6 +150,8 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(len(records), 2)
             self.assertEqual(records[0]["filename"], "2.bin")
             self.assertNotIn("content", records[0])
+            self.assertEqual(records[0]["report"]["file"]["filename"], "2.bin")
+            self.assertTrue(records[0]["report"]["report_sha256"])
 
 if __name__ == "__main__":
     unittest.main()
