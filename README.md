@@ -221,15 +221,15 @@ docker compose -f docker-compose.local.yml up --build
 
 The web UI is served at `http://localhost:3000`. To enable the optional Wazuh ingestion worker, configure the `FIRSTLIGHT_WAZUH_*` target, read-only Indexer, and initial checkpoint values in `.env`, then run `docker compose -f docker-compose.local.yml --profile wazuh up --build`. For multi-instance deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and use a shared private durable evidence volume accessible to the API and workers. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
 
-The replacement is being validated on `remove-supabase-runtime-dependency`. Until the complete API/UI/PostgreSQL regression suite and deployment acceptance checks pass on the latest commit, treat it as a migration candidate rather than a production-ready release. Existing legacy Supabase data is not automatically imported or deleted; keep any old project intact until a separately validated export/import and backup process is complete. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
+The Android File Guard does not use this web backend. The repository's application runtime is Supabase-independent: the obsolete Supabase CLI configuration and SQL migration directory have been removed, and CI checks that Supabase SDK/Auth/REST/Storage references are not reintroduced into runtime source. The optional web backend uses SATARK-owned SQLAlchemy/Alembic persistence; SQLite is the local/single-host default and PostgreSQL is optional for self-hosted multi-instance operation. Existing data in any former Supabase project is not automatically imported or deleted; export it separately only if it is needed. The Android app remains fully usable without this web backend.
 
 ### Main trust boundaries
 
-1. **Browser to Streamlit:** browser/UI state is presentation state and is not trusted as durable evidence.
+1. **Android OS to SATARK:** shared URIs and Storage Access Framework grants are scoped capabilities; the app reads only the bytes the user explicitly shares or selects.
 2. **Input to preprocessing:** uploaded and pasted content is subject to format-specific bounds and validation.
 3. **Server to user-supplied URL:** URL retrieval is an SSRF-sensitive operation. The implementation validates eligible HTTP(S) destinations, checks DNS results, pins connections to validated IPs, revalidates redirects, blocks HTTPS-to-HTTP downgrade redirects, and limits response size/type.
 4. **Application to local model:** prepared evidence is sent only to the operator-controlled Ollama endpoint when local model inference is configured; no hosted AI provider is used.
-5. **Browser to application backend:** same-origin HttpOnly sessions are checked by FastAPI; each case/evidence/report/job query is scoped through the user's workspace membership. The backend owns relational persistence and private evidence bytes; PostgreSQL is recommended for multi-instance deployments.
+5. **Optional web workspace to self-hosted backend:** same-origin HttpOnly sessions are checked by SATARK-owned FastAPI; each case/evidence/report/job query is scoped through workspace membership. This legacy web path is separate from the offline Android scanner.
 
 ### Processing flow for a scanner
 
