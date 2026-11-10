@@ -46,7 +46,8 @@ def seed_job():
     return result
 
 
-def test_worker_claims_and_persists_investigation(database):
+def test_worker_claims_and_persists_investigation(database, monkeypatch):
+    monkeypatch.delenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", raising=False)
     tenant_id, case_id, user_id, job_id = seed_job()
     worker = InvestigationJobWorker()
     outcome = worker.run_once()
@@ -59,6 +60,31 @@ def test_worker_claims_and_persists_investigation(database):
     assert len(job.result_sha256) == 64
     assert report is not None
     assert report.snapshot_sha256 == job.result_sha256
+    assert job.result["agent_analysis"]["mode"] == "deterministic_only"
+    db.close()
+
+
+def test_worker_persists_optional_local_agent_results_without_replacing_deterministic_findings(database, monkeypatch):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    observed = []
+
+    def fake_agents(evidence):
+        observed.extend(evidence)
+        return {
+            "enabled": True, "mode": "independent_local_model_agents",
+            "agents": [{"agent_id": "timeline_analyst", "status": "ok", "summary": "Advisory only."}],
+            "limitations": ["Mocked local model result."],
+        }
+
+    monkeypatch.setattr("firstlight_investigation_worker.run_independent_agents", fake_agents)
+    outcome = InvestigationJobWorker().run_once()
+    assert outcome["status"] == "succeeded"
+    assert observed == []
+    db = backend.SessionLocal()
+    job = db.get(backend.InvestigationJob, job_id)
+    assert job.result["agent_analysis"]["mode"] == "independent_local_model_agents"
+    assert job.result["investigation"]["findings"] is not None
+    assert "No live response action was executed." in job.result["limitations"]
     db.close()
 
 
