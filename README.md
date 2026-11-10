@@ -513,6 +513,8 @@ Contributions are welcome, especially focused improvements to reliability, acces
 
 - [FIRSTLIGHT workflow and safety boundaries](docs/FIRSTLIGHT.md)
 - [Architecture and threat model](docs/ARCHITECTURE.md)
+- [Supabase-free runtime and persistence](docs/SUPABASE_FREE.md)
+- [Local YARA rules and synthetic evaluation](docs/LOCAL_YARA_RULES.md)
 - [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
 - [UI design notes](docs/UI_DESIGN.md)
 - [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)
