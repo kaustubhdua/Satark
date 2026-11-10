@@ -18,6 +18,7 @@ on:
       - "scripts/import_ember2024.py"
       - "scripts/download_ember2024.py"
       - ".github/workflows/android-file-guard.yml"
+      - ".github/workflows/ember2024-snapshot.yml"
   pull_request:
     paths:
       - "android/**"
@@ -32,6 +33,7 @@ on:
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
       - ".github/workflows/android-file-guard.yml"
+      - ".github/workflows/ember2024-snapshot.yml"
   workflow_dispatch:
 
 permissions:
