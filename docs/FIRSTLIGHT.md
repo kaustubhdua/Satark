@@ -69,13 +69,13 @@ Run the web application and API using the repository's local Compose configurati
 
 ```bash
 export FIRSTLIGHT_API_TOKEN="$(python -c 'import secrets; print(secrets.token_hex(32))')"
-export SATARK_SQLITE_PATH="$PWD/data/satark.db"
+export SATARK_DATABASE_URL="sqlite:///$PWD/data/satark.db"
 export SATARK_EVIDENCE_DIR="$PWD/data/evidence"
 export FIRSTLIGHT_RESPONSE_DB="$PWD/data/firstlight-response.sqlite3"
 uvicorn firstlight_api:app --host 127.0.0.1 --port 8788
 ```
 
-For the Next.js app, configure its server-only `FIRSTLIGHT_API_URL` and `FIRSTLIGHT_API_TOKEN` to reach the API. Do not expose either token in a `NEXT_PUBLIC_*` variable. The default Android File Guard does not require this service.
+For the Next.js app, configure server-only `SATARK_API_INTERNAL_URL` to the private API origin; the same-origin proxy forwards the user's HttpOnly session cookie. Configure `FIRSTLIGHT_API_TOKEN` only for token-protected investigation/Wazuh endpoints and `FIRSTLIGHT_WAZUH_SYNC_TOKEN` for the Wazuh connector. Never expose these values through `NEXT_PUBLIC_*`. The default Android File Guard does not require this service.
 
 ## Validation
 
