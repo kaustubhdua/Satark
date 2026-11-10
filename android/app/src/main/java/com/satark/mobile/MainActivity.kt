@@ -505,7 +505,11 @@ class MainActivity : Activity() {
             .setInputData(workDataOf(FolderScanWorker.KEY_TREE_URI to uri))
             .addTag(FOLDER_SCAN_TAG)
             .build()
-        WorkManager.getInstance(this).enqueue(request)
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "satark-file-guard-immediate-folder-scan",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            request
+        )
         status.text = "FOLDER SCAN QUEUED · ANDROID BACKGROUND SCHEDULER"
     }
 
