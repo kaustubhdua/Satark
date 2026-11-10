@@ -211,6 +211,8 @@ def fuse_evidence(signals, hash_match=None, yara_matches=None):
         score += 45
     if "BUILTIN_PATTERN_MATCH" in codes:
         score += 45
+    if "BINARY_STRUCTURE_ANOMALY" in codes:
+        score += 20
     score = min(score, 100)
     if hash_match and hash_match.get("label") == "malicious":
         return {"agent": "evidence_fusion", "score": 100, "verdict": "Known threat",
