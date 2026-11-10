@@ -66,6 +66,25 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_android_uses_bounded_temp_files_and_streaming_python_bridge(self):
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
+        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
+        self.assertIn("copyUriToTemp", activity)
+        self.assertIn("copyUriToTemp", worker)
+        self.assertIn("scan_shared_file_path", activity)
+        self.assertIn("scan_shared_file_path", worker)
+        self.assertIn("def scan_shared_file_path", bridge)
+        self.assertIn("scan_path(path", bridge)
+        self.assertIn('putLong("last_scan_ms"', activity)
+
+    def test_ember_import_verifies_converter_manifest_checksums(self):
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
+        self.assertIn("_manifest.json", activity)
+        self.assertIn("expected_sha256", bridge)
+        self.assertIn("Dataset CSV checksum does not match its manifest.", bridge)
+
 
 if __name__ == "__main__":
     unittest.main()
