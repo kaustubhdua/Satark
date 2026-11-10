@@ -150,7 +150,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
 
   return <section className="private-upload" aria-labelledby="firstlight-live-response-heading">
     <strong id="firstlight-live-response-heading">Guarded live response integrations</strong>
-    <p className="hint">Optional Wazuh endpoint response using two fixed built-in commands. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
+    <p className="hint">Optional Wazuh Manager API response using two fixed built-in commands. The manager must be private and the target agent must be explicitly allowlisted. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
     <p className={enabled && configured ? 'success-message' : 'hint'} role="status">
       {enabled && configured ? 'Server feature flag enabled · credentials present' : 'Live response disabled or not configured · simulation and investigation remain available'}
     </p>
