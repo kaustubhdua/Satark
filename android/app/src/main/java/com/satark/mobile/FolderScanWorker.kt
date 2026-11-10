@@ -19,6 +19,7 @@ import org.json.JSONObject
 
 class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        ScanTempFiles.cleanup(applicationContext.cacheDir)
         val rawUri = inputData.getString(KEY_TREE_URI)
             ?: applicationContext.getSharedPreferences("satark_file_guard", Context.MODE_PRIVATE)
                 .getString("granted_tree_uri", null)
