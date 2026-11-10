@@ -67,6 +67,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('enqueueUniqueWork(\n            "satark-file-guard-immediate-folder-scan"', source)
         self.assertIn("androidx.work.ExistingWorkPolicy.REPLACE", source)
+        self.assertIn("IMMEDIATE_FOLDER_SCAN_NAME", source)
 
     def test_worker_has_explicit_scan_limits_and_cancellation_checks(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
