@@ -17,3 +17,8 @@ The manifest itself does not claim any environment-dependent acceptance test. Ph
 ## Latest response adapter gate
 
 The legacy direct-response CLI is preview-only. Real actions are available only through the authenticated FIRSTLIGHT case approval API, with Wazuh-only fixed commands and explicit agent allowlists.
+
+
+## PostgreSQL role hardening
+
+The dedicated backup role is NOINHERIT and BYPASSRLS. It has explicit read privileges for backups and membership only for controlled restore ownership transfer; the API runtime role does not receive BYPASSRLS or backup credentials.
