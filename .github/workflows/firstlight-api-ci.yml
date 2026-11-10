@@ -20,10 +20,12 @@ on:
       - "migrations/**"
       - "tests/test_firstlight*.py"
       - "scripts/postgres_backup_restore_drill.py"
+      - "scripts/bootstrap_wazuh_lab.sh"
       - "tests/test_satark_backend.py"
       - "tests/test_satark_migrations.py"
       - "tests/test_satark_postgres.py"
       - "scripts/check_no_supabase_runtime.py"
+      - "scripts/bootstrap_wazuh_lab.sh"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "Dockerfile.firstlight-worker"
@@ -150,6 +152,9 @@ jobs:
 
       - name: Enforce Supabase-free application runtime
         run: python scripts/check_no_supabase_runtime.py
+
+      - name: Validate Wazuh lab bootstrap shell
+        run: bash -n scripts/bootstrap_wazuh_lab.sh
 
       - name: Validate local self-hosted Compose configuration
         run: docker compose -f docker-compose.local.yml config --quiet
