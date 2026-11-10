@@ -75,8 +75,13 @@ def _required_env(name: str) -> str:
     return value
 
 
+def live_response_enabled() -> bool:
+    """Return the explicit server-side opt-in state without exposing secrets."""
+    return os.getenv("SATARK_ENABLE_LIVE_RESPONSE", "").lower() == "true"
+
+
 def _confirm(action: str, target: str, confirmation: str) -> None:
-    if os.getenv("SATARK_ENABLE_LIVE_RESPONSE", "").lower() != "true":
+    if not live_response_enabled():
         raise ResponseIntegrationError(
             "Live response is disabled. Set SATARK_ENABLE_LIVE_RESPONSE=true only in an authorized test deployment."
         )
