@@ -19,6 +19,7 @@ on:
       - "satark_backend.py"
       - "migrations/**"
       - "tests/test_firstlight*.py"
+      - "scripts/postgres_backup_restore_drill.py"
       - "tests/test_satark_backend.py"
       - "tests/test_satark_migrations.py"
       - "tests/test_satark_postgres.py"
@@ -126,6 +127,7 @@ jobs:
             tests/test_firstlight_investigation_worker.py \
             tests/test_firstlight_response_executor.py \
             tests/test_firstlight_response_api.py \
+            tests/test_firstlight_wazuh_response_actions.py \
             tests/test_firstlight_live_response_cli.py \
             tests/test_firstlight_live_wazuh_investigation.py \
             tests/test_firstlight_wazuh_live_acceptance.py \
