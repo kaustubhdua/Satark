@@ -56,8 +56,8 @@ A frozen dataset cannot discover newly emerging threats. Real-time means a newly
 
 The preferred first historical hash source is **EMBER2024**, rather than older PE-only EMBER2017/2018 or the very large SOREL-20M corpus.
 
-- The official project describes 3.2 million labelled samples across Win32, Win64, .NET, APK, ELF and PDF.
-- Its collection window is 24 September 2023 through 14 December 2024; the chronological split contains 2,626,000 training samples and 606,000 test samples, plus a 6,315-sample challenge set.
+- The official project describes 3.2 million labelled metadata records across Win32, Win64, .NET, APK, ELF and PDF, including per-record SHA-256 hashes and labels.
+- Its collection window is 24 September 2023 through 14 December 2024; the chronological split contains 2,626,000 training records and 606,000 test records, plus a 6,315-record malicious-only challenge set.
 - Binary labels are 0 = benign, 1 = malicious and -1 = unlabeled; the converter excludes unlabeled rows rather than treating them as benign.
 - The upstream project repository is Apache-2.0 licensed. Review dataset terms and cite the upstream paper before redistributing derived data.
 - The download contains metadata/features and hashes, not original malware binaries.
