@@ -25,7 +25,7 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 3. For folder scanning, choose a folder through Android's directory picker and grant read access.
 4. Start an immediate scan or opt into best-effort 15-minute / daily WorkManager rescans.
 5. Import historical CSV snapshots using the source ID field. Keep the source manifest and record the dataset cutoff.
-6. View imported historical hash coverage (total, malicious and benign indicators), and clear local scan history independently from the intelligence database.
+6. View imported historical hash coverage, the latest local scan timestamp and recent evidence signals.\n7. Export a metadata-only JSON evidence report through Android's system document picker.\n8. Clear local scan history independently from the intelligence database.
 
 ## Historical dataset
 
@@ -50,10 +50,10 @@ Android 11+ restricts access to other apps' private data and app-specific extern
 
 - Maximum 64 MB per file; up to 20 shared files per foreground share event.
 - Folder worker: bounded by file count, depth and total bytes per run.
-- The Android build currently uses SHA-256, format signatures and filename/signature checks. Native YARA is not bundled in the mobile APK.
+- The Android build currently uses SHA-256, format signatures and filename/signature checks. Native YARA is not bundled in the mobile APK; the optional desktop YARA starter rules and their synthetic regression tests are documented in [LOCAL_YARA_RULES.md](../docs/LOCAL_YARA_RULES.md).
 - The intelligence database is empty until the user imports a properly licensed, provenance-labelled snapshot.
 - A no-match verdict means only that enabled local checks found no indicator; it is not a guarantee of safety.
 
 ## Privacy
 
-All Android scan processing, imported intelligence and scan history remain in app-private storage. The app manifest intentionally omits the Internet permission. The source URI is read only under the temporary share grant; folder URI access is persisted only after explicit user selection and can be revoked in the app.
+All Android scan processing, imported intelligence, scan history and generated report data remain local unless the user explicitly chooses a destination when exporting a report. Exported reports contain hashes and evidence metadata, never original file bytes or extracted document text. The app manifest intentionally omits the Internet permission. The source URI is read only under the temporary share grant; folder URI access is persisted only after explicit user selection and can be revoked in the app.
