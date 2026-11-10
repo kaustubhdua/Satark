@@ -35,6 +35,9 @@ def build(input_dir: Path, csv_dir: Path, output_db: Path, *, split="train", fil
     parts = converter_manifest.get("parts")
     if not isinstance(parts, list) or not parts:
         raise ValueError("Converted manifest contains no CSV parts.")
+    declared_rows = int(converter_manifest.get("rows", {}).get("exported_rows", 0))
+    if declared_rows <= 0 or sum(int(item.get("rows", 0)) for item in parts) != declared_rows:
+        raise ValueError("Converted manifest total row count does not match its CSV parts.")
     output_db.parent.mkdir(parents=True, exist_ok=True)
     output_db.unlink(missing_ok=True)
     metadata_path = output_db.with_suffix(".json")
