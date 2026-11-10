@@ -43,6 +43,15 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertEqual(values.get("android:colorAccent"), "#78E0C1")
         self.assertEqual(values.get("android:statusBarColor"), "#08101B")
 
+    def test_android_16_target_and_edge_to_edge_insets(self):
+        gradle = (ANDROID / "app/build.gradle.kts").read_text(encoding="utf-8")
+        self.assertIn("targetSdk = 36", gradle)
+        self.assertIn('androidx.core:core-ktx:1.16.0', gradle)
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("WindowCompat.setDecorFitsSystemWindows(window, false)", source)
+        self.assertIn("WindowInsetsCompat.Type.systemBars()", source)
+        self.assertIn("ViewCompat.requestApplyInsets(scroll)", source)
+
     def test_android_python_has_no_network_client_imports(self):
         sources = list((ANDROID / "app/src/main/python").rglob("*.py"))
         self.assertTrue(sources, "Android Python scanner sources must exist")
