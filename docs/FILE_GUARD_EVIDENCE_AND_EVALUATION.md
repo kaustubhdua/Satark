@@ -52,4 +52,4 @@ The current Android release does not include a native YARA runtime or a curated 
 
 ## Supabase-free runtime
 
-The Android application has no network permission and uses app-private SQLite. The web workspace is not required for file scanning. The CI guard rejects Supabase SDK/API/runtime references in application source. The Supabase CLI project config is removed from the product branch; this does not imply that unrelated self-hosted PostgreSQL code is a Supabase dependency.
+The Android application has no network permission and uses app-private SQLite. The web workspace is not required for file scanning. The CI guard rejects Supabase SDK/API/runtime references in application source, and the unused Supabase CLI project configuration has been removed. Historical `supabase/migrations` and `supabase/tests` files remain as an archive for the retired web/FIRSTLIGHT persistence path; they are not loaded or used by Android File Guard. Removing that archive completely would require a separate decommission of the legacy database workflows and their tests.
