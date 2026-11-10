@@ -12,3 +12,8 @@ This manifest is a deliberate trigger for a coordinated full-stack validation. T
 - General CI must pass tenant isolation, authenticated case/evidence/report workflows, backup archive round-trip tests and browser checks.
 
 The manifest itself does not claim any environment-dependent acceptance test. Physical Android, a live authorized Wazuh manager/agent, and a public production host still require separate operator evidence.
+
+
+## Latest response adapter gate
+
+The legacy direct-response CLI is preview-only. Real actions are available only through the authenticated FIRSTLIGHT case approval API, with Wazuh-only fixed commands and explicit agent allowlists.
