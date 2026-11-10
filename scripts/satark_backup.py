@@ -337,7 +337,7 @@ def restore_backup(
     if target_evidence_dir.exists() and (not target_evidence_dir.is_dir() or any(target_evidence_dir.iterdir())):
         raise FileExistsError("Target evidence directory must be empty.")
     target_evidence_dir.parent.mkdir(parents=True, exist_ok=True)
-    ledger_in_archive = "firstlight-response.sqlite3" in verify_backup(archive_path).get("files", {})
+    ledger_in_archive = "firstlight-response.sqlite3" in manifest.get("files", {})
     response_target = target_response_ledger_path or (Path(os.environ["FIRSTLIGHT_RESPONSE_DB"]) if os.getenv("FIRSTLIGHT_RESPONSE_DB") else None)
     if ledger_in_archive:
         if response_target is None:
