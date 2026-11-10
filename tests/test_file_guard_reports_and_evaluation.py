@@ -66,6 +66,22 @@ class AuditChainTests(unittest.TestCase):
             self.assertFalse(verified["valid"])
             self.assertEqual(verified["reason"], "report_digest_mismatch")
 
+    def test_audit_retention_keeps_chain_but_detects_missing_recent_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.sqlite3"
+            history = ScanHistory(path, max_records=1)
+            history.add(scan_bytes(b"first", "first.bin"))
+            history.add(scan_bytes(b"second", "second.bin"))
+            retained = history.verify_audit_chain()
+            self.assertTrue(retained["valid"])
+            self.assertEqual(retained["entries"], 2)
+            self.assertEqual(retained["verified_reports"], 1)
+            with sqlite3.connect(path) as db:
+                db.execute("DELETE FROM scan_history")
+            tampered = history.verify_audit_chain()
+            self.assertFalse(tampered["valid"])
+            self.assertEqual(tampered["reason"], "recent_report_missing")
+
     def test_clearing_history_resets_the_local_audit_chain(self):
         with tempfile.TemporaryDirectory() as tmp:
             history = ScanHistory(Path(tmp) / "history.sqlite3")
