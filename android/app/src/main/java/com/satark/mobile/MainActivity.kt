@@ -315,6 +315,7 @@ class MainActivity : Activity() {
         WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
         WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
         WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
+        WorkManager.getInstance(this).cancelUniqueWork(IMMEDIATE_FOLDER_SCAN_NAME)
         prefs.edit().remove(KEY_TREE_URI).remove(KEY_TREE_FLAGS).apply()
         status.text = "FOLDER PERMISSION RELEASED · SCHEDULED SCANS CANCELLED"
     }
@@ -506,7 +507,7 @@ class MainActivity : Activity() {
             .addTag(FOLDER_SCAN_TAG)
             .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
-            "satark-file-guard-immediate-folder-scan",
+            IMMEDIATE_FOLDER_SCAN_NAME,
             androidx.work.ExistingWorkPolicy.REPLACE,
             request
         )
@@ -526,5 +527,6 @@ class MainActivity : Activity() {
         private const val KEY_TREE_URI = "granted_tree_uri"
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"
+        private const val IMMEDIATE_FOLDER_SCAN_NAME = "satark-file-guard-immediate-folder-scan"
     }
 }
