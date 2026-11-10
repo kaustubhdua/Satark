@@ -99,7 +99,7 @@ def inspect_builtin_signatures(data, filename, detected_type):
 
     if detected_type == "OLE document":
         # Check ASCII and UTF-16LE encodings without parsing macro streams.
-        variants = (lowered, lowered.replace(b"\\x00", b""))
+        variants = (lowered, lowered.replace(bytes([0]), b""))
         has_autoopen = any(b"autoopen" in value for value in variants)
         has_shell = any(b"shell" in value for value in variants)
         if has_autoopen and has_shell:
