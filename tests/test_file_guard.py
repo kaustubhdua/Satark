@@ -33,10 +33,10 @@ class FileGuardTests(unittest.TestCase):
     def test_builtin_byte_signatures_run_without_yara(self):
         cases = [
             (b"%PDF-1.7 /OpenAction /JavaScript", "invoice.pdf", "PDF_OPENACTION_JAVASCRIPT"),
-            (b"\\xd0\\xcf\\x11\\xe0\\xa1\\xb1\\x1a\\xe1AutoOpen Shell", "macro.doc", "OLE_AUTOOPEN_SHELL"),
+            (bytes([0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1]) + b"AutoOpen Shell", "macro.doc", "OLE_AUTOOPEN_SHELL"),
             (b"DownloadString Invoke-Expression", "script.ps1", "SCRIPT_DOWNLOAD_EXECUTE"),
             (b"eval( fromCharCode unescape(", "bundle.js", "JAVASCRIPT_OBFUSCATION_CLUSTER"),
-            (b"dex\\n035\\x00DexClassLoader", "classes.dex", "DEX_DYNAMIC_LOADING"),
+            (b"dex" + bytes([10]) + b"035" + bytes([0]) + b"DexClassLoader", "classes.dex", "DEX_DYNAMIC_LOADING"),
         ]
         for payload, filename, expected in cases:
             with self.subTest(filename=filename):
@@ -51,7 +51,7 @@ class FileGuardTests(unittest.TestCase):
             (b"%PDF-1.7 /OpenAction", "invoice.pdf"),
             (b"DownloadString only", "script.ps1"),
             (b"eval( fromCharCode", "bundle.js"),
-            (b"dex\\n035\\x00ordinary", "classes.dex"),
+            (b"dex" + bytes([10]) + b"035" + bytes([0]) + b"ordinary", "classes.dex"),
         ]
         for payload, filename in cases:
             with self.subTest(filename=filename):
