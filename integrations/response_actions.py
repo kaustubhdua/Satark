@@ -1,18 +1,20 @@
-"""Guarded Microsoft response adapters for authorized SATARK deployments.
+"""Guarded Wazuh Active Response adapter for self-hosted FIRSTLIGHT.
 
-Live actions are deliberately opt-in and require explicit per-action confirmation.
-This module never discovers assets or chooses targets automatically.
+Only explicitly allowlisted agents and two fixed Wazuh commands are supported.
+This module never constructs shell commands or accepts arbitrary command names.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 
 class ResponseIntegrationError(RuntimeError):
@@ -29,45 +31,6 @@ class ActionResult:
     provider_reference: str | None = None
 
 
-def _request_json(
-    url: str,
-    *,
-    method: str = "GET",
-    headers: dict[str, str] | None = None,
-    body: dict[str, Any] | None = None,
-    timeout: float = 12.0,
-) -> tuple[int, Any]:
-    data = None if body is None else json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=data,
-        method=method,
-        headers={"Accept": "application/json", **(headers or {})},
-    )
-    try:
-        # Do not follow redirects for credential-bearing API requests.
-        class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-                return None
-
-        opener = urllib.request.build_opener(NoRedirect)
-        with opener.open(request, timeout=timeout) as response:
-            raw = response.read(1_000_001)
-            if len(raw) > 1_000_000:
-                raise ResponseIntegrationError("Response exceeded the allowed size.")
-            text = raw.decode("utf-8", errors="replace")
-            return response.status, json.loads(text) if text else {}
-    except urllib.error.HTTPError as exc:
-        # Do not echo provider response bodies, which may contain tenant details.
-        raise ResponseIntegrationError(
-            f"Provider rejected the request (HTTP {exc.code}). Check permissions and target ID."
-        ) from None
-    except urllib.error.URLError:
-        raise ResponseIntegrationError("Provider could not be reached. Check network and service configuration.") from None
-    except (TimeoutError, json.JSONDecodeError):
-        raise ResponseIntegrationError("Provider timed out or returned an invalid response.") from None
-
-
 def _required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -76,131 +39,157 @@ def _required_env(name: str) -> str:
 
 
 def live_response_enabled() -> bool:
-    """Return the explicit server-side opt-in state without exposing secrets."""
+    """Explicit opt-in; response remains disabled in every default installation."""
     return os.getenv("SATARK_ENABLE_LIVE_RESPONSE", "").lower() == "true"
 
 
-def _confirm(action: str, target: str, confirmation: str) -> None:
-    if not live_response_enabled():
-        raise ResponseIntegrationError(
-            "Live response is disabled. Set SATARK_ENABLE_LIVE_RESPONSE=true only in an authorized test deployment."
-        )
-    expected = f"CONFIRM {action} {target}"
-    if confirmation != expected:
-        raise ResponseIntegrationError(f"Explicit confirmation required: {expected}")
-    if not target or len(target) > 256 or any(ord(ch) < 32 for ch in target):
-        raise ResponseIntegrationError("Target identifier is invalid.")
+def _agent_allowlist() -> set[str]:
+    values = {item.strip() for item in os.getenv("FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS", "").split(",") if item.strip()}
+    if not values or any(not re.fullmatch(r"\d{3,}", item) for item in values):
+        raise ResponseIntegrationError("Configure FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS with explicit numeric lab agent IDs.")
+    return values
+
+
+def _base_url() -> str:
+    value = _required_env("FIRSTLIGHT_WAZUH_MANAGER_API_URL").rstrip("/")
+    parsed = urllib.parse.urlsplit(value)
+    allow_http = os.getenv("FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP", "").lower() == "true"
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and allow_http and parsed.hostname in {"localhost", "127.0.0.1"}):
+        raise ResponseIntegrationError("Wazuh Manager API must use HTTPS (HTTP is allowed only for explicit localhost tests).")
+    if not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ResponseIntegrationError("Wazuh Manager API URL is invalid.")
+    return value
+
+
+def _ssl_context() -> ssl.SSLContext:
+    ca_file = os.getenv("FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE", "").strip()
+    return ssl.create_default_context(cafile=ca_file or None)
+
+
+def _request(url: str, *, method: str = "GET", headers: Mapping[str, str] | None = None,
+             body: Mapping[str, Any] | None = None, basic_auth: tuple[str, str] | None = None) -> tuple[int, Any]:
+    data = None if body is None else json.dumps(body, separators=(",", ":")).encode("utf-8")
+    request_headers = {"Accept": "application/json", **dict(headers or {})}
+    if data is not None:
+        request_headers["Content-Type"] = "application/json"
+    if basic_auth:
+        import base64
+        encoded = base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode("ascii")
+        request_headers["Authorization"] = f"Basic {encoded}"
+    request = urllib.request.Request(url, data=data, method=method, headers=request_headers)
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect, urllib.request.HTTPSHandler(context=_ssl_context()))
+    try:
+        with opener.open(request, timeout=12) as response:
+            raw = response.read(1_000_001)
+            if len(raw) > 1_000_000:
+                raise ResponseIntegrationError("Wazuh response exceeded the allowed size.")
+            text = raw.decode("utf-8", errors="replace")
+            try:
+                payload = json.loads(text) if text else {}
+            except json.JSONDecodeError:
+                payload = text.strip()
+            return response.status, payload
+    except urllib.error.HTTPError as exc:
+        raise ResponseIntegrationError(f"Wazuh Manager API rejected the request (HTTP {exc.code}).") from None
+    except urllib.error.URLError:
+        raise ResponseIntegrationError("Wazuh Manager API could not be reached; check endpoint, TLS and network.") from None
+    except (TimeoutError, ssl.SSLError):
+        raise ResponseIntegrationError("Wazuh Manager API timed out or failed TLS verification.") from None
+
+
+def _token() -> str:
+    base = _base_url()
+    username = _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
+    password = _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
+    status, payload = _request(
+        base + "/security/user/authenticate?raw=true",
+        method="POST",
+        basic_auth=(username, password),
+    )
+    token = payload if isinstance(payload, str) else payload.get("data", {}).get("token") if isinstance(payload, dict) else None
+    if status != 200 or not isinstance(token, str) or not token.strip():
+        raise ResponseIntegrationError("Wazuh Manager API authentication did not return a bearer token.")
+    return token.strip()
 
 
 def preflight_live_response(action: str, target: str, confirmation: str) -> None:
-    """Validate the explicit execution gate and required server configuration before claiming an approval."""
-    phrases = {
-        "defender.isolate_device": "ISOLATE",
-        "entra.revoke_sessions": "REVOKE_SESSIONS",
-    }
-    phrase = phrases.get(action)
-    if not phrase:
-        raise ResponseIntegrationError("Action is not allowlisted for live response.")
-    _confirm(phrase, target, confirmation)
-    tenant = _required_env("MICROSOFT_TENANT_ID")
-    _required_env("MICROSOFT_CLIENT_ID")
-    _required_env("MICROSOFT_CLIENT_SECRET")
-    if not re.fullmatch(r"[A-Za-z0-9.-]+", tenant):
-        raise ResponseIntegrationError("Microsoft tenant ID has an invalid format.")
+    """Check explicit opt-in, action allowlist, target allowlist and credentials."""
+    expected = {
+        "wazuh.block_ip": "BLOCK_IP",
+        "wazuh.disable_account": "DISABLE_ACCOUNT",
+    }.get(action)
+    if not expected:
+        raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
+    if not live_response_enabled():
+        raise ResponseIntegrationError("Live response is disabled. Enable it only in an authorized isolated lab.")
+    if confirmation != f"CONFIRM {expected} {target}":
+        raise ResponseIntegrationError(f"Explicit confirmation required: CONFIRM {expected} {target}")
+    if target not in _agent_allowlist():
+        raise ResponseIntegrationError("Target agent is not in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.")
+    _base_url()
+    _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
+    _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
 
 
-def _access_token(scope: str) -> str:
-    tenant = _required_env("MICROSOFT_TENANT_ID")
-    client_id = _required_env("MICROSOFT_CLIENT_ID")
-    client_secret = _required_env("MICROSOFT_CLIENT_SECRET")
-    if not re.fullmatch(r"[A-Za-z0-9.-]+", tenant):
-        raise ResponseIntegrationError("Microsoft tenant ID has an invalid format.")
-    form = urllib.parse.urlencode({
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "scope": scope,
-        "grant_type": "client_credentials",
-    }).encode("utf-8")
-    request = urllib.request.Request(
-        f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
-        data=form,
-        method="POST",
-        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
-    )
-    try:
-        class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-                return None
-        with urllib.request.build_opener(NoRedirect).open(request, timeout=12) as response:
-            payload = json.loads(response.read(65537).decode("utf-8"))
-            token = payload.get("access_token")
-            if not isinstance(token, str) or not token:
-                raise ResponseIntegrationError("Microsoft identity provider did not return an access token.")
-            return token
-    except urllib.error.HTTPError as exc:
-        raise ResponseIntegrationError(
-            f"Microsoft authentication failed (HTTP {exc.code}); verify tenant, app registration and permissions."
-        ) from None
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-        raise ResponseIntegrationError("Microsoft authentication endpoint could not be reached or returned invalid data.") from None
+def _validate_payload(action: str, payload: Mapping[str, Any]) -> list[str]:
+    if not isinstance(payload, Mapping):
+        raise ResponseIntegrationError("Response payload must be an object.")
+    if action == "wazuh.block_ip":
+        if set(payload) != {"ip_address"}:
+            raise ResponseIntegrationError("IP block payload must contain only ip_address.")
+        try:
+            address = ipaddress.ip_address(str(payload["ip_address"]))
+        except ValueError:
+            raise ResponseIntegrationError("ip_address must be a valid IPv4 address.") from None
+        if address.version != 4 or address.is_unspecified or address.is_multicast:
+            raise ResponseIntegrationError("Only unicast IPv4 addresses are supported by this response action.")
+        return [str(address)]
+    if action == "wazuh.disable_account":
+        if set(payload) != {"username"}:
+            raise ResponseIntegrationError("Account-disable payload must contain only username.")
+        username = str(payload["username"]).strip()
+        if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", username):
+            raise ResponseIntegrationError("username contains unsupported characters.")
+        return [username]
+    raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
 
 
-def isolate_defender_device(
-    device_id: str,
-    *,
-    confirmation: str,
-    isolation_type: str = "Full",
-    reason: str,
-) -> ActionResult:
-    """Request isolation of one explicitly identified Defender for Endpoint device."""
-    _confirm("ISOLATE", device_id, confirmation)
-    if isolation_type not in {"Full", "Selective", "UnManagedDevice"}:
-        raise ResponseIntegrationError("Isolation type must be Full, Selective or UnManagedDevice.")
+def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any], *,
+                           confirmation: str, reason: str) -> ActionResult:
+    """Submit one fixed Wazuh built-in Active Response command to one allowlisted agent."""
+    preflight_live_response(action, agent_id, confirmation)
     reason = reason.strip()
     if not reason or len(reason) > 1000:
         raise ResponseIntegrationError("A reason of 1–1000 characters is required.")
-    token = _access_token("https://api.security.microsoft.com/.default")
-    status, payload = _request_json(
-        "https://api.security.microsoft.com/api/machines/"
-        + urllib.parse.quote(device_id, safe="") + "/isolate",
-        method="POST",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        body={"Comment": f"SATARK approved response: {reason}", "IsolationType": isolation_type},
+    command, args = {
+        "wazuh.block_ip": ("firewall-drop", _validate_payload(action, payload)),
+        "wazuh.disable_account": ("disable-account", _validate_payload(action, payload)),
+    }[action]
+    token = _token()
+    query = urllib.parse.urlencode({"agents_list": agent_id, "wait_for_complete": "true"})
+    status, response = _request(
+        _base_url() + "/active-response?" + query,
+        method="PUT",
+        headers={"Authorization": f"Bearer {token}"},
+        body={"command": command, "arguments": args, "custom": False},
     )
-    reference = payload.get("id") or payload.get("machineActionId") if isinstance(payload, dict) else None
-    return ActionResult("Microsoft Defender for Endpoint", "isolate_device", device_id,
-                        "submitted" if status in {200, 201, 202} else "unknown",
-                        "Provider accepted the isolation request; verify final machine-action status in Defender.",
-                        str(reference)[:256] if reference else None)
-
-
-def revoke_entra_user_sessions(
-    user_id_or_upn: str,
-    *,
-    confirmation: str,
-    reason: str,
-) -> ActionResult:
-    """Invalidate refresh tokens and browser session cookies for one Entra user."""
-    _confirm("REVOKE_SESSIONS", user_id_or_upn, confirmation)
-    if not re.fullmatch(r"[A-Za-z0-9@._-]{1,256}", user_id_or_upn):
-        raise ResponseIntegrationError("User ID or UPN contains unsupported characters.")
-    reason = reason.strip()
-    if not reason or len(reason) > 1000:
-        raise ResponseIntegrationError("A reason of 1–1000 characters is required.")
-    token = _access_token("https://graph.microsoft.com/.default")
-    target = urllib.parse.quote(user_id_or_upn, safe="")
-    status, _ = _request_json(
-        f"https://graph.microsoft.com/v1.0/users/{target}/revokeSignInSessions",
-        method="POST",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        body={},
+    if status not in {200, 201, 202} or not isinstance(response, dict) or response.get("error") not in {0, None}:
+        raise ResponseIntegrationError("Wazuh did not confirm that the Active Response command was accepted.")
+    data = response.get("data", {})
+    affected = data.get("affected_items", []) if isinstance(data, dict) else []
+    failed = data.get("failed_items", []) if isinstance(data, dict) else []
+    if failed or (affected and agent_id not in {str(item) for item in affected}):
+        raise ResponseIntegrationError("Wazuh reported a failed or mismatched target response.")
+    return ActionResult(
+        "Wazuh Active Response",
+        command,
+        agent_id,
+        "submitted",
+        "Wazuh accepted the command for the explicitly allowlisted agent. Independently verify the agent state; submission is not proof of containment.",
+        None,
     )
-    return ActionResult("Microsoft Entra ID", "revoke_sign_in_sessions", user_id_or_upn,
-                        "submitted" if 200 <= status < 300 else "unknown",
-                        "Provider accepted the session-revocation request; token invalidation can take several minutes.",
-                        None)
-
-
-def live_response_enabled() -> bool:
-    """Safe capability check for UI gating; does not validate credentials or permissions."""
-    return os.getenv("SATARK_ENABLE_LIVE_RESPONSE", "").lower() == "true"
