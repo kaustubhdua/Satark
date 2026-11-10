@@ -60,6 +60,12 @@ class ResponseApproval:
     expires_at: str
     approved_by: str | None
     idempotency_key: str
+    created_at: str | None = None
+    approved_at: str | None = None
+    decision_reason: str | None = None
+    executor_id: str | None = None
+    provider_reference: str | None = None
+    result_detail: str | None = None
 
 
 @dataclass(frozen=True)
@@ -251,6 +257,15 @@ class ResponseLedger:
         if row is None:
             raise ResponseExecutionError("Approval not found for this tenant and case.")
         return self._to_approval(row)
+
+    def list_approvals(self, *, tenant_id: str, case_id: str) -> list[ResponseApproval]:
+        """List a bounded case-scoped approval history without exposing other tenants."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT * FROM response_approvals WHERE tenant_id=? AND case_id=? ORDER BY created_at DESC LIMIT 100",
+                (tenant_id, case_id),
+            ).fetchall()
+        return [self._to_approval(row) for row in rows]
 
     def list_audit_events(self, *, tenant_id: str, case_id: str) -> list[dict[str, Any]]:
         with self._lock:
@@ -464,5 +479,8 @@ class ResponseLedger:
             action=row["action"], target=row["target"], reason=row["reason"],
             payload=json.loads(row["payload_json"]), requested_by=row["requested_by"],
             status=row["status"], expires_at=row["expires_at"], approved_by=row["approved_by"],
-            idempotency_key=row["idempotency_key"],
+            idempotency_key=row["idempotency_key"], created_at=row["created_at"],
+            approved_at=row["approved_at"], decision_reason=row["decision_reason"],
+            executor_id=row["executor_id"], provider_reference=row["provider_reference"],
+            result_detail=row["result_detail"],
         )
