@@ -52,7 +52,7 @@ Android 11+ restricts access to other apps' private data and app-specific extern
 
 - Maximum 64 MB per file; up to 20 shared files per foreground share event.
 - Folder worker: bounded by file count, depth and total bytes per run.
-- The Android build currently uses SHA-256, format signatures and filename/signature checks. Native YARA is not bundled in the mobile APK; the optional desktop YARA starter rules and their synthetic regression tests are documented in [LOCAL_YARA_RULES.md](../docs/LOCAL_YARA_RULES.md).
+- The Android build uses SHA-256, format signatures, extension checks and conservative built-in byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers. These are triage signals, not definitive malware verdicts. Native YARA is not bundled in the mobile APK; the optional desktop YARA starter rules and their synthetic regression tests are documented in [LOCAL_YARA_RULES.md](../docs/LOCAL_YARA_RULES.md).
 - The intelligence database is empty until the user imports a properly licensed, provenance-labelled snapshot.
 - A no-match verdict means only that enabled local checks found no indicator; it is not a guarantee of safety.
 
