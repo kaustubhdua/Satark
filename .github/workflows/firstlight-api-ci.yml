@@ -29,6 +29,9 @@ on:
       - "Dockerfile.firstlight-worker"
       - "Dockerfile.firstlight-investigation-worker"
       - "docker-compose.local.yml"
+      - "docker-compose.production.yml"
+      - "deploy/Caddyfile"
+      - "deploy/production.env.example"
       - ".github/workflows/firstlight-api-ci.yml"
   pull_request:
     paths:
@@ -147,6 +150,21 @@ jobs:
 
       - name: Validate local self-hosted Compose configuration
         run: docker compose -f docker-compose.local.yml config --quiet
+
+      - name: Validate production PostgreSQL and TLS Compose stack
+        env:
+          POSTGRES_PASSWORD: test-only-password
+          SATARK_DATABASE_URL: postgresql+psycopg://satark:test-only-password@db:5432/satark
+          SATARK_DOMAIN: satark.example.test
+          ACME_EMAIL: ci@example.test
+          SATARK_MFA_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          SATARK_SMTP_HOST: smtp.example.test
+          SATARK_SMTP_USERNAME: ci
+          SATARK_SMTP_PASSWORD: test-only
+          SATARK_SMTP_FROM: SATARK <ci@example.test>
+          FIRSTLIGHT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker compose -f docker-compose.production.yml config --quiet
 
       - name: Build API and worker images
         run: |
