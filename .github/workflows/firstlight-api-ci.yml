@@ -164,6 +164,13 @@ jobs:
           SATARK_SMTP_FROM: SATARK <ci@example.test>
           FIRSTLIGHT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRSTLIGHT_WAZUH_INDEXER_URL: https://wazuh-indexer.example.test:9200
+          FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ci
+          FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: test-only
+          FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: "001"
+          FIRSTLIGHT_WAZUH_TENANT_ID: 00000000-0000-4000-8000-000000000001
+          FIRSTLIGHT_WAZUH_CASE_ID: 00000000-0000-4000-8000-000000000002
+          FIRSTLIGHT_WAZUH_ACTOR_ID: 00000000-0000-4000-8000-000000000003
         run: docker compose -f docker-compose.production.yml config --quiet
 
       - name: Build API and worker images
