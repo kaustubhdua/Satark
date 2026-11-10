@@ -12,10 +12,7 @@ FORBIDDEN_MODULES = {"requests", "httpx", "urllib", "socket", "aiohttp", "supaba
 class AndroidOfflineContractTests(unittest.TestCase):
     def test_manifest_does_not_request_network_permissions(self):
         manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
-        permissions = {
-            node.attrib.get(ANDROID_NS + "name")
-            for node in manifest.findall("uses-permission")
-        }
+        permissions = {node.attrib.get(ANDROID_NS + "name") for node in manifest.findall("uses-permission")}
         self.assertNotIn("android.permission.INTERNET", permissions)
         self.assertNotIn("android.permission.ACCESS_NETWORK_STATE", permissions)
 
@@ -23,10 +20,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
         manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
         activity = manifest.find("./application/activity")
         self.assertIsNotNone(activity)
-        actions = {
-            node.attrib.get(ANDROID_NS + "name")
-            for node in activity.findall("./intent-filter/action")
-        }
+        actions = {node.attrib.get(ANDROID_NS + "name") for node in activity.findall("./intent-filter/action")}
         self.assertIn("android.intent.action.SEND", actions)
         self.assertIn("android.intent.action.SEND_MULTIPLE", actions)
 
@@ -42,11 +36,8 @@ class AndroidOfflineContractTests(unittest.TestCase):
                 elif stripped.startswith("from "):
                     module = stripped[5:].split(" ")[0].split(".")[0]
                 if module:
-                    self.assertNotIn(
-                        module,
-                        FORBIDDEN_MODULES,
-                        f"{path.relative_to(ROOT)}:{line_number} imports {module}",
-                    )
+                    self.assertNotIn(module, FORBIDDEN_MODULES,
+                                     f"{path.relative_to(ROOT)}:{line_number} imports {module}")
 
     def test_android_scanner_is_the_same_python_engine_as_root(self):
         pairs = (
@@ -54,14 +45,12 @@ class AndroidOfflineContractTests(unittest.TestCase):
             ("file_guard/agents.py", "android/app/src/main/python/file_guard/agents.py"),
             ("file_guard/intelligence.py", "android/app/src/main/python/file_guard/intelligence.py"),
             ("file_guard/history.py", "android/app/src/main/python/file_guard/history.py"),
+            ("file_guard/report.py", "android/app/src/main/python/file_guard/report.py"),
         )
         for root_path, android_path in pairs:
             with self.subTest(module=root_path):
-                self.assertEqual(
-                    (ROOT / root_path).read_bytes(),
-                    (ROOT / android_path).read_bytes(),
-                    f"Android-bundled {android_path} drifted from {root_path}",
-                )
+                self.assertEqual((ROOT / root_path).read_bytes(), (ROOT / android_path).read_bytes(),
+                                 f"Android-bundled {android_path} drifted from {root_path}")
 
     def test_folder_scan_work_is_unique_and_deduplicated(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
