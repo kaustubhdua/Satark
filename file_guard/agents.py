@@ -15,7 +15,7 @@ _EXECUTABLE_EXTENSIONS = {".exe", ".dll", ".scr", ".com", ".bat", ".cmd", ".ps1"
 def route_file(filename, detected_type, yara_configured=False):
     """Return deterministic specialist routing for a file."""
     extension = Path(filename or "unnamed").suffix.lower()
-    route = ["magic_signature", "sha256_intelligence", "filename_metadata", "evidence_fusion"]
+    route = ["magic_signature", "builtin_byte_signatures", "sha256_intelligence", "filename_metadata", "evidence_fusion"]
     if yara_configured:
         route.insert(3, "local_yara")
     if detected_type == "Unknown / unrecognized":
@@ -75,6 +75,63 @@ def inspect_hash(digest, intelligence):
         "match": match,
         "signals": signals,
     }
+
+def inspect_builtin_signatures(data, filename, detected_type):
+    """Conservative, bounded byte-pattern checks usable on desktop and Android.
+
+    This scans raw bytes for a few high-signal combinations. It never decodes
+    whole documents, extracts text, unpacks containers or executes content.
+    Findings are review signals, not malware verdicts.
+    """
+    name = Path(filename or "unnamed").name.lower()
+    findings = []
+    raw = bytes(data)
+    lowered = raw.lower()
+
+    def add(rule_id, description):
+        findings.append({"rule_id": rule_id, "description": description})
+
+    if detected_type == "PDF":
+        if b"/openaction" in lowered and (b"/javascript" in lowered or b"/js" in lowered):
+            add("PDF_OPENACTION_JAVASCRIPT", "PDF contains both an automatic open action and a JavaScript marker.")
+        if b"/launch" in lowered and b"/openaction" in lowered:
+            add("PDF_OPENACTION_LAUNCH", "PDF contains an automatic open action and a launch action marker.")
+
+    if detected_type == "OLE document":
+        # Check ASCII and UTF-16LE encodings without parsing macro streams.
+        variants = (lowered, lowered.replace(b"\\x00", b""))
+        has_autoopen = any(b"autoopen" in value for value in variants)
+        has_shell = any(b"shell" in value for value in variants)
+        if has_autoopen and has_shell:
+            add("OLE_AUTOOPEN_SHELL", "OLE document contains both AutoOpen and Shell automation markers.")
+
+    if name.endswith((".ps1", ".psm1", ".bat", ".cmd")):
+        download = any(token in lowered for token in (b"downloadstring", b"downloadfile", b"invoke-webrequest"))
+        execute = any(token in lowered for token in (b"invoke-expression", b"iex(", b"start-process"))
+        if download and execute:
+            add("SCRIPT_DOWNLOAD_EXECUTE", "Script contains both a network-download marker and an execution marker.")
+
+    if name.endswith((".js", ".mjs", ".cjs")):
+        obfuscation_markers = sum(token in lowered for token in (b"eval(", b"fromcharcode", b"unescape("))
+        if obfuscation_markers >= 3:
+            add("JAVASCRIPT_OBFUSCATION_CLUSTER", "JavaScript contains a cluster of three obfuscation-related markers.")
+
+    if detected_type == "Android DEX" and (b"dexclassloader" in lowered or b"loaddex" in lowered):
+        add("DEX_DYNAMIC_LOADING", "DEX bytecode contains a dynamic class-loading marker.")
+
+    signals = [{
+        "code": "BUILTIN_PATTERN_MATCH",
+        "severity": "high",
+        "detail": finding["description"],
+        "rule_id": finding["rule_id"],
+    } for finding in findings]
+    return {
+        "agent": "builtin_byte_signatures",
+        "status": "match" if findings else "no_match",
+        "matches": findings,
+        "signals": signals,
+    }
+
 
 def inspect_yara(data, rules_path):
     if not rules_path:
