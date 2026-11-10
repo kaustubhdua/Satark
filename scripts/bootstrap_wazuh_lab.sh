@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${WAZUH_DOCKER_VERSION:-v4.14.10}"
+VERSION="v4.14.10"
 DEST="${1:-$HOME/wazuh-docker}"
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   echo "Docker Engine and the Docker Compose plugin are required." >&2
