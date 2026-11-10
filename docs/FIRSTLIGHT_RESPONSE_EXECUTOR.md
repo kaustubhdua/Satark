@@ -1,37 +1,56 @@
-# FIRSTLIGHT trusted response executor foundation
+# FIRSTLIGHT guarded response executor
 
-This module is a local, open-source foundation for a trusted response executor. It adds a durable approval lifecycle and audit log, but it is **not yet connected to the browser approval UI or the SATARK's self-hosted simulation-only approval records**. Do not describe the complete response workflow as production-ready until that integration and live acceptance are finished.
+The response executor is integrated into the authenticated FIRSTLIGHT API and persistent case workspace. It is disabled by default. It is not an autonomous containment agent.
 
-## Controls implemented
+## Supported actions
 
-- Allowlist limited to Defender device isolation and Entra session revocation.
-- Every request is bound to tenant, case, requester, exact target, reason, parameters, idempotency key, and expiry.
-- Four-eyes approval: the requester cannot approve or deny their own request.
-- One-time execution claim is committed before the provider handler runs; the same approval cannot be executed twice.
-- Provider submission is a separate state from provider-side verification; the executor identity is persisted, and verification is rejected if performed by the requester, approver, or executor.
-- Any exception after execution starts becomes `unknown`; the system does not blindly retry a potentially successful provider operation.
-- Restart recovery marks abandoned `executing` records as `unknown`, then requires independent provider reconciliation.
-- SQLite transaction durability, immutable action/target/payload bindings, restrictive action payloads, append-only audit triggers, and a SHA-256 hash chain.
-- No network endpoint is exposed by this module; a trusted caller must authenticate the operator and authorize the tenant/case before invoking it.
+- `defender.isolate_device` — Microsoft Defender for Endpoint device isolation.
+- `entra.revoke_sessions` — Microsoft Entra ID session revocation.
 
-## Local tests
+No shell execution, arbitrary URL, network firewall rule, target discovery, or action outside this allowlist is accepted.
 
-Run:
+## Approval lifecycle
 
-```bash
-python -m unittest -v tests.test_firstlight_response_executor
-```
+1. An owner, responder or analyst creates a request bound to tenant, case, action, exact target, reason, restricted payload, idempotency key and expiry.
+2. A different owner/responder approves or denies it (four-eyes control).
+3. A third owner/responder executes it. The server rechecks case membership, verifies approval state, requires the exact target confirmation, and checks the server-side feature flag and Microsoft configuration before claiming execution.
+4. The ledger commits the one-time execution claim before making the provider request. Replays are rejected.
+5. Provider submission is stored as `submitted`, not `verified`. An uncertain outcome becomes `unknown`; the system never retries it automatically.
+6. A fourth, distinct operator checks the provider console and records an independent attestation with the provider action/audit reference.
 
-The tests use mocked provider handlers and a temporary in-memory database. They test the guardrails, not real Microsoft actions.
+## API and UI
 
-## Integration required before enabling live response
+The authenticated routes are mounted under `/api/firstlight/live-response`:
 
-1. Wire the ledger to the authenticated server-side response route and replace the current simulation-only UI path. Never trust tenant, actor, case, approval or role claims supplied only by the browser.
-2. Use a persistent, access-controlled database volume, or implement the same lifecycle on the existing tenant-scoped database with equivalent transactional guarantees.
-3. Connect the two allowlisted actions to the existing Microsoft adapters, passing only the approved target and parameters. Keep credentials server-side.
-4. Implement provider-specific status polling and independently verify the resulting state. A successful POST means submitted, not verified.
-5. On startup, call `recover_interrupted_executions()`; reconcile all `unknown` results manually or with a read-only provider verifier before taking another action.
-6. Export and independently anchor audit hashes. SQLite triggers/hash chains are tamper-evident against ordinary application mistakes, not privileged host administrators.
-7. Run dedicated tenant-isolation tests and authorized Defender/Entra lab acceptance before enabling the live-response feature flag.
+- `GET /status?tenant_id=...&case_id=...`
+- `GET /approvals?tenant_id=...&case_id=...`
+- `POST /approvals`
+- `PATCH /approvals`
+- `POST /execute`
+- `POST /verify`
+- `GET /audit?tenant_id=...&case_id=...`
 
-The current Supabase approval consumption restrictions must remain in place until the authenticated server-side integration is complete and reviewed. This ledger does not grant authority to execute any action by itself.
+The Next.js FIRSTLIGHT persistent case panel provides request, approve/deny, execute and independent-verification controls. The browser sends only case-bound action details; Microsoft credentials stay in the trusted API environment.
+
+## Persistence and recovery
+
+The append-only SQLite ledger is stored at `FIRSTLIGHT_RESPONSE_DB`. Local Compose mounts it under the shared `/data` volume at `/data/firstlight-response.sqlite3`. Use a durable, access-controlled volume and include it in backup/restore procedures.
+
+On API startup, any record left in `executing` is changed to `unknown` and a recovery event is appended. This is deliberate: the provider may have acted before the process crashed. Reconcile it with the provider before taking any further action.
+
+The audit chain detects ordinary edits/reordering. It is not an external timestamp, hardware signature, or protection from a privileged administrator who can rewrite the database file. Export and independently anchor audit digests for stronger tamper evidence.
+
+## Configuration
+
+Keep these values only in the private API secret manager:
+
+- `SATARK_ENABLE_LIVE_RESPONSE=true` (otherwise execution is blocked)
+- `MICROSOFT_TENANT_ID`
+- `MICROSOFT_CLIENT_ID`
+- `MICROSOFT_CLIENT_SECRET`
+
+Use least-privilege Microsoft application permissions and admin consent. Defender isolation requires the appropriate Defender machine-isolation permission; Entra session revocation requires the corresponding Graph permission. Confirm the current vendor permission names and tenant policy before enabling.
+
+## Safety boundary
+
+No real provider action was performed by the repository tests. Tests use a mocked handler to verify authorization, four-eyes approval, distinct executor/verifier, exact target confirmation, idempotency, persistence and audit integrity. Enable this feature only in an authorized test tenant with a disposable endpoint/account and a documented unisolation/session-recovery plan.
