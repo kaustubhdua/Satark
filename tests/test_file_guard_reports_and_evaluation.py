@@ -46,6 +46,8 @@ class EvaluationTests(unittest.TestCase):
         self.assertAlmostEqual(report["precision"], 0.5)
         self.assertAlmostEqual(report["recall_conservative"], 0.5)
         self.assertAlmostEqual(report["coverage"], 0.75)
+        self.assertAlmostEqual(report["detection_coverage"], 0.75)
+        self.assertAlmostEqual(report["false_positive_rate"], 0.5)
 
     def test_invalid_label_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
