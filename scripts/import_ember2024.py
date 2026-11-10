@@ -16,6 +16,7 @@ import re
 from typing import Iterator
 
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
+UPSTREAM_REVISION = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
 FILE_TYPES = {"Win32", "Win64", "Dot_Net", "APK", "ELF", "PDF"}
 
 def normalize_label(value):
@@ -154,6 +155,8 @@ def convert(input_dir: Path, output_dir: Path, *, split="all", file_type="all",
     manifest = {
         "dataset": "EMBER2024",
         "upstream": "https://github.com/FutureComputing4AI/EMBER2024",
+        "dataset_mirror": "https://huggingface.co/datasets/joyce8/EMBER2024",
+        "upstream_revision": UPSTREAM_REVISION,
         "dataset_repository_license": "Apache-2.0",
         "collection_window": "2023-09-24 through 2024-12-14",
         "input_split": split,
