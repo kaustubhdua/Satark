@@ -1,0 +1,186 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: satark
+      POSTGRES_USER: satark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong POSTGRES_PASSWORD in the private .env file}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satark -d satark"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks: [backend]
+
+  firstlight-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-api
+    environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:?Set a URL using postgresql+psycopg and the private DB password}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_RESPONSE_DB: /data/firstlight-response.sqlite3
+      SATARK_AUTO_CREATE_SCHEMA: "false"
+      SATARK_PUBLIC_BASE_URL: https://${SATARK_DOMAIN:?Set SATARK_DOMAIN}
+      SATARK_REQUIRE_EMAIL_VERIFICATION: ${SATARK_REQUIRE_EMAIL_VERIFICATION:-true}
+      SATARK_REQUIRE_MFA: ${SATARK_REQUIRE_MFA:-true}
+      SATARK_MFA_ENCRYPTION_KEY: ${SATARK_MFA_ENCRYPTION_KEY:?Set a stable Fernet key}
+      SATARK_SMTP_HOST: ${SATARK_SMTP_HOST:?Configure SMTP}
+      SATARK_SMTP_PORT: ${SATARK_SMTP_PORT:-587}
+      SATARK_SMTP_USERNAME: ${SATARK_SMTP_USERNAME:?Configure SMTP}
+      SATARK_SMTP_PASSWORD: ${SATARK_SMTP_PASSWORD:?Configure SMTP}
+      SATARK_SMTP_FROM: ${SATARK_SMTP_FROM:?Configure SMTP}
+      SATARK_SMTP_USE_SSL: ${SATARK_SMTP_USE_SSL:-false}
+      FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:?Set an independent 32+ byte random API token}
+      FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:?Set an independent 32+ byte Wazuh sync token}
+      FIRSTLIGHT_WAZUH_INDEXER_URL: ${FIRSTLIGHT_WAZUH_INDEXER_URL:-}
+      FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ${FIRSTLIGHT_WAZUH_INDEXER_USERNAME:-}
+      FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: ${FIRSTLIGHT_WAZUH_INDEXER_PASSWORD:-}
+      FIRSTLIGHT_WAZUH_INDEX_PATTERN: ${FIRSTLIGHT_WAZUH_INDEX_PATTERN:-wazuh-alerts-*}
+      FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: ${FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS:-}
+      FIRSTLIGHT_WAZUH_MANAGER_API_URL: ${FIRSTLIGHT_WAZUH_MANAGER_API_URL:-}
+      FIRSTLIGHT_WAZUH_MANAGER_USERNAME: ${FIRSTLIGHT_WAZUH_MANAGER_USERNAME:-}
+      FIRSTLIGHT_WAZUH_MANAGER_PASSWORD: ${FIRSTLIGHT_WAZUH_MANAGER_PASSWORD:-}
+      FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE: ${FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE:-}
+      FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS: ${FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS:-}
+      FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP: "false"
+      SATARK_ENABLE_LIVE_RESPONSE: "false"
+      SATARK_TRUSTED_PROXY_IPS: 172.31.240.0/24
+      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:-}
+    volumes:
+      - satark_data:/data
+      - satark_backups:/backups
+      - ./secrets:/run/secrets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    expose: ["8788"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8788/api/health/storage', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [backend]
+
+  firstlight-investigation-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-investigation-worker
+    environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:?Set SATARK_DATABASE_URL}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_JOB_POLL_SECONDS: ${FIRSTLIGHT_JOB_POLL_SECONDS:-5}
+      FIRSTLIGHT_JOB_LEASE_SECONDS: ${FIRSTLIGHT_JOB_LEASE_SECONDS:-120}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      FIRSTLIGHT_OLLAMA_MODEL: ${FIRSTLIGHT_OLLAMA_MODEL:-qwen2.5:3b}
+      FIRSTLIGHT_MODEL_AGENTS_ENABLED: ${FIRSTLIGHT_MODEL_AGENTS_ENABLED:-false}
+    volumes:
+      - satark_data:/data
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [backend]
+
+  firstlight-wazuh-worker:
+    profiles: ["wazuh"]
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-worker
+    environment:
+      SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:?Set SATARK_DATABASE_URL}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_WAZUH_INDEXER_URL: ${FIRSTLIGHT_WAZUH_INDEXER_URL:?Configure private Wazuh Indexer}
+      FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ${FIRSTLIGHT_WAZUH_INDEXER_USERNAME:?Configure read-only Indexer identity}
+      FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: ${FIRSTLIGHT_WAZUH_INDEXER_PASSWORD:?Configure read-only Indexer identity}
+      FIRSTLIGHT_WAZUH_INDEX_PATTERN: ${FIRSTLIGHT_WAZUH_INDEX_PATTERN:-wazuh-alerts-*}
+      FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: ${FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS:?Set agent allowlist}
+      FIRSTLIGHT_WAZUH_TENANT_ID: ${FIRSTLIGHT_WAZUH_TENANT_ID:?Set tenant ID}
+      FIRSTLIGHT_WAZUH_CASE_ID: ${FIRSTLIGHT_WAZUH_CASE_ID:?Set case ID}
+      FIRSTLIGHT_WAZUH_ACTOR_ID: ${FIRSTLIGHT_WAZUH_ACTOR_ID:?Set actor ID}
+      FIRSTLIGHT_WAZUH_INITIAL_SINCE: ${FIRSTLIGHT_WAZUH_INITIAL_SINCE:-}
+      FIRSTLIGHT_WAZUH_PAGE_SIZE: ${FIRSTLIGHT_WAZUH_PAGE_SIZE:-100}
+      FIRSTLIGHT_WAZUH_OVERLAP_SECONDS: ${FIRSTLIGHT_WAZUH_OVERLAP_SECONDS:-300}
+      FIRSTLIGHT_WAZUH_POLL_SECONDS: ${FIRSTLIGHT_WAZUH_POLL_SECONDS:-60}
+    volumes:
+      - satark_data:/data
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [backend]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      SATARK_API_INTERNAL_URL: http://firstlight-api:8788
+      SATARK_PUBLIC_ORIGIN: https://${SATARK_DOMAIN:?Set SATARK_DOMAIN}
+      SATARK_PUBLIC_BASE_URL: https://${SATARK_DOMAIN:?Set SATARK_DOMAIN}
+    depends_on:
+      firstlight-api:
+        condition: service_healthy
+    expose: ["3000"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [backend]
+
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      SATARK_DOMAIN: ${SATARK_DOMAIN:?Set SATARK_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_started
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [backend]
+
+volumes:
+  postgres_data:
+  satark_data:
+  satark_backups:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24

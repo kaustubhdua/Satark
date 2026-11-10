@@ -19,8 +19,8 @@ class ResponseLedgerTests(unittest.TestCase):
         self.ledger = ResponseLedger(":memory:", clock=self.clock)
         self.approval = self.ledger.create_approval(
             tenant_id="tenant-a", case_id="case-a", requested_by="analyst-a",
-            action="defender.isolate_device", target="device-lab-01",
-            reason="Case case-a: verified suspicious activity", payload={"isolation_type": "Selective"},
+            action="wazuh.block_ip", target="001",
+            reason="Case case-a: verified suspicious activity", payload={"ip_address": "203.0.113.42"},
             idempotency_key="idem-0000000000000001", expires_in_seconds=600,
         )
 
@@ -47,11 +47,11 @@ class ResponseLedgerTests(unittest.TestCase):
     def test_payload_allowlist_and_idempotency(self):
         with self.assertRaisesRegex(ResponseExecutionError, "payload"):
             self.ledger.create_approval(tenant_id="tenant-a", case_id="case-a", requested_by="analyst-a",
-                action="defender.isolate_device", target="device", reason="reason", payload={"shell": "bad"},
+                action="wazuh.block_ip", target="001", reason="reason", payload={"shell": "bad"},
                 idempotency_key="idem-0000000000000002")
         with self.assertRaisesRegex(ResponseExecutionError, "idempotency"):
             self.ledger.create_approval(tenant_id="tenant-a", case_id="case-a", requested_by="analyst-a",
-                action="entra.revoke_sessions", target="user@example.test", reason="reason", payload={},
+                action="wazuh.disable_account", target="001", reason="reason", payload={"username": "lab-user"},
                 idempotency_key="idem-0000000000000001")
 
     def test_expired_approval_cannot_execute(self):

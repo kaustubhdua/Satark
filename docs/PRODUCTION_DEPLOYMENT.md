@@ -1,0 +1,78 @@
+# Self-hosted production deployment
+
+SATARK/FIRSTLIGHT production is a self-hosted Docker deployment, not a Vercel-only application. The Android File Guard remains fully offline. The server stack uses PostgreSQL, private evidence storage, a durable response ledger, Next.js, FastAPI, persistent workers and Caddy-managed HTTPS.
+
+## Hosting and cost boundary
+
+The repository contains a production Compose stack, but it does not create a cloud account or a free virtual machine. A public service needs a reachable Linux host, domain/DNS, persistent disk and a backup destination. A free application tier is not sufficient evidence of durable storage or production uptime. The operator must provision a host they control and confirm its cost/quotas before deployment.
+
+## Prerequisites
+
+- Linux host with Docker Engine and Docker Compose plugin.
+- A DNS A/AAAA record for the chosen domain pointing to the host.
+- Inbound TCP 80/443 for ACME certificate issuance and HTTPS; do not expose PostgreSQL or the Wazuh Manager API publicly.
+- Persistent disk with enough space for PostgreSQL, evidence objects, response ledger, logs and backups.
+- SMTP account for verification and password recovery.
+- Private Wazuh Manager/Indexer network route and least-privilege credentials if Wazuh is enabled.
+- vm.max_map_count=262144 on the Wazuh host if deploying the Wazuh Indexer on the same machine.
+
+## Configure
+
+1. Clone the exact approved SATARK release commit onto the host.
+2. Copy deploy/production.env.example to the root .env; replace every placeholder with unique values and run chmod 600 .env.
+3. URL-encode special characters in the PostgreSQL password inside SATARK_DATABASE_URL. Keep the runtime DB user separate from the backup role. Configure SATARK_BACKUP_DATABASE_URL with a least-privilege backup identity that has the PostgreSQL BYPASSRLS capability required by the backup utility; do not use the API runtime credential for backups.
+4. Put the Wazuh Manager CA certificate at ./secrets/wazuh-manager-ca.pem; keep the directory private and excluded from Git. The certificate SAN must match FIRSTLIGHT_WAZUH_MANAGER_API_URL.
+5. Keep SATARK_ENABLE_LIVE_RESPONSE=false until the Wazuh lab response workflow and reversal have been independently tested. Configure only disposable agent IDs in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.
+
+Generate independent secrets:
+
+~~~bash
+openssl rand -hex 32
+python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+~~~
+
+## Deploy
+
+~~~bash
+docker compose -f docker-compose.production.yml config --quiet
+docker compose -f docker-compose.production.yml build
+docker compose -f docker-compose.production.yml up -d
+docker compose -f docker-compose.production.yml ps
+~~~
+
+Caddy obtains and renews HTTPS certificates automatically after DNS and ports 80/443 are correctly configured. Verify the public origin, sign-up/email verification, MFA enrollment, session expiry, case access, evidence upload/verification, report export and health endpoints before inviting users.
+
+Optional Wazuh polling worker:
+
+~~~bash
+docker compose -f docker-compose.production.yml --profile wazuh up -d firstlight-wazuh-worker
+~~~
+
+Do not enable that worker until the tenant, case, actor, Indexer role and agent allowlist have been checked.
+
+## Backup and isolated restore
+
+Quiesce API and workers before taking a consistent snapshot. Use the repository backup utility with the privileged backup connection, and store encrypted copies outside the host:
+
+~~~bash
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+docker compose -f docker-compose.production.yml exec -T firstlight-api \
+  python scripts/satark_backup.py create --output "/backups/satark-$STAMP.tar.gz"
+docker compose -f docker-compose.production.yml exec -T firstlight-api \
+  python scripts/satark_backup.py verify "/backups/satark-$STAMP.tar.gz"
+~~~
+
+The backup archive includes the configured SQL database and evidence objects. The FIRSTLIGHT response ledger is a separate SQLite database under the persistent data volume; include it in the same quiesced backup set and verify its audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
+
+For a restore drill, provision a separate host and empty database, restore the archive with scripts/satark_backup.py restore, restore the response ledger from the same snapshot, verify every evidence hash, check the audit chain, and run tenant-isolation plus case/report readback tests. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
+
+## Release discipline
+
+- Pin the exact Git commit and image build inputs; do not deploy a moving branch.
+- Run all GitHub Actions checks on the exact SHA before deployment.
+- Record the image digests, database migration revision and deployed commit SHA.
+- Run post-deploy smoke tests for login/MFA, tenant isolation, file/evidence access, report export, Wazuh alert ingestion and audit verification.
+- Confirm backups are encrypted and off-host, and perform a scheduled isolated restore drill.
+- Keep live response disabled until a separate approved Wazuh lab acceptance report exists.
+
+A successful docker compose up or a healthy homepage is not by itself proof of production readiness.

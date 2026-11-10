@@ -115,6 +115,23 @@ WhatsApp / Telegram / Downloads / other apps
 
 The mobile scanner does not need the repository's optional web backend. Supabase is not a runtime dependency. The Android app has no Internet permission and does not call hosted AI, malware reputation or threat-intelligence APIs. The optional legacy web workspace can use a locally hosted Ollama instance for its separate text-analysis features; a browser or server hosted on Vercel cannot reach an Ollama process running on your own computer. Ollama is not used by the Android File Guard.
 
+## FIRSTLIGHT incident-response workspace
+
+SATARK also includes **FIRSTLIGHT**, a self-hosted case-based incident investigation and response workspace. It is separate from the offline Android file scanner: the Android scanner needs no network permission or hosted service. FIRSTLIGHT uses open-source Wazuh for endpoint telemetry and guarded endpoint response; no Microsoft Defender, Entra, or Microsoft tenant is required.
+
+FIRSTLIGHT capabilities include:
+
+- Import bounded JSON/CSV telemetry, preserve private original evidence, verify SHA-256 integrity and reconstruct event timelines.
+- Run deterministic Python detection/correlation rules with evidence references, uncertainty and explicit evidence gaps.
+- Use optional local Ollama specialists for advisory analysis in both direct and durable background investigations; deterministic findings remain available without a model or paid AI API.
+- Persist workspaces, memberships, cases, notes, evidence metadata, findings, report snapshots, audit events and durable investigation jobs in the self-hosted SQLAlchemy backend (PostgreSQL for production or SQLite for local development).
+- Poll Wazuh through an optional private worker with an explicit agent allowlist, durable checkpoints and locally stored source snapshots.
+- Request guarded Wazuh Active Response actions (`firewall-drop` for a validated IPv4 address or `disable-account` for a validated local account) with one allowlisted agent, four-eyes approval, a third-party executor, exact confirmation, at-most-once submission and independent verification.
+
+**Supabase and Microsoft security products are not runtime dependencies.** The Android File Guard remains fully offline. Wazuh is self-hostable and its Manager API / Indexer credentials are configured only in the private FIRSTLIGHT server runtime; they are not used by the Android scanner.
+
+Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md).
+
 ## Build and run the Android app
 
 ### Requirements

@@ -1,63 +1,78 @@
 name: FIRSTLIGHT API CI
 
 on:
-  pull_request:
+  push:
     paths:
-      - "scripts/check_no_supabase_runtime.py"
-      - "scripts/satark_backup.py"
-      - "tests/test_satark_backup.py"
-      - "satark_backend.py"
-      - "alembic.ini"
-      - "migrations/**"
-      - "tests/test_satark_backend.py"
-      - "tests/test_satark_postgres.py"
-      - "tests/test_satark_migrations.py"
+      - "firstlight_api.py"
+      - "firstlight_response_api.py"
+      - "firstlight_response_executor.py"
       - "firstlight_engine.py"
       - "firstlight_rules.py"
-      - "firstlight_api.py"
       - "firstlight_agents.py"
       - "ai_provider.py"
+      - "firstlight_ingest.py"
       - "firstlight_wazuh.py"
-      - "tests/test_firstlight_wazuh_worker.py"
       - "firstlight_wazuh_worker.py"
       - "firstlight_investigation_worker.py"
-      - "Dockerfile.firstlight-investigation-worker"
-      - "docker-compose.local.yml"
-      - "tests/test_firstlight_investigation_worker.py"
       - "firstlight_response_executor.py"
-      - "tests/test_firstlight_response_executor.py"
-      - "tests/test_ai_provider.py"
-      - "docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md"
-      - "web/src/app/api/firstlight/jobs/route.ts"
-      - "web/src/app/api/[...path]/route.ts"
-      - "web/src/lib/satark-api-proxy.ts"
-      - "web/next.config.ts"
-      - "web/Dockerfile"
+      - "integrations/**"
+      - "satark_backend.py"
+      - "migrations/**"
+      - "tests/test_firstlight*.py"
+      - "scripts/postgres_backup_restore_drill.py"
+      - "tests/test_satark_backend.py"
+      - "tests/test_satark_migrations.py"
+      - "tests/test_satark_postgres.py"
+      - "scripts/check_no_supabase_runtime.py"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "Dockerfile.firstlight-worker"
-      - "tests/test_firstlight_api.py"
-      - "tests/test_firstlight_agents.py"
-      - "tests/test_firstlight_api_details.py"
-      - "tests/test_firstlight_wazuh.py"
-      - "tests/test_firstlight_wazuh_investigation_api.py"
-      - "scripts/accept_firstlight_wazuh_live.py"
-      - "tests/test_firstlight_wazuh_live_acceptance.py"
-      - "scripts/accept_firstlight_worker_live.py"
-      - "tests/test_firstlight_worker_live_acceptance.py"
-      - "docs/TRACK_1_COMPLETION_PLAN.md"
-      - "tests/test_firstlight_engine.py"
-      - "tests/test_firstlight_rules.py"
+      - "Dockerfile.firstlight-investigation-worker"
+      - "docker-compose.local.yml"
+      - "docker-compose.production.yml"
+      - "deploy/Caddyfile"
+      - "deploy/production.env.example"
+      - ".github/workflows/firstlight-api-ci.yml"
+  pull_request:
+    paths:
+      - "firstlight_api.py"
+      - "firstlight_response_api.py"
+      - "firstlight_response_executor.py"
+      - "firstlight_engine.py"
+      - "firstlight_rules.py"
+      - "firstlight_agents.py"
+      - "firstlight_ingest.py"
+      - "firstlight_wazuh.py"
+      - "firstlight_wazuh_worker.py"
+      - "firstlight_investigation_worker.py"
+      - "integrations/**"
+      - "satark_backend.py"
+      - "migrations/**"
+      - "tests/test_firstlight*.py"
+      - "tests/test_satark_backend.py"
+      - "tests/test_satark_migrations.py"
+      - "tests/test_satark_postgres.py"
+      - "scripts/check_no_supabase_runtime.py"
+      - "firstlight-api-requirements.txt"
+      - "Dockerfile.firstlight-api"
+      - "Dockerfile.firstlight-worker"
+      - "Dockerfile.firstlight-investigation-worker"
+      - "docker-compose.local.yml"
       - ".github/workflows/firstlight-api-ci.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: firstlight-api-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  test-and-build:
+    name: FIRSTLIGHT regression, PostgreSQL and container validation
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -73,31 +88,99 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: firstlight-api-requirements.txt
+
+      - name: Install PostgreSQL client for backup and restore integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+
       - name: Install API dependencies and test runner
-        run: python -m pip install -r firstlight-api-requirements.txt pytest
-      - name: Run shared API and engine tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r firstlight-api-requirements.txt pytest
+
+      - name: Compile FIRSTLIGHT and SATARK backend modules
+        run: |
+          python -m compileall -q firstlight_api.py firstlight_response_api.py firstlight_response_executor.py firstlight_engine.py firstlight_rules.py firstlight_agents.py firstlight_ingest.py firstlight_wazuh.py firstlight_wazuh_worker.py firstlight_investigation_worker.py satark_backend.py integrations scripts
+
+      - name: Run FIRSTLIGHT engine, API, response and worker tests
         env:
           PYTHONPATH: ${{ github.workspace }}
           SATARK_TEST_POSTGRES_URL: postgresql+psycopg://satark:satark@localhost:5432/satark_test
-        run: python -m pytest -q tests/test_satark_migrations.py tests/test_satark_postgres.py tests/test_satark_backend.py tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py tests/test_firstlight_response_executor.py tests/test_ai_provider.py
+        run: |
+          python -m pytest -q \
+            tests/test_firstlight_api.py \
+            tests/test_firstlight_api_details.py \
+            tests/test_firstlight_engine.py \
+            tests/test_firstlight_agents.py \
+            tests/test_firstlight_ingest.py \
+            tests/test_firstlight_rules.py \
+            tests/test_firstlight_wazuh.py \
+            tests/test_firstlight_wazuh_worker.py \
+            tests/test_firstlight_wazuh_investigation_api.py \
+            tests/test_firstlight_investigation_worker.py \
+            tests/test_firstlight_response_executor.py \
+            tests/test_firstlight_response_api.py \
+            tests/test_firstlight_wazuh_response_actions.py \
+            tests/test_firstlight_live_response_cli.py \
+            tests/test_firstlight_live_wazuh_investigation.py \
+            tests/test_firstlight_wazuh_live_acceptance.py \
+            tests/test_firstlight_worker_live_acceptance.py \
+            tests/test_satark_backend.py \
+            tests/test_satark_migrations.py \
+            tests/test_satark_postgres.py
 
-      - name: Verify no Supabase runtime dependency remains
+      - name: Perform isolated PostgreSQL backup and restore drill
+        env:
+          SATARK_TEST_POSTGRES_URL: postgresql+psycopg://satark:satark@localhost:5432/satark_test
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: python scripts/postgres_backup_restore_drill.py
+
+      - name: Enforce Supabase-free application runtime
         run: python scripts/check_no_supabase_runtime.py
-      - name: Validate self-hosted Compose stack
+
+      - name: Validate local self-hosted Compose configuration
         run: docker compose -f docker-compose.local.yml config --quiet
-      - name: Build FIRSTLIGHT API and worker images
+
+      - name: Validate production PostgreSQL and TLS Compose stack
+        env:
+          POSTGRES_PASSWORD: test-only-password
+          SATARK_DATABASE_URL: postgresql+psycopg://satark:test-only-password@db:5432/satark
+          SATARK_DOMAIN: satark.example.test
+          ACME_EMAIL: ci@example.test
+          SATARK_MFA_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          SATARK_SMTP_HOST: smtp.example.test
+          SATARK_SMTP_USERNAME: ci
+          SATARK_SMTP_PASSWORD: test-only
+          SATARK_SMTP_FROM: SATARK <ci@example.test>
+          FIRSTLIGHT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRSTLIGHT_WAZUH_INDEXER_URL: https://wazuh-indexer.example.test:9200
+          FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ci
+          FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: test-only
+          FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS: "001"
+          FIRSTLIGHT_WAZUH_TENANT_ID: 00000000-0000-4000-8000-000000000001
+          FIRSTLIGHT_WAZUH_CASE_ID: 00000000-0000-4000-8000-000000000002
+          FIRSTLIGHT_WAZUH_ACTOR_ID: 00000000-0000-4000-8000-000000000003
+        run: docker compose -f docker-compose.production.yml config --quiet
+
+      - name: Build API and worker images
         run: |
-          docker build -f Dockerfile.firstlight-api -t firstlight-api:ci .
-          docker build -f Dockerfile.firstlight-worker -t firstlight-worker:ci .
-          docker build -f Dockerfile.firstlight-investigation-worker -t firstlight-investigation-worker:ci .
-      - name: Smoke-test runtime imports inside built images
+          docker build -f Dockerfile.firstlight-api -t satark-firstlight-api:ci .
+          docker build -f Dockerfile.firstlight-worker -t satark-firstlight-worker:ci .
+          docker build -f Dockerfile.firstlight-investigation-worker -t satark-firstlight-investigation-worker:ci .
+
+      - name: Smoke-test API and worker imports
         run: |
-          docker run --rm --entrypoint python firstlight-api:ci -c "import firstlight_api, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider"
-          docker run --rm --entrypoint python firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
-          docker run --rm --entrypoint python firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_wazuh_worker"
+          docker run --rm --entrypoint python satark-firstlight-api:ci -c "import firstlight_api, firstlight_response_api, firstlight_response_executor, firstlight_engine, firstlight_rules, firstlight_agents, firstlight_wazuh, satark_backend, integrations.response_actions"
+          docker run --rm --entrypoint python satark-firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
+          docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider, satark_backend"
