@@ -1,0 +1,11 @@
+{
+  email {$ACME_EMAIL}
+  servers {
+    protocols h1 h2 h3
+  }
+}
+
+{$SATARK_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy web:3000
+}
