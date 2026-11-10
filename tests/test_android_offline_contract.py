@@ -152,6 +152,9 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('manifest.optJSONObject("source_manifest")', source)
         self.assertIn('sourceManifest.optString("dataset_revision") != pinnedRevision', source)
         self.assertIn('sourceManifest.optString("sha256").matches', source)
+        self.assertIn("sourceManifests.size != 1", source)
+        self.assertIn("sha256Hex(sourceManifestBytes)", source)
+        self.assertIn('sourceDocument.optString("dataset_revision") != pinnedRevision', source)
         self.assertIn('archive.optString("sha256").matches', source)
         self.assertIn('exported_rows', source)
 
