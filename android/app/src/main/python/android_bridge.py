@@ -5,6 +5,7 @@ from pathlib import Path
 from file_guard.engine import scan_bytes
 from file_guard.history import ScanHistory
 from file_guard.intelligence import ThreatIntelligenceStore
+from file_guard.report import build_evidence_report
 
 def _paths(app_data_dir):
     root = Path(app_data_dir)
@@ -16,7 +17,7 @@ def scan_shared_file(data, filename, app_data_dir):
     intel = ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3")
     result = scan_bytes(bytes(data), str(filename or "shared-file"), intelligence=intel)
     ScanHistory(root / "file_guard_history.sqlite3").add(result)
-    return json.dumps(result.to_dict(), ensure_ascii=True)
+    return json.dumps(build_evidence_report(result), ensure_ascii=True)
 
 def import_csv_snapshot(data, source_name, app_data_dir):
     root = _paths(app_data_dir)
