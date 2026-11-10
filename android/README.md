@@ -33,12 +33,12 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 
 The default research source is EMBER2024, with labelled feature metadata covering Win32, Win64, .NET, APK, ELF and PDF samples collected through 2024-12-14. EMBER2024 is a research dataset, not a complete universal hash feed. SATARK converts metadata hashes/labels to CSV; it does not download or bundle malware binaries. Download and conversion are explicit operator actions on a trusted development machine. Transfer the generated CSV parts to the phone for local import.
 
-For a compact malicious-only starter snapshot, prepare the EMBER2024 challenge set (6,315 labelled malicious samples) first. You can run the manual **Prepare EMBER2024 historical snapshot** workflow in GitHub Actions to create a CSV/provenance artifact without an API key, or run the commands below locally:
+Start with a balanced, manageable historical subset such as APK training metadata (about 208,000 labelled records in the published corpus). Run the manual **Prepare EMBER2024 historical snapshot** workflow with split `train` and file type `APK`, or run these commands locally:
 
-    python scripts/download_ember2024.py --output-dir data/ember2024 --split challenge --file-type all
-    python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split challenge --file-type all
+    python scripts/download_ember2024.py --output-dir data/ember2024 --split train --file-type APK
+    python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 
-Then import the generated CSV part(s) in the app and keep the generated manifest alongside the snapshot. For benign/malicious coverage across specific formats, separately prepare APK, PDF, ELF or PE train/test subsets. Do not combine conflicting labels; the importer rejects a hash whose existing label conflicts.
+Then import the generated CSV part(s) in the app and keep the generated manifest alongside the snapshot. Repeat for PDF, ELF or PE if you want broader format coverage. The upstream challenge set contains 6,315 malicious-only records, but its archive digest is not yet pinned in SATARK's downloader; do not use it as the default starter pack. Do not combine conflicting labels; the importer rejects a hash whose existing label conflicts.
 
 The frozen database does not learn new threat intelligence. A newly discovered malware sample, or a modified sample with a different SHA-256, may not match the historical hash table. The app displays imported total, malicious and benign counts so users can see whether hash intelligence is actually installed.
 
