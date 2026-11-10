@@ -53,7 +53,7 @@ class ScanHistory:
             db.execute("CREATE INDEX IF NOT EXISTS idx_scan_audit_history ON scan_audit(history_id)")
 
     def _connect(self):
-        db = sqlite3.connect(self.path)
+        db = sqlite3.connect(self.path, timeout=30)
         db.row_factory = sqlite3.Row
         return db
 
@@ -144,6 +144,10 @@ class ScanHistory:
             if int(row["sequence"]) != expected_sequence or entry.get("sequence") != expected_sequence:
                 return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
                         "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "sequence_gap"}
+            if (int(entry.get("history_id", -1)) != int(row["history_id"]) or
+                entry.get("scanned_at") != row["created_at"]):
+                return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
+                        "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "entry_metadata_mismatch"}
             if row["previous_entry_sha256"] != previous or entry.get("previous_entry_sha256") != previous:
                 return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
                         "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "previous_digest_mismatch"}
@@ -161,6 +165,10 @@ class ScanHistory:
                 if not verify_evidence_report(report):
                     return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
                             "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "report_digest_mismatch"}
+                if (report.get("scanned_at") != entry.get("scanned_at") or
+                    report.get("file", {}).get("sha256") != entry.get("file_sha256")):
+                    return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
+                            "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "report_metadata_mismatch"}
                 if (chain.get("sequence") != expected_sequence or
                     chain.get("previous_entry_sha256") != previous or
                     chain.get("evidence_report_sha256") != entry.get("evidence_report_sha256") or
