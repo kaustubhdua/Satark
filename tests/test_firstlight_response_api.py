@@ -21,9 +21,6 @@ def response_app(monkeypatch, tmp_path):
     backend.Base.metadata.create_all(engine)
     monkeypatch.setenv("FIRSTLIGHT_RESPONSE_DB", str(tmp_path / "response.sqlite3"))
     monkeypatch.delenv("SATARK_ENABLE_LIVE_RESPONSE", raising=False)
-    monkeypatch.delenv("MICROSOFT_TENANT_ID", raising=False)
-    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
-    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
 
     db = backend.SessionLocal()
     users = []
@@ -82,10 +79,10 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     created = client.post("/api/firstlight/live-response/approvals", json={
         "tenant_id": tenant_id,
         "case_id": case_id,
-        "action": "defender.isolate_device",
-        "target": "device-lab-01",
+        "action": "wazuh.block_ip",
+        "target": "001",
         "reason": "Contain a confirmed test endpoint during the authorized lab exercise.",
-        "payload": {"isolation_type": "Selective"},
+        "payload": {"ip_address": "203.0.113.42"},
         "idempotency_key": "response-test-00000001",
         "expires_in_seconds": 600,
     })
@@ -105,7 +102,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     active_user[0] = SimpleNamespace(id=executor)
     blocked = client.post("/api/firstlight/live-response/execute", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
-        "confirmation": "CONFIRM ISOLATE device-lab-01",
+        "confirmation": "CONFIRM BLOCK_IP 001",
     })
     assert blocked.status_code == 503
 
@@ -113,26 +110,27 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
         assert ledger.get_approval(approval_id, tenant_id=tenant_id, case_id=case_id).status == "approved"
 
     monkeypatch.setenv("SATARK_ENABLE_LIVE_RESPONSE", "true")
-    monkeypatch.setenv("MICROSOFT_TENANT_ID", "00000000-0000-4000-8000-000000000001")
-    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "test-client-id")
-    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "test-secret")
-    monkeypatch.setattr(response_api, "isolate_defender_device", lambda target, **kwargs: ActionResult(
-        "Microsoft Defender for Endpoint", "isolate_device", target, "submitted",
-        "Mock provider accepted the lab request.", "mde-action-123",
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_API_URL", "https://wazuh-manager.example.test:55000")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_USERNAME", "test-user")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD", "test-password")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS", "001")
+    monkeypatch.setattr(response_api, "execute_wazuh_response", lambda action, target, payload, **kwargs: ActionResult(
+        "Wazuh Active Response", "firewall-drop", target, "submitted",
+        "Mock Wazuh accepted the authorized lab request.", "wazuh-task-123",
     ))
     executed = client.post("/api/firstlight/live-response/execute", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
-        "confirmation": "CONFIRM ISOLATE device-lab-01",
+        "confirmation": "CONFIRM BLOCK_IP 001",
     })
     assert executed.status_code == 200
     assert executed.json()["outcome"]["status"] == "submitted"
-    assert executed.json()["outcome"]["provider_reference"] == "mde-action-123"
+    assert executed.json()["outcome"]["provider_reference"] == "wazuh-task-123"
 
     active_user[0] = SimpleNamespace(id=verifier)
     verified = client.post("/api/firstlight/live-response/verify", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
-        "status": "verified", "provider_reference": "mde-action-123",
-        "detail": "Independently checked the authorized lab machine action in Defender.",
+        "status": "verified", "provider_reference": "wazuh-task-123",
+        "detail": "Independently checked the authorized lab machine action in Wazuh.",
     })
     assert verified.status_code == 200
     assert verified.json()["approval"]["status"] == "verified"
