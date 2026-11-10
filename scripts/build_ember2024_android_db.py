@@ -71,7 +71,7 @@ def build(input_dir: Path, csv_dir: Path, output_db: Path, *, split="train", fil
             })
 
         stats = store.stats()
-        if stats["total"] == 0 or stats["total"] != imported_rows + skipped_rows:
+        if stats["total"] == 0 or stats["total"] != imported_rows:
             raise ValueError("Built starter database has inconsistent indicator counts.")
         with sqlite3.connect(output_db) as db:
             db.execute("PRAGMA journal_mode=DELETE")
