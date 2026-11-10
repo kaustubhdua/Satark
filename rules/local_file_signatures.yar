@@ -71,7 +71,7 @@ rule SATARK_JavaScript_Obfuscation_Cluster
         filesize < 8MB and 2 of them
 }
 
-rule SATARK_Android_Dynamic_Dex_Loading_Cluster
+rule SATARK_Dex_Dynamic_Loading_Cluster
 {
     meta:
         category = "android-dynamic-loading"
