@@ -57,6 +57,7 @@ services:
     environment:
       SATARK_DATABASE_URL: ${SATARK_DATABASE_URL:-sqlite:////data/satark.db}
       SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_RESPONSE_DB: /data/firstlight-response.sqlite3
       SATARK_AUTO_CREATE_SCHEMA: ${SATARK_AUTO_CREATE_SCHEMA:-false}
       SATARK_PUBLIC_BASE_URL: ${SATARK_PUBLIC_BASE_URL:-http://localhost:3000}
       SATARK_REQUIRE_EMAIL_VERIFICATION: ${SATARK_REQUIRE_EMAIL_VERIFICATION:-false}
