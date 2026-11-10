@@ -30,6 +30,21 @@ class FileGuardTests(unittest.TestCase):
         self.assertNotIn("local_yara", plain["specialists"])
         self.assertIn("local_yara", with_yara["specialists"])
 
+    def test_yara_eicar_fixture_matches_and_benign_fixture_does_not(self):
+        try:
+            import yara  # noqa: F401
+        except ImportError:
+            self.skipTest("Optional yara-python dependency is not installed")
+        from file_guard.agents import inspect_yara
+        rule_path = Path(__file__).parent / "fixtures" / "yara" / "satark_eicar_test.yar"
+        eicar = b"X5O!P%@AP[4\\\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        matched = inspect_yara(eicar, rule_path)
+        benign = inspect_yara(b"ordinary harmless sample bytes", rule_path)
+        self.assertTrue(matched["available"])
+        self.assertEqual(matched["matches"], ["SATARK_EICAR_TEST_ONLY"])
+        self.assertEqual(benign["matches"], [])
+        self.assertEqual(benign["status"], "no_match")
+
     def test_benign_hash_never_downgrades_suspicious_metadata(self):
         result = fuse_evidence(
             [{"code": "EXTENSION_SIGNATURE_MISMATCH", "severity": "high"}],
