@@ -688,8 +688,12 @@ class MainActivity : Activity() {
             FolderScanWorker.UNIQUE_FREQUENT_NAME
         }
         WorkManager.getInstance(this).cancelUniqueWork(otherName)
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .setRequiresStorageNotLow(true)
+            .build()
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
-            .setConstraints(Constraints.Builder().build())
+            .setConstraints(constraints)
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             uniqueName,
