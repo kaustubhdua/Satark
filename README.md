@@ -123,7 +123,7 @@ FIRSTLIGHT capabilities include:
 
 - Import bounded JSON/CSV telemetry, preserve private original evidence, verify SHA-256 integrity and reconstruct event timelines.
 - Run deterministic Python detection/correlation rules with evidence references, uncertainty and explicit evidence gaps.
-- Use optional local Ollama specialists for advisory analysis; deterministic findings remain available without a model or paid AI API.
+- Use optional local Ollama specialists for advisory analysis in both direct and durable background investigations; deterministic findings remain available without a model or paid AI API.
 - Persist workspaces, memberships, cases, notes, evidence metadata, findings, report snapshots, audit events and durable investigation jobs in the self-hosted SQLAlchemy backend (PostgreSQL for production or SQLite for local development).
 - Poll Wazuh through an optional private worker with an explicit agent allowlist, durable checkpoints and locally stored source snapshots.
 - Review simulation-only approvals and, when separately configured, use guarded Microsoft Defender isolation / Entra session-revocation workflows with four-eyes approval, a distinct executor, exact target confirmation, at-most-once submission and independent provider-console attestation.
