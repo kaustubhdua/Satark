@@ -72,13 +72,13 @@ Unit tests and mocked connectors do not establish live provider connectivity or 
 
 ## Self-hosted Wazuh lab
 
-The official Wazuh Docker deployment can run the Manager, Indexer and Dashboard on a private lab host. SATARK includes a pinned bootstrap helper:
+The supported lab baseline is Wazuh 4.14.10. The official Wazuh Docker deployment can run the Manager, Indexer and Dashboard on a private lab host. SATARK includes a pinned bootstrap helper:
 
 ```bash
 bash scripts/bootstrap_wazuh_lab.sh "$HOME/wazuh-docker"
 ```
 
-The helper checks Docker Compose and the Indexer kernel map-count prerequisite, clones the official Wazuh Docker repository at `v4.14.10`, and generates the upstream TLS certificates. It deliberately does not start the stack or expose ports. Rotate all upstream default passwords before starting it. Keep the Manager API (55000), Indexer (9200), and Dashboard (443) on a private network; never publish the Manager API to the public internet.
+The helper checks Docker Compose and the Indexer kernel map-count prerequisite, clones the official Wazuh Docker repository at `v4.14.10`, and generates the upstream TLS certificates. Do not upgrade this integration to Wazuh 5.x: that release removes the 4.x `PUT /active-response` endpoint and uses a different event-driven response workflow. The live-response adapter verifies the Manager version is 4.14.x before sending any command. It deliberately does not start the stack or expose ports. Rotate all upstream default passwords before starting it. Keep the Manager API (55000), Indexer (9200), and Dashboard (443) on a private network; never publish the Manager API to the public internet.
 
 Official upstream deployment guide: https://documentation.wazuh.com/current/deployment-options/docker/wazuh-container.html
 
@@ -93,4 +93,4 @@ Configure `FIRSTLIGHT_WAZUH_MANAGER_API_URL`, `FIRSTLIGHT_WAZUH_MANAGER_USERNAME
 
 Live response remains disabled unless `SATARK_ENABLE_LIVE_RESPONSE=true` is set in the trusted API runtime. The UI/API requires a requester, a distinct approver, a third executor, an exact confirmation phrase, and an independent verification attestation. Do not enable this in a production environment before lab verification and a reviewed reversal procedure.
 
-Active Response API reference: https://documentation.wazuh.com/current/user-manual/api/reference.html
+Active Response API reference: https://documentation.wazuh.com/4.14/user-manual/api/reference.html
