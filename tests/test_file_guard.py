@@ -37,7 +37,7 @@ class FileGuardTests(unittest.TestCase):
             self.skipTest("Optional yara-python dependency is not installed")
         from file_guard.agents import inspect_yara
         rule_path = Path(__file__).parent / "fixtures" / "yara" / "satark_eicar_test.yar"
-        eicar = b"X5O!P%@AP[4\\\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        eicar = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
         matched = inspect_yara(eicar, rule_path)
         benign = inspect_yara(b"ordinary harmless sample bytes", rule_path)
         self.assertTrue(matched["available"])
