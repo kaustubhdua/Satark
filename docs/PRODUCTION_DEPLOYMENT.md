@@ -56,13 +56,13 @@ Quiesce API and workers before taking a consistent snapshot. Use the repository 
 
 ~~~bash
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-docker compose -f docker-compose.production.yml exec -T firstlight-api \
-  python scripts/satark_backup.py create --output "/backups/satark-$STAMP.tar.gz"
-docker compose -f docker-compose.production.yml exec -T firstlight-api \
-  python scripts/satark_backup.py verify "/backups/satark-$STAMP.tar.gz"
+docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
+  create --output "/backups/satark-$STAMP.tar.gz"
+docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
+  verify "/backups/satark-$STAMP.tar.gz"
 ~~~
 
-The backup archive includes the configured SQL database and evidence objects. The FIRSTLIGHT response ledger is a separate SQLite database under the persistent data volume; include it in the same quiesced backup set and verify its audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
+The backup-only service holds the privileged BYPASSRLS connection; the web/API process never receives that credential. The archive includes the configured SQL database and evidence objects. The FIRSTLIGHT response ledger is a separate SQLite database under the persistent data volume; include it in the same quiesced backup set and verify its audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
 
 For a restore drill, provision a separate host and empty database, restore the archive with scripts/satark_backup.py restore, restore the response ledger from the same snapshot, verify every evidence hash, check the audit chain, and run tenant-isolation plus case/report readback tests. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
 
