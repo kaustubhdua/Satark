@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,7 +72,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     client, ids, active_user = response_app
     tenant_id, case_id = ids["tenant"], ids["case"]
     requester, approver, executor, verifier = ids["users"]
-    active_user[0] = backend.SessionLocal().get(backend.User, requester)
+    active_user[0] = SimpleNamespace(id=requester)
 
     status = client.get(f"/api/firstlight/live-response/status?tenant_id={tenant_id}&case_id={case_id}")
     assert status.status_code == 200
@@ -91,7 +91,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     assert created.status_code == 201
     approval_id = created.json()["approval"]["approval_id"]
 
-    active_user[0] = backend.SessionLocal().get(backend.User, approver)
+    active_user[0] = SimpleNamespace(id=approver)
     decision = client.patch("/api/firstlight/live-response/approvals", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
         "decision": "approved", "reason": "Reviewed the authorized test evidence.",
@@ -101,7 +101,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
 
     # A requester cannot approve their own action; and an approved action cannot run
     # while the global live-response feature flag is disabled.
-    active_user[0] = backend.SessionLocal().get(backend.User, executor)
+    active_user[0] = SimpleNamespace(id=executor)
     blocked = client.post("/api/firstlight/live-response/execute", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
         "confirmation": "CONFIRM ISOLATE device-lab-01",
@@ -127,7 +127,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     assert executed.json()["outcome"]["status"] == "submitted"
     assert executed.json()["outcome"]["provider_reference"] == "mde-action-123"
 
-    active_user[0] = backend.SessionLocal().get(backend.User, verifier)
+    active_user[0] = SimpleNamespace(id=verifier)
     verified = client.post("/api/firstlight/live-response/verify", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,
         "status": "verified", "provider_reference": "mde-action-123",
@@ -151,7 +151,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
 
 def test_response_api_rejects_unknown_actions(response_app):
     client, ids, active_user = response_app
-    active_user[0] = backend.SessionLocal().get(backend.User, ids["users"][0])
+    active_user[0] = SimpleNamespace(id=ids["users"][0])
     body = {
         "tenant_id": ids["tenant"], "case_id": ids["case"],
         "action": "shell.execute", "target": "host", "reason": "Not permitted",
