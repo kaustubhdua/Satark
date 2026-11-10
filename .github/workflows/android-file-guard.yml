@@ -7,7 +7,7 @@ on:
       - "scripts/check_no_supabase_runtime.py"
       - "scripts/evaluate_file_guard.py"
       - "tests/test_file_guard.py"
-
+      - "tests/test_file_guard_structure.py"
       - "tests/test_file_guard_reports_and_evaluation.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
@@ -25,7 +25,7 @@ on:
       - "scripts/check_no_supabase_runtime.py"
       - "scripts/evaluate_file_guard.py"
       - "tests/test_file_guard.py"
-
+      - "tests/test_file_guard_structure.py"
       - "tests/test_file_guard_reports_and_evaluation.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
@@ -62,14 +62,15 @@ jobs:
           cmp file_guard/intelligence.py android/app/src/main/python/file_guard/intelligence.py
           cmp file_guard/history.py android/app/src/main/python/file_guard/history.py
           cmp file_guard/report.py android/app/src/main/python/file_guard/report.py
-
+          cmp file_guard/structure.py android/app/src/main/python/file_guard/structure.py
       - name: Install optional desktop YARA test dependency
         run: "python -m pip install --only-binary=:all: -r requirements-yara.txt"
       - name: Compile File Guard and evaluation tools
         run: python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
       - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
-
+      - name: Run PE, ELF and DEX structural tests
+        run: python -m unittest discover -s tests -p "test_file_guard_structure.py" -v
       - name: Run evidence report and evaluation tests
         run: python -m unittest discover -s tests -p "test_file_guard_reports_and_evaluation.py" -v
       - name: Enforce Android offline and permission contract
@@ -82,7 +83,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests
         run: python -m unittest discover -s tests -p "test_ember_download.py" -v
-
+      - name: Run EMBER2024 Android starter database tests
+        run: python -m unittest discover -s tests -p "test_ember_android_db.py" -v
       - name: Set up Chaquopy-compatible Python
         uses: actions/setup-python@v5
         with:
@@ -184,6 +186,38 @@ jobs:
         with:
           name: satark-file-guard-debug-apk
           path: artifacts/apk
-
+      - name: Boot Android 16 emulator and smoke-test the app
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 15
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            mkdir -p artifacts
+            adb install -r artifacts/apk/app-debug.apk
+            adb shell am start -W -n com.satark.mobile/.MainActivity
+            adb shell input swipe 540 1800 540 500 300
+            for attempt in $(seq 1 45); do
+              if adb shell dumpsys activity activities | grep -q 'com.satark.mobile/.MainActivity'; then
+                adb shell uiautomator dump /sdcard/satark-window.xml >/dev/null
+                adb pull /sdcard/satark-window.xml artifacts/satark-window.xml
+                if grep -q 'BUNDLED EMBER2024 STARTER' artifacts/satark-window.xml; then
+                  break
+                fi
+              fi
+              sleep 1
+            done
+            adb shell dumpsys activity activities | grep -q 'com.satark.mobile/.MainActivity'
+            grep -q 'File Guard' artifacts/satark-window.xml
+            grep -q 'Quick scan' artifacts/satark-window.xml
+            grep -q 'BUNDLED EMBER2024 STARTER' artifacts/satark-window.xml
+            grep -q 'HASHES' artifacts/satark-window.xml
+            if adb logcat -d -t 2000 | grep -E 'FATAL EXCEPTION|com.chaquo.python.PyException'; then
               exit 1
             fi
