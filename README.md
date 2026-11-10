@@ -145,7 +145,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.satark.mobile/.MainActivity
 ```
 
-The CI workflow builds the pinned historical starter SQLite database, verifies its metadata, packages it into the APK, builds the Android app and runs an emulator launch smoke test. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md) and [Android device QA checklist](docs/ANDROID_DEVICE_QA.md).
+The CI workflow builds the pinned historical starter SQLite database, verifies its metadata, packages it into the APK, builds the Android app and runs an emulator launch smoke test. The generated database assets are intentionally git-ignored: a plain local Gradle build without those generated assets still builds the app, but it starts without the bundled historical snapshot until you import a verified offline dataset or follow the asset-generation steps in the architecture guide. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md) and [Android device QA checklist](docs/ANDROID_DEVICE_QA.md).
 
 ### Use the app
 
