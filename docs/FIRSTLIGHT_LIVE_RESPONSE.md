@@ -1,48 +1,49 @@
-# FIRSTLIGHT live response integrations
+# FIRSTLIGHT Wazuh Active Response
 
 ## Current integration
 
-The FIRSTLIGHT persistent case workspace includes a guarded live-response panel backed by the authenticated FastAPI response API and a durable SQLite ledger.
+FIRSTLIGHT uses Wazuh as its only endpoint-response provider. There is no Microsoft Defender or Entra integration, SDK, tenant configuration, or runtime dependency.
 
-Supported Microsoft actions:
+The authenticated case workspace is backed by the durable SQLite response ledger. It supports two fixed Wazuh built-in Active Response commands:
 
-- Microsoft Defender for Endpoint device isolation.
-- Microsoft Entra ID session revocation.
+- `wazuh.block_ip` → Wazuh `firewall-drop`, with one validated IPv4 address.
+- `wazuh.disable_account` → Wazuh `disable-account`, with one validated local account name.
 
-No network firewall rule, arbitrary shell command, automatic AI action, or other containment action is supported.
+The API never accepts arbitrary shell commands, script names, command arguments, agent discovery, or all-agent execution. It submits only to a single explicitly allowlisted Wazuh agent ID.
 
-## Default state
+## Required server configuration
 
-Live response is **disabled by default**. The status endpoint reports whether the server feature flag and Microsoft credentials are configured. Merely creating or approving a request never contacts Microsoft.
+Set these only in the trusted FIRSTLIGHT API runtime:
 
-Set these values only in the trusted API runtime:
+- `SATARK_ENABLE_LIVE_RESPONSE=true` — explicit opt-in; default is false.
+- `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private Wazuh Manager API base URL, normally HTTPS port 55000.
+- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` and `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege Wazuh API account.
+- `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional path to the private CA certificate; TLS verification remains enabled.
+- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — comma-separated numeric IDs of disposable lab agents only.
+- `FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP=true` — accepted only for localhost development; never use it for a network endpoint.
 
-- `SATARK_ENABLE_LIVE_RESPONSE=true`
-- `MICROSOFT_TENANT_ID`
-- `MICROSOFT_CLIENT_ID`
-- `MICROSOFT_CLIENT_SECRET`
-
-The app registration must have least-privilege application permissions and admin consent for the selected action. Defender isolation and Entra session revocation have separate permissions and operational consequences. Validate them against current Microsoft documentation and the tenant's policy.
+The response identity must have only the Wazuh API permissions needed to submit Active Response. Keep the API private and do not publish port 55000 to the public internet.
 
 ## Human controls
 
-- The request is bound to one tenant, case, action, exact target, reason, parameters, idempotency key and expiry.
+- The request is bound to one tenant, case, action, exact agent ID, validated parameters, reason, idempotency key and expiry.
 - Requester cannot approve or deny their own request.
 - A third operator distinct from requester and approver executes the action.
-- The server checks membership again, verifies the feature flag and credentials, and requires an exact target confirmation such as `CONFIRM ISOLATE <machine-id>`.
+- The server re-checks case membership, feature flag, agent allowlist, fixed action and exact confirmation.
+- Confirmation strings are `CONFIRM BLOCK_IP <agent-id>` or `CONFIRM DISABLE_ACCOUNT <agent-id>`.
 - The action is claimed once in the durable ledger before the provider call. Replays are rejected.
-- A provider submission is recorded as `submitted`, never as completed containment.
+- A Wazuh API acceptance is recorded as `submitted`, never as verified containment.
 - An uncertain network/process outcome becomes `unknown` and is not retried automatically.
-- A fourth distinct operator records a verification attestation only after checking the Microsoft console. SATARK records the attestation; it does not independently infer provider state.
+- A separate operator records a verification attestation only after checking the agent and endpoint state independently.
 
-## Operational recovery
+## Operational safety
 
-Use a dedicated lab tenant and disposable test device/account. Preserve a separate administrator path. For Defender, document and test the vendor-supported unisolation process before testing isolation. For Entra, document the expected sign-in/session recovery process. Do not test on personal or production accounts.
+Use disposable lab endpoints. Configure and test Wazuh's own Active Response command definitions and timeout/reversal behavior before enabling this feature. In particular, `firewall-drop` and `disable-account` have operational consequences and may interrupt network or user access. Keep out-of-band administrative access and a documented recovery route. Never add production agents to the response allowlist until an independent security review approves the policy.
 
 ## Verification status
 
-Automated tests mock the Microsoft adapter and verify the durable workflow. No real Microsoft tenant, credentials, machine, or user was available for live acceptance in this change. Do not claim provider connectivity, successful containment, or production readiness until a separately authorized lab run has been recorded.
+Automated tests use a mocked Wazuh Manager API and validate request shape, fixed command allowlisting, agent scoping, TLS policy, explicit confirmation and the durable four-eyes ledger. These tests do not prove that a real lab manager accepted or executed a command. Record real lab API responses, endpoint-side state, recovery behavior and audit evidence before enabling live response outside a disposable environment.
 
 Official references:
-- https://learn.microsoft.com/en-us/defender-endpoint/api/isolate-machine
-- https://learn.microsoft.com/en-us/graph/api/user-revokesigninsessions
+- Wazuh Server API — Active Response: https://documentation.wazuh.com/current/user-manual/api/reference.html
+- Wazuh Active Response module: https://github.com/wazuh/wazuh/tree/master/src/active-response
