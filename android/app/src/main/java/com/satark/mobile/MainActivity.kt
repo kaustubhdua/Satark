@@ -257,9 +257,9 @@ class MainActivity : Activity() {
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 val total = stats.optInt("total")
                 val message = "Local historical indicators: " + total +
-                    "\\nMalicious labels: " + stats.optInt("malicious") +
-                    "\\nBenign labels: " + stats.optInt("benign") +
-                    "\\n\\nThe database is frozen between explicit imports. A no-match result is not proof that a file is safe."
+                    "\nMalicious labels: " + stats.optInt("malicious") +
+                    "\nBenign labels: " + stats.optInt("benign") +
+                    "\n\nThe database is frozen between explicit imports. A no-match result is not proof that a file is safe."
                 mainHandler.post {
                     results.text = message
                     status.text = if (total == 0) {
