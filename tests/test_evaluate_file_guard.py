@@ -40,7 +40,7 @@ class EvaluationTests(unittest.TestCase):
             digest = hashlib.sha256(malicious).hexdigest()
             database = ThreatIntelligenceStore(root / "intel.sqlite3")
             database.import_csv(
-                __import__("io").StringIO(f"sha256,label\\n{digest},malicious\\n"),
+                __import__("io").StringIO(f"sha256,label\n{digest},malicious\n"),
                 "training-snapshot",
             )
             labels = root / "labels.csv"
@@ -67,7 +67,7 @@ class EvaluationTests(unittest.TestCase):
             samples = root / "samples"
             samples.mkdir()
             labels = root / "labels.csv"
-            labels.write_text("path,label\\n../outside.pdf,benign\\n", encoding="utf-8")
+            labels.write_text("path,label\n../outside.pdf,benign\n", encoding="utf-8")
             database = ThreatIntelligenceStore(root / "intel.sqlite3")
             report = evaluate(samples, labels, database)
             self.assertEqual(report["results"], [])
