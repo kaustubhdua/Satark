@@ -135,6 +135,8 @@ class ScanHistory:
         previous = _GENESIS
         expected_sequence = 1
         report_checks = 0
+        latest_sequence = int(rows[-1]["sequence"]) if rows else 0
+        retained_start = max(1, latest_sequence - self.max_records + 1)
         for row in rows:
             try:
                 entry = json.loads(row["entry_json"])
@@ -155,6 +157,9 @@ class ScanHistory:
             if digest != row["entry_sha256"]:
                 return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
                         "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "entry_digest_mismatch"}
+            if not row["report_json"] and expected_sequence >= retained_start:
+                return {"valid": False, "entries": len(rows), "verified_reports": report_checks,
+                        "head_sha256": previous, "failed_sequence": row["sequence"], "reason": "recent_report_missing"}
             if row["report_json"]:
                 try:
                     report = json.loads(row["report_json"])
