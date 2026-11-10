@@ -256,9 +256,14 @@ class MainActivity : Activity() {
     private fun importDatasets(uris: List<Uri>) {
         val source = datasetSource.text.toString().trim()
         val manifests = uris.filter { displayName(it).lowercase().endsWith("_manifest.json") }
-        val csvUris = uris.filter { displayName(it).lowercase().endsWith(".csv") }.take(100)
+        val csvUris = uris.filter { displayName(it).lowercase().endsWith(".csv") }
         if (csvUris.isEmpty()) {
             status.text = "SELECT ONE OR MORE CSV PARTS"
+            return
+        }
+        if (csvUris.size > 256) {
+            status.text = "IMPORT IN BATCHES OF UP TO 256 CSV PARTS"
+            results.text = "Too many CSV parts were selected. Split the snapshot into batches of at most 256 parts; keep the same source ID and manifest for each batch."
             return
         }
         if (source.startsWith("EMBER2024", ignoreCase = true) && manifests.size != 1) {
