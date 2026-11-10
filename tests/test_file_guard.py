@@ -151,5 +151,36 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(records[0]["filename"], "2.bin")
             self.assertNotIn("content", records[0])
 
+    def test_history_persists_bounded_evidence_report_without_file_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            history = ScanHistory(Path(tmp) / "history.sqlite3")
+            history.add(scan_bytes(b"%PDF-1.7 private fixture", "report.pdf"))
+            record = history.list_recent(1)[0]
+            self.assertEqual(record["evidence_report"]["agent_trace"][0]["agent"], "file_router")
+            self.assertFalse(record["evidence_report"]["content_extracted"])
+            self.assertFalse(record["evidence_report"]["executed"])
+            self.assertNotIn("content", record)
+            self.assertNotIn("data", record)
+
+    def test_existing_history_database_migrates_report_column(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "old-history.sqlite3"
+            with sqlite3.connect(path) as db:
+                db.execute("""CREATE TABLE scan_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    scanned_at TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    size_bytes INTEGER NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    detected_type TEXT NOT NULL,
+                    verdict TEXT NOT NULL,
+                    risk_level TEXT NOT NULL,
+                    signals_json TEXT NOT NULL
+                )""")
+            ScanHistory(path)
+            with sqlite3.connect(path) as db:
+                columns = {row[1] for row in db.execute("PRAGMA table_info(scan_history)")}
+            self.assertIn("report_json", columns)
+
 if __name__ == "__main__":
     unittest.main()
