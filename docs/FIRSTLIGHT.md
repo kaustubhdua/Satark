@@ -20,7 +20,7 @@ FIRSTLIGHT is SATARK's incident-response workspace. It turns authorized telemetr
 - **Self-hosted persistence:** SQLAlchemy with PostgreSQL for multi-user deployments or SQLite for local development; private evidence files remain under `SATARK_EVIDENCE_DIR`.
 - **Workers:** durable investigation jobs and optional Wazuh polling/checkpoint worker.
 - **Web workspace:** Next.js UI with same-origin server-side API proxy. Session cookies are HttpOnly; browser code does not receive database credentials.
-- **Optional local model:** Ollama specialists can add advisory analysis. Deterministic results remain available without a model, paid AI API or hosted model.
+- **Optional local model:** Ollama specialists can add advisory analysis in both synchronous and durable background investigations. Deterministic results remain available without a model, paid AI API or hosted model. To enable, set FIRSTLIGHT_MODEL_AGENTS_ENABLED=true, start the optional Ollama profile, and pull the configured local model. Agent results are advisory and never replace deterministic findings.
 
 ## Wazuh integration
 
@@ -35,6 +35,16 @@ The browser now has a case-scoped response panel backed by the durable local res
 A provider submission is not proof of completed containment. SATARK records an operator attestation after the operator verifies state in the provider console; it does not claim an automatic provider-side verification.
 
 See [live response controls](FIRSTLIGHT_LIVE_RESPONSE.md) and [response executor design](FIRSTLIGHT_RESPONSE_EXECUTOR.md).
+
+### Optional local model setup
+
+```bash
+# Set FIRSTLIGHT_MODEL_AGENTS_ENABLED=true and FIRSTLIGHT_OLLAMA_MODEL in .env
+docker compose -f docker-compose.local.yml --profile ai up -d ollama
+docker compose -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
+```
+
+The API and durable investigation worker use the internal Ollama service URL. If Ollama is unavailable or the model call fails, the worker records an agent error and still completes deterministic analysis. No hosted model or API key is used.
 
 ## Safety and limits
 
