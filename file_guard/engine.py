@@ -121,18 +121,60 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     )
 
 def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
-    data = bytearray()
+    """Hash and identify a stream incrementally; buffer full bytes only for optional YARA."""
+    digest = hashlib.sha256()
+    header = bytearray()
+    yara_data = bytearray() if yara_rules_path else None
+    total = 0
     while True:
-        chunk = stream.read(min(1024 * 1024, max_bytes + 1 - len(data)))
+        chunk = stream.read(min(1024 * 1024, max_bytes + 1 - total))
         if not chunk:
             break
-        data.extend(chunk)
-        if len(data) > max_bytes:
+        total += len(chunk)
+        if total > max_bytes:
             raise ValueError("File exceeds the configured scan size limit.")
-    return scan_bytes(bytes(data), filename, intelligence=intelligence,
-                      yara_rules_path=yara_rules_path, max_bytes=max_bytes)
+        digest.update(chunk)
+        if len(header) < 4096:
+            header.extend(chunk[:4096 - len(header)])
+        if yara_data is not None:
+            yara_data.extend(chunk)
 
-def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
+    name = Path(filename or "unnamed").name[:255]
+    ext = Path(name).suffix.lower()
+    sha256 = digest.hexdigest()
+    detected, allowed_exts = _type(bytes(header))
+    signals = []
+    if detected == "Unknown / unrecognized":
+        signals.append({"code": "UNKNOWN_SIGNATURE", "severity": "low",
+                        "detail": "No supported file signature recognized."})
+    if allowed_exts and ext not in allowed_exts:
+        signals.append({"code": "EXTENSION_SIGNATURE_MISMATCH", "severity": "high",
+                        "detail": f"{ext or '(none)'} extension conflicts with {detected} signature."})
+
+    router = route_file(name, detected, yara_configured=bool(yara_rules_path))
+    metadata = inspect_filename(name)
+    hash_report = inspect_hash(sha256, intelligence)
+    yara_report = inspect_yara(bytes(yara_data) if yara_data is not None else b"", yara_rules_path)
+    signals.extend(metadata["signals"])
+    signals.extend(hash_report["signals"])
+    signals.extend(yara_report["signals"])
+    fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
+    trace = [
+        router,
+        {"agent": "magic_signature", "status": "complete", "detected_type": detected,
+         "extension_compatible": (not allowed_exts or ext in allowed_exts)},
+        metadata,
+        hash_report,
+        yara_report,
+        fusion,
+    ]
+    return FileScanResult(
+        name, total, sha256, detected, ext, fusion["verdict"], fusion["risk_level"],
+        fusion["score"], signals, hash_report["match"], yara_report["available"],
+        yara_report["matches"], yara_report["error"], trace
+    )
+
+def scan_path(path, *, filename=None, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
     target = Path(path)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
     fd = os.open(target, flags)
@@ -143,7 +185,7 @@ def scan_path(path, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FI
         if info.st_size > max_bytes:
             raise ValueError("File exceeds the configured scan size limit.")
         with os.fdopen(fd, "rb", closefd=False) as handle:
-            return scan_stream(handle, target.name, intelligence=intelligence,
+            return scan_stream(handle, filename or target.name, intelligence=intelligence,
                                yara_rules_path=yara_rules_path, max_bytes=max_bytes)
     finally:
         os.close(fd)
