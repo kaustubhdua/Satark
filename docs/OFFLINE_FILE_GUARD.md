@@ -33,7 +33,7 @@ Reference: https://github.com/NirDiamant/GenAI_Agents
 
 ## Android implementation
 
-The standalone Android project is in `android/` and uses Kotlin + Chaquopy 17.2 / Python 3.13. Chaquopy's current requirements are minSdk 24 and supported Android Gradle Plugin versions 7.3–9.4; this project targets Android API 35, minSdk 24 and 64-bit ARM/emulator ABIs.
+The standalone Android project is in `android/` and uses Kotlin + Chaquopy 17.2 / Python 3.13. Chaquopy's current requirements are minSdk 24 and supported Android Gradle Plugin versions 7.3–9.4; this project targets Android API 36 (Android 16), minSdk 24 and 64-bit ARM/emulator ABIs. The app uses edge-to-edge system-bar insets for Android 15/16 layouts.
 
 Implemented in the Android scaffold:
 - Android Sharesheet receivers for `ACTION_SEND` and `ACTION_SEND_MULTIPLE`.
