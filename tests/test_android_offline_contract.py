@@ -65,7 +65,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
 
     def test_folder_scan_work_is_unique_and_deduplicated(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn('enqueueUniqueWork(\n            "satark-file-guard-immediate-folder-scan"', source)
+        self.assertIn('enqueueUniqueWork(\n            IMMEDIATE_FOLDER_SCAN_NAME', source)
         self.assertIn("androidx.work.ExistingWorkPolicy.REPLACE", source)
         self.assertIn("IMMEDIATE_FOLDER_SCAN_NAME", source)
 
