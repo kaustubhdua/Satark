@@ -95,6 +95,40 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+def verify_source_manifest(input_dir: Path, split: str, file_type: str):
+    """Verify the downloaded archive manifest and cached archive bytes when available."""
+    manifest_path = input_dir / f"ember2024_download_{split}_{file_type.lower()}.json"
+    if not manifest_path.is_file():
+        return None
+    source = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if source.get("dataset") != "EMBER2024":
+        raise ValueError("Source download manifest is not an EMBER2024 manifest.")
+    if source.get("dataset_revision") != UPSTREAM_REVISION:
+        raise ValueError("Source manifest does not match the pinned EMBER2024 revision.")
+    if source.get("split") != split or str(source.get("file_type", "")).lower() != file_type.lower():
+        raise ValueError("Source manifest split or file type does not match the conversion request.")
+    archives = source.get("archives")
+    if not isinstance(archives, list) or not archives:
+        raise ValueError("Source download manifest has no verified archive records.")
+    for item in archives:
+        filename = str(item.get("file", ""))
+        expected = str(item.get("sha256", "")).lower()
+        expected_size = item.get("bytes")
+        if not filename or Path(filename).name != filename or not SHA256_RE.fullmatch(expected):
+            raise ValueError("Source download manifest contains an invalid archive entry.")
+        archive_path = input_dir / ".archives" / filename
+        if archive_path.is_symlink() or not archive_path.is_file():
+            raise ValueError(f"Verified source archive is missing: {filename}")
+        if archive_path.stat().st_size != expected_size or sha256_file(archive_path) != expected:
+            raise ValueError(f"Source archive integrity check failed: {filename}")
+    return {
+        "file": manifest_path.name,
+        "sha256": sha256_file(manifest_path),
+        "dataset_revision": UPSTREAM_REVISION,
+        "archives": archives,
+    }
+
+
 def convert(input_dir: Path, output_dir: Path, *, split="all", file_type="all",
             rows_per_part=25_000, max_records=None):
     if not input_dir.is_dir():
@@ -104,6 +138,12 @@ def convert(input_dir: Path, output_dir: Path, *, split="all", file_type="all",
     paths = select_files(input_dir, split, file_type)
     if not paths:
         raise ValueError("No JSONL files matched the selected split/file type.")
+    source_manifest = verify_source_manifest(input_dir, split, file_type)
+    if source_manifest is not None:
+        listed = set(json.loads((input_dir / source_manifest["file"]).read_text(encoding="utf-8"))
+                     .get("extracted_jsonl_files", []))
+        if listed and not {path.name for path in paths}.issubset(listed):
+            raise ValueError("Selected JSONL files are not listed in the verified source manifest.")
     output_dir.mkdir(parents=True, exist_ok=True)
     safe_split = re.sub(r"[^a-z0-9_-]+", "-", split.lower())
     safe_type = re.sub(r"[^a-z0-9_-]+", "-", file_type.lower())
@@ -162,6 +202,7 @@ def convert(input_dir: Path, output_dir: Path, *, split="all", file_type="all",
         "input_split": split,
         "input_file_type": file_type,
         "source_files": [path.name for path in paths],
+        "source_manifest": source_manifest,
         "rows": counters,
         "parts": parts,
         "label_mapping": {"0": "benign", "1": "malicious", "-1": "excluded as unlabeled"},
