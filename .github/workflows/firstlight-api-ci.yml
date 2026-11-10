@@ -9,6 +9,7 @@ on:
       - "firstlight_engine.py"
       - "firstlight_rules.py"
       - "firstlight_agents.py"
+      - "ai_provider.py"
       - "firstlight_ingest.py"
       - "firstlight_wazuh.py"
       - "firstlight_wazuh_worker.py"
