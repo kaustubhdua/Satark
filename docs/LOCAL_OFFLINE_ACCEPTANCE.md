@@ -15,7 +15,7 @@ This is the acceptance procedure for the primary SATARK File Guard product. It d
 
 ## Build and install
 
-Requirements: JDK 17, Android SDK Platform 36, Build Tools 36.0.0, Gradle 8.13 and Python 3.13 for Chaquopy.
+Requirements: JDK 17, Android SDK Platform 36, Build Tools 36.0.0, Gradle 8.13 and Python 3.13 for Chaquopy. The app targets Android 16 / API 36 and must be tested with edge-to-edge system bars on Android 15/16.
 
 ```bash
 gradle -p android --no-daemon :app:assembleDebug
