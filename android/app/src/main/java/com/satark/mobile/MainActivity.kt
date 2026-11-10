@@ -708,9 +708,12 @@ class MainActivity : Activity() {
                         total == 0 -> "NO HISTORICAL SNAPSHOT INSTALLED"
                         else -> "LOCAL HISTORICAL INTELLIGENCE"
                     }
+                    val coverage = stats.optJSONObject("by_file_type")?.keys()?.asSequence()
+                        ?.joinToString(", ") { type -> type + ":" + stats.optJSONObject("by_file_type")?.optInt(type) }
+                        ?: "none"
                     datasetStatus.text = prefix + " · " + total +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
-                        stats.optInt("benign") + " BENIGN"
+                        stats.optInt("benign") + " BENIGN · TYPES " + coverage
                     if (starterSnapshotError != null) {
                         status.text = "STARTER SNAPSHOT INSTALL FAILED · " + starterSnapshotError
                     }
@@ -727,9 +730,14 @@ class MainActivity : Activity() {
                 val stats = JSONObject(Python.getInstance().getModule("android_bridge")
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 val total = stats.optInt("total")
+                val coverage = stats.optJSONObject("by_file_type")?.keys()?.asSequence()
+                    ?.joinToString("\n") { type -> type + ": " + stats.optJSONObject("by_file_type")?.optInt(type) }
+                    ?: "No file-type coverage"
                 val message = "Local historical indicators: " + total +
                     "\nMalicious labels: " + stats.optInt("malicious") +
                     "\nBenign labels: " + stats.optInt("benign") +
+                    "\nDistinct imported sources: " + stats.optInt("source_count") +
+                    "\n\nFile-type coverage:\n" + coverage +
                     "\n\nThe database is frozen between explicit imports. A no-match result is not proof that a file is safe."
                 mainHandler.post {
                     results.text = message
