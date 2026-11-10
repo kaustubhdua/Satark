@@ -24,6 +24,7 @@ def database(monkeypatch, tmp_path):
     yield engine
     backend.Base.metadata.drop_all(engine)
     engine.dispose()
+    backend.SessionLocal.configure(bind=backend.engine)
 
 
 def seed_job():
