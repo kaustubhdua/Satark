@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U satark -d satark"]
+      test: ["CMD-SHELL", "pg_isready -U satark_admin -d satark"]
       interval: 10s
       timeout: 5s
       retries: 10
