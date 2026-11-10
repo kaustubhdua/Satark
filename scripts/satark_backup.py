@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -360,6 +361,16 @@ def restore_backup(
                  str(work / "database.dump")],
                 env=env, check=True, timeout=3600,
             )
+            restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
+            if restore_role:
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
+                    raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
+                engine = create_engine(target_database_url, pool_pre_ping=True)
+                try:
+                    with engine.begin() as connection:
+                        connection.execute(text(f"REASSIGN OWNED BY satark_backup TO {restore_role}"))
+                finally:
+                    engine.dispose()
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
