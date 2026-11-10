@@ -20,7 +20,7 @@ python -m unittest discover -s tests -p "test_file_guard_yara.py" -v
 
 The Streamlit File Guard page passes `rules/local_file_signatures.yar` to the Python engine when YARA is installed. If the dependency is absent, the UI records that YARA is unavailable rather than silently claiming a clean result.
 
-The current Android APK does **not** bundle the native YARA engine. Android currently uses SHA-256, fixed format signatures, extension mismatch and filename heuristics. Packaging native YARA for Android requires a separately built and tested Android ABI integration; do not copy desktop wheels into the APK or claim mobile YARA support until that work is verified.
+The current Android APK does **not** bundle the native YARA engine. Android uses SHA-256, fixed format signatures, conservative built-in byte-pattern heuristics, extension mismatch and filename heuristics. The built-in rules do not require native YARA and only emit review findings. Packaging native YARA for Android requires a separately built and tested Android ABI integration; do not copy desktop wheels into the APK or claim mobile YARA support until that work is verified.
 
 ## Evaluation
 
