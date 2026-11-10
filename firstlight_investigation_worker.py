@@ -14,6 +14,7 @@ from datetime import timedelta, timezone
 from sqlalchemy import or_, select
 
 from firstlight_engine import investigate_case, sha256_record
+from firstlight_agents import run_independent_agents
 from satark_backend import (
     Case, Evidence, Finding, InvestigationJob, Report, SessionLocal, audit, set_rls_user_context, set_rls_worker_context, utcnow,
 )
@@ -121,13 +122,32 @@ class InvestigationJobWorker:
                     "collected_at": created_at.isoformat(),
                     "integrity_status": "verified" if valid else "mismatch"})
             result = investigate_case({"case_id": case.id, "title": case.title}, envelopes)
+            agent_events = [{
+                "id": item["record"]["event_id"],
+                "time": item["record"]["timestamp"],
+                "source": item["record"]["source"],
+                "kind": item["record"]["kind"],
+                "summary": item["record"]["summary"],
+                "details": item["record"]["details"],
+                "integrity": item["integrity_status"],
+            } for item in envelopes]
+            try:
+                agent_analysis = run_independent_agents(agent_events)
+            except Exception:
+                # Optional local model failures never suppress deterministic results.
+                agent_analysis = {
+                    "enabled": os.getenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "").lower() in {"1", "true", "yes"},
+                    "mode": "agent_error", "agents": [],
+                    "limitations": ["Local model agents failed; deterministic findings remain authoritative."],
+                }
             payload = {"schema_version": "1.1", "case_id": case.id, "integrity": integrity,
                 "integrity_summary": {"total": len(integrity),
                     "verified": sum(1 for x in integrity if x["valid"]),
                     "mismatched": sum(1 for x in integrity if not x["valid"])},
-                "investigation": result, "agent_analysis": {"enabled": False, "mode": "deterministic_only", "agents": []},
+                "investigation": result, "agent_analysis": agent_analysis,
                 "limitations": ["Only evidence already stored in this SATARK case was analyzed.",
                     "Stored-byte digest checks do not prove original source authenticity.",
+                    "Optional local model analysis is advisory; deterministic findings remain authoritative.",
                     "No live response action was executed."]}
             encoded = canonical(payload)
             if len(encoded) > MAX_RESULT_BYTES:
