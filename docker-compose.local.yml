@@ -90,6 +90,9 @@ services:
       FIRSTLIGHT_MODEL_AGENTS_ENABLED: ${FIRSTLIGHT_MODEL_AGENTS_ENABLED:-false}
     volumes:
       - satark_data:/data
+      - ./secrets:/run/secrets:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     expose:
       - "8788"
     healthcheck:
