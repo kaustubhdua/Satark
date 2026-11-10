@@ -7,6 +7,8 @@ on:
       - "scripts/check_no_supabase_runtime.py"
       - "scripts/evaluate_file_guard.py"
       - "tests/test_file_guard.py"
+      - "tests/test_file_guard_structure.py"
+      - "tests/test_file_guard_structure.py"
       - "tests/test_file_guard_reports_and_evaluation.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
@@ -52,12 +54,15 @@ jobs:
           cmp file_guard/intelligence.py android/app/src/main/python/file_guard/intelligence.py
           cmp file_guard/history.py android/app/src/main/python/file_guard/history.py
           cmp file_guard/report.py android/app/src/main/python/file_guard/report.py
+          cmp file_guard/structure.py android/app/src/main/python/file_guard/structure.py
       - name: Install optional desktop YARA test dependency
         run: "python -m pip install --only-binary=:all: -r requirements-yara.txt"
       - name: Compile File Guard and evaluation tools
         run: python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
       - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Run PE, ELF and DEX structural tests
+        run: python -m unittest discover -s tests -p "test_file_guard_structure.py" -v
       - name: Run evidence report and evaluation tests
         run: python -m unittest discover -s tests -p "test_file_guard_reports_and_evaluation.py" -v
       - name: Enforce Android offline and permission contract
