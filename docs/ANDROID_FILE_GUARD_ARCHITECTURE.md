@@ -47,7 +47,8 @@ Important limitations:
 ## Storage and privacy
 
 - SQLite databases are stored in Android app-private storage.
-- Scan history stores metadata and hashes, not file bytes.
+- Scan history stores metadata, hashes, specialist traces and bounded evidence signals, never file bytes.
+- The user can export a JSON evidence report through Android's system document picker; exports contain hashes and metadata only.
 - Incoming content URIs are read under temporary share grants. User-selected folder grants are persisted only after explicit consent.
 - Scans have explicit file-count, directory-depth, per-file and per-run byte limits.
 - No network permission is present in the Android manifest. Android CI enforces this as a contract.
