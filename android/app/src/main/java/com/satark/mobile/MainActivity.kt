@@ -16,6 +16,9 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -41,6 +44,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         ensurePython()
         buildScreen()
         refreshDatasetStats()
@@ -65,6 +71,7 @@ class MainActivity : Activity() {
     private fun buildScreen() {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
+            clipToPadding = false
             setBackgroundColor(0xFF080F1D.toInt())
         }
         val content = LinearLayout(this).apply {
@@ -168,8 +175,14 @@ class MainActivity : Activity() {
         resultsPanel.addView(results)
         content.addView(resultsPanel, panelParams())
 
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { _, windowInsets ->
+            val bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            content.setPadding(dp(20), dp(24) + bars.top, dp(20), dp(32) + bars.bottom)
+            windowInsets
+        }
         scroll.addView(content)
         setContentView(scroll)
+        ViewCompat.requestApplyInsets(scroll)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
