@@ -17,8 +17,6 @@ on:
       - "scripts/download_ember2024.py"
       - "scripts/build_ember2024_android_db.py"
       - "tests/test_ember_android_db.py"
-      - "scripts/build_ember2024_android_db.py"
-      - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
   pull_request:
     paths:
@@ -31,6 +29,12 @@ on:
       - "tests/test_file_guard_reports_and_evaluation.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
+      - "scripts/import_ember2024.py"
+      - "scripts/download_ember2024.py"
+      - "scripts/build_ember2024_android_db.py"
+      - "tests/test_ember_import.py"
+      - "tests/test_ember_download.py"
+      - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
   workflow_dispatch:
 
