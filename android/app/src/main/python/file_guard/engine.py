@@ -74,7 +74,7 @@ def _type(header):
     if len(header) >= 8 and header[4:8] == b"ftyp":
         return "ISO base media / MP4", {".mp4", ".m4v", ".mov"}
     # RAR 5.0 has a longer signature than the legacy RAR 4.x marker.
-    if header.startswith(b"Rar!\\x1a\\x07\\x01\\x00"):
+    if header.startswith(b"Rar!\x1a\x07\x01\x00"):
         return "RAR archive", {".rar"}
     for signature, label, extensions in MAGIC:
         if header.startswith(signature):
