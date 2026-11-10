@@ -701,9 +701,13 @@ class MainActivity : Activity() {
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 mainHandler.post {
                     val bundledSource = prefs.getString("bundled_snapshot_id", null)
-                    val prefix = if (bundledSource.isNullOrBlank()) "LOCAL HISTORICAL INTELLIGENCE"
-                        else "BUNDLED EMBER2024 STARTER · " + bundledSource
-                    datasetStatus.text = prefix + " · " + stats.optInt("total") +
+                    val total = stats.optInt("total")
+                    val prefix = when {
+                        !bundledSource.isNullOrBlank() -> "BUNDLED EMBER2024 STARTER · " + bundledSource
+                        total == 0 -> "NO HISTORICAL SNAPSHOT INSTALLED"
+                        else -> "LOCAL HISTORICAL INTELLIGENCE"
+                    }
+                    datasetStatus.text = prefix + " · " + total +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                         stats.optInt("benign") + " BENIGN"
                     if (starterSnapshotError != null) {
