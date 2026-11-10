@@ -3,10 +3,13 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: satark
-      POSTGRES_USER: satark
+      POSTGRES_USER: satark_admin
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong POSTGRES_PASSWORD in the private .env file}
+      SATARK_RUNTIME_DB_PASSWORD: ${SATARK_RUNTIME_DB_PASSWORD:?Set a strong runtime DB password}
+      SATARK_BACKUP_DB_PASSWORD: ${SATARK_BACKUP_DB_PASSWORD:?Set a separate backup DB password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U satark -d satark"]
       interval: 10s
@@ -51,7 +54,7 @@ services:
       FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP: "false"
       SATARK_ENABLE_LIVE_RESPONSE: "false"
       SATARK_TRUSTED_PROXY_IPS: 172.31.240.0/24
-      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:-}
+      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:?Set the satark_backup BYPASSRLS connection URL}
     volumes:
       - satark_data:/data
       - satark_backups:/backups
