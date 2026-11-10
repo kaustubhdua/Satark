@@ -104,6 +104,9 @@ jobs:
           grep -q 'android.intent.action.SEND_MULTIPLE' android/app/src/main/AndroidManifest.xml
           grep -q 'ACTION_OPEN_DOCUMENT_TREE' android/app/src/main/java/com/satark/mobile/MainActivity.kt
           grep -q 'scan_shared_file_path' android/app/src/main/python/android_bridge.py
+          grep -q 'expected_sha256' android/app/src/main/python/android_bridge.py
+          grep -q 'checksum_verified' android/app/src/main/python/android_bridge.py
+          grep -q 'manifest' android/app/src/main/java/com/satark/mobile/MainActivity.kt
           grep -q 'copyUriToTemp' android/app/src/main/java/com/satark/mobile/MainActivity.kt
           grep -q 'copyUriToTemp' android/app/src/main/java/com/satark/mobile/FolderScanWorker.kt
           grep -q 'PeriodicWorkRequestBuilder' android/app/src/main/java/com/satark/mobile/MainActivity.kt
