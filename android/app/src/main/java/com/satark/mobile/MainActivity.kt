@@ -88,15 +88,19 @@ class MainActivity : Activity() {
             13f, 0xFFB8C2D8.toInt(), false
         ))
         status = text("READY · OFFLINE SCANNING", 12f, 0xFF78E0C1.toInt(), true)
-        if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
-            val lastScan = prefs.getLong("last_folder_scan_ms", 0L)
-            val lastCount = prefs.getInt("last_folder_scan_files", 0)
-            status.text = if (lastScan > 0L) {
-                "FOLDER ACCESS · " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScan)) +
-                    " · " + lastCount + " FILES · " + prefs.getInt("last_folder_scan_alerts", 0) + " ALERTS"
-            } else {
-                "FOLDER ACCESS GRANTED · READY TO SCAN"
-            }
+        val foregroundScanAt = prefs.getLong("last_scan_ms", 0L)
+        val folderScanAt = prefs.getLong("last_folder_scan_ms", 0L)
+        val lastScanAt = maxOf(foregroundScanAt, folderScanAt)
+        if (lastScanAt > 0L) {
+            val folderWasLatest = folderScanAt >= foregroundScanAt
+            val lastCount = if (folderWasLatest) prefs.getInt("last_folder_scan_files", 0)
+                else prefs.getInt("last_scan_files", 0)
+            val lastAlerts = if (folderWasLatest) prefs.getInt("last_folder_scan_alerts", 0) else 0
+            status.text = "LAST LOCAL SCAN · " +
+                java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScanAt)) +
+                " · " + lastCount + " FILES · " + lastAlerts + " ALERTS"
+        } else if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
+            status.text = "FOLDER ACCESS GRANTED · READY TO SCAN"
         }
         hero.addView(status)
         content.addView(hero, panelParams())
@@ -564,6 +568,8 @@ class MainActivity : Activity() {
                         " · Score: " + item.optInt("score") + "\n" +
                         "Size: " + item.optLong("size_bytes") + " bytes\n" +
                         "SHA-256: " + item.optString("sha256") + "\n" +
+                        "Evidence report SHA-256: " + item.optString("report_sha256") + "\n" +
+                        "Scanned at: " + item.optString("scanned_at") + "\n" +
                         "Evidence signals:\n" + item.optJSONArray("signals")?.toString(2).orEmpty() +
                         "\nAgent trace:\n" + item.optJSONArray("agent_trace")?.toString(2).orEmpty() + safetyNote
                     )
@@ -571,6 +577,10 @@ class MainActivity : Activity() {
                     output.add("SCAN INCOMPLETE · " + error.javaClass.simpleName + ". The file was not modified.")
                 }
             }
+            prefs.edit()
+                .putLong("last_scan_ms", System.currentTimeMillis())
+                .putInt("last_scan_files", output.size)
+                .apply()
             mainHandler.post {
                 results.text = output.joinToString("\n\n──────────────\n\n")
                 status.text = "SCAN COMPLETE · " + output.size + " RESULT(S) · LOCAL ONLY"
