@@ -9,6 +9,7 @@ _REPORT_FIELDS = (
     "intelligence_match",
     "yara_available",
     "yara_matches",
+    "builtin_matches",
     "yara_error",
     "agent_trace",
     "content_extracted",
