@@ -57,3 +57,16 @@ Android 11+ restricts access to other apps' private data and app-specific extern
 ## Privacy
 
 All Android scan processing, imported intelligence and scan history remain in app-private storage. The app manifest intentionally omits the Internet permission. The source URI is read only under the temporary share grant; folder URI access is persisted only after explicit user selection and can be revoked in the app.
+
+
+## Evidence reports and evaluation
+
+Each shared-file scan returns a versioned JSON evidence report containing a UTC timestamp, file metadata, SHA-256, verdict, signals, local dataset provenance, YARA capability state, agent trace and a canonical report digest. The digest is an integrity check only; it is not a signature or certified chain-of-custody proof. No original file bytes or extracted text are placed in the report.
+
+A labelled evaluation CSV can be measured on a development machine:
+
+    python scripts/evaluate_file_guard.py evaluation.csv --output evaluation-report.json
+
+Use benign/malicious expected labels and benign/malicious/unknown predictions. Unknown counts as an abstention and reduces measured coverage. Metrics must be reported with the corpus composition and must not be presented as real-world detection rates.
+
+Native YARA is not bundled in the Android APK. The desktop optional YARA path must not be advertised as an Android capability.
