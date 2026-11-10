@@ -1,9 +1,10 @@
-"""Shared FIRSTLIGHT investigation API.
+"""Shared FIRSTLIGHT investigation and guarded response API.
 
-The case-investigation route analyzes bounded caller-supplied evidence. The
-Wazuh integration routes query the explicitly configured, read-only Wazuh
-Indexer and can investigate returned alerts. No route executes live response
-actions; Wazuh investigation results are not persisted by these API handlers.
+The deterministic engine analyzes bounded evidence. Wazuh routes provide a
+read-only preview while the private worker persists authorized alerts and
+checkpoints. Live response is separately disabled by default and requires
+case-bound four-eyes approval, explicit target confirmation, and a distinct
+executor identity.
 """
 from __future__ import annotations
 
