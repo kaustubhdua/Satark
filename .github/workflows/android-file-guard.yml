@@ -68,6 +68,16 @@ jobs:
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests
         run: python -m unittest discover -s tests -p "test_ember_download.py" -v
+      - name: Set up Chaquopy-compatible Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Re-run Android Python bridge and report tests on Python 3.13
+        run: |
+          python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
+          python -m unittest discover -s tests -p "test_file_guard*.py" -v
+          python -m unittest discover -s tests -p "test_android_bridge.py" -v
+          python -m unittest discover -s tests -p "test_android_offline_contract.py" -v
 
   android-build:
     name: Build native Android APK
