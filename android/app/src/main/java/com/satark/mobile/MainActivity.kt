@@ -304,8 +304,45 @@ class MainActivity : Activity() {
                 try {
                     val manifestBytes = readBounded(manifests.first())
                     val manifest = JSONObject(String(manifestBytes, Charsets.UTF_8))
+                    if (source.startsWith("EMBER2024", ignoreCase = true)) {
+                        val pinnedRevision = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
+                        if (manifest.optString("dataset") != "EMBER2024" ||
+                            manifest.optString("upstream_revision") != pinnedRevision ||
+                            manifest.optString("collection_window") != "2023-09-24 through 2024-12-14" ||
+                            manifest.optString("dataset_repository_license") != "Apache-2.0"
+                        ) {
+                            throw IllegalArgumentException("Manifest is not the pinned EMBER2024 historical snapshot")
+                        }
+                        val sourceManifest = manifest.optJSONObject("source_manifest")
+                            ?: throw IllegalArgumentException("Verified source archive manifest is missing")
+                        if (sourceManifest.optString("dataset_revision") != pinnedRevision ||
+                            !sourceManifest.optString("sha256").matches(Regex("^[a-fA-F0-9]{64}$"))
+                        ) {
+                            throw IllegalArgumentException("Source archive provenance is invalid")
+                        }
+                        val archives = sourceManifest.optJSONArray("archives")
+                            ?: throw IllegalArgumentException("Source archive list is missing")
+                        if (archives.length() == 0) {
+                            throw IllegalArgumentException("Source archive list is empty")
+                        }
+                        for (archiveIndex in 0 until archives.length()) {
+                            val archive = archives.getJSONObject(archiveIndex)
+                            if (archive.optString("file").isBlank() ||
+                                !archive.optString("sha256").matches(Regex("^[a-fA-F0-9]{64}$")) ||
+                                archive.optLong("bytes", 0L) <= 0L
+                            ) {
+                                throw IllegalArgumentException("Source archive record is invalid")
+                            }
+                        }
+                        if (manifest.optJSONObject("rows")?.optInt("exported_rows", 0) ?: 0 <= 0) {
+                            throw IllegalArgumentException("Historical snapshot contains no labelled hashes")
+                        }
+                    }
                     val parts = manifest.optJSONArray("parts")
                         ?: throw IllegalArgumentException("Manifest has no parts list")
+                    if (parts.length() == 0) {
+                        throw IllegalArgumentException("Manifest contains no CSV parts")
+                    }
                     val parsed = mutableMapOf<String, String>()
                     for (index in 0 until parts.length()) {
                         val part = parts.getJSONObject(index)
