@@ -403,9 +403,13 @@ class MainActivity : Activity() {
             uris.take(20).forEach { uri ->
                 try {
                     val name = displayName(uri)
-                    val bytes = readBounded(uri)
-                    val json = Python.getInstance().getModule("android_bridge")
-                        .callAttr("scan_shared_file", bytes, name, filesDir.absolutePath).toString()
+                    val temp = copyUriToTemp(uri)
+                    val json = try {
+                        Python.getInstance().getModule("android_bridge")
+                            .callAttr("scan_shared_file_path", temp.absolutePath, name, filesDir.absolutePath).toString()
+                    } finally {
+                        temp.delete()
+                    }
                     val item = JSONObject(json)
                     val verdict = item.optString("verdict")
                     val safetyNote = if (verdict == "No known threat detected") {
@@ -457,6 +461,29 @@ class MainActivity : Activity() {
             }
         } ?: throw IllegalStateException("Android could not open this shared file")
         return output.toByteArray()
+    }
+
+    private fun copyUriToTemp(uri: Uri): java.io.File {
+        val temp = java.io.File.createTempFile("satark-scan-", ".bin", cacheDir)
+        try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        if (total > maxBytes) throw IllegalArgumentException("File exceeds 64 MB scan limit")
+                        output.write(buffer, 0, count)
+                    }
+                }
+            } ?: throw IllegalStateException("Android could not open this shared file")
+            return temp
+        } catch (error: Exception) {
+            temp.delete()
+            throw error
+        }
     }
 
     private fun enableFrequentScan() {
