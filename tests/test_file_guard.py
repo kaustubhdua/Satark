@@ -182,9 +182,10 @@ class FileGuardTests(unittest.TestCase):
     def test_history_persists_bounded_evidence_report_without_file_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
             history = ScanHistory(Path(tmp) / "history.sqlite3")
-            history.add(scan_bytes(b"%PDF-1.7 private fixture", "report.pdf"))
+            history.add(scan_bytes(b"%PDF-1.7 /OpenAction /JavaScript private fixture", "report.pdf"))
             record = history.list_recent(1)[0]
             self.assertEqual(record["evidence_report"]["agent_trace"][0]["agent"], "file_router")
+            self.assertEqual(record["evidence_report"]["builtin_matches"][0]["rule_id"], "PDF_OPENACTION_JAVASCRIPT")
             self.assertFalse(record["evidence_report"]["content_extracted"])
             self.assertFalse(record["evidence_report"]["executed"])
             self.assertNotIn("content", record)
