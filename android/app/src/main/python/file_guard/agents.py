@@ -76,62 +76,92 @@ def inspect_hash(digest, intelligence):
         "signals": signals,
     }
 
+class BuiltinSignatureMatcher:
+    """Incremental, bounded-memory matcher for selected static byte indicators."""
+
+    _RAW_TAIL_BYTES = 64
+    _COMPACT_TAIL_BYTES = 32
+
+    def __init__(self, filename, detected_type):
+        self.name = Path(filename or "unnamed").name.lower()
+        self.detected_type = detected_type
+        self._raw_tail = b""
+        self._compact_tail = b""
+        self._found = set()
+
+    def update(self, chunk):
+        raw = bytes(chunk).lower()
+        if not raw:
+            return
+        combined = self._raw_tail + raw
+        compact = self._compact_tail + raw.replace(bytes([0]), b"")
+
+        if self.detected_type == "PDF":
+            if b"/openaction" in combined and (b"/javascript" in combined or b"/js" in combined):
+                self._found.add("PDF_OPENACTION_JAVASCRIPT")
+            if b"/launch" in combined and b"/openaction" in combined:
+                self._found.add("PDF_OPENACTION_LAUNCH")
+
+        if self.detected_type == "OLE document":
+            if b"autoopen" in compact and b"shell" in compact:
+                self._found.add("OLE_AUTOOPEN_SHELL")
+
+        if self.name.endswith((".ps1", ".psm1", ".bat", ".cmd")):
+            download = any(token in combined for token in (
+                b"downloadstring", b"downloadfile", b"invoke-webrequest"
+            ))
+            execute = any(token in combined for token in (
+                b"invoke-expression", b"iex(", b"start-process"
+            ))
+            if download and execute:
+                self._found.add("SCRIPT_DOWNLOAD_EXECUTE")
+
+        if self.name.endswith((".js", ".mjs", ".cjs")):
+            markers = sum(token in combined for token in (
+                b"eval(", b"fromcharcode", b"unescape("
+            ))
+            if markers >= 3:
+                self._found.add("JAVASCRIPT_OBFUSCATION_CLUSTER")
+
+        if self.detected_type == "Android DEX":
+            if b"dexclassloader" in combined or b"loaddex" in combined:
+                self._found.add("DEX_DYNAMIC_LOADING")
+
+        self._raw_tail = combined[-self._RAW_TAIL_BYTES:]
+        self._compact_tail = compact[-self._COMPACT_TAIL_BYTES:]
+
+    def result(self):
+        descriptions = {
+            "PDF_OPENACTION_JAVASCRIPT": "PDF contains both an automatic open action and a JavaScript marker.",
+            "PDF_OPENACTION_LAUNCH": "PDF contains an automatic open action and a launch action marker.",
+            "OLE_AUTOOPEN_SHELL": "OLE document contains both AutoOpen and Shell automation markers.",
+            "SCRIPT_DOWNLOAD_EXECUTE": "Script contains both a network-download marker and an execution marker.",
+            "JAVASCRIPT_OBFUSCATION_CLUSTER": "JavaScript contains a cluster of three obfuscation-related markers.",
+            "DEX_DYNAMIC_LOADING": "DEX bytecode contains a dynamic class-loading marker.",
+        }
+        findings = [
+            {"rule_id": rule_id, "description": descriptions[rule_id]}
+            for rule_id in descriptions if rule_id in self._found
+        ]
+        signals = [{
+            "code": "BUILTIN_PATTERN_MATCH",
+            "severity": "high",
+            "detail": item["description"],
+            "rule_id": item["rule_id"],
+        } for item in findings]
+        return {
+            "agent": "builtin_byte_signatures",
+            "status": "match" if findings else "no_match",
+            "matches": findings,
+            "signals": signals,
+        }
+
+
 def inspect_builtin_signatures(data, filename, detected_type):
-    """Conservative, bounded byte-pattern checks usable on desktop and Android.
-
-    This scans raw bytes for a few high-signal combinations. It never decodes
-    whole documents, extracts text, unpacks containers or executes content.
-    Findings are review signals, not malware verdicts.
-    """
-    name = Path(filename or "unnamed").name.lower()
-    findings = []
-    raw = bytes(data)
-    lowered = raw.lower()
-
-    def add(rule_id, description):
-        findings.append({"rule_id": rule_id, "description": description})
-
-    if detected_type == "PDF":
-        if b"/openaction" in lowered and (b"/javascript" in lowered or b"/js" in lowered):
-            add("PDF_OPENACTION_JAVASCRIPT", "PDF contains both an automatic open action and a JavaScript marker.")
-        if b"/launch" in lowered and b"/openaction" in lowered:
-            add("PDF_OPENACTION_LAUNCH", "PDF contains an automatic open action and a launch action marker.")
-
-    if detected_type == "OLE document":
-        # Check ASCII and UTF-16LE encodings without parsing macro streams.
-        variants = (lowered, lowered.replace(bytes([0]), b""))
-        has_autoopen = any(b"autoopen" in value for value in variants)
-        has_shell = any(b"shell" in value for value in variants)
-        if has_autoopen and has_shell:
-            add("OLE_AUTOOPEN_SHELL", "OLE document contains both AutoOpen and Shell automation markers.")
-
-    if name.endswith((".ps1", ".psm1", ".bat", ".cmd")):
-        download = any(token in lowered for token in (b"downloadstring", b"downloadfile", b"invoke-webrequest"))
-        execute = any(token in lowered for token in (b"invoke-expression", b"iex(", b"start-process"))
-        if download and execute:
-            add("SCRIPT_DOWNLOAD_EXECUTE", "Script contains both a network-download marker and an execution marker.")
-
-    if name.endswith((".js", ".mjs", ".cjs")):
-        obfuscation_markers = sum(token in lowered for token in (b"eval(", b"fromcharcode", b"unescape("))
-        if obfuscation_markers >= 3:
-            add("JAVASCRIPT_OBFUSCATION_CLUSTER", "JavaScript contains a cluster of three obfuscation-related markers.")
-
-    if detected_type == "Android DEX" and (b"dexclassloader" in lowered or b"loaddex" in lowered):
-        add("DEX_DYNAMIC_LOADING", "DEX bytecode contains a dynamic class-loading marker.")
-
-    signals = [{
-        "code": "BUILTIN_PATTERN_MATCH",
-        "severity": "high",
-        "detail": finding["description"],
-        "rule_id": finding["rule_id"],
-    } for finding in findings]
-    return {
-        "agent": "builtin_byte_signatures",
-        "status": "match" if findings else "no_match",
-        "matches": findings,
-        "signals": signals,
-    }
-
+    """Inspect raw bytes with bounded static patterns; never decode or extract content."""
+    matcher = BuiltinSignatureMatcher(filename, detected_type)
+    matcher.update(data)
+    return matcher.result()
 
 def inspect_yara(data, rules_path):
     if not rules_path:
