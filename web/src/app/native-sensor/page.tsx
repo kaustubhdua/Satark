@@ -27,7 +27,7 @@ export default function NativeSensorPage() {
           <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">Collect your own endpoint signals. Keep the evidence traceable.</h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-300">SATARK’s first-party Linux sensor is a standard-library Python collector for local authentication logs and file-integrity snapshots. It is inspired by established SIEM/EDR architecture patterns without requiring Wazuh as a runtime dependency.</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <a href="https://github.com/kaustubhdua/Satark/blob/main/satark_native_sensor.py" className="inline-flex items-center gap-2 rounded-xl bg-emerald-300 px-4 py-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-200">View sensor source <ArrowRight size={16} /></a>
+            <a href="https://github.com/kaustubhdua/Satark/blob/main/satark_native_sensor.py" className="inline-flex items-center gap-2 rounded-xl bg-emerald-300 px-4 py-3 text-sm font-semibold text-black hover:bg-emerald-200" style={{ color: "#09090b" }}>View sensor source <ArrowRight size={16} /></a>
             <a href="https://github.com/kaustubhdua/Satark/blob/main/docs/NATIVE_ENDPOINT_SENSOR.md" className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-zinc-100 hover:bg-white/5">Read operator guide</a>
           </div>
           <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-300">
@@ -57,7 +57,7 @@ export default function NativeSensorPage() {
         </section>
 
         <div className="mt-10 flex flex-col gap-3 rounded-2xl border border-white/10 bg-zinc-900/50 p-5 sm:flex-row sm:items-center sm:justify-between"><div><div className="font-semibold">Continue to incident investigation</div><p className="mt-1 text-sm text-zinc-400">Use evidence-backed workflows; treat sensor events as signals that need context.</p></div><Link href="/firstlight" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-300/10">Open FIRSTLIGHT <ArrowRight size={16} /></Link></div>
-        <p className="mt-6 text-center text-xs text-zinc-600">SATARK-native implementation · Open source · Evidence and provider claims remain independently verifiable</p>
+        <p className="mt-6 text-center text-xs text-zinc-400">SATARK-native implementation · Open source · Evidence and provider claims remain independently verifiable</p>
       </div>
     </main>
   );
