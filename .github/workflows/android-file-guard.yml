@@ -4,7 +4,10 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
+      - "tests/test_android_offline_contract.py"
+      - "tests/test_android_bridge.py"
       - "tests/test_ember_import.py"
       - "tests/test_ember_download.py"
       - "scripts/import_ember2024.py"
@@ -14,7 +17,10 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
+      - "tests/test_android_offline_contract.py"
+      - "tests/test_android_bridge.py"
       - ".github/workflows/android-file-guard.yml"
   workflow_dispatch:
 
@@ -45,6 +51,12 @@ jobs:
         run: python -m compileall -q file_guard android/app/src/main/python
       - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Enforce Android offline and permission contract
+        run: python -m unittest discover -s tests -p "test_android_offline_contract.py" -v
+      - name: Exercise the exact Android Python bridge
+        run: python -m unittest discover -s tests -p "test_android_bridge.py" -v
+      - name: Verify Supabase is absent from all application runtime source
+        run: python scripts/check_no_supabase_runtime.py
       - name: Run EMBER2024 converter tests
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests

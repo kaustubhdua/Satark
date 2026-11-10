@@ -5,13 +5,14 @@
 
 **Inspect the file. Match the signature. Keep the content private.**
 
-SATARK is evolving into an **app-oriented, Python-based, offline-first file security system**. Its new File Guard workflow inspects file fingerprints, magic bytes, filename/signature mismatches and optional local YARA rules against an explicitly imported historical dataset. It does not extract document text, read WhatsApp/Telegram messages, execute files, upload samples, or call hosted analysis APIs. FIRSTLIGHT and the earlier content-triage workflows remain in the repository as legacy/supporting experiences while the mobile product is developed.
+SATARK is an **Android-first, Python-based, offline-first file security application**. The mobile app inspects file fingerprints, SHA-256 hashes, format signatures and filename/signature mismatches against a locally imported historical dataset. Kotlin is used only for Android integration (Share, Storage Access Framework, notifications and WorkManager); Python performs the scan and local database work. The Android app has no Internet permission, Supabase runtime, hosted API, cloud AI or telemetry upload. FIRSTLIGHT, the browser workspace and earlier content-triage workflows remain legacy/supporting components.
 
 [![Production smoke](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
 [![FIRSTLIGHT API CI](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml)
 [![Web CI](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml)
+[![Android File Guard](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
@@ -31,7 +32,7 @@ SATARK includes an independently authored, standard-library Linux sensor for bou
 
 File Guard is the current product direction: a privacy-first local file scanner for files received through WhatsApp, Telegram, downloads and other apps.
 
-- Python static inspection engine with SHA-256, magic-byte identification, extension mismatch checks and optional local YARA rules.
+- Python static inspection engine with SHA-256, file-format signatures, extension mismatch checks and local historical hash matching. Native YARA is not bundled in the Android app.
 - Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
 - No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
 - Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the explicit one-time `scripts/download_ember2024.py` downloader and local `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
@@ -39,14 +40,14 @@ File Guard is the current product direction: a privacy-first local file scanner 
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
 
-The first implementation milestone and known gaps are documented in [OFFLINE_FILE_GUARD.md](docs/OFFLINE_FILE_GUARD.md). The Android scaffold now includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, local scan history, offline CSV hash import and best-effort daily WorkManager scans. It still requires a successful Android CI build and physical-device validation. The current Streamlit page is a development interface; uploaded bytes reach the Streamlit host, so run it locally or on a trusted private host.
+The Android application includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, local scan history, offline CSV hash import and best-effort WorkManager scans. Android CI builds the debug APK and checks the no-network contract; physical-device QA, performance/battery testing, signing and store acceptance remain outstanding. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md). The Streamlit page is a legacy development interface; uploaded bytes reach the Streamlit host, so do not use it for private files.
 
 ## Contents
 
 - [1. Executive summary](#1-executive-summary)
 - [2. The problem](#2-the-problem)
 - [3. Our approach](#3-our-approach)
-- [4. Flagship experience: FIRSTLIGHT Incident Command](#4-flagship-experience-firstlight-incident-command)
+- [4. Legacy experience: FIRSTLIGHT Incident Command](#4-legacy-experience-firstlight-incident-command)
 - [5. Supporting SATARK threat-analysis tools](#5-supporting-satark-threat-analysis-tools)
 - [6. Example demonstration flow](#6-example-demonstration-flow)
 - [7. What makes the approach different](#7-what-makes-the-approach-different)
@@ -64,14 +65,11 @@ The first implementation milestone and known gaps are documented in [OFFLINE_FIL
 
 ## 1. Executive summary
 
-**SATARK Sentinel** is a browser-based security investigation prototype that connects two complementary capabilities:
+**SATARK Sentinel** is an Android-first, offline-first file security application. Its primary workflow receives a file shared from WhatsApp, Telegram, a browser or a file manager, then inspects the file locally with a Python engine. Users can also choose files or grant access to a folder tree through Android's system picker.
 
-1. **FIRSTLIGHT Incident Command — the primary experience:** a guided, repeatable investigation of a fictional account-compromise scenario, with evidence-integrity checks, deterministic rules, evidence-linked findings, a timeline, evidence gaps, and human approval controls for simulated response actions.
-2. **SATARK threat triage — the supporting experience:** AI-assisted analysis of suspicious text, URLs, images, QR codes, PDFs, and supported videos, with local pattern-based signals and explainable next-step guidance.
+The mobile app uses SHA-256, bounded file-format signatures, extension consistency checks and exact local hash matching against an explicitly imported historical dataset. Kotlin handles Android OS integration; Python handles detection and SQLite persistence. No file is uploaded, no external API is called, and no chat/message database or document text is read. The Android manifest intentionally has no Internet permission.
 
-The central design principle is to keep **observations, model interpretation, uncertainty, and response decisions distinct**. The system should help a person understand what the available evidence supports, what remains unknown, and what should be checked next.
-
-**Current implementation:** a Next.js web workspace plus a Python/Streamlit legacy application, a deterministic FIRSTLIGHT engine, a no-key local analysis path, optional self-hosted Ollama summaries, bounded input-processing helpers, report export, automated tests, and CI/CodeQL workflows. The no-key local path is not a malware scanner and is not a substitute for live threat intelligence.
+FIRSTLIGHT, Next.js, Streamlit and the self-hosted web backend remain in the repository as legacy/supporting projects; they are not required for the Android scanner. The clean-state result is deliberately limited: **no known threat detected by enabled local checks** is not a guarantee that a file is safe.
 
 ## 2. The problem
 
@@ -90,7 +88,9 @@ SATARK Sentinel is designed as a prototype response to these workflow problems. 
 
 ## 3. Our approach
 
-The project follows an **evidence-first, human-reviewed workflow**:
+The Android File Guard is the primary SATARK product. The older FIRSTLIGHT/web/Streamlit paths below are retained as legacy experiments and are not part of the Android app's offline scanning path. The Android product does not use hosted AI or any analysis API.
+
+The legacy project follows an **evidence-first, human-reviewed workflow**:
 
 1. **Collect** a synthetic incident scenario or a supported suspicious digital artifact.
 2. **Validate and prepare** the input using format-specific limits and checks.
@@ -102,9 +102,9 @@ The project follows an **evidence-first, human-reviewed workflow**:
 
 The product keeps two modes clear: FIRSTLIGHT demonstrates an explainable, deterministic investigation workflow over synthetic data; the scanners help triage suspicious content with local deterministic checks and optional self-hosted Ollama inference. These are related parts of one security workflow, but they have different trust and data-handling boundaries.
 
-## 4. Flagship experience: FIRSTLIGHT Incident Command
+## 4. Legacy experience: FIRSTLIGHT Incident Command
 
-FIRSTLIGHT is the main workspace and the best place to start a demonstration. It loads a fictional account-compromise scenario so the investigation can be explored without requiring a live attack, real account access, or sensitive incident evidence.
+FIRSTLIGHT is a retained legacy investigation workspace and is not the primary SATARK mobile product. It loads a fictional account-compromise scenario so the investigation can be explored without requiring a live attack, real account access, or sensitive incident evidence.
 
 ### Capabilities
 
@@ -125,9 +125,9 @@ FIRSTLIGHT does **not** disable a real account, terminate a process, isolate an 
 
 See [FIRSTLIGHT scope and safety boundaries](docs/FIRSTLIGHT.md).
 
-## 5. Supporting SATARK threat-analysis tools
+## 5. Legacy threat-analysis tools (not part of Android File Guard)
 
-The existing scanners remain available as supporting workflows.
+The following older web/Streamlit scanners remain in the repository for reference and are not part of the offline Android File Guard product. They may process content and may use optional local AI or hosted web infrastructure. Do not use them as substitutes for the privacy contract described for the mobile app.
 
 | Workflow | What it supports | Important boundary |
 | --- | --- | --- |
@@ -325,7 +325,7 @@ streamlit run satark.py
 
 Streamlit prints the local URL in the terminal. Open that address in your browser. Ollama setup scripts are opt-in: they ask before installing from the official Ollama distribution, start/check the local service, and pull `qwen2.5:3b`. You can skip them entirely. If Ollama is absent or unavailable, deterministic FIRSTLIGHT and local-rule analysis still work without any model download or third-party AI credentials.
 
-## 11. Local AI and data handling
+## 11. Legacy web/Streamlit data handling (separate from Android File Guard)
 
 The Next.js analysis route runs local deterministic rules by default. It does not call Groq, URLhaus, AbuseIPDB, or another third-party analysis API. No third-party AI API key is required.
 
@@ -460,7 +460,7 @@ The following is a forward-looking roadmap, not a claim that every item is imple
 └── README.md
 ~~~
 
-## 16. Hackathon-ready project summary
+## 16. Legacy hackathon project summary (not the Android File Guard description)
 
 Use this section as a source for a pitch deck. Adapt it to the event's required format and only make claims the team can demonstrate.
 
@@ -519,7 +519,6 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
 - [Self-hosted backend setup and migration guide](docs/SELF_HOSTED_BACKEND.md)
-- [Free API setup and optional threat-intelligence lookups](docs/FREE_API_SETUP.md)
 - [FIRSTLIGHT live-response adapter scope and prerequisites](docs/FIRSTLIGHT_LIVE_RESPONSE.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
