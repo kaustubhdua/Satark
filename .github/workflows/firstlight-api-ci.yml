@@ -34,6 +34,7 @@ on:
       - "deploy/production.env.example"
       - "deploy/postgres-init/**"
       - ".github/workflows/firstlight-api-ci.yml"
+      - "release-gate/EXACT_SHA.md"
   pull_request:
     paths:
       - "firstlight_api.py"
@@ -60,6 +61,7 @@ on:
       - "Dockerfile.firstlight-investigation-worker"
       - "docker-compose.local.yml"
       - ".github/workflows/firstlight-api-ci.yml"
+      - "release-gate/EXACT_SHA.md"
   workflow_dispatch:
 
 permissions:

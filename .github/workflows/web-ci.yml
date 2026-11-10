@@ -5,10 +5,12 @@ on:
     paths:
       - "web/**"
       - ".github/workflows/web-ci.yml"
+      - "release-gate/EXACT_SHA.md"
   pull_request:
     paths:
       - "web/**"
       - ".github/workflows/web-ci.yml"
+      - "release-gate/EXACT_SHA.md"
   workflow_dispatch:
 
 permissions:

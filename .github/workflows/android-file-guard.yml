@@ -19,6 +19,7 @@ on:
       - "scripts/android_emulator_smoke.py"
       - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
+      - "release-gate/EXACT_SHA.md"
   pull_request:
     paths:
       - "android/**"
@@ -37,6 +38,7 @@ on:
       - "tests/test_ember_download.py"
       - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
+      - "release-gate/EXACT_SHA.md"
   workflow_dispatch:
 
 permissions:
