@@ -19,8 +19,9 @@ The scanner must read bytes for SHA-256 and static signature checks. It does not
 2. SHA-256 over the complete byte stream.
 3. Bounded header/form signatures used to identify the actual format.
 4. Extension-versus-signature consistency.
-5. Exact local hash lookup against a provenance-labelled historical snapshot.
-6. Built-in conservative byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers; optional YARA rules on desktop when a compatible engine and reviewed rule pack are installed.
+5. Bounded PE, ELF and DEX header-structure checks for malformed offsets, sizes and table bounds.
+6. Exact local hash lookup against a provenance-labelled historical snapshot.
+7. Built-in conservative byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers; optional YARA rules on desktop when a compatible engine and reviewed rule pack are installed.
 
 No result may claim that an unrecognised or unmatched file is safe. The correct clean-state wording is **"No known threat detected by enabled local checks."**
 
