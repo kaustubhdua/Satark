@@ -113,7 +113,7 @@ WhatsApp / Telegram / Downloads / other apps
 - **SQLite:** local historical indicators and scan/evidence history.
 - **Chaquopy:** embeds the Python runtime in the Android app.
 
-The mobile scanner does not need the repository's optional web backend. Supabase is not a runtime dependency. The Android app has no Internet permission and does not call hosted AI, malware reputation or threat-intelligence APIs. The optional legacy web workspace can use a locally hosted Ollama instance for its separate text-analysis features; a browser or server hosted on Vercel cannot reach an Ollama process running on your own computer. Ollama is not used by the Android File Guard.
+The mobile scanner does not need the repository's optional web backend. Supabase is not a runtime dependency. The Android app has no Internet permission and does not call hosted AI, malware reputation or threat-intelligence APIs. The legacy web/Streamlit Ollama integration is separate and opt-in: an Ollama process on a developer's private machine is not reachable by a browser or server hosted on Vercel. Hosted deployment must use its deterministic fallback unless an operator separately provisions a reachable, secured self-hosted inference endpoint. This legacy inference path is not part of Android File Guard. The optional legacy web workspace can use a locally hosted Ollama instance for its separate text-analysis features; a browser or server hosted on Vercel cannot reach an Ollama process running on your own computer. Ollama is not used by the Android File Guard.
 
 ## Build and run the Android app
 
