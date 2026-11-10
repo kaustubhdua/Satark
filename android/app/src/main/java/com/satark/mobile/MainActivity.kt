@@ -29,6 +29,7 @@ import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -277,6 +278,10 @@ class MainActivity : Activity() {
     private fun importDatasets(uris: List<Uri>) {
         val source = datasetSource.text.toString().trim()
         val manifests = uris.filter { displayName(it).lowercase().endsWith("_manifest.json") }
+        val sourceManifests = uris.filter {
+            displayName(it).lowercase().startsWith("ember2024_download_") &&
+                displayName(it).lowercase().endsWith(".json")
+        }
         val csvUris = uris.filter { displayName(it).lowercase().endsWith(".csv") }
         if (csvUris.isEmpty()) {
             status.text = "SELECT ONE OR MORE CSV PARTS"
@@ -287,12 +292,14 @@ class MainActivity : Activity() {
             results.text = "Too many CSV parts were selected. Split the snapshot into batches of at most 256 parts; keep the same source ID and manifest for each batch."
             return
         }
-        if (source.startsWith("EMBER2024", ignoreCase = true) && manifests.size != 1) {
-            status.text = "EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST"
-            results.text = "Select the matching *_manifest.json file together with its CSV part files. SATARK will verify each part checksum before importing."
+        if (source.startsWith("EMBER2024", ignoreCase = true) &&
+            (manifests.size != 1 || sourceManifests.size != 1)
+        ) {
+            status.text = "EMBER2024 IMPORT REQUIRES BOTH PROVENANCE MANIFESTS"
+            results.text = "Select the converter *_manifest.json, its matching ember2024_download_*.json source manifest, and the CSV part files. SATARK verifies the source-manifest digest and every CSV checksum before importing."
             return
         }
-        if (manifests.size > 1) {
+        if (manifests.size > 1 || sourceManifests.size > 1) {
             status.text = "SELECT ONLY ONE DATASET MANIFEST"
             return
         }
@@ -315,6 +322,39 @@ class MainActivity : Activity() {
                         }
                         val sourceManifest = manifest.optJSONObject("source_manifest")
                             ?: throw IllegalArgumentException("Verified source archive manifest is missing")
+                        val sourceManifestName = sourceManifest.optString("file")
+                        val sourceManifestUri = sourceManifests.singleOrNull()?.takeIf {
+                            displayName(it) == sourceManifestName
+                        } ?: throw IllegalArgumentException("Selected source manifest does not match converter provenance")
+                        val sourceManifestBytes = readBounded(sourceManifestUri)
+                        if (sha256Hex(sourceManifestBytes) != sourceManifest.optString("sha256").lowercase()) {
+                            throw IllegalArgumentException("Source download manifest checksum mismatch")
+                        }
+                        val sourceDocument = JSONObject(String(sourceManifestBytes, Charsets.UTF_8))
+                        if (sourceDocument.optString("dataset") != "EMBER2024" ||
+                            sourceDocument.optString("dataset_revision") != pinnedRevision ||
+                            sourceDocument.optString("split") != manifest.optString("input_split") ||
+                            sourceDocument.optString("file_type").lowercase() != manifest.optString("input_file_type").lowercase()
+                        ) {
+                            throw IllegalArgumentException("Source download manifest does not match the converted snapshot")
+                        }
+                        val sourceArchives = sourceDocument.optJSONArray("archives")
+                            ?: throw IllegalArgumentException("Source download manifest has no archive list")
+                        val convertedArchives = sourceManifest.optJSONArray("archives")
+                            ?: throw IllegalArgumentException("Converter provenance has no archive list")
+                        if (sourceArchives.length() == 0 || sourceArchives.length() != convertedArchives.length()) {
+                            throw IllegalArgumentException("Source archive lists do not match")
+                        }
+                        for (archiveIndex in 0 until sourceArchives.length()) {
+                            val downloaded = sourceArchives.getJSONObject(archiveIndex)
+                            val converted = convertedArchives.getJSONObject(archiveIndex)
+                            if (downloaded.optString("file") != converted.optString("file") ||
+                                downloaded.optString("sha256").lowercase() != converted.optString("sha256").lowercase() ||
+                                downloaded.optLong("bytes", -1L) != converted.optLong("bytes", -2L)
+                            ) {
+                                throw IllegalArgumentException("Source archive provenance mismatch")
+                            }
+                        }
                         if (sourceManifest.optString("dataset_revision") != pinnedRevision ||
                             !sourceManifest.optString("sha256").matches(Regex("^[a-fA-F0-9]{64}$"))
                         ) {
@@ -677,6 +717,11 @@ class MainActivity : Activity() {
             }
         }
     }
+
+    private fun sha256Hex(data: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(data).joinToString("") {
+            "%02x".format(it.toInt() and 0xff)
+        }
 
     private fun displayName(uri: Uri): String {
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
