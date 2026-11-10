@@ -82,7 +82,7 @@ class MainActivity : Activity() {
     private fun buildScreen() {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            clipToPadding = false
+
             setBackgroundColor(0xFF080F1D.toInt())
         }
         val content = LinearLayout(this).apply {
@@ -113,16 +113,7 @@ class MainActivity : Activity() {
             val folderWasLatest = folderScanAt >= foregroundScanAt
             val lastCount = if (folderWasLatest) prefs.getInt("last_folder_scan_files", 0)
                 else prefs.getInt("last_scan_files", 0)
-            val lastSkipped = if (folderWasLatest) prefs.getInt("last_folder_scan_skipped", 0)
-                else prefs.getInt("last_scan_failed", 0)
-            val lastAlerts = if (folderWasLatest) prefs.getInt("last_folder_scan_alerts", 0) else 0
-            val limitNote = if (folderWasLatest && prefs.getBoolean("last_folder_scan_limit_reached", false)) {
-                " · LIMIT REACHED — RUN AGAIN TO CONTINUE"
-            } else ""
-            status.text = "LAST LOCAL SCAN · " +
-                java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScanAt)) +
-                " · " + lastCount + " SCANNED · " + lastSkipped + " SKIPPED · " +
-                lastAlerts + " ALERTS" + limitNote
+
         } else if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             status.text = "FOLDER ACCESS GRANTED · READY TO SCAN"
         }
@@ -162,18 +153,14 @@ class MainActivity : Activity() {
         ).apply { topMargin = dp(8) })
         datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
         intelligencePanel.addView(datasetStatus)
-        intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifests") { chooseDataset() })
-        intelligencePanel.addView(actionButton("View dataset coverage") { showDatasetStats() })
-        intelligencePanel.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
-        intelligencePanel.addView(actionButton("Restore bundled EMBER2024 APK starter snapshot") { restoreBundledSnapshot() })
+
         content.addView(intelligencePanel, panelParams())
 
         val historyPanel = panel()
         historyPanel.addView(sectionTitle("Scan history"))
         historyPanel.addView(text("Review previous local scans and their saved evidence reports.", 13f, 0xFFB8C2D8.toInt(), false))
         historyPanel.addView(primaryActionButton("View scan history and evidence") { showHistory() })
-        historyPanel.addView(actionButton("Export latest evidence report") { exportLatestEvidenceReport() })
-        historyPanel.addView(actionButton("Verify local evidence chain") { verifyAuditChain() })
+
         historyPanel.addView(actionButton("Clear local scan history") { clearHistory() })
         content.addView(historyPanel, panelParams())
 
@@ -196,11 +183,7 @@ class MainActivity : Activity() {
         resultsPanel.addView(results)
         content.addView(resultsPanel, panelParams())
 
-        ViewCompat.setOnApplyWindowInsetsListener(scroll) { _, windowInsets ->
-            val bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            content.setPadding(dp(20), dp(24) + bars.top, dp(20), dp(32) + bars.bottom)
-            windowInsets
-        }
+
         scroll.addView(content)
         setContentView(scroll)
         ViewCompat.requestApplyInsets(scroll)
@@ -217,6 +200,7 @@ class MainActivity : Activity() {
             setStroke(dp(1), 0xFF263854.toInt())
         }
     }
+
 
     private fun panelParams() = LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -290,10 +274,7 @@ class MainActivity : Activity() {
     private fun importDatasets(uris: List<Uri>) {
         val source = datasetSource.text.toString().trim()
         val manifests = uris.filter { displayName(it).lowercase().endsWith("_manifest.json") }
-        val sourceManifests = uris.filter {
-            displayName(it).lowercase().startsWith("ember2024_download_") &&
-                displayName(it).lowercase().endsWith(".json")
-        }
+
         val csvUris = uris.filter { displayName(it).lowercase().endsWith(".csv") }
         if (csvUris.isEmpty()) {
             status.text = "SELECT ONE OR MORE CSV PARTS"
@@ -304,14 +285,7 @@ class MainActivity : Activity() {
             results.text = "Too many CSV parts were selected. Split the snapshot into batches of at most 256 parts; keep the same source ID and manifest for each batch."
             return
         }
-        if (source.startsWith("EMBER2024", ignoreCase = true) &&
-            (manifests.size != 1 || sourceManifests.size != 1)
-        ) {
-            status.text = "EMBER2024 IMPORT REQUIRES BOTH PROVENANCE MANIFESTS"
-            results.text = "Select the converter *_manifest.json, its matching ember2024_download_*.json source manifest, and the CSV part files. SATARK verifies the source-manifest digest and every CSV checksum before importing."
-            return
-        }
-        if (manifests.size > 1 || sourceManifests.size > 1) {
+
             status.text = "SELECT ONLY ONE DATASET MANIFEST"
             return
         }
@@ -323,78 +297,7 @@ class MainActivity : Activity() {
                 try {
                     val manifestBytes = readBounded(manifests.first())
                     val manifest = JSONObject(String(manifestBytes, Charsets.UTF_8))
-                    if (source.startsWith("EMBER2024", ignoreCase = true)) {
-                        val pinnedRevision = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
-                        if (manifest.optString("dataset") != "EMBER2024" ||
-                            manifest.optString("upstream_revision") != pinnedRevision ||
-                            manifest.optString("collection_window") != "2023-09-24 through 2024-12-14" ||
-                            manifest.optString("dataset_repository_license") != "Apache-2.0"
-                        ) {
-                            throw IllegalArgumentException("Manifest is not the pinned EMBER2024 historical snapshot")
-                        }
-                        val sourceManifest = manifest.optJSONObject("source_manifest")
-                            ?: throw IllegalArgumentException("Verified source archive manifest is missing")
-                        val sourceManifestName = sourceManifest.optString("file")
-                        val sourceManifestUri = sourceManifests.singleOrNull()?.takeIf {
-                            displayName(it) == sourceManifestName
-                        } ?: throw IllegalArgumentException("Selected source manifest does not match converter provenance")
-                        val sourceManifestBytes = readBounded(sourceManifestUri)
-                        if (sha256Hex(sourceManifestBytes) != sourceManifest.optString("sha256").lowercase()) {
-                            throw IllegalArgumentException("Source download manifest checksum mismatch")
-                        }
-                        val sourceDocument = JSONObject(String(sourceManifestBytes, Charsets.UTF_8))
-                        if (sourceDocument.optString("dataset") != "EMBER2024" ||
-                            sourceDocument.optString("dataset_revision") != pinnedRevision ||
-                            sourceDocument.optString("split") != manifest.optString("input_split") ||
-                            sourceDocument.optString("file_type").lowercase() != manifest.optString("input_file_type").lowercase()
-                        ) {
-                            throw IllegalArgumentException("Source download manifest does not match the converted snapshot")
-                        }
-                        val sourceArchives = sourceDocument.optJSONArray("archives")
-                            ?: throw IllegalArgumentException("Source download manifest has no archive list")
-                        val convertedArchives = sourceManifest.optJSONArray("archives")
-                            ?: throw IllegalArgumentException("Converter provenance has no archive list")
-                        if (sourceArchives.length() == 0 || sourceArchives.length() != convertedArchives.length()) {
-                            throw IllegalArgumentException("Source archive lists do not match")
-                        }
-                        for (archiveIndex in 0 until sourceArchives.length()) {
-                            val downloaded = sourceArchives.getJSONObject(archiveIndex)
-                            val converted = convertedArchives.getJSONObject(archiveIndex)
-                            if (downloaded.optString("file") != converted.optString("file") ||
-                                downloaded.optString("sha256").lowercase() != converted.optString("sha256").lowercase() ||
-                                downloaded.optLong("bytes", -1L) != converted.optLong("bytes", -2L)
-                            ) {
-                                throw IllegalArgumentException("Source archive provenance mismatch")
-                            }
-                        }
-                        if (sourceManifest.optString("dataset_revision") != pinnedRevision ||
-                            !sourceManifest.optString("sha256").matches(Regex("^[a-fA-F0-9]{64}$"))
-                        ) {
-                            throw IllegalArgumentException("Source archive provenance is invalid")
-                        }
-                        val archives = sourceManifest.optJSONArray("archives")
-                            ?: throw IllegalArgumentException("Source archive list is missing")
-                        if (archives.length() == 0) {
-                            throw IllegalArgumentException("Source archive list is empty")
-                        }
-                        for (archiveIndex in 0 until archives.length()) {
-                            val archive = archives.getJSONObject(archiveIndex)
-                            if (archive.optString("file").isBlank() ||
-                                !archive.optString("sha256").matches(Regex("^[a-fA-F0-9]{64}$")) ||
-                                archive.optLong("bytes", 0L) <= 0L
-                            ) {
-                                throw IllegalArgumentException("Source archive record is invalid")
-                            }
-                        }
-                        if ((manifest.optJSONObject("rows")?.optInt("exported_rows", 0) ?: 0) <= 0) {
-                            throw IllegalArgumentException("Historical snapshot contains no labelled hashes")
-                        }
-                    }
-                    val parts = manifest.optJSONArray("parts")
-                        ?: throw IllegalArgumentException("Manifest has no parts list")
-                    if (parts.length() == 0) {
-                        throw IllegalArgumentException("Manifest contains no CSV parts")
-                    }
+
                     val parsed = mutableMapOf<String, String>()
                     for (index in 0 until parts.length()) {
                         val part = parts.getJSONObject(index)
@@ -482,7 +385,7 @@ class MainActivity : Activity() {
                 val lines = (0 until array.length()).map { index ->
                     val item = array.getJSONObject(index)
                     val report = item.optJSONObject("report")
-                    val audit = report?.optJSONObject("audit_chain")
+
                     val assessment = report?.optJSONObject("assessment")
                     val evidence = report?.optJSONObject("evidence")
                     val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
@@ -491,7 +394,7 @@ class MainActivity : Activity() {
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
                         " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
                         "\nEvidence report: " + report?.optString("report_sha256").orEmpty() +
-                        "\nAudit chain: #" + audit?.optInt("sequence") + " · " + audit?.optString("entry_sha256").orEmpty() +
+
                         "\nAssessment: " + assessment?.optString("interpretation").orEmpty() +
                         "\nSnapshot: " + snapshot?.optInt("total") + " hashes · " +
                         snapshot?.optInt("malicious") + " malicious · " + snapshot?.optInt("benign") + " benign" +
@@ -936,17 +839,7 @@ class MainActivity : Activity() {
                     output.add("SCAN INCOMPLETE · " + error.javaClass.simpleName + ". The file was not modified.")
                 }
             }
-            if (notStarted > 0) {
-                output.add(
-                    "NOT SCANNED · " + notStarted + " additional shared file(s) exceeded the per-share limit of " +
-                    MAX_SHARED_FILES + ". Share the remaining files in another batch."
-                )
-            }
-            prefs.edit()
-                .putLong("last_scan_ms", System.currentTimeMillis())
-                .putInt("last_scan_files", scannedCount)
-                .putInt("last_scan_failed", failedCount)
-                .putInt("last_scan_not_started", notStarted)
+
                 .apply()
             mainHandler.post {
                 results.text = output.joinToString("\n\n──────────────\n\n")

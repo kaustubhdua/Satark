@@ -1,23 +1,11 @@
-"""Local SQLite scan history and tamper-evident hash-chained audit records.
 
-The chain detects edits, reordering and deletion within the retained audit log.
-It is not signed, remotely anchored, or immutable against an attacker who can
-rewrite the complete app-private database.
-"""
 from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
 import sqlite3
 
-from .report import build_evidence_report, verify_evidence_report
 
-_GENESIS = "0" * 64
-
-
-def _canonical_digest(value):
-    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class ScanHistory:
@@ -37,18 +25,11 @@ class ScanHistory:
                 risk_level TEXT NOT NULL,
                 signals_json TEXT NOT NULL,
                 report_json TEXT NOT NULL DEFAULT '{}'
+
             )""")
             columns = {row["name"] for row in db.execute("PRAGMA table_info(scan_history)").fetchall()}
             if "report_json" not in columns:
                 db.execute("ALTER TABLE scan_history ADD COLUMN report_json TEXT NOT NULL DEFAULT '{}' ")
-            db.execute("""CREATE TABLE IF NOT EXISTS scan_audit (
-                sequence INTEGER PRIMARY KEY,
-                history_id INTEGER NOT NULL,
-                previous_entry_sha256 TEXT NOT NULL,
-                entry_sha256 TEXT NOT NULL,
-                entry_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_time ON scan_history(scanned_at DESC)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_scan_audit_history ON scan_audit(history_id)")
 
@@ -62,7 +43,7 @@ class ScanHistory:
         scanned_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         report = build_evidence_report(record, scanned_at=scanned_at, snapshot=snapshot)
         with self._connect() as db:
-            cursor = db.execute("""INSERT INTO scan_history
+
                 (scanned_at,filename,size_bytes,sha256,detected_type,verdict,risk_level,signals_json,report_json)
                 VALUES(?,?,?,?,?,?,?,?,?)""", (
                 scanned_at,
@@ -73,42 +54,7 @@ class ScanHistory:
                 str(record.get("verdict", "unknown"))[:80],
                 str(record.get("risk_level", "unknown"))[:24],
                 json.dumps(record.get("signals", []), ensure_ascii=True)[:12000],
-                "{}",
-            ))
-            history_id = int(cursor.lastrowid)
-            latest = db.execute(
-                "SELECT sequence, entry_sha256 FROM scan_audit ORDER BY sequence DESC LIMIT 1"
-            ).fetchone()
-            sequence = int(latest["sequence"]) + 1 if latest else 1
-            previous = str(latest["entry_sha256"]) if latest else _GENESIS
-            base_report_sha256 = report["report_sha256"]
-            entry = {
-                "sequence": sequence,
-                "history_id": history_id,
-                "scanned_at": scanned_at,
-                "file_sha256": str(record.get("sha256", "")).lower(),
-                "evidence_report_sha256": base_report_sha256,
-                "previous_entry_sha256": previous,
-            }
-            entry_digest = _canonical_digest(entry)
-            report["audit_chain"] = {
-                "sequence": sequence,
-                "previous_entry_sha256": previous,
-                "evidence_report_sha256": base_report_sha256,
-                "entry_sha256": entry_digest,
-            }
-            report_unsigned = {key: value for key, value in report.items() if key != "report_sha256"}
-            report["report_sha256"] = _canonical_digest(report_unsigned)
-            db.execute(
-                "UPDATE scan_history SET report_json=? WHERE id=?",
-                (json.dumps(report, ensure_ascii=True), history_id),
-            )
-            db.execute("""INSERT INTO scan_audit
-                (sequence,history_id,previous_entry_sha256,entry_sha256,entry_json,created_at)
-                VALUES(?,?,?,?,?,?)""", (
-                sequence, history_id, previous, entry_digest,
-                json.dumps(entry, sort_keys=True, separators=(",", ":"), ensure_ascii=True),
-                scanned_at,
+
             ))
             db.execute("""DELETE FROM scan_history WHERE id NOT IN
                 (SELECT id FROM scan_history ORDER BY id DESC LIMIT ?)""", (self.max_records,))

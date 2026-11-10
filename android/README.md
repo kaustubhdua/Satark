@@ -24,11 +24,7 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 2. Share one or more files from WhatsApp or Telegram to SATARK, or use Choose a file.
 3. For folder scanning, choose a folder through Android's directory picker and grant read access.
 4. Start an immediate scan or opt into best-effort 15-minute / daily WorkManager rescans.
-5. Import EMBER2024 CSV part(s), the converter `*_manifest.json`, and the matching `ember2024_download_*.json` source manifest together. SATARK verifies the source-manifest digest, pinned revision, archive provenance records and each CSV part's SHA-256 before import. Keep both manifests and record the dataset cutoff.
-6. View imported historical hash coverage, recent scan history and evidence reports, including each report's integrity digest.
-7. Export the latest metadata-only JSON evidence report through Android's system document picker. The report includes its evidence digest and local audit-chain entry.
-8. Verify the local hash-chained evidence history from the Scan History panel. This detects edits/reordering within the retained chain but is not a digital signature or remote proof of authenticity.
-9. Clear local scan history and its audit chain independently from the intelligence database.
+
 
 ## Historical dataset
 
@@ -53,11 +49,9 @@ Android 11+ restricts access to other apps' private data and app-specific extern
 
 - Maximum 64 MB per file; up to 20 shared files per foreground share event.
 - Folder worker: bounded by file count, depth and total bytes per run.
-- The Android build uses SHA-256, format signatures, extension checks and conservative built-in byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers. These are triage signals, not definitive malware verdicts. Native YARA is not bundled in the mobile APK; the optional desktop YARA starter rules and their synthetic regression tests are documented in [LOCAL_YARA_RULES.md](../docs/LOCAL_YARA_RULES.md).
-- CI-built APKs include a compact, checksum-verified EMBER2024 APK training hash database (malicious and benign labels). On first launch SATARK copies the SQLite asset into app-private storage and verifies its SHA-256. Local developer builds without the CI-generated assets start empty and can import the same snapshot manually.
-- The user can restore the bundled starter snapshot from the Intelligence panel; this replaces imported indicator data but preserves scan history.
+
 - A no-match verdict means only that enabled local checks found no indicator; it is not a guarantee of safety.
 
 ## Privacy
 
-All Android scan processing, imported intelligence, scan history and generated report data remain local unless the user explicitly chooses a destination when exporting a report. Exported reports contain hashes and evidence metadata, never original file bytes or extracted document text. The app manifest intentionally omits the Internet permission. Foreground and background scans copy authorized URIs to bounded app-private temporary files, then stream SHA-256 and signature inspection through Python. Temporary files are deleted after each scan. EMBER2024 imports require the matching manifest and per-part checksum verification. The source URI is read only under the temporary share grant; folder URI access is persisted only after explicit user selection and can be revoked in the app.
+

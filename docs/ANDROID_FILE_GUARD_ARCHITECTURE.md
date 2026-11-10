@@ -98,5 +98,5 @@ The Android app intentionally does not fetch or refresh a dataset at runtime. CI
 
 ## Streaming and device memory boundary
 
-The Android foreground and WorkManager paths copy an authorized `ContentResolver` URI into a bounded temporary file in app-private cache, then call Python `scan_path`. The Python scanner hashes in 1 MiB chunks and retains only the first 4 KiB for file-format identification and built-in header signatures. It does not retain the complete file in Python memory unless optional desktop YARA is explicitly configured; YARA is not enabled in the Android build. Temporary files are deleted after success or failure. The current limits are 64 MiB per file, 20 shared files per foreground event, 1,000 files and 512 MiB per folder-worker run. Measure peak PSS/RSS, latency and battery on physical low- and mid-range devices before increasing any limit.
+
 

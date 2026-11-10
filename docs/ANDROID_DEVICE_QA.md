@@ -7,7 +7,7 @@ This checklist is for real-device validation. CI builds and emulator smoke tests
 Test at minimum:
 - Android 7/API 24 (minimum supported platform).
 - Android 13/API 33 or later (runtime notification permission).
-- Android 16/API 36 (current target); retain Android 15/API 35 compatibility coverage.
+
 - One device with aggressive OEM background restrictions (for example Xiaomi/Redmi, Oppo/Realme, Vivo or Samsung battery management).
 
 Record device model, Android build, SATARK APK SHA-256, test date and battery mode for every run.
