@@ -28,7 +28,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertNotIn("for attempt in $(seq", smoke)
         script = (ROOT / "scripts/android_emulator_smoke.py").read_text(encoding="utf-8")
         self.assertIn("while time.monotonic() < deadline", script)
-        self.assertIn("adb shell uiautomator", script)
+        self.assertIn('"uiautomator", "dump"', script)
         self.assertIn("SATARK UI is missing expected labels", script)
 
     def test_manifest_exposes_share_receivers(self):
