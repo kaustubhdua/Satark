@@ -133,6 +133,40 @@ class FileGuardTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store.import_csv(StringIO(f"sha256,label\n{digest},malicious\n"), "snapshot-b")
 
+    def test_builtin_byte_patterns_run_in_direct_and_chunked_stream_scans(self):
+        class ChunkedReader:
+            def __init__(self, payload, chunk_size=7):
+                self.stream = BytesIO(payload)
+                self.chunk_size = chunk_size
+
+            def read(self, requested=-1):
+                return self.stream.read(self.chunk_size if requested < 0 else min(requested, self.chunk_size))
+
+        pdf = b"%PDF-1.7\n" + (b"A" * 8192) + b"/OpenAction /JavaScript"
+        direct = scan_bytes(pdf, "sample.pdf")
+        streamed = scan_stream(ChunkedReader(pdf), "sample.pdf")
+        for result in (direct, streamed):
+            codes = [signal["code"] for signal in result.signals]
+            self.assertIn("BUILTIN_PATTERN_MATCH", codes)
+            builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+            self.assertIn("PDF_OPENACTION_JAVASCRIPT", [item["rule_id"] for item in builtin["matches"]])
+        self.assertEqual(direct.sha256, streamed.sha256)
+        self.assertEqual(direct.verdict, streamed.verdict)
+
+        script = b"downloadstring" + (b" " * 512) + b"Invoke-Expression"
+        script_result = scan_stream(ChunkedReader(script, chunk_size=5), "payload.ps1")
+        builtin = next(item for item in script_result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("SCRIPT_DOWNLOAD_EXECUTE", [item["rule_id"] for item in builtin["matches"]])
+
+    def test_incremental_builtin_matcher_retains_only_bounded_overlap(self):
+        from file_guard.agents import BuiltinSignatureMatcher
+        matcher = BuiltinSignatureMatcher("sample.pdf", "PDF")
+        for _ in range(1000):
+            matcher.update(b"ordinary-data-" * 1024)
+        self.assertLessEqual(len(matcher._raw_tail), matcher._RAW_TAIL_BYTES)
+        self.assertLessEqual(len(matcher._compact_tail), matcher._COMPACT_TAIL_BYTES)
+        self.assertEqual(matcher.result()["status"], "no_match")
+
     def test_stream_size_limit(self):
         with self.assertRaises(ValueError):
             scan_stream(BytesIO(b"12345"), "x.bin", max_bytes=4)
