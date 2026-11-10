@@ -55,6 +55,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_android_offline_contract.py" -v
       - name: Exercise the exact Android Python bridge
         run: python -m unittest discover -s tests -p "test_android_bridge.py" -v
+      - name: Verify Supabase is absent from all application runtime source
+        run: python scripts/check_no_supabase_runtime.py
       - name: Run EMBER2024 converter tests
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests
