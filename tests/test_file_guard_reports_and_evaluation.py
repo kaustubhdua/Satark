@@ -66,6 +66,22 @@ class AuditChainTests(unittest.TestCase):
             self.assertFalse(verified["valid"])
             self.assertEqual(verified["reason"], "report_digest_mismatch")
 
+    def test_legacy_history_is_reported_as_unlinked_not_fully_verified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.sqlite3"
+            history = ScanHistory(path)
+            with sqlite3.connect(path) as db:
+                db.execute("""INSERT INTO scan_history
+                    (scanned_at,filename,size_bytes,sha256,detected_type,verdict,risk_level,signals_json,report_json)
+                    VALUES(?,?,?,?,?,?,?,?,?)""",
+                    ("2026-01-01T00:00:00+00:00", "legacy.bin", 1, "a" * 64,
+                     "Unknown", "unknown", "low", "[]", "{}"))
+            verified = history.verify_audit_chain()
+            self.assertTrue(verified["valid"])
+            self.assertFalse(verified["complete"])
+            self.assertEqual(verified["unlinked_history_records"], 1)
+            self.assertEqual(verified["reason"], "legacy_history_not_chained")
+
     def test_audit_retention_keeps_chain_but_detects_missing_recent_report(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "history.sqlite3"
