@@ -153,7 +153,7 @@ def _validate_payload(action: str, payload: Mapping[str, Any]) -> list[str]:
         if set(payload) != {"username"}:
             raise ResponseIntegrationError("Account-disable payload must contain only username.")
         username = str(payload["username"]).strip()
-        if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", username):
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", username) or username.startswith("-") or username == "root":
             raise ResponseIntegrationError("username contains unsupported characters.")
         return [username]
     raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
