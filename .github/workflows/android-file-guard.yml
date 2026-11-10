@@ -52,6 +52,8 @@ jobs:
           cmp file_guard/intelligence.py android/app/src/main/python/file_guard/intelligence.py
           cmp file_guard/history.py android/app/src/main/python/file_guard/history.py
           cmp file_guard/report.py android/app/src/main/python/file_guard/report.py
+      - name: Install optional desktop YARA test dependency
+        run: python -m pip install --only-binary=:all: -r requirements-yara.txt
       - name: Compile File Guard and evaluation tools
         run: python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
       - name: Run deterministic File Guard tests
@@ -72,6 +74,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install optional YARA test dependency for Python 3.13
+        run: python -m pip install --only-binary=:all: -r requirements-yara.txt
       - name: Re-run Android Python bridge and report tests on Python 3.13
         run: |
           python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
