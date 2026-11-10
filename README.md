@@ -32,8 +32,9 @@ SATARK includes an independently authored, standard-library Linux sensor for bou
 
 File Guard is the current product direction: a privacy-first local file scanner for files received through WhatsApp, Telegram, downloads and other apps.
 
-- Python static inspection engine with SHA-256, file-format signatures, conservative built-in byte-pattern heuristics, extension mismatch checks and local historical hash matching. Native YARA is not bundled in the Android app.
-- Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
+- Python streaming inspection engine with SHA-256, file-format signatures, conservative built-in byte-pattern heuristics, extension mismatch checks and local historical hash matching. Android retains only a bounded header; native YARA is not bundled in the Android app.
+- Local SQLite intelligence store populated through explicit import of a provenance-labelled historical CSV snapshot; EMBER2024 CSV parts are checked against the converter manifest before import.
+- Metadata-only evidence reports preserve scan time, hash, local dataset provenance, specialist findings and a canonical integrity digest. The digest is not a digital signature or proof of chain of custody.
 - No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
 - Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the explicit one-time `scripts/download_ember2024.py` downloader and local `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
 - No semantic file-content extraction, OCR, preview, execution, archive unpacking or automatic deletion.
