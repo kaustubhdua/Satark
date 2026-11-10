@@ -24,6 +24,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.WorkInfo
 import androidx.work.workDataOf
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
@@ -578,13 +579,12 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun installBundledSnapshotIfMissing(): Boolean {
-        val destination = File(filesDir, "file_guard_intelligence.sqlite3")
-        if (destination.exists()) return false
+    private fun copyBundledSnapshotTo(destination: File): String? {
+        if (destination.exists()) return null
         val metadataText = try {
             assets.open("ember2024-starter.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
         } catch (_: java.io.FileNotFoundException) {
-            return false
+            return null
         }
         val metadata = JSONObject(metadataText)
         val pinnedRevision = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
@@ -599,34 +599,45 @@ class MainActivity : Activity() {
         ) {
             throw IllegalStateException("Bundled historical snapshot metadata is invalid")
         }
-        val temporary = File(filesDir, "file_guard_intelligence.sqlite3.installing")
+        destination.parentFile?.mkdirs()
+        val temporary = File(destination.parentFile, destination.name + ".installing")
         temporary.delete()
-        val digest = MessageDigest.getInstance("SHA-256")
-        var copiedBytes = 0L
-        assets.open("ember2024-starter.sqlite3").use { input ->
-            temporary.outputStream().use { output ->
-                val buffer = ByteArray(64 * 1024)
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    digest.update(buffer, 0, count)
-                    output.write(buffer, 0, count)
-                    copiedBytes += count
+        try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            var copiedBytes = 0L
+            assets.open("ember2024-starter.sqlite3").use { input ->
+                temporary.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        digest.update(buffer, 0, count)
+                        output.write(buffer, 0, count)
+                        copiedBytes += count
+                    }
                 }
             }
-        }
-        val actualSha256 = digest.digest().joinToString("") {
-            "%02x".format(it.toInt() and 0xff)
-        }
-        if (copiedBytes != expectedBytes || actualSha256 != expectedSha256) {
+            val actualSha256 = digest.digest().joinToString("") {
+                "%02x".format(it.toInt() and 0xff)
+            }
+            if (copiedBytes != expectedBytes || actualSha256 != expectedSha256) {
+                throw IllegalStateException("Bundled historical snapshot checksum mismatch")
+            }
+            if (!temporary.renameTo(destination)) {
+                throw IllegalStateException("Could not install bundled historical snapshot")
+            }
+            return metadata.optString("source_id")
+        } catch (error: Exception) {
             temporary.delete()
-            throw IllegalStateException("Bundled historical snapshot checksum mismatch")
+            throw error
         }
-        if (!temporary.renameTo(destination)) {
-            temporary.delete()
-            throw IllegalStateException("Could not install bundled historical snapshot")
-        }
-        prefs.edit().putString("bundled_snapshot_id", metadata.optString("source_id")).apply()
+    }
+
+    private fun installBundledSnapshotIfMissing(): Boolean {
+        val destination = File(filesDir, "file_guard_intelligence.sqlite3")
+        if (destination.exists()) return false
+        val sourceId = copyBundledSnapshotTo(destination) ?: return false
+        prefs.edit().putString("bundled_snapshot_id", sourceId).apply()
         return true
     }
 
@@ -639,14 +650,29 @@ class MainActivity : Activity() {
                 stopBackgroundScans()
                 executor.execute {
                     try {
+                        val workInfos = WorkManager.getInstance(this)
+                            .getWorkInfosByTag(FOLDER_SCAN_TAG).get(15, TimeUnit.SECONDS)
+                        if (workInfos.any { it.state == WorkInfo.State.RUNNING }) {
+                            throw IllegalStateException("Wait for the current folder scan to stop, then restore again")
+                        }
                         val database = File(filesDir, "file_guard_intelligence.sqlite3")
-                        if (database.exists() && !database.delete()) {
-                            throw IllegalStateException("Could not replace the local intelligence database")
+                        val staged = File(filesDir, "file_guard_intelligence.sqlite3.restore")
+                        val backup = File(filesDir, "file_guard_intelligence.sqlite3.backup")
+                        staged.delete()
+                        backup.delete()
+                        val sourceId = copyBundledSnapshotTo(staged)
+                            ?: throw IllegalStateException("This build does not contain a valid bundled starter snapshot")
+                        if (database.exists() && !database.renameTo(backup)) {
+                            staged.delete()
+                            throw IllegalStateException("Could not safely stage the current intelligence database")
                         }
-                        prefs.edit().remove("bundled_snapshot_id").apply()
-                        if (!installBundledSnapshotIfMissing()) {
-                            throw IllegalStateException("This build does not contain the bundled starter snapshot")
+                        if (!staged.renameTo(database)) {
+                            if (backup.exists()) backup.renameTo(database)
+                            throw IllegalStateException("Could not activate the restored starter database")
                         }
+                        backup.delete()
+                        prefs.edit().putString("bundled_snapshot_id", sourceId).apply()
+                        starterSnapshotError = null
                         val stats = JSONObject(
                             Python.getInstance().getModule("android_bridge")
                                 .callAttr("scan_stats", filesDir.absolutePath).toString()
