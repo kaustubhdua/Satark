@@ -50,6 +50,22 @@ docker compose -f docker-compose.local.yml --profile wazuh up -d firstlight-wazu
 
 Do not expose the Wazuh Indexer publicly to make a remote web runtime reach it. Run the API/worker in the network that can reach the Indexer or use an authenticated private network path.
 
+
+## Generate representative lab alerts
+
+Run these only on a disposable Linux Wazuh agent. They emit one synthetic SSH authentication-failure log line and create a file under a directory that you have explicitly configured for FIM monitoring; they do not attempt a network login or change a real account.
+
+~~~bash
+# On the disposable Linux agent:
+logger -p authpriv.warning -t sshd 'Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2'
+sudo mkdir -p /var/tmp/satark-lab-fim
+printf 'SATARK Wazuh lab FIM marker %s\n' "$(date -u +%FT%TZ)" | sudo tee /var/tmp/satark-lab-fim/marker.txt >/dev/null
+~~~
+
+Before the file-integrity step, add `/var/tmp/satark-lab-fim` to that agent's Wazuh syscheck directories with realtime monitoring enabled, then restart the agent if required by the configuration. Ensure the agent collects its auth log (for example `/var/log/auth.log` or `/var/log/secure`); the `logger` facility must be routed there. Do not assume an alert exists until it is visible in the Wazuh Dashboard/Indexer.
+
+In the Indexer, query `wazuh-alerts-*` for the exact disposable agent ID and recent timestamps. Record the actual rule ID, level, timestamp, agent ID, source index and document ID from the returned alert. Do not fabricate alert fixtures as live provider evidence. Then run the FIRSTLIGHT worker once and verify the source snapshot, evidence row, case link and checkpoint before enabling recurring polling.
+
 ## Integrity and recovery
 
 - The worker uses a bounded query window and overlap to catch delayed alerts.
@@ -80,7 +96,7 @@ bash scripts/bootstrap_wazuh_lab.sh "$HOME/wazuh-docker"
 
 The helper checks Docker Compose and the Indexer kernel map-count prerequisite, clones the official Wazuh Docker repository at `v4.14.10`, and generates the upstream TLS certificates. Do not upgrade this integration to Wazuh 5.x: that release removes the 4.x `PUT /active-response` endpoint and uses a different event-driven response workflow. The live-response adapter verifies the Manager version is 4.14.x before sending any command. It deliberately does not start the stack or expose ports. Rotate all upstream default passwords before starting it. Keep the Manager API (55000), Indexer (9200), and Dashboard (443) on a private network; never publish the Manager API to the public internet.
 
-Official upstream deployment guide: https://documentation.wazuh.com/current/deployment-options/docker/wazuh-container.html
+Official upstream deployment guide: https://documentation.wazuh.com/4.14/deployment-options/docker/wazuh-container.html
 
 ## Guarded endpoint response
 
