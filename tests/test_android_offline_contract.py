@@ -77,6 +77,11 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_periodic_scans_defer_when_battery_or_storage_is_low(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn(".setRequiresBatteryNotLow(true)", source)
+        self.assertIn(".setRequiresStorageNotLow(true)", source)
+
 
 if __name__ == "__main__":
     unittest.main()
