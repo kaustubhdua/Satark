@@ -206,9 +206,6 @@ test('local analysis rate limits include a standards-based retry hint without en
 });
 
 const approvalsBackend = readFileSync(new URL('../../satark_backend.py', import.meta.url), 'utf8');
-const approvalMigration = readFileSync(new URL('../../supabase/migrations/20261020035832_satark_simulation_only_approvals.sql', import.meta.url), 'utf8');
-const approvalAclMigration = readFileSync(new URL('../../supabase/migrations/20261020040028_satark_approval_trigger_acl.sql', import.meta.url), 'utf8');
-
 test('response approvals remain simulation-only and require a second reviewer', () => {
   assert.ok(approvalsBackend.includes('simulation'));
   assert.ok(approvalsBackend.includes('simulation'));
