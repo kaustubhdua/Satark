@@ -104,6 +104,16 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_folder_scan_persists_and_surfaces_partial_scan_status(self):
+        worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('putInt("last_folder_scan_examined", examinedFiles)', worker)
+        self.assertIn('putInt("last_folder_scan_skipped", skipped)', worker)
+        self.assertIn('putBoolean("last_folder_scan_limit_reached", hitLimit)', worker)
+        self.assertIn("LIMIT REACHED — RUN AGAIN TO CONTINUE", activity)
+        self.assertIn("SCANNED · ", activity)
+        self.assertIn("SKIPPED · ", activity)
+
     def test_abandoned_scan_temp_files_are_cleaned_on_app_and_worker_start(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/ScanTempFiles.kt").read_text(encoding="utf-8")
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
