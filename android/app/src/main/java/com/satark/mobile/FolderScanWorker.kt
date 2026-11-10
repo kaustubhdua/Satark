@@ -111,8 +111,11 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 .edit()
                 .putLong("last_folder_scan_ms", System.currentTimeMillis())
                 .putInt("last_folder_scan_files", scanned)
+                .putInt("last_folder_scan_examined", examinedFiles)
                 .putInt("last_folder_scan_skipped", skipped)
                 .putInt("last_folder_scan_alerts", highRisk)
+                .putBoolean("last_folder_scan_limit_reached", hitLimit)
+                .putLong("last_folder_scan_bytes", totalBytes)
                 .apply()
 
             if (highRisk > 0) notifyThreats(highRisk)
