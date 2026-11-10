@@ -128,3 +128,35 @@ jobs:
           name: satark-file-guard-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  android-emulator-smoke:
+    name: Install and launch APK on Android emulator
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Download the exact APK built above
+        uses: actions/download-artifact@v4
+        with:
+          name: satark-file-guard-debug-apk
+          path: artifacts/apk
+      - name: Boot Android 15 emulator and smoke-test the app
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r artifacts/apk/app-debug.apk
+            adb shell am start -n com.satark.mobile/.MainActivity
+            sleep 8
+            adb shell dumpsys activity activities | grep -q 'com.satark.mobile/.MainActivity'
+            adb shell uiautomator dump /sdcard/satark-window.xml >/dev/null
+            adb pull /sdcard/satark-window.xml artifacts/satark-window.xml
+            grep -q 'File Guard' artifacts/satark-window.xml
+            grep -q 'Quick scan' artifacts/satark-window.xml
+            if adb logcat -d -t 1500 | grep -E 'FATAL EXCEPTION|com.chaquo.python.PyException'; then
+              exit 1
+            fi
