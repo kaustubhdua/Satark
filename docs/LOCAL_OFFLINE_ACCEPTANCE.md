@@ -34,7 +34,7 @@ python scripts/download_ember2024.py --output-dir data/ember2024 --split train -
 python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
-Keep the source and converted manifests. Verify each CSV part's SHA-256 against the generated manifest before transferring it to the device. Import the parts using a unique source/snapshot ID. The database should remain empty until the operator explicitly imports a snapshot.
+Keep both the original `ember2024_download_*.json` source manifest and the converted `*_manifest.json`. Verify each CSV part's SHA-256 against the converted manifest before transferring all files to the device. Import the parts using the default or a unique source/snapshot ID. SATARK verifies that the source manifest matches the converter provenance and the pinned upstream revision. The database remains empty until the operator explicitly imports a snapshot.
 
 A dataset label is research provenance, not proof that the original file is currently malicious or benign. The challenge set is malicious-only and cannot provide a benign denominator for accuracy measurement. Do not report precision/recall from this import alone.
 
