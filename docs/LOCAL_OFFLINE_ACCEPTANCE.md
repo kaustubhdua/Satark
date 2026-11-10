@@ -6,7 +6,7 @@ This is the acceptance procedure for the primary SATARK File Guard product. It d
 
 - Native Android application with the Python scanner embedded through Chaquopy.
 - Android manifest has no `INTERNET` or `ACCESS_NETWORK_STATE` permission.
-- Files are inspected locally by SHA-256, fixed file-format signatures, extension consistency, filename heuristics and imported local intelligence.
+- Files are inspected locally by SHA-256, fixed file-format signatures, conservative built-in byte-pattern heuristics for selected PDF/OLE/script/DEX markers, extension consistency, filename heuristics and imported local intelligence.
 - No semantic document text extraction, OCR, preview, archive unpacking or execution.
 - WhatsApp/Telegram attachments are accessible only when the sender explicitly shares them to SATARK.
 - Folder scanning is limited to a tree the user selects through Android's Storage Access Framework.
@@ -55,7 +55,7 @@ A dataset label is research provenance, not proof that the original file is curr
 
 ## YARA
 
-The optional desktop Python rule pack is compiled and tested in CI using `requirements-yara.txt`. The current Android APK does not bundle native YARA. Android tests should verify the supported SHA-256 and static-signature paths only; do not claim YARA parity until a native Android ABI integration has been implemented and tested on-device.
+The optional desktop YARA rule pack is compiled and tested in CI using `requirements-yara.txt`. Android includes pure-Python built-in byte-pattern heuristics and does not bundle native YARA. Physical-device checks should verify the built-in SHA-256, format-signature and byte-pattern paths; do not claim native YARA parity until a native Android ABI integration has been implemented and tested on-device.
 
 ## Acceptance evidence
 
