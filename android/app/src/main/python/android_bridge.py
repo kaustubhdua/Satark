@@ -16,7 +16,7 @@ def scan_shared_file(data, filename, app_data_dir):
     root = _paths(app_data_dir)
     intel = ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3")
     result = scan_bytes(bytes(data), str(filename or "shared-file"), intelligence=intel)
-    report = ScanHistory(root / "file_guard_history.sqlite3").add(result)
+    report = ScanHistory(root / "file_guard_history.sqlite3").add(result, snapshot=intel.stats())
     return json.dumps(report, ensure_ascii=True)
 
 def scan_shared_file_path(path, filename, app_data_dir):
