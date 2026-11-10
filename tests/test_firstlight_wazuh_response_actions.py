@@ -78,3 +78,9 @@ def test_block_ip_rejects_acknowledgement_for_different_agent(monkeypatch):
             "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
             confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
         )
+
+def test_disable_account_rejects_root_and_option_like_usernames():
+    with pytest.raises(actions.ResponseIntegrationError, match="invalid or protected"):
+        actions._validate_payload("wazuh.disable_account", {"username": "root"})
+    with pytest.raises(actions.ResponseIntegrationError, match="invalid or protected"):
+        actions._validate_payload("wazuh.disable_account", {"username": "-option"})
