@@ -1,58 +1,48 @@
 # FIRSTLIGHT live response integrations
 
-## Scope
+## Current integration
 
-SATARK includes an opt-in Microsoft integration adapter for:
+The FIRSTLIGHT persistent case workspace includes a guarded live-response panel backed by the authenticated FastAPI response API and a durable SQLite ledger.
+
+Supported Microsoft actions:
+
 - Microsoft Defender for Endpoint device isolation.
-- Microsoft Entra ID session revocation for a named user.
+- Microsoft Entra ID session revocation.
 
-These are real tenant-side operations when configured with valid Microsoft app credentials and permissions. They are **not enabled by default**, are not wired to automatic AI decisions, and have not been live-tested against a tenant by this repository change. No credentials are included.
+No network firewall rule, arbitrary shell command, automatic AI action, or other containment action is supported.
 
-## Required server-side configuration
+## Default state
 
-Set these only in the trusted server/host secret manager:
-- `SATARK_ENABLE_LIVE_RESPONSE=true` (otherwise every action fails closed)
+Live response is **disabled by default**. The status endpoint reports whether the server feature flag and Microsoft credentials are configured. Merely creating or approving a request never contacts Microsoft.
+
+Set these values only in the trusted API runtime:
+
+- `SATARK_ENABLE_LIVE_RESPONSE=true`
 - `MICROSOFT_TENANT_ID`
 - `MICROSOFT_CLIENT_ID`
 - `MICROSOFT_CLIENT_SECRET`
 
-The app registration must be granted the least-privilege Microsoft API permissions and admin consent required by the target action. Defender device isolation requires the Microsoft Defender for Endpoint `Machine.Isolate` permission and an eligible device. Entra session revocation requires `User.RevokeSessions.All`. Review the current vendor documentation and your tenant's role/device-group policies before enabling.
+The app registration must have least-privilege application permissions and admin consent for the selected action. Defender isolation and Entra session revocation have separate permissions and operational consequences. Validate them against current Microsoft documentation and the tenant's policy.
+
+## Human controls
+
+- The request is bound to one tenant, case, action, exact target, reason, parameters, idempotency key and expiry.
+- Requester cannot approve or deny their own request.
+- A third operator distinct from requester and approver executes the action.
+- The server checks membership again, verifies the feature flag and credentials, and requires an exact target confirmation such as `CONFIRM ISOLATE <machine-id>`.
+- The action is claimed once in the durable ledger before the provider call. Replays are rejected.
+- A provider submission is recorded as `submitted`, never as completed containment.
+- An uncertain network/process outcome becomes `unknown` and is not retried automatically.
+- A fourth distinct operator records a verification attestation only after checking the Microsoft console. SATARK records the attestation; it does not independently infer provider state.
+
+## Operational recovery
+
+Use a dedicated lab tenant and disposable test device/account. Preserve a separate administrator path. For Defender, document and test the vendor-supported unisolation process before testing isolation. For Entra, document the expected sign-in/session recovery process. Do not test on personal or production accounts.
+
+## Verification status
+
+Automated tests mock the Microsoft adapter and verify the durable workflow. No real Microsoft tenant, credentials, machine, or user was available for live acceptance in this change. Do not claim provider connectivity, successful containment, or production readiness until a separately authorized lab run has been recorded.
 
 Official references:
 - https://learn.microsoft.com/en-us/defender-endpoint/api/isolate-machine
 - https://learn.microsoft.com/en-us/graph/api/user-revokesigninsessions
-
-## Human approval and safety controls
-
-- Live response is disabled unless the explicit server-side feature flag is enabled.
-- Every call requires an exact, action- and target-bound confirmation string.
-- The operator must provide a target ID/UPN and a reason; no target is inferred from AI output.
-- Requests have a finite timeout, redirects are rejected, provider response bodies are not surfaced to the UI, and target values are URL-encoded.
-- The API response means the provider accepted/submitted the action, not that containment has completed. Verify the machine action or user session state in the vendor console.
-- Never expose client secrets to browser code or commit them to the repository.
-- Start with a dedicated test tenant and a disposable test endpoint/account. Keep a documented recovery/unisolation procedure and independent administrator access.
-
-## What remains unimplemented
-
-- No firewall/network appliance block action is implemented. Defender device isolation is endpoint containment, not a universal network firewall rule.
-- No live action is triggered from FIRSTLIGHT's current simulated approval UI yet.
-- No immutable external audit anchor, durable case store, or independently timestamped evidence manifest is implemented.
-- No tenant has been connected or live action verified in this change.
-
-Before presenting this as a live-response product, integrate these adapters into an authenticated operator workflow, store approvals and results in durable append-only storage, independently anchor audit manifests, add integration tests in a disposable tenant, and exercise rollback/unisolation.
-
-
-## Operator CLI for explicit live actions
-
-The repository also includes `scripts/firstlight_live_response.py`, a direct operator path to the guarded adapters above. It is intentionally not called automatically by the investigation agent.
-
-Example (only in an authorized test tenant with a disposable device/account and approved app permissions):
-
-```bash
-python scripts/firstlight_live_response.py --action isolate-device --target '<exact-defender-machine-id>' --reason 'Case FL-123: approved containment' --execute-live-action
-python scripts/firstlight_live_response.py --action revoke-user-sessions --target '<exact-user-id-or-upn>' --reason 'Case FL-123: approved session revocation' --execute-live-action
-```
-
-The command requires an interactive terminal, the explicit `--execute-live-action` flag, `SATARK_ENABLE_LIVE_RESPONSE=true` in the trusted runtime environment, server-side Microsoft credentials, a non-empty reason, and an exact confirmation typed at the prompt. A mismatch or non-interactive invocation makes no provider call. Never use a real user or device as a test target without the tenant owner's authorization and a recovery plan.
-
-The command reports provider submission, not completion. Verify the resulting machine action or session state in the Microsoft console. The CLI does not currently persist the approval/action result into the durable FIRSTLIGHT case audit store, and the web approval UI is still not wired to these adapters. This is an explicit remaining production gate, not a completed integration.
