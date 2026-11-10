@@ -92,7 +92,7 @@ export default function Home() {
               <span><LockKeyhole size={14} aria-hidden="true" /> Links are never opened for you</span>
               <span><UserCheck size={14} aria-hidden="true" /> Human control over response decisions</span>
             </div>
-            <p className="field-note sentinel-privacy-note">Local deterministic checks by default. No third-party AI key is required. SATARK File Guard works offline; FIRSTLIGHT investigations run on your self-hosted stack. No Microsoft Defender or Entra dependency.</p>
+            <p className="field-note sentinel-privacy-note">Local deterministic checks by default. No third-party AI key is required. SATARK File Guard works offline; FIRSTLIGHT investigations and endpoint response run on your self-hosted Wazuh stack.</p>
           </div>
           <IntegrityLedger />
         </section>
