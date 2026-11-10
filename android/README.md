@@ -5,7 +5,7 @@ SATARK is an Android-first, Python-based, offline-first file security applicatio
 ## Product guarantees
 
 - No Supabase runtime, Internet permission, cloud API, hosted AI, telemetry upload or remote hash lookup in the Android app.
-- Files are inspected locally using streaming SHA-256, bounded format signatures, extension consistency, conservative byte-pattern checks and an explicitly imported historical hash snapshot. Android scans use a bounded temporary file and a Python streaming scanner; they do not buffer the entire file in Python memory.
+- Files are inspected locally using streaming SHA-256, bounded format signatures, PE/ELF/DEX header-structure checks, extension consistency, conservative byte-pattern checks and an explicitly imported historical hash snapshot. Android scans use a bounded temporary file and a Python streaming scanner; they do not buffer the entire file in Python memory.
 - The app does not extract document text, read chats, OCR images, render previews, unpack archives, execute, modify, upload or delete files.
 - Share files from WhatsApp, Telegram, browsers and file managers to SATARK, or select files/folders using Android's system pickers.
 - Only user-shared files and explicitly granted folder trees are accessible. Private WhatsApp/Telegram databases and other apps' private directories are inaccessible by design.
