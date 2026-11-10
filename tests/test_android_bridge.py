@@ -21,9 +21,16 @@ class AndroidBridgeTests(unittest.TestCase):
             csv_data = ("sha256,label,family,file_type,dataset_date\n" +
                         digest + ",malicious,fixture,PDF,2024-12-14\n").encode("utf-8")
 
+            csv_digest = hashlib.sha256(csv_data).hexdigest()
+            with self.assertRaises(ValueError):
+                android_bridge.import_csv_snapshot(
+                    csv_data, "EMBER2024-test-snapshot", tmp, "0" * 64
+                )
             imported = json.loads(android_bridge.import_csv_snapshot(
-                csv_data, "EMBER2024-test-snapshot", tmp
+                csv_data, "EMBER2024-test-snapshot", tmp, csv_digest
             ))
+            self.assertTrue(imported["checksum_verified"])
+            self.assertEqual(imported["sha256"], csv_digest)
             self.assertEqual(imported["import"]["inserted"], 1)
             self.assertEqual(imported["stats"]["total"], 1)
 
