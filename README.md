@@ -515,6 +515,7 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Architecture and threat model](docs/ARCHITECTURE.md)
 - [Supabase-free runtime and persistence](docs/SUPABASE_FREE.md)
 - [Local YARA rules and synthetic evaluation](docs/LOCAL_YARA_RULES.md)
+- [Built-in Android and desktop byte signatures](docs/BUILTIN_BYTE_SIGNATURES.md)
 - [Detection evaluation methodology and metrics](docs/DETECTION_EVALUATION.md)
 - [Manual EMBER2024 snapshot workflow](.github/workflows/ember2024-snapshot.yml)
 - [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
