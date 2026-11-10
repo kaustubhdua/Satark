@@ -30,6 +30,34 @@ class FileGuardTests(unittest.TestCase):
         self.assertNotIn("local_yara", plain["specialists"])
         self.assertIn("local_yara", with_yara["specialists"])
 
+    def test_builtin_byte_signatures_run_without_yara(self):
+        cases = [
+            (b"%PDF-1.7 /OpenAction /JavaScript", "invoice.pdf", "PDF_OPENACTION_JAVASCRIPT"),
+            (b"\\xd0\\xcf\\x11\\xe0\\xa1\\xb1\\x1a\\xe1AutoOpen Shell", "macro.doc", "OLE_AUTOOPEN_SHELL"),
+            (b"DownloadString Invoke-Expression", "script.ps1", "SCRIPT_DOWNLOAD_EXECUTE"),
+            (b"eval( fromCharCode unescape(", "bundle.js", "JAVASCRIPT_OBFUSCATION_CLUSTER"),
+            (b"dex\\n035\\x00DexClassLoader", "classes.dex", "DEX_DYNAMIC_LOADING"),
+        ]
+        for payload, filename, expected in cases:
+            with self.subTest(filename=filename):
+                result = scan_bytes(payload, filename)
+                self.assertIn(expected, [item["rule_id"] for item in result.builtin_matches])
+                self.assertIn("BUILTIN_PATTERN_MATCH", [item["code"] for item in result.signals])
+                self.assertEqual(result.verdict, "Suspicious")
+                self.assertIn("builtin_byte_signatures", [item["agent"] for item in result.agent_trace])
+
+    def test_builtin_byte_signatures_are_conservative_on_single_markers(self):
+        cases = [
+            (b"%PDF-1.7 /OpenAction", "invoice.pdf"),
+            (b"DownloadString only", "script.ps1"),
+            (b"eval( fromCharCode", "bundle.js"),
+            (b"dex\\n035\\x00ordinary", "classes.dex"),
+        ]
+        for payload, filename in cases:
+            with self.subTest(filename=filename):
+                result = scan_bytes(payload, filename)
+                self.assertEqual(result.builtin_matches, [])
+
     def test_benign_hash_never_downgrades_suspicious_metadata(self):
         result = fuse_evidence(
             [{"code": "EXTENSION_SIGNATURE_MISMATCH", "severity": "high"}],
