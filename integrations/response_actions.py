@@ -50,6 +50,28 @@ def _agent_allowlist() -> set[str]:
     return values
 
 
+def _account_disable_allowlist() -> set[str]:
+    values = {item.strip() for item in os.getenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "").split(",") if item.strip()}
+    if any(not re.fullmatch(r"\d{3,}", item) for item in values):
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS must contain numeric Linux/macOS lab agent IDs.")
+    return values
+
+
+def available_response_actions() -> list[str]:
+    """Return actions with their required static configuration present."""
+    try:
+        _agent_allowlist()
+        _base_url()
+        _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
+        _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
+    except ResponseIntegrationError:
+        return []
+    actions = ["wazuh.block_ip"]
+    if _account_disable_allowlist():
+        actions.append("wazuh.disable_account")
+    return actions
+
+
 def _base_url() -> str:
     value = _required_env("FIRSTLIGHT_WAZUH_MANAGER_API_URL").rstrip("/")
     parsed = urllib.parse.urlsplit(value)
@@ -131,6 +153,8 @@ def preflight_live_response(action: str, target: str, confirmation: str) -> None
         raise ResponseIntegrationError(f"Explicit confirmation required: CONFIRM {expected} {target}")
     if target not in _agent_allowlist():
         raise ResponseIntegrationError("Target agent is not in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.")
+    if action == "wazuh.disable_account" and target not in _account_disable_allowlist():
+        raise ResponseIntegrationError("Account disable is restricted to FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS (Linux/macOS lab agents only).")
     _base_url()
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
