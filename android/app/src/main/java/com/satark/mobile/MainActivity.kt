@@ -541,14 +541,17 @@ class MainActivity : Activity() {
                         .callAttr("verify_scan_audit", filesDir.absolutePath).toString()
                 )
                 val valid = payload.optBoolean("valid")
+                val complete = payload.optBoolean("complete", true)
                 val entries = payload.optInt("entries")
                 val reports = payload.optInt("verified_reports")
+                val unlinked = payload.optInt("unlinked_history_records")
                 val head = payload.optString("head_sha256")
                 val reason = payload.optString("reason")
                 mainHandler.post {
                     results.text = if (valid) {
                         "LOCAL AUDIT CHAIN VERIFIED\nEntries: " + entries +
                             " · Evidence reports verified: " + reports +
+                            " · Legacy records not linked: " + unlinked +
                             "\nCurrent chain head: " + head +
                             "\n\nThis detects edits or reordering within the retained local chain. It is not a digital signature or remote proof of authenticity."
                     } else {
@@ -556,8 +559,11 @@ class MainActivity : Activity() {
                             payload.optInt("failed_sequence") + "\nReason: " + reason +
                             "\n\nPreserve this database and investigate before clearing history."
                     }
-                    status.text = if (valid) "LOCAL EVIDENCE CHAIN INTACT · " + entries + " RECORD(S)"
-                        else "WARNING · LOCAL EVIDENCE CHAIN INTEGRITY FAILURE"
+                    status.text = when {
+                        !valid -> "WARNING · LOCAL EVIDENCE CHAIN INTEGRITY FAILURE"
+                        !complete -> "AUDIT CHAIN VALID · " + unlinked + " LEGACY RECORD(S) UNLINKED"
+                        else -> "LOCAL EVIDENCE CHAIN INTACT · " + entries + " RECORD(S)"
+                    }
                 }
             } catch (error: Exception) {
                 mainHandler.post { status.text = "AUDIT VERIFICATION UNAVAILABLE · " + error.javaClass.simpleName }
