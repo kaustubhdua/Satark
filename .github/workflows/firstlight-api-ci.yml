@@ -144,4 +144,4 @@ jobs:
         run: |
           docker run --rm --entrypoint python satark-firstlight-api:ci -c "import firstlight_api, firstlight_response_api, firstlight_response_executor, firstlight_engine, firstlight_rules, firstlight_agents, firstlight_wazuh, satark_backend, integrations.response_actions"
           docker run --rm --entrypoint python satark-firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
-          docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, satark_backend"
+          docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider, satark_backend"
