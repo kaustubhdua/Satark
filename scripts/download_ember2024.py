@@ -36,7 +36,6 @@ ARCHIVE_INTEGRITY = {
     "Win32_train.zip": ("9be451a9cf77ace2d3c6afd332d77da884fb17fc66e5cf6db36254051d1e75c5", 5252835952),
     "Win64_test.zip": ("ba5e5df3a01f232fefeec3aca156781b07a9fabcc6d5627ce75cf9fa61e0f9e4", 516091625),
     "Win64_train.zip": ("0cccc711b77bbe6c676fbc23f1b11f5bd970136362d4914333b4e6c0da29c8dd", 2592795813),
-    "challenge.zip": ("2e09904fbc4541236681e3ca767ea362441d0f7541e9cc637b5c960e22bd11", 23383940),
 }
 
 def archive_url(filename: str) -> str:
@@ -136,7 +135,9 @@ def safe_extract_zip(archive: Path, destination: Path, max_extracted_bytes: int 
     return extracted
 
 def selected_archives(split: str, file_type: str) -> list[str]:
-    splits = ["train", "test", "challenge"] if split == "all" else [split]
+    if split == "challenge":
+        raise ValueError("The challenge archive's upstream LFS digest could not be independently verified; import it only after separate verification.")
+    splits = ["train", "test"] if split == "all" else [split]
     types = list(FILE_TYPES) if file_type == "all" else (
         ["Win32", "Win64", "Dot_Net"] if file_type == "PE" else [file_type]
     )
@@ -192,7 +193,7 @@ def download_and_extract(output_dir: Path, split="train", file_type="APK",
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--split", choices=["train", "test", "challenge", "all"], default="train")
+    parser.add_argument("--split", choices=["train", "test", "all"], default="train")
     parser.add_argument("--file-type", choices=["all", "PE", *FILE_TYPES], default="APK")
     parser.add_argument("--max-download-gb", type=float, default=20)
     parser.add_argument("--max-extracted-gb", type=float, default=20)
