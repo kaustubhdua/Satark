@@ -194,6 +194,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
+      - uses: actions/checkout@v4
       - name: Download the exact APK built above
         uses: actions/download-artifact@v4
         with:
