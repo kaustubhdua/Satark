@@ -70,6 +70,12 @@ Record:
 - Scan latency, peak memory, battery impact and limits tested.
 - Any failures, reproduction steps and unresolved release blockers.
 
+## Android 16 / Play target requirement
+
+The app is configured with `targetSdk = 36`. Google Play requires new apps and app updates to target Android 16 / API 36 or higher from 31 August 2026. Android 16 also enforces edge-to-edge for API 36 targets, so validate status/navigation bar insets on real Android 16 devices and large-screen layouts.
+
+Reference: https://support.google.com/googleplay/android-developer/answer/11926878 and https://developer.android.com/about/versions/16/behavior-changes-16
+
 ## Release gate
 
 Do not call SATARK production-complete until physical-device QA, measured performance/battery tests, real snapshot import, independently labelled detection evaluation, privacy/store disclosures, signing and release-build verification are complete. CI passing and a debug APK are necessary but insufficient.
