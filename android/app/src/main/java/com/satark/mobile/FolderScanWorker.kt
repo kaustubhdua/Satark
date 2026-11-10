@@ -32,6 +32,8 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val pending = ArrayDeque<Pair<String, Int>>()
             pending.add(rootDocumentId to 0)
             var scanned = 0
+            var examinedFiles = 0
+            var visitedDirectories = 1
             var skipped = 0
             var highRisk = 0
             var totalBytes = 0L
@@ -43,20 +45,28 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 DocumentsContract.Document.COLUMN_SIZE
             )
 
-            while (pending.isNotEmpty() && scanned < MAX_FILES && !isStopped && !hitLimit) {
+            while (pending.isNotEmpty() && examinedFiles < MAX_FILES && visitedDirectories <= MAX_DIRECTORIES && !isStopped && !hitLimit) {
                 val (parentId, depth) = pending.removeFirst()
                 val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
                 val cursor = applicationContext.contentResolver.query(childrenUri, projection, null, null, null)
                     ?: continue
                 cursor.use { rows ->
-                    while (rows.moveToNext() && scanned < MAX_FILES && !isStopped && !hitLimit) {
+                    while (rows.moveToNext() && examinedFiles < MAX_FILES && visitedDirectories <= MAX_DIRECTORIES && !isStopped && !hitLimit) {
                         val documentId = rows.getString(0) ?: continue
                         val name = rows.getString(1) ?: "document"
                         val mime = rows.getString(2) ?: "application/octet-stream"
                         if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                            if (depth < MAX_DEPTH) pending.add(documentId to depth + 1)
+                            if (depth < MAX_DEPTH) {
+                                visitedDirectories += 1
+                                if (visitedDirectories > MAX_DIRECTORIES) {
+                                    hitLimit = true
+                                    break
+                                }
+                                pending.add(documentId to depth + 1)
+                            }
                             continue
                         }
+                        examinedFiles += 1
                         val size = if (rows.isNull(3)) -1L else rows.getLong(3)
                         if (size > MAX_FILE_BYTES) {
                             skipped += 1
@@ -91,6 +101,11 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 }
             }
 
+            if (!isStopped && (pending.isNotEmpty() || examinedFiles >= MAX_FILES ||
+                    visitedDirectories > MAX_DIRECTORIES)) {
+                hitLimit = true
+            }
+
             applicationContext.getSharedPreferences("satark_file_guard", Context.MODE_PRIVATE)
                 .edit()
                 .putLong("last_folder_scan_ms", System.currentTimeMillis())
@@ -104,6 +119,8 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
             return Result.success(
                 androidx.work.workDataOf(
                     "scanned_files" to scanned,
+                    "examined_files" to examinedFiles,
+                    "visited_directories" to visitedDirectories,
                     "skipped_files" to skipped,
                     "scanned_bytes" to totalBytes,
                     "alerts" to highRisk,
@@ -177,6 +194,7 @@ class FolderScanWorker(context: Context, params: WorkerParameters) : CoroutineWo
         const val UNIQUE_PERIODIC_NAME = "satark-file-guard-daily"
         const val UNIQUE_FREQUENT_NAME = "satark-file-guard-frequent"
         private const val MAX_FILES = 1000
+        private const val MAX_DIRECTORIES = 2000
         private const val MAX_DEPTH = 8
         private const val MAX_FILE_BYTES = 64L * 1024L * 1024L
         private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L
