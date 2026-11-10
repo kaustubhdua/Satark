@@ -41,6 +41,7 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertEqual(len(history), 1)
             self.assertEqual(history[0]["sha256"], digest)
             self.assertNotIn("content", history[0])
+            self.assertTrue(verify_evidence_report(history[0]["report"]))
 
             stats = json.loads(android_bridge.scan_stats(tmp))
             self.assertEqual(stats["malicious"], 1)
