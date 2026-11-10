@@ -158,6 +158,31 @@ class FileGuardTests(unittest.TestCase):
         builtin = next(item for item in script_result.agent_trace if item["agent"] == "builtin_byte_signatures")
         self.assertIn("SCRIPT_DOWNLOAD_EXECUTE", [item["rule_id"] for item in builtin["matches"]])
 
+    def test_ole_macro_tokens_match_when_separated_across_chunks(self):
+        from file_guard.engine import scan_stream
+        payload = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" +
+                   b"A" * 512 + b"AutoOpen" + b"B" * 512 + b"Shell")
+        class SmallChunks:
+            def __init__(self, value):
+                self.stream = BytesIO(value)
+            def read(self, requested=-1):
+                return self.stream.read(11 if requested < 0 else min(requested, 11))
+        result = scan_stream(SmallChunks(payload), "macro.doc")
+        builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("OLE_AUTOOPEN_SHELL", [item["rule_id"] for item in builtin["matches"]])
+
+    def test_javascript_markers_are_accumulated_across_stream_chunks(self):
+        from file_guard.engine import scan_stream
+        payload = b"eval(" + b"A" * 200 + b"fromCharCode" + b"B" * 200 + b"unescape("
+        class SmallChunks:
+            def __init__(self, value):
+                self.stream = BytesIO(value)
+            def read(self, requested=-1):
+                return self.stream.read(9 if requested < 0 else min(requested, 9))
+        result = scan_stream(SmallChunks(payload), "payload.js")
+        builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("JAVASCRIPT_OBFUSCATION_CLUSTER", [item["rule_id"] for item in builtin["matches"]])
+
     def test_incremental_builtin_matcher_retains_only_bounded_overlap(self):
         from file_guard.agents import BuiltinSignatureMatcher
         matcher = BuiltinSignatureMatcher("sample.pdf", "PDF")
