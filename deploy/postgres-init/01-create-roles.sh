@@ -4,7 +4,7 @@ set -eu
 : "${SATARK_RUNTIME_DB_PASSWORD:?SATARK_RUNTIME_DB_PASSWORD is required}"
 : "${SATARK_BACKUP_DB_PASSWORD:?SATARK_BACKUP_DB_PASSWORD is required}"
 
-psql --set ON_ERROR_STOP=1 \
+psql --dbname="${POSTGRES_DB:-satark}" --set ON_ERROR_STOP=1 \
   --set runtime_password="$SATARK_RUNTIME_DB_PASSWORD" \
   --set backup_password="$SATARK_BACKUP_DB_PASSWORD" <<'SQL'
 CREATE ROLE satark_runtime LOGIN PASSWORD :'runtime_password';
