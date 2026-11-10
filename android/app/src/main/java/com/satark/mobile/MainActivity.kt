@@ -54,6 +54,13 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::datasetStatus.isInitialized && ::lastScanStatus.isInitialized) {
+            refreshDatasetStats()
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -554,6 +561,7 @@ class MainActivity : Activity() {
             mainHandler.post {
                 results.text = output.joinToString("\n\n──────────────\n\n")
                 status.text = "SCAN COMPLETE · " + output.size + " RESULT(S) · LOCAL ONLY"
+                refreshDatasetStats()
             }
         }
     }
