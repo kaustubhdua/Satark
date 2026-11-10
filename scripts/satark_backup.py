@@ -123,6 +123,24 @@ def _archive_evidence(evidence_dir: Path, destination: Path) -> None:
                 archive.add(item, arcname=item.relative_to(root).as_posix(), recursive=False)
 
 
+def _copy_response_ledger(source_path: Path, destination: Path) -> bool:
+    raw_path = source_path.expanduser()
+    if raw_path.is_symlink():
+        raise ValueError("FIRSTLIGHT response ledger must not be a symbolic link.")
+    if not raw_path.exists():
+        return False
+    source = raw_path.resolve()
+    if not source.is_file():
+        raise ValueError("FIRSTLIGHT response ledger must be a regular file.")
+    with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src:
+        with sqlite3.connect(destination) as dst:
+            src.backup(dst)
+            result = dst.execute("PRAGMA integrity_check").fetchone()
+            if not result or result[0] != "ok":
+                raise ValueError("FIRSTLIGHT response ledger failed SQLite integrity_check.")
+    return True
+
+
 def create_backup(output: Path, database_url: str, evidence_dir: Path, response_ledger_path: Path | None = None) -> dict[str, Any]:
     output = output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
