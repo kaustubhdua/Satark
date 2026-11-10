@@ -14,6 +14,7 @@ class EvidenceReportTests(unittest.TestCase):
         report = build_evidence_report(result, scanned_at="2026-11-10T12:00:00+00:00")
         self.assertEqual(report["report_schema"], "satark.file-guard.evidence/v1")
         self.assertEqual(report["file"]["sha256"], result.sha256)
+        self.assertEqual(report["verdict"], result.verdict)
         self.assertFalse(report["processing"]["semantic_content_extracted"])
         self.assertFalse(report["processing"]["file_executed"])
         self.assertTrue(verify_evidence_report(report))
