@@ -145,6 +145,11 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('" NOT STARTED · LOCAL ONLY"', source)
         self.assertIn('"last_scan_not_started"', source)
 
+    def test_dataset_import_has_a_historical_snapshot_id_default(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('setText("EMBER2024-2024-12-14")', source)
+        self.assertIn("EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST", source)
+
     def test_share_intake_limit_is_explicit_and_never_silently_drops_files(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn("private const val MAX_SHARED_FILES = 20", source)
