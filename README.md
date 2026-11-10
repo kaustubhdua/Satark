@@ -88,7 +88,9 @@ SATARK Sentinel is designed as a prototype response to these workflow problems. 
 
 ## 3. Our approach
 
-The project follows an **evidence-first, human-reviewed workflow**:
+The Android File Guard is the primary SATARK product. The older FIRSTLIGHT/web/Streamlit paths below are retained as legacy experiments and are not part of the Android app's offline scanning path. The Android product does not use hosted AI or any analysis API.
+
+The legacy project follows an **evidence-first, human-reviewed workflow**:
 
 1. **Collect** a synthetic incident scenario or a supported suspicious digital artifact.
 2. **Validate and prepare** the input using format-specific limits and checks.
@@ -123,9 +125,9 @@ FIRSTLIGHT does **not** disable a real account, terminate a process, isolate an 
 
 See [FIRSTLIGHT scope and safety boundaries](docs/FIRSTLIGHT.md).
 
-## 5. Supporting SATARK threat-analysis tools
+## 5. Legacy threat-analysis tools (not part of Android File Guard)
 
-The existing scanners remain available as supporting workflows.
+The following older web/Streamlit scanners remain in the repository for reference and are not part of the offline Android File Guard product. They may process content and may use optional local AI or hosted web infrastructure. Do not use them as substitutes for the privacy contract described for the mobile app.
 
 | Workflow | What it supports | Important boundary |
 | --- | --- | --- |
@@ -323,7 +325,7 @@ streamlit run satark.py
 
 Streamlit prints the local URL in the terminal. Open that address in your browser. Ollama setup scripts are opt-in: they ask before installing from the official Ollama distribution, start/check the local service, and pull `qwen2.5:3b`. You can skip them entirely. If Ollama is absent or unavailable, deterministic FIRSTLIGHT and local-rule analysis still work without any model download or third-party AI credentials.
 
-## 11. Local AI and data handling
+## 11. Legacy web/Streamlit data handling (separate from Android File Guard)
 
 The Next.js analysis route runs local deterministic rules by default. It does not call Groq, URLhaus, AbuseIPDB, or another third-party analysis API. No third-party AI API key is required.
 
@@ -458,7 +460,7 @@ The following is a forward-looking roadmap, not a claim that every item is imple
 └── README.md
 ~~~
 
-## 16. Hackathon-ready project summary
+## 16. Legacy hackathon project summary (not the Android File Guard description)
 
 Use this section as a source for a pitch deck. Adapt it to the event's required format and only make claims the team can demonstrate.
 
@@ -517,7 +519,6 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
 - [Self-hosted backend setup and migration guide](docs/SELF_HOSTED_BACKEND.md)
-- [Free API setup and optional threat-intelligence lookups](docs/FREE_API_SETUP.md)
 - [FIRSTLIGHT live-response adapter scope and prerequisites](docs/FIRSTLIGHT_LIVE_RESPONSE.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
