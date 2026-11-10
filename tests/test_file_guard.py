@@ -122,6 +122,19 @@ class FileGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scan_stream(BytesIO(b"12345"), "x.bin", max_bytes=4)
 
+    def test_stream_scan_matches_byte_scan_and_preserves_display_name(self):
+        payload = b"%PDF-1.7 streamed fixture"
+        streamed = scan_stream(BytesIO(payload), "report.pdf")
+        direct = scan_bytes(payload, "report.pdf")
+        self.assertEqual(streamed.sha256, direct.sha256)
+        self.assertEqual(streamed.detected_type, direct.detected_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opaque-cache-name.tmp"
+            path.write_bytes(payload)
+            result = scan_path(path, filename="original-report.pdf")
+            self.assertEqual(result.filename, "original-report.pdf")
+            self.assertEqual(result.sha256, direct.sha256)
+
     def test_directory_scan_and_symlink_skip(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
