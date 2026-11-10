@@ -63,6 +63,19 @@ class AndroidOfflineContractTests(unittest.TestCase):
                     f"Android-bundled {android_path} drifted from {root_path}",
                 )
 
+    def test_folder_scan_work_is_unique_and_deduplicated(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('enqueueUniqueWork(\n            "satark-file-guard-immediate-folder-scan"', source)
+        self.assertIn("androidx.work.ExistingWorkPolicy.REPLACE", source)
+
+    def test_worker_has_explicit_scan_limits_and_cancellation_checks(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
+        self.assertIn("private const val MAX_FILES = 1000", source)
+        self.assertIn("private const val MAX_DEPTH = 8", source)
+        self.assertIn("private const val MAX_FILE_BYTES = 64L * 1024L * 1024L", source)
+        self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
+        self.assertIn("!isStopped", source)
+
 
 if __name__ == "__main__":
     unittest.main()
