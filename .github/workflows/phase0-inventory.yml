@@ -27,8 +27,8 @@ jobs:
           for (const key of required) {
             if (!Array.isArray(inventory[key])) throw new Error('Missing inventory collection: ' + key);
           }
-          if (!inventory.counts.pages || !inventory.counts.apiRoutes || !inventory.counts.migrations) {
-            throw new Error('Expected page, API and migration inventory to be non-empty.');
+          if (!inventory.counts.pages || !inventory.counts.apiRoutes || !inventory.counts.migrations || !inventory.counts.discoveredTables) {
+            throw new Error('Expected page, API, migration and database-table inventory to be non-empty.');
           }
           if (inventory.migrationSafety.supabaseRuntime !== 'ABSENT' || inventory.migrationSafety.migrationSource !== 'ALEMBIC') {
             throw new Error('Inventory must confirm the Supabase-free Alembic migration boundary.');

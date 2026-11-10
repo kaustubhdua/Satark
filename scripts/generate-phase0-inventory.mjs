@@ -61,9 +61,15 @@ for (const item of uiFiles) {
 
 const tableNames = new Set();
 const rpcNames = new Set();
-for (const item of migrations) {
-  const source = await read(item.file);
-  for (const match of source.matchAll(/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?(?:public|satark_private)\.([a-zA-Z0-9_]+)/ig)) tableNames.add(match[1]);
+// Alembic migrations usually declare tables through op.create_table rather
+// than raw SQL. Include SQLAlchemy model declarations as a cross-check;
+// this remains static discovery, not proof of a live schema.
+const tableSourceFiles = [...migrations.map(item => item.file), 'satark_backend.py'];
+for (const file of tableSourceFiles) {
+  const source = await read(file);
+  for (const match of source.matchAll(/\bop\.create_table\(\s*["']([a-zA-Z0-9_]+)["']/g)) tableNames.add(match[1]);
+  for (const match of source.matchAll(/\b__tablename__\s*=\s*["']([a-zA-Z0-9_]+)["']/g)) tableNames.add(match[1]);
+  for (const match of source.matchAll(/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?(?:(?:public|satark_private)\.)?["']?([a-zA-Z0-9_]+)["']?/ig)) tableNames.add(match[1]);
   for (const match of source.matchAll(/\bcreate\s+(?:or\s+replace\s+)?function\s+(?:public|satark_private)\.([a-zA-Z0-9_]+)/ig)) rpcNames.add(match[1]);
 }
 const envExamples = all.filter(p => /(^|\/)(\.env.*example|.*\.env\.example)$/.test(p));
@@ -80,7 +86,7 @@ const manifest = {
   },
   pages, apis, migrations, databaseTests, workflows, workers, providerAdapters: adapters,
   tests, envExamples: envExamples.map(file => ({ file, status: 'unverified', evidence: 'example file does not prove deployment configuration' })),
-  databaseObjects: { tables: [...tableNames].sort(), functions: [...rpcNames].sort(), status: 'unverified', note: 'Discovered from migration SQL; not compared with a live database.' },
+  databaseObjects: { tables: [...tableNames].sort(), functions: [...rpcNames].sort(), status: 'unverified', note: 'Discovered from Alembic migration and SQLAlchemy model source; not compared with a live database.' },
   uiActionMap: actionMap,
   migrationSafety: {
     supabaseRuntime: 'ABSENT',

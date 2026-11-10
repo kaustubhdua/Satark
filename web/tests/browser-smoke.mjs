@@ -55,6 +55,9 @@ const routes = [
   { path: '/learn', heading: /learn|safety|social-engineering|pause\. verify\. then act/i },
   { path: '/login', heading: /investigations that|welcome back/i },
   { path: '/reset-password', heading: /secure access|restored/i },
+  { path: '/accept-invitation', heading: /work together|workspace invitation/i },
+  { path: '/verify-email', heading: /confirm your|account verification/i },
+  { path: '/native-sensor', heading: /collect your own endpoint signals|native telemetry/i },
 ];
 
 async function inspectViewport(viewport, label) {
@@ -180,7 +183,7 @@ async function inspectViewport(viewport, label) {
       assert.match((await qrCard.textContent()) || '', /bundled fallback decoder|cross-browser decoding/i,
         'home QR copy must disclose remaining capability limits');
     }
-    if (!['/', '/login', '/reset-password'].includes(route.path)) {
+    if (!['/', '/login', '/reset-password', '/accept-invitation', '/verify-email'].includes(route.path)) {
       assert.equal(await page.locator('.nav-links a[aria-current="page"]').count(), 1,
         `${label}: exactly one current navigation link expected at ${route.path}`);
     }
@@ -231,6 +234,25 @@ async function inspectViewport(viewport, label) {
       assert.equal(new URL(page.url()).hash, '', 'invalid recovery links must not remain in the visible URL');
       assert.equal(await page.getByRole('link', { name: /sign in/i }).count() > 0, true,
         'password recovery must provide a route back to sign-in');
+    }
+    if (route.path === '/accept-invitation') {
+      await page.getByText(/invitation link is missing or invalid/i).waitFor();
+      assert.equal(new URL(page.url()).search, '', 'invalid invitation tokens must not remain in the visible URL');
+      assert.equal(await page.getByRole('link', { name: /go to sign in/i }).count(), 1,
+        'invalid invitations must provide a sign-in recovery path');
+    }
+    if (route.path === '/verify-email') {
+      await page.getByText(/verification link is missing or invalid/i).waitFor();
+      assert.equal(new URL(page.url()).search, '', 'invalid verification tokens must not remain in the visible URL');
+      assert.equal(await page.getByRole('link', { name: /back to sign in/i }).count(), 1,
+        'invalid verification links must provide a sign-in recovery path');
+    }
+    if (route.path === '/native-sensor') {
+      await page.getByRole('heading', { name: /collect your own endpoint signals/i }).waitFor();
+      await page.getByText(/pull-based Linux sensor/i).waitFor();
+      await page.getByRole('link', { name: /view sensor source/i }).waitFor();
+      await page.getByRole('link', { name: /read operator guide/i }).waitFor();
+      await page.getByText(/not a resident daemon or a full EDR/i).waitFor();
     }
     if (route.path === '/url') {
       const urlInput = page.getByLabel('URL or hostname');
