@@ -104,6 +104,14 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_metadata_only_evidence_report_export_uses_system_document_picker(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('ACTION_CREATE_DOCUMENT', source)
+        self.assertIn('type = "application/json"', source)
+        self.assertIn('REQUEST_EXPORT', source)
+        self.assertIn("exportLatestEvidenceReport", source)
+        self.assertIn("pendingExportJson = null", source)
+
     def test_android_history_exposes_local_hash_chain_verification(self):
         bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
