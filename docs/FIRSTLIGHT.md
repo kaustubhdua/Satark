@@ -69,9 +69,12 @@ Run the web application and API using the repository's local Compose configurati
 
 ```bash
 export FIRSTLIGHT_API_TOKEN="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+mkdir -p "$PWD/data/evidence"
 export SATARK_DATABASE_URL="sqlite:///$PWD/data/satark.db"
 export SATARK_EVIDENCE_DIR="$PWD/data/evidence"
 export FIRSTLIGHT_RESPONSE_DB="$PWD/data/firstlight-response.sqlite3"
+export FIRSTLIGHT_API_TOKEN="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+alembic upgrade head
 uvicorn firstlight_api:app --host 127.0.0.1 --port 8788
 ```
 
