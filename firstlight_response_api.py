@@ -19,9 +19,8 @@ from sqlalchemy.orm import Session
 from firstlight_response_executor import ResponseApproval, ResponseExecutionError, ResponseLedger
 from integrations.response_actions import (
     ResponseIntegrationError,
-    isolate_defender_device,
+    execute_wazuh_response,
     preflight_live_response,
-    revoke_entra_user_sessions,
     live_response_enabled,
 )
 from satark_backend import Case, User, db_session, current_user, require_membership
@@ -104,12 +103,16 @@ def response_status(
 ):
     _case_access(db, user, tenant_id, case_id, {"owner", "responder", "analyst", "viewer"})
     configured = all(os.getenv(name, "").strip() for name in (
-        "MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"
+        "FIRSTLIGHT_WAZUH_MANAGER_API_URL",
+        "FIRSTLIGHT_WAZUH_MANAGER_USERNAME",
+        "FIRSTLIGHT_WAZUH_MANAGER_PASSWORD",
+        "FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS",
     ))
     return {
         "enabled": live_response_enabled(),
         "credentials_configured": configured,
-        "actions": ["defender.isolate_device", "entra.revoke_sessions"],
+        "provider": "Wazuh Active Response",
+        "actions": ["wazuh.block_ip", "wazuh.disable_account"],
         "execution_policy": "four-eyes approval, separate executor, exact target confirmation, at-most-once",
         "default_mode": "disabled",
     }
@@ -187,17 +190,13 @@ def execute_response(
                 raise HTTPException(503, str(exc)) from None
 
             def handler(item: ResponseApproval) -> dict[str, Any]:
-                if item.action == "defender.isolate_device":
-                    result = isolate_defender_device(
-                        item.target, confirmation=body.confirmation,
-                        isolation_type=str(item.payload["isolation_type"]), reason=item.reason,
-                    )
-                elif item.action == "entra.revoke_sessions":
-                    result = revoke_entra_user_sessions(
-                        item.target, confirmation=body.confirmation, reason=item.reason,
-                    )
-                else:
-                    raise ResponseIntegrationError("Action is not allowlisted for live response.")
+                result = execute_wazuh_response(
+                    item.action,
+                    item.target,
+                    item.payload,
+                    confirmation=body.confirmation,
+                    reason=item.reason,
+                )
                 return asdict(result)
 
             outcome = ledger.execute_approved(
