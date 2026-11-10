@@ -66,3 +66,15 @@ def test_http_is_only_allowed_for_localhost_lab(monkeypatch):
         actions._base_url()
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_API_URL", "http://127.0.0.1:55000")
     assert actions._base_url() == "http://127.0.0.1:55000"
+
+def test_block_ip_rejects_acknowledgement_for_different_agent(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(actions, "_token", lambda: "fake-jwt")
+    monkeypatch.setattr(actions, "_request", lambda *args, **kwargs: (
+        200, {"error": 0, "data": {"affected_items": ["002"], "failed_items": []}}
+    ))
+    with pytest.raises(actions.ResponseIntegrationError, match="mismatched"):
+        actions.execute_wazuh_response(
+            "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
+            confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
+        )
