@@ -1,66 +1,48 @@
 from __future__ import annotations
 
-from io import StringIO
 import json
-import sys
-from types import SimpleNamespace
-from unittest.mock import patch
 
 import scripts.firstlight_live_response as cli
 
 
-class TTYInput(StringIO):
-    def isatty(self):
-        return True
-
-
-def test_live_response_requires_second_opt_in(capsys):
-    assert cli.main(["--action", "isolate-device", "--target", "device-1", "--reason", "case FL-1"]) == 2
-    assert "No action performed" in capsys.readouterr().err
-
-
-def test_live_response_refuses_noninteractive_execution(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "live_response_enabled", lambda: True)
-    monkeypatch.setattr(sys, "stdin", StringIO("CONFIRM ISOLATE device-1\n"))
-    assert cli.main([
-        "--action", "isolate-device", "--target", "device-1", "--reason", "case FL-1", "--execute-live-action"
-    ]) == 2
-    assert "interactive terminal" in capsys.readouterr().err
-
-
-def test_wrong_confirmation_never_calls_provider(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "live_response_enabled", lambda: True)
-    monkeypatch.setattr(sys, "stdin", TTYInput("yes\n"))
-    with patch.object(cli, "isolate_defender_device") as action:
-        assert cli.main([
-            "--action", "isolate-device", "--target", "device-1", "--reason", "case FL-1", "--execute-live-action"
-        ]) == 2
-        action.assert_not_called()
-    assert "confirmation did not match" in capsys.readouterr().err
-
-
-def test_exact_confirmation_calls_only_explicit_target(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "live_response_enabled", lambda: True)
-    monkeypatch.setattr(sys, "stdin", TTYInput("CONFIRM REVOKE_SESSIONS analyst@example.com\n"))
-    expected = SimpleNamespace(
-        provider="Microsoft Entra ID",
-        action="revoke_sign_in_sessions",
-        target="analyst@example.com",
-        status="submitted",
-        detail="Provider accepted the request",
-    )
-    with patch.object(cli, "revoke_entra_user_sessions", return_value=expected) as action:
-        code = cli.main([
-            "--action", "revoke-user-sessions", "--target", "analyst@example.com",
-            "--reason", "case FL-1", "--execute-live-action"
-        ])
+def test_wazuh_response_cli_is_preview_only(capsys):
+    code = cli.main([
+        "--action", "block-ip",
+        "--agent-id", "001",
+        "--ip-address", "203.0.113.9",
+        "--reason", "case FL-1",
+    ])
     assert code == 0
-    action.assert_called_once_with(
-        "analyst@example.com",
-        confirmation="CONFIRM REVOKE_SESSIONS analyst@example.com",
-        reason="case FL-1",
-    )
-    captured = capsys.readouterr().out
-    output = json.loads(captured[captured.index("{"):])
-    assert output["status"] == "submitted"
-    assert "not proof of completion" in output["note"]
+    output = json.loads(capsys.readouterr().out)
+    assert output["provider"] == "Wazuh Active Response"
+    assert output["action"] == "wazuh.block_ip"
+    assert output["agent_id"] == "001"
+    assert output["ip_address"] == "203.0.113.9"
+    assert output["live_execution"] is False
+    assert "third executor" in output["execution_route"]
+
+
+def test_wazuh_response_cli_rejects_invalid_agent_and_payload(capsys):
+    assert cli.main([
+        "--action", "block-ip", "--agent-id", "not-an-agent",
+        "--ip-address", "203.0.113.9", "--reason", "case FL-1",
+    ]) == 2
+    assert "agent ID must be numeric" in capsys.readouterr().err
+
+    assert cli.main([
+        "--action", "block-ip", "--agent-id", "001",
+        "--ip-address", "not-an-ip", "--reason", "case FL-1",
+    ]) == 2
+    assert "valid IPv4" in capsys.readouterr().err
+
+
+def test_disable_account_preview_uses_local_account_payload(capsys):
+    code = cli.main([
+        "--action", "disable-account", "--agent-id", "001",
+        "--username", "lab-user", "--reason", "case FL-2",
+    ])
+    assert code == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["action"] == "wazuh.disable_account"
+    assert output["username"] == "lab-user"
+    assert output["live_execution"] is False
