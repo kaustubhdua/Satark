@@ -23,7 +23,7 @@ class ResponseExecutionError(RuntimeError):
     """Safe error for a rejected or unsafe response operation."""
 
 
-_ALLOWED_ACTIONS = {"defender.isolate_device", "entra.revoke_sessions"}
+_ALLOWED_ACTIONS = {"wazuh.block_ip", "wazuh.disable_account"}
 _HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -195,12 +195,12 @@ class ResponseLedger:
         if not isinstance(payload, Mapping):
             raise ResponseExecutionError("Action payload must be an object.")
         value = dict(payload)
-        if action == "defender.isolate_device":
-            if set(value) != {"isolation_type"} or value["isolation_type"] not in {"Full", "Selective", "UnManagedDevice"}:
-                raise ResponseExecutionError("Defender isolation payload must contain one supported isolation_type.")
-        elif action == "entra.revoke_sessions":
-            if value:
-                raise ResponseExecutionError("Entra session-revocation payload must be empty.")
+        if action == "wazuh.block_ip":
+            if set(value) != {"ip_address"} or not isinstance(value["ip_address"], str) or len(value["ip_address"]) > 64:
+                raise ResponseExecutionError("Wazuh IP block payload must contain one bounded ip_address.")
+        elif action == "wazuh.disable_account":
+            if set(value) != {"username"} or not isinstance(value["username"], str) or len(value["username"]) > 128:
+                raise ResponseExecutionError("Wazuh account-disable payload must contain one bounded username.")
         else:
             raise ResponseExecutionError("Action is not allowlisted for live execution.")
         try:
