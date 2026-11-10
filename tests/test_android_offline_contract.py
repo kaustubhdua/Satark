@@ -246,5 +246,13 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn(".setRequiresStorageNotLow(true)", source)
 
 
+    def test_clearing_local_dataset_also_clears_bundled_snapshot_marker(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        clear = source[source.index("private fun clearDataset"):source.index("private fun removeFolderAccess")]
+        self.assertIn('remove("bundled_snapshot_id")', clear)
+        self.assertIn("NO HISTORICAL SNAPSHOT INSTALLED", clear)
+        self.assertIn('actionButton("Clear local threat dataset")', source)
+        self.assertIn('.setTitle("Clear local threat dataset?")', source)
+
 if __name__ == "__main__":
     unittest.main()
