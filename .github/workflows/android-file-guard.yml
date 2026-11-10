@@ -80,7 +80,7 @@ jobs:
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.13.2"
+          gradle-version: "8.13"
       - name: Verify Android privacy and integration boundaries
         run: |
           ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
