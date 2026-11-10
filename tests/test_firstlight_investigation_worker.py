@@ -106,6 +106,20 @@ def test_worker_persists_optional_local_agent_results_without_replacing_determin
     db.close()
 
 
+def test_worker_keeps_deterministic_result_when_local_agents_fail(database, monkeypatch):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    monkeypatch.setenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "true")
+    monkeypatch.setattr("firstlight_investigation_worker.run_independent_agents",
+                        lambda _evidence: (_ for _ in ()).throw(RuntimeError("local Ollama unavailable")))
+    outcome = InvestigationJobWorker().run_once()
+    assert outcome["status"] == "succeeded"
+    db = backend.SessionLocal()
+    job = db.get(backend.InvestigationJob, job_id)
+    assert job.result["agent_analysis"]["mode"] == "agent_error"
+    assert job.result["investigation"] is not None
+    db.close()
+
+
 def test_worker_uses_normalized_wazuh_metadata_to_create_evidence_linked_findings(database):
     tenant_id, case_id, user_id, job_id = seed_job()
     root = Path(os.environ["SATARK_EVIDENCE_DIR"])
