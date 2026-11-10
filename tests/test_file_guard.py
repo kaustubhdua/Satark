@@ -40,11 +40,11 @@ class FileGuardTests(unittest.TestCase):
     def test_additional_static_file_signatures(self):
         cases = [
             (b"BM" + bytes(32), "photo.bmp", "BMP image"),
-            (b"II*\\x00" + bytes(32), "photo.tiff", "TIFF image"),
+            (b"II*\x00" + bytes(32), "photo.tiff", "TIFF image"),
             (b"RIFF" + bytes(4) + b"WAVE" + bytes(16), "audio.wav", "WAV audio"),
             (bytes(4) + b"ftypisom" + bytes(16), "clip.mp4", "ISO base media / MP4"),
-            (b"SQLite format 3\\x00" + bytes(16), "cache.sqlite3", "SQLite database"),
-            (b"\\x1f\\x8b" + bytes(16), "archive.gz", "GZIP archive"),
+            (b"SQLite format 3\x00" + bytes(16), "cache.sqlite3", "SQLite database"),
+            (b"\x1f\x8b" + bytes(16), "archive.gz", "GZIP archive"),
         ]
         for payload, filename, expected in cases:
             with self.subTest(filename=filename):
