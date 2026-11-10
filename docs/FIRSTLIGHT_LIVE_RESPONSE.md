@@ -2,14 +2,14 @@
 
 ## Current integration
 
-FIRSTLIGHT uses Wazuh as its only endpoint-response provider. There is no Microsoft Defender or Entra integration, SDK, tenant configuration, or runtime dependency.
+FIRSTLIGHT uses Wazuh 4.14.x as its only endpoint-response provider. The lab bootstrap pins 4.14.10. There is no Microsoft Defender or Entra integration, SDK, tenant configuration, or runtime dependency.
 
 The authenticated case workspace is backed by the durable SQLite response ledger. It supports two fixed Wazuh built-in Active Response commands:
 
 - `wazuh.block_ip` → Wazuh `firewall-drop`, with one validated IPv4 address.
 - `wazuh.disable_account` → Wazuh `disable-account`, with one validated local account name.
 
-The API never accepts arbitrary shell commands, script names, command arguments, agent discovery, or all-agent execution. It submits only to a single explicitly allowlisted Wazuh agent ID.
+The API never accepts arbitrary shell commands, script names, command arguments, agent discovery, or all-agent execution. Before submission, the adapter reads `/manager/info` and refuses to send commands unless the Manager reports version 4.14.x. Wazuh 5.x is not supported by this adapter because its Active Response architecture removed the 4.x `PUT /active-response` endpoint. It submits only to a single explicitly allowlisted Wazuh agent ID.
 
 ## Required server configuration
 
@@ -45,5 +45,5 @@ Use disposable lab endpoints. Configure and test Wazuh's own Active Response com
 Automated tests use a mocked Wazuh Manager API and validate request shape, fixed command allowlisting, agent scoping, TLS policy, explicit confirmation and the durable four-eyes ledger. These tests do not prove that a real lab manager accepted or executed a command. Record real lab API responses, endpoint-side state, recovery behavior and audit evidence before enabling live response outside a disposable environment.
 
 Official references:
-- Wazuh Server API — Active Response: https://documentation.wazuh.com/current/user-manual/api/reference.html
+- Wazuh Server API — Active Response: https://documentation.wazuh.com/4.14/user-manual/api/reference.html
 - Wazuh Active Response module: https://github.com/wazuh/wazuh/tree/master/src/active-response
