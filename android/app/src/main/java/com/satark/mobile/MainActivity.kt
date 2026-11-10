@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var results: TextView
     private lateinit var datasetSource: EditText
     private lateinit var datasetStatus: TextView
+    private lateinit var lastScanStatus: TextView
     private var pendingExportJson: String? = null
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
@@ -110,6 +111,10 @@ class MainActivity : Activity() {
             }
         }
         content.addView(panel(status))
+
+        content.addView(sectionTitle("LAST LOCAL SCAN"))
+        lastScanStatus = text("No scan history recorded on this device yet.", 12f, 0xFFAFBCD2.toInt(), false)
+        content.addView(panel(lastScanStatus))
 
         content.addView(sectionTitle("PROTECT YOUR FILES"))
         content.addView(actionButton("Scan a file", { chooseFile() }, true))
@@ -319,10 +324,14 @@ class MainActivity : Activity() {
                 val json = Python.getInstance().getModule("android_bridge")
                     .callAttr("scan_history", filesDir.absolutePath).toString()
                 val array = org.json.JSONArray(json)
-                val lines = (0 until array.length()).map { index ->
+                val lines = (0 until minOf(array.length(), 20)).map { index ->
                     val item = array.getJSONObject(index)
+                    val evidence = item.optJSONObject("evidence_report")
+                    val signals = item.optJSONArray("signals")?.toString(2).orEmpty()
+                    val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
-                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256")
+                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
+                        "\nSignals:\n" + signals + "\nSpecialist evidence:\n" + trace
                 }
                 mainHandler.post {
                     results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\n\n")
@@ -337,12 +346,20 @@ class MainActivity : Activity() {
     private fun refreshDatasetStats() {
         executor.execute {
             try {
-                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
-                    .callAttr("scan_stats", filesDir.absolutePath).toString())
+                val bridge = Python.getInstance().getModule("android_bridge")
+                val stats = JSONObject(bridge.callAttr("scan_stats", filesDir.absolutePath).toString())
+                val history = org.json.JSONArray(bridge.callAttr("scan_history", filesDir.absolutePath).toString())
+                val latest = if (history.length() > 0) history.getJSONObject(0) else null
                 mainHandler.post {
                     datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                         stats.optInt("benign") + " BENIGN"
+                    lastScanStatus.text = if (latest == null) {
+                        "No scan history recorded on this device yet."
+                    } else {
+                        latest.optString("scanned_at") + " · " + latest.optString("filename") +
+                            " · " + latest.optString("verdict") + " · SHA-256 " + latest.optString("sha256")
+                    }
                 }
             } catch (_: Exception) {
                 mainHandler.post { datasetStatus.text = "HISTORICAL DATASET STATUS UNAVAILABLE" }
