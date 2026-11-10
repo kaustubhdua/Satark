@@ -47,6 +47,8 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertEqual(scanned["report_schema"], "satark.file-guard.evidence/v1")
             self.assertTrue(verify_evidence_report(scanned))
             self.assertEqual(scanned["file"]["sha256"], digest)
+            self.assertEqual(scanned["snapshot"]["total"], 1)
+            self.assertEqual(scanned["snapshot"]["malicious"], 1)
             self.assertFalse(scanned["processing"]["semantic_content_extracted"])
 
             history = json.loads(android_bridge.scan_history(tmp))
