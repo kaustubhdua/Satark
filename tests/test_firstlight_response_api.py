@@ -66,6 +66,7 @@ def response_app(monkeypatch, tmp_path):
     app.dependency_overrides.clear()
     backend.Base.metadata.drop_all(engine)
     engine.dispose()
+    backend.SessionLocal.configure(bind=backend.engine)
 
 
 def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(response_app, monkeypatch):
