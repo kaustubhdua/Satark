@@ -1,56 +1,57 @@
-# FIRSTLIGHT guarded response executor
-
-The response executor is integrated into the authenticated FIRSTLIGHT API and persistent case workspace. It is disabled by default. It is not an autonomous containment agent.
+# FIRSTLIGHT guarded Wazuh response executor
 
 ## Supported actions
 
-- `defender.isolate_device` — Microsoft Defender for Endpoint device isolation.
-- `entra.revoke_sessions` — Microsoft Entra ID session revocation.
+The current implementation uses Wazuh Manager API Active Response only:
 
-No shell execution, arbitrary URL, network firewall rule, target discovery, or action outside this allowlist is accepted.
+- `wazuh.block_ip` — invokes the fixed Wazuh 4.x built-in `firewall-drop` command with one validated IPv4 address.
+- `wazuh.disable_account` — invokes the fixed Wazuh 4.x built-in `disable-account` command with one validated local account name.
+
+There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, custom script names, all-agent broadcasts and free-form command arguments are not supported.
 
 ## Approval lifecycle
 
-1. An owner, responder or analyst creates a request bound to tenant, case, action, exact target, reason, restricted payload, idempotency key and expiry.
-2. A different owner/responder approves or denies it (four-eyes control).
-3. A third owner/responder executes it. The server rechecks case membership, verifies approval state, requires the exact target confirmation, and checks the server-side feature flag and Microsoft configuration before claiming execution.
-4. The ledger commits the one-time execution claim before making the provider request. Replays are rejected.
-5. Provider submission is stored as `submitted`, not `verified`. An uncertain outcome becomes `unknown`; the system never retries it automatically.
-6. A fourth, distinct operator checks the provider console and records an independent attestation with the provider action/audit reference.
+1. A tenant member requests an action bound to one case, numeric Wazuh agent ID, validated action payload, reason, idempotency key and expiry.
+2. A different owner/responder approves or denies the request.
+3. A third operator executes the approved action after re-checking membership, action/agent allowlists and exact confirmation.
+4. A separate operator verifies the endpoint-side state and records the Wazuh task/log reference and result.
+5. The durable SQLite ledger records each transition in a hash-chained append-only audit sequence.
 
-## API and UI
+The live-response feature flag is disabled by default. The API never chooses targets from AI output and never infers that an accepted API request means the endpoint is contained.
 
-The authenticated routes are mounted under `/api/firstlight/live-response`:
+## Required configuration
 
-- `GET /status?tenant_id=...&case_id=...`
-- `GET /approvals?tenant_id=...&case_id=...`
-- `POST /approvals`
-- `PATCH /approvals`
-- `POST /execute`
-- `POST /verify`
-- `GET /audit?tenant_id=...&case_id=...`
+- `SATARK_ENABLE_LIVE_RESPONSE=true` — only after a lab review.
+- `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private HTTPS Manager API URL.
+- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity.
+- `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional trusted private CA file.
+- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable-agent allowlist.
 
-The Next.js FIRSTLIGHT persistent case panel provides request, approve/deny, execute and independent-verification controls. The browser sends only case-bound action details; Microsoft credentials stay in the trusted API environment.
+The Manager API should be reachable only from the private FIRSTLIGHT API network. Do not expose port 55000 publicly. TLS verification is mandatory for network endpoints. HTTP is accepted only for explicit localhost tests.
 
-## Persistence and recovery
+## Failure and recovery behavior
 
-The append-only SQLite ledger is stored at `FIRSTLIGHT_RESPONSE_DB`. Local Compose mounts it under the shared `/data` volume at `/data/firstlight-response.sqlite3`. Use a durable, access-controlled volume and include it in backup/restore procedures.
+- Approval bindings (tenant, case, action, target, reason and payload) are immutable.
+- Idempotency keys prevent duplicate requests.
+- Requester, approver, executor and verifier identities are separated.
+- An interrupted or ambiguous provider call becomes `unknown`; the executor never retries it automatically.
+- A provider submission is not endpoint verification.
+- The audit hash chain detects ordinary record mutation but is not tamper-proof against a privileged host administrator. Export/anchor audit records independently for stronger evidence integrity.
 
-On API startup, any record left in `executing` is changed to `unknown` and a recovery event is appended. This is deliberate: the provider may have acted before the process crashed. Reconcile it with the provider before taking any further action.
+## Lab acceptance
 
-The audit chain detects ordinary edits/reordering. It is not an external timestamp, hardware signature, or protection from a privileged administrator who can rewrite the database file. Export and independently anchor audit digests for stronger tamper evidence.
+Before enabling response in a real environment, test with a disposable enrolled agent:
 
-## Configuration
+- Wazuh Manager API TLS, authentication and least-privilege role.
+- Agent ID allowlist enforcement and target scoping.
+- `firewall-drop` action and reversal on the target operating system.
+- `disable-account` behavior and account recovery on supported Linux/macOS agents; this action does not terminate existing sessions.
+- Manager/agent logs, audit references, API timeout and ambiguous-outcome recovery.
+- A complete case request → approval → third-party execution → independent verification workflow.
 
-Keep these values only in the private API secret manager:
+Automated tests mock the Wazuh API. They are not proof of live endpoint execution.
 
-- `SATARK_ENABLE_LIVE_RESPONSE=true` (otherwise execution is blocked)
-- `MICROSOFT_TENANT_ID`
-- `MICROSOFT_CLIENT_ID`
-- `MICROSOFT_CLIENT_SECRET`
-
-Use least-privilege Microsoft application permissions and admin consent. Defender isolation requires the appropriate Defender machine-isolation permission; Entra session revocation requires the corresponding Graph permission. Confirm the current vendor permission names and tenant policy before enabling.
-
-## Safety boundary
-
-No real provider action was performed by the repository tests. Tests use a mocked handler to verify authorization, four-eyes approval, distinct executor/verifier, exact target confirmation, idempotency, persistence and audit integrity. Enable this feature only in an authorized test tenant with a disposable endpoint/account and a documented unisolation/session-recovery plan.
+References:
+- https://documentation.wazuh.com/current/user-manual/api/reference.html
+- https://documentation.wazuh.com/current/user-manual/capabilities/active-response/default-active-response-scripts.html
+- https://documentation.wazuh.com/current/user-manual/capabilities/active-response/index.html
