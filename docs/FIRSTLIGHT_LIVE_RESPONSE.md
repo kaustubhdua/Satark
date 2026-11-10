@@ -22,7 +22,7 @@ Set these only in the trusted FIRSTLIGHT API runtime:
 - `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — comma-separated numeric IDs of disposable lab agents only.
 - `FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP=true` — accepted only for localhost development; never use it for a network endpoint.
 
-The response identity must have only the Wazuh API permissions needed to submit Active Response. Keep the API private and do not publish port 55000 to the public internet.
+The response identity must have only the Wazuh API permissions needed to submit Active Response. The disable-account action locks a local account on supported Linux/macOS agents; it does not terminate existing sessions and must never target root. Keep the API private and do not publish port 55000 to the public internet.
 
 ## Human controls
 
