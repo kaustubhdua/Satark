@@ -176,7 +176,7 @@ class MainActivity : Activity() {
         intelligencePanel.addView(datasetStatus)
         intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifests") { chooseDataset() })
         intelligencePanel.addView(actionButton("View dataset coverage") { showDatasetStats() })
-        intelligencePanel.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
+        intelligencePanel.addView(actionButton("Clear local threat dataset") { confirmClearDataset() })
         intelligencePanel.addView(actionButton("Restore bundled EMBER2024 APK starter snapshot") { restoreBundledSnapshot() })
         content.addView(intelligencePanel, panelParams())
 
@@ -767,8 +767,8 @@ class MainActivity : Activity() {
 
     private fun confirmClearDataset() {
         AlertDialog.Builder(this)
-            .setTitle("Clear imported threat dataset?")
-            .setMessage("This removes locally imported SHA-256 indicators. It does not delete scan history or any original files.")
+            .setTitle("Clear local threat dataset?")
+            .setMessage("This removes bundled and imported local SHA-256 indicators. It does not delete scan history or any original files.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Clear dataset") { _, _ -> clearDataset() }
             .show()
@@ -779,8 +779,9 @@ class MainActivity : Activity() {
             try {
                 Python.getInstance().getModule("android_bridge")
                     .callAttr("clear_intelligence", filesDir.absolutePath)
+                prefs.edit().remove("bundled_snapshot_id").apply()
                 mainHandler.post {
-                    datasetStatus.text = "HISTORICAL DATASET · 0 HASHES · IMPORT A SNAPSHOT TO ENABLE HASH MATCHING"
+                    datasetStatus.text = "NO HISTORICAL SNAPSHOT INSTALLED · 0 HASHES · IMPORT A SNAPSHOT TO ENABLE HASH MATCHING"
                     status.text = "LOCAL THREAT DATASET CLEARED"
                     results.text = "Imported hash indicators were removed. The scanner now has no historical hash coverage until a new snapshot is imported."
                 }
