@@ -684,6 +684,10 @@ class MainActivity : Activity() {
     @Deprecated("Activity result API kept minimal for platform compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_EXPORT && resultCode != RESULT_OK) {
+            pendingExportJson = null
+            return
+        }
         if (resultCode != RESULT_OK || data == null) return
         when (requestCode) {
             REQUEST_FILES -> {
