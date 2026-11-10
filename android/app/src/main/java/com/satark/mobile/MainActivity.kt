@@ -162,6 +162,7 @@ class MainActivity : Activity() {
         historyPanel.addView(sectionTitle("Scan history"))
         historyPanel.addView(text("Review previous local scans and their saved evidence reports.", 13f, 0xFFB8C2D8.toInt(), false))
         historyPanel.addView(primaryActionButton("View scan history and evidence") { showHistory() })
+        historyPanel.addView(actionButton("Verify local evidence chain") { verifyAuditChain() })
         historyPanel.addView(actionButton("Clear local scan history") { clearHistory() })
         content.addView(historyPanel, panelParams())
 
@@ -470,6 +471,7 @@ class MainActivity : Activity() {
                 val lines = (0 until array.length()).map { index ->
                     val item = array.getJSONObject(index)
                     val report = item.optJSONObject("report")
+                    val audit = report?.optJSONObject("audit_chain")
                     val assessment = report?.optJSONObject("assessment")
                     val evidence = report?.optJSONObject("evidence")
                     val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
@@ -478,6 +480,7 @@ class MainActivity : Activity() {
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
                         " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
                         "\nEvidence report: " + report?.optString("report_sha256").orEmpty() +
+                        "\nAudit chain: #" + audit?.optInt("sequence") + " · " + audit?.optString("entry_sha256").orEmpty() +
                         "\nAssessment: " + assessment?.optString("interpretation").orEmpty() +
                         "\nSnapshot: " + snapshot?.optInt("total") + " hashes · " +
                         snapshot?.optInt("malicious") + " malicious · " + snapshot?.optInt("benign") + " benign" +
@@ -490,6 +493,38 @@ class MainActivity : Activity() {
                 }
             } catch (error: Exception) {
                 mainHandler.post { status.text = "HISTORY UNAVAILABLE · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
+    private fun verifyAuditChain() {
+        executor.execute {
+            try {
+                val payload = JSONObject(
+                    Python.getInstance().getModule("android_bridge")
+                        .callAttr("verify_scan_audit", filesDir.absolutePath).toString()
+                )
+                val valid = payload.optBoolean("valid")
+                val entries = payload.optInt("entries")
+                val reports = payload.optInt("verified_reports")
+                val head = payload.optString("head_sha256")
+                val reason = payload.optString("reason")
+                mainHandler.post {
+                    results.text = if (valid) {
+                        "LOCAL AUDIT CHAIN VERIFIED\nEntries: " + entries +
+                            " · Evidence reports verified: " + reports +
+                            "\nCurrent chain head: " + head +
+                            "\n\nThis detects edits or reordering within the retained local chain. It is not a digital signature or remote proof of authenticity."
+                    } else {
+                        "LOCAL AUDIT CHAIN VERIFICATION FAILED\nFailed sequence: " +
+                            payload.optInt("failed_sequence") + "\nReason: " + reason +
+                            "\n\nPreserve this database and investigate before clearing history."
+                    }
+                    status.text = if (valid) "LOCAL EVIDENCE CHAIN INTACT · " + entries + " RECORD(S)"
+                        else "WARNING · LOCAL EVIDENCE CHAIN INTEGRITY FAILURE"
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "AUDIT VERIFICATION UNAVAILABLE · " + error.javaClass.simpleName }
             }
         }
     }
