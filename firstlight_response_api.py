@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from firstlight_response_executor import ResponseApproval, ResponseExecutionError, ResponseLedger
 from integrations.response_actions import (
     ResponseIntegrationError,
+    available_response_actions,
     execute_wazuh_response,
     preflight_live_response,
     live_response_enabled,
@@ -102,17 +103,12 @@ def response_status(
     db: Session = Depends(db_session),
 ):
     _case_access(db, user, tenant_id, case_id, {"owner", "responder", "analyst", "viewer"})
-    configured = all(os.getenv(name, "").strip() for name in (
-        "FIRSTLIGHT_WAZUH_MANAGER_API_URL",
-        "FIRSTLIGHT_WAZUH_MANAGER_USERNAME",
-        "FIRSTLIGHT_WAZUH_MANAGER_PASSWORD",
-        "FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS",
-    ))
+    actions = available_response_actions()
     return {
         "enabled": live_response_enabled(),
-        "credentials_configured": configured,
+        "credentials_configured": bool(actions),
         "provider": "Wazuh Active Response",
-        "actions": ["wazuh.block_ip", "wazuh.disable_account"],
+        "actions": actions,
         "execution_policy": "four-eyes approval, separate executor, exact target confirmation, at-most-once",
         "default_mode": "disabled",
     }
@@ -138,6 +134,8 @@ def request_response_approval(
     db: Session = Depends(db_session),
 ):
     _case_access(db, user, body.tenant_id, body.case_id, {"owner", "responder", "analyst"})
+    if body.action not in available_response_actions():
+        raise HTTPException(409, "The requested Wazuh response action is not configured for an allowlisted lab agent.")
     with _ledger_scope() as ledger:
         try:
             item = ledger.create_approval(
