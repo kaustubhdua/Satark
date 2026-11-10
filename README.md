@@ -113,7 +113,7 @@ WhatsApp / Telegram / Downloads / other apps
 - **SQLite:** local historical indicators and scan/evidence history.
 - **Chaquopy:** embeds the Python runtime in the Android app.
 
-The mobile scanner does not need the repository's optional web backend. Supabase is not a runtime dependency. The Android app has no Internet permission and does not call hosted AI, malware reputation or threat-intelligence APIs.
+The mobile scanner does not need the repository's optional web backend. Supabase is not a runtime dependency. The Android app has no Internet permission and does not call hosted AI, malware reputation or threat-intelligence APIs. The optional legacy web workspace can use a locally hosted Ollama instance for its separate text-analysis features; a browser or server hosted on Vercel cannot reach an Ollama process running on your own computer. Ollama is not used by the Android File Guard.
 
 ## Build and run the Android app
 
