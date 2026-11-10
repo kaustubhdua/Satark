@@ -1,5 +1,7 @@
 # Release readiness and deployment runbook
 
+> Scope: this runbook covers the optional legacy web/FIRSTLIGHT deployment. It is not a gate for local Android file scanning. The primary Android File Guard is Supabase-free and has its own acceptance checklist in [LOCAL_OFFLINE_ACCEPTANCE.md](LOCAL_OFFLINE_ACCEPTANCE.md).
+
 This document separates a working hackathon demonstration from a service that is safe for public or sensitive use. Passing CI is necessary, but it is not proof of production readiness.
 
 ## Current release posture
@@ -24,7 +26,7 @@ This document separates a working hackathon demonstration from a service that is
 10. Verify the deployed UI, not only local CI: home, FIRSTLIGHT, every scanner mode, session history, PDF export, mobile layout, refresh/restart behavior, logs and resource use.
 11. Confirm the privacy notice, acceptable-use language, contact/security-reporting route, data retention/deletion behavior, incident response owner and rollback procedure are current.
 12. Record the result, unresolved risks, owner and go/no-go decision. Do not mark a deployment verified unless you actually tested the deployed URL and revision.
-13. Before adding any new Supabase `public` table, explicitly review Data API exposure and grants in light of Supabase's 2026-10-30 change to default exposure behavior. Expose only tables that need PostgREST/GraphQL access, enable and test RLS, and keep server-only tables (including SATARK ingestion checkpoints) unexposed to `anon`/`authenticated`.
+13. Keep the legacy web backend self-hosted and independent: use the SATARK-owned SQLAlchemy/Alembic persistence described in [SELF_HOSTED_BACKEND.md](SELF_HOSTED_BACKEND.md). Do not reintroduce a hosted database SDK, hosted auth service, remote object-storage dependency or cloud API into the Android File Guard runtime.
 
 ## Security and privacy boundaries
 
