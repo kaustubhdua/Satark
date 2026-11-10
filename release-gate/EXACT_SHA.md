@@ -22,3 +22,8 @@ The legacy direct-response CLI is preview-only. Real actions are available only 
 ## PostgreSQL role hardening
 
 The dedicated backup role is NOINHERIT and BYPASSRLS. It has explicit read privileges for backups and membership only for controlled restore ownership transfer; the API runtime role does not receive BYPASSRLS or backup credentials.
+
+
+## Agent allowlist intersection
+
+The account-disable action is advertised only when its OS-specific agent IDs intersect the general live-response allowlist. The API rechecks both lists at execution time.
