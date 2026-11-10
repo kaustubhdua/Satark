@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var results: TextView
     private lateinit var datasetSource: EditText
     private lateinit var datasetStatus: TextView
+    private var pendingExportJson: String? = null
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
@@ -148,6 +149,7 @@ class MainActivity : Activity() {
         )
         content.addView(panel(results))
         content.addView(actionButton("View local scan history", { showHistory() }))
+        content.addView(actionButton("Export detailed evidence report (JSON)", { exportEvidenceReport() }))
         content.addView(actionButton("Clear local scan history", { clearHistory() }))
 
         content.addView(sectionTitle("PRIVACY BY DESIGN"))
@@ -217,6 +219,27 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { setMargins(0, dp(4), 0, dp(7)) }
         }
+
+    private fun exportEvidenceReport() {
+        status.text = "PREPARING LOCAL EVIDENCE REPORT…"
+        executor.execute {
+            try {
+                val report = Python.getInstance().getModule("android_bridge")
+                    .callAttr("export_scan_report", filesDir.absolutePath).toString()
+                mainHandler.post {
+                    pendingExportJson = report
+                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_TITLE, "satark-evidence-report-" + System.currentTimeMillis() + ".json")
+                    }
+                    startActivityForResult(intent, REQUEST_EXPORT)
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "REPORT PREPARATION FAILED · " + error.javaClass.simpleName }
+            }
+        }
+    }
 
     private fun chooseFile() {
         val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -463,6 +486,21 @@ class MainActivity : Activity() {
                     status.text = "Folder access could not be persisted. Please choose the folder again."
                 }
             }
+            REQUEST_EXPORT -> {
+                val destination = data.data ?: return
+                val report = pendingExportJson ?: return
+                executor.execute {
+                    try {
+                        contentResolver.openOutputStream(destination, "wt")?.use { output ->
+                            output.write(report.toByteArray(Charsets.UTF_8))
+                        } ?: throw IllegalStateException("Android could not open the report destination")
+                        pendingExportJson = null
+                        mainHandler.post { status.text = "EVIDENCE REPORT EXPORTED · METADATA ONLY · LOCAL" }
+                    } catch (error: Exception) {
+                        mainHandler.post { status.text = "REPORT EXPORT FAILED · " + error.javaClass.simpleName }
+                    }
+                }
+            }
         }
     }
 
@@ -601,6 +639,7 @@ class MainActivity : Activity() {
         private const val REQUEST_FOLDER = 402
         private const val REQUEST_DATASET = 403
         private const val REQUEST_NOTIFICATIONS = 404
+        private const val REQUEST_EXPORT = 405
         private const val KEY_TREE_URI = "granted_tree_uri"
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"
