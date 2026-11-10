@@ -41,12 +41,18 @@ class MainActivity : Activity() {
     private lateinit var datasetSource: EditText
     private lateinit var datasetStatus: TextView
     private var pendingExportJson: String? = null
+    private var starterSnapshotError: String? = null
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ScanTempFiles.cleanup(cacheDir)
+        try {
+            installBundledSnapshotIfMissing()
+        } catch (error: Exception) {
+            starterSnapshotError = error.javaClass.simpleName
+        }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
@@ -154,9 +160,10 @@ class MainActivity : Activity() {
         ).apply { topMargin = dp(8) })
         datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
         intelligencePanel.addView(datasetStatus)
-        intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifest") { chooseDataset() })
+        intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifests") { chooseDataset() })
         intelligencePanel.addView(actionButton("View dataset coverage") { showDatasetStats() })
         intelligencePanel.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
+        intelligencePanel.addView(actionButton("Restore bundled EMBER2024 APK starter snapshot") { restoreBundledSnapshot() })
         content.addView(intelligencePanel, panelParams())
 
         val historyPanel = panel()
@@ -571,15 +578,111 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun installBundledSnapshotIfMissing(): Boolean {
+        val destination = File(filesDir, "file_guard_intelligence.sqlite3")
+        if (destination.exists()) return false
+        val metadataText = try {
+            assets.open("ember2024-starter.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (_: java.io.FileNotFoundException) {
+            return false
+        }
+        val metadata = JSONObject(metadataText)
+        val pinnedRevision = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
+        val expectedSha256 = metadata.optString("database_sha256").lowercase()
+        val expectedBytes = metadata.optLong("database_bytes", -1L)
+        if (metadata.optString("dataset") != "EMBER2024" ||
+            metadata.optString("dataset_revision") != pinnedRevision ||
+            metadata.optBoolean("contains_file_binaries", true) ||
+            !metadata.optBoolean("contains_only_sha256_labels_and_metadata", false) ||
+            !expectedSha256.matches(Regex("^[a-f0-9]{64}$")) ||
+            expectedBytes <= 0L
+        ) {
+            throw IllegalStateException("Bundled historical snapshot metadata is invalid")
+        }
+        val temporary = File(filesDir, "file_guard_intelligence.sqlite3.installing")
+        temporary.delete()
+        val digest = MessageDigest.getInstance("SHA-256")
+        var copiedBytes = 0L
+        assets.open("ember2024-starter.sqlite3").use { input ->
+            temporary.outputStream().use { output ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    digest.update(buffer, 0, count)
+                    output.write(buffer, 0, count)
+                    copiedBytes += count
+                }
+            }
+        }
+        val actualSha256 = digest.digest().joinToString("") {
+            "%02x".format(it.toInt() and 0xff)
+        }
+        if (copiedBytes != expectedBytes || actualSha256 != expectedSha256) {
+            temporary.delete()
+            throw IllegalStateException("Bundled historical snapshot checksum mismatch")
+        }
+        if (!temporary.renameTo(destination)) {
+            temporary.delete()
+            throw IllegalStateException("Could not install bundled historical snapshot")
+        }
+        prefs.edit().putString("bundled_snapshot_id", metadata.optString("source_id")).apply()
+        return true
+    }
+
+    private fun restoreBundledSnapshot() {
+        AlertDialog.Builder(this)
+            .setTitle("Restore historical starter snapshot?")
+            .setMessage("This replaces the local threat-intelligence database with the APK training snapshot bundled in this build. Additional imported datasets will be removed. Scan history is preserved.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Restore") { _, _ ->
+                stopBackgroundScans()
+                executor.execute {
+                    try {
+                        val database = File(filesDir, "file_guard_intelligence.sqlite3")
+                        if (database.exists() && !database.delete()) {
+                            throw IllegalStateException("Could not replace the local intelligence database")
+                        }
+                        prefs.edit().remove("bundled_snapshot_id").apply()
+                        if (!installBundledSnapshotIfMissing()) {
+                            throw IllegalStateException("This build does not contain the bundled starter snapshot")
+                        }
+                        val stats = JSONObject(
+                            Python.getInstance().getModule("android_bridge")
+                                .callAttr("scan_stats", filesDir.absolutePath).toString()
+                        )
+                        mainHandler.post {
+                            datasetStatus.text = "BUNDLED EMBER2024 RESTORED · " +
+                                stats.optInt("total") + " HASHES · " +
+                                stats.optInt("malicious") + " MALICIOUS · " +
+                                stats.optInt("benign") + " BENIGN"
+                            status.text = "HISTORICAL OFFLINE STARTER SNAPSHOT RESTORED"
+                        }
+                    } catch (error: Exception) {
+                        mainHandler.post {
+                            status.text = "SNAPSHOT RESTORE FAILED · " + error.javaClass.simpleName
+                        }
+                    }
+                }
+            }
+            .show()
+    }
+
     private fun refreshDatasetStats() {
         executor.execute {
             try {
                 val stats = JSONObject(Python.getInstance().getModule("android_bridge")
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 mainHandler.post {
-                    datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
+                    val bundledSource = prefs.getString("bundled_snapshot_id", null)
+                    val prefix = if (bundledSource.isNullOrBlank()) "LOCAL HISTORICAL INTELLIGENCE"
+                        else "BUNDLED EMBER2024 STARTER · " + bundledSource
+                    datasetStatus.text = prefix + " · " + stats.optInt("total") +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                         stats.optInt("benign") + " BENIGN"
+                    if (starterSnapshotError != null) {
+                        status.text = "STARTER SNAPSHOT INSTALL FAILED · " + starterSnapshotError
+                    }
                 }
             } catch (_: Exception) {
                 mainHandler.post { datasetStatus.text = "HISTORICAL DATASET STATUS UNAVAILABLE" }
