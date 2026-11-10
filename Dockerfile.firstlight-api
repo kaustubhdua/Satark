@@ -10,6 +10,9 @@ COPY firstlight_engine.py ./firstlight_engine.py
 COPY firstlight_rules.py ./firstlight_rules.py
 COPY firstlight_agents.py ./firstlight_agents.py
 COPY firstlight_wazuh.py ./firstlight_wazuh.py
+COPY firstlight_response_executor.py ./firstlight_response_executor.py
+COPY firstlight_response_api.py ./firstlight_response_api.py
+COPY integrations ./integrations
 COPY ai_provider.py ./ai_provider.py
 COPY firstlight_api.py ./firstlight_api.py
 COPY satark_backend.py ./satark_backend.py
