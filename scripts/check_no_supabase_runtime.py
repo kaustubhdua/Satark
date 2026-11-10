@@ -48,6 +48,8 @@ def source_files():
 
 def main() -> int:
     violations = []
+    if (ROOT / "supabase").exists():
+        violations.append("supabase/: obsolete Supabase CLI configuration and migrations must not ship")
     for path in source_files():
         try:
             content = path.read_text(encoding="utf-8")
