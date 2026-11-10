@@ -99,6 +99,31 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_android_scan_path_streams_from_bounded_temporary_files(self):
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
+        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
+        engine = (ANDROID / "app/src/main/python/file_guard/engine.py").read_text(encoding="utf-8")
+
+        self.assertIn("copyUriToTemp(uri)", activity)
+        self.assertIn("scan_shared_file_path", activity)
+        self.assertIn("temp.delete()", activity)
+        self.assertIn("copyUriToTemp(documentUri)", worker)
+        self.assertIn("scan_shared_file_path", worker)
+        self.assertIn("tempFile.delete()", worker)
+        self.assertIn("def scan_shared_file_path", bridge)
+        self.assertIn("def scan_path(", engine)
+        self.assertIn("digest.update(chunk)", engine)
+        self.assertIn("header.extend(chunk[:4096 - len(header)])", engine)
+
+    def test_ember_import_requires_checksum_verified_manifest(self):
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
+        self.assertIn("EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST", activity)
+        self.assertIn("expected_sha256", bridge)
+        self.assertIn("actual != expected", bridge)
+        self.assertIn("checksum_verified", bridge)
+
     def test_periodic_scans_defer_when_battery_or_storage_is_low(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn(".setRequiresBatteryNotLow(true)", source)
