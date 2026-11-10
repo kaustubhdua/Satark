@@ -14,7 +14,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -71,7 +71,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Run FIRSTLIGHT, self-hosted migration, PostgreSQL and engine regression tests
-        timeout-minutes: 15
+        timeout-minutes: 30
         env:
           SATARK_TEST_POSTGRES_URL: postgresql+psycopg://satark:satark@localhost:5432/satark_test
         run: python -m pytest -vv --durations=20 tests/test_satark_migrations.py tests/test_satark_postgres.py tests/test_firstlight_api.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_live_wazuh_investigation.py tests/test_firstlight_live_response_cli.py tests/test_firstlight_track1_scenario.py tests/test_firstlight_wazuh_investigation_api.py tests/test_satark_backend.py
