@@ -94,7 +94,7 @@ For each snapshot imported into a device, the operator should retain the upstrea
 
 The Android app intentionally does not fetch a dataset itself. Dataset acquisition and conversion are explicit offline preparation tasks on a trusted workstation; transfer only the converted CSV and manifest to the phone. The app is empty until this step occurs.
 
-## Device memory/performance boundary
+## Streaming and device memory boundary
 
-The current Kotlin bridge uses a bounded in-memory byte array (64 MiB per file) before calling Python. That provides a simple bounded scan contract, but it means a 64 MiB file can temporarily require more memory than its file size due to buffers, byte-array copies and Python interop. For low-memory Android devices, measure peak resident memory and latency before increasing limits. A future streaming Chaquopy bridge must be proven with Android ContentResolver streams before replacing this path.
+The Android foreground and WorkManager paths copy an authorized `ContentResolver` URI into a bounded temporary file in app-private cache, then call Python `scan_path`. The Python scanner hashes in 1 MiB chunks and retains only the first 4 KiB for file-format identification and built-in header signatures. It does not retain the complete file in Python memory unless optional desktop YARA is explicitly configured; YARA is not enabled in the Android build. Temporary files are deleted after success or failure. The current limits are 64 MiB per file, 20 shared files per foreground event, 1,000 files and 512 MiB per folder-worker run. Measure peak PSS/RSS, latency and battery on physical low- and mid-range devices before increasing any limit.
 
