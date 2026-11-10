@@ -144,6 +144,22 @@ def _token() -> str:
     return token.strip()
 
 
+def _verify_manager_compatibility(token: str) -> str:
+    """The PUT /active-response adapter is intentionally pinned to Wazuh 4.14.x."""
+    status, payload = _request(
+        _base_url() + "/manager/info",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    items = payload.get("data", {}).get("affected_items", []) if isinstance(payload, dict) else []
+    version = items[0].get("version", "") if items and isinstance(items[0], dict) else ""
+    if status != 200 or not isinstance(version, str) or not re.fullmatch(r"v?4\\.14\\.\\d+", version):
+        raise ResponseIntegrationError(
+            "This Active Response adapter requires a verified Wazuh Manager 4.14.x version. "
+            "Wazuh 5.x uses a different Active Response workflow and is not supported by this adapter."
+        )
+    return version.removeprefix("v")
+
+
 def preflight_live_response(action: str, target: str, confirmation: str) -> None:
     """Check explicit opt-in, action allowlist, target allowlist and credentials."""
     expected = {
@@ -200,6 +216,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
         "wazuh.disable_account": ("disable-account", _validate_payload(action, payload)),
     }[action]
     token = _token()
+    manager_version = _verify_manager_compatibility(token)
     query = urllib.parse.urlencode({"agents_list": agent_id, "wait_for_complete": "true"})
     status, response = _request(
         _base_url() + "/active-response?" + query,
@@ -219,6 +236,6 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
         command,
         agent_id,
         "submitted",
-        "Wazuh accepted the command for the explicitly allowlisted agent. Independently verify the agent state; submission is not proof of containment.",
+        f"Wazuh Manager {manager_version} accepted the command for the explicitly allowlisted agent. Independently verify the agent state; submission is not proof of containment.",
         None,
     )
