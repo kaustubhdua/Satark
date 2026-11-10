@@ -89,7 +89,7 @@ FIRSTLIGHT can submit two fixed Wazuh built-in Active Response commands through 
 - `firewall-drop` for a validated IPv4 address.
 - `disable-account` for a validated local account name.
 
-Configure `FIRSTLIGHT_WAZUH_MANAGER_API_URL`, `FIRSTLIGHT_WAZUH_MANAGER_USERNAME`, `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD`, optional `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE`, and `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` in the private API environment. The response agent list is a separate explicit allowlist and must contain only disposable lab agent IDs. The account must be restricted to the minimum Wazuh API permission required to call Active Response. TLS verification is mandatory for network endpoints.
+Configure `FIRSTLIGHT_WAZUH_MANAGER_API_URL`, `FIRSTLIGHT_WAZUH_MANAGER_USERNAME`, `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD`, optional `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE`, and `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` in the private API environment. The response agent list is a separate explicit allowlist and must contain only disposable lab agent IDs. The disable-account action additionally requires FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS, a separate list of disposable Linux/macOS agents only; the executable is not available on Windows. The account must be restricted to the minimum Wazuh API permission required to call Active Response. TLS verification is mandatory for network endpoints.
 
 Live response remains disabled unless `SATARK_ENABLE_LIVE_RESPONSE=true` is set in the trusted API runtime. The UI/API requires a requester, a distinct approver, a third executor, an exact confirmation phrase, and an independent verification attestation. Do not enable this in a production environment before lab verification and a reviewed reversal procedure.
 
