@@ -145,6 +145,16 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('" NOT STARTED · LOCAL ONLY"', source)
         self.assertIn('"last_scan_not_started"', source)
 
+    def test_ember_import_requires_pinned_dataset_and_source_archive_provenance(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('manifest.optString("upstream_revision") != pinnedRevision', source)
+        self.assertIn('manifest.optString("collection_window") != "2023-09-24 through 2024-12-14"', source)
+        self.assertIn('manifest.optJSONObject("source_manifest")', source)
+        self.assertIn('sourceManifest.optString("dataset_revision") != pinnedRevision', source)
+        self.assertIn('sourceManifest.optString("sha256").matches', source)
+        self.assertIn('archive.optString("sha256").matches', source)
+        self.assertIn('exported_rows', source)
+
     def test_dataset_import_has_a_historical_snapshot_id_default(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('setText("EMBER2024-2024-12-14")', source)
