@@ -41,7 +41,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ember2024-snapshot-\${{ github.workflow }}-\${{ github.ref }}
+  group: ember2024-snapshot-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -58,17 +58,17 @@ jobs:
         run: |
           python scripts/download_ember2024.py \
             --output-dir data/ember2024 \
-            --split "\${{ inputs.split }}" \
-            --file-type "\${{ inputs.file_type }}" \
-            --max-download-gb "\${{ inputs.max_download_gb }}" \
-            --max-extracted-gb "\${{ inputs.max_extracted_gb }}"
+            --split "${{ inputs.split }}" \
+            --file-type "${{ inputs.file_type }}" \
+            --max-download-gb "${{ inputs.max_download_gb }}" \
+            --max-extracted-gb "${{ inputs.max_extracted_gb }}"
       - name: Convert labelled metadata to mobile-sized CSV parts
         run: |
           python scripts/import_ember2024.py \
             --input-dir data/ember2024 \
             --output-dir data/ember2024-csv \
-            --split "\${{ inputs.split }}" \
-            --file-type "\${{ inputs.file_type }}" \
+            --split "${{ inputs.split }}" \
+            --file-type "${{ inputs.file_type }}" \
             --rows-per-part 10000
       - name: Verify generated part checksums and label contract
         run: |
@@ -99,7 +99,7 @@ jobs:
       - name: Upload CSV snapshot and provenance manifests
         uses: actions/upload-artifact@v4
         with:
-          name: ember2024-\${{ inputs.split }}-\${{ inputs.file_type }}
+          name: ember2024-${{ inputs.split }}-${{ inputs.file_type }}
           path: |
             data/ember2024-csv/*.csv
             data/ember2024-csv/*_manifest.json
