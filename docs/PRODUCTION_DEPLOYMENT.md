@@ -62,9 +62,9 @@ docker compose -f docker-compose.production.yml --profile backup run --rm satark
   verify "/backups/satark-$STAMP.tar.gz"
 ~~~
 
-The backup-only service holds the privileged BYPASSRLS connection; the web/API process never receives that credential. The archive includes the configured SQL database and evidence objects. The FIRSTLIGHT response ledger is a separate SQLite database under the persistent data volume; include it in the same quiesced backup set and verify its audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
+The backup-only service holds the privileged BYPASSRLS connection; the web/API process never receives that credential. The archive includes the configured SQL database, private evidence objects, and the FIRSTLIGHT response ledger SQLite snapshot when it exists. Verify the response ledger audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
 
-For a restore drill, provision a separate host and empty database, restore the archive with scripts/satark_backup.py restore, restore the response ledger from the same snapshot, verify every evidence hash, check the audit chain, and run tenant-isolation plus case/report readback tests. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
+For a restore drill, provision a separate host and empty database/data volume, restore the archive with scripts/satark_backup.py restore, verify every evidence hash, check the response ledger audit chain, and run tenant-isolation plus case/report readback tests. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
 
 ## Release discipline
 
