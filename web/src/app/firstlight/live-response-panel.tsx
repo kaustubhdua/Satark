@@ -35,10 +35,10 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [chainValid, setChainValid] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'verified' | 'failed' | 'unknown'>('verified');
-  const [action, setAction] = useState('defender.isolate_device');
+  const [action, setAction] = useState('wazuh.block_ip');
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('');
-  const [isolationType, setIsolationType] = useState('Full');
+  const [responseValue, setResponseValue] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [verifyReference, setVerifyReference] = useState('');
   const [verifyDetail, setVerifyDetail] = useState('');
@@ -97,19 +97,19 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   }
 
   async function requestApproval() {
-    if (!target.trim() || reason.trim().length < 8) throw new Error('Enter an exact target and a reason of at least 8 characters.');
+    if (!target.trim() || !responseValue.trim() || reason.trim().length < 8) throw new Error('Enter an allowlisted Wazuh agent ID, an action value, and a reason of at least 8 characters.');
     const idempotency = globalThis.crypto?.randomUUID?.();
     if (!idempotency) throw new Error('A secure browser UUID generator is required for an idempotent request.');
     const response = await authenticatedFetch('/api/firstlight/live-response/approvals', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tenant_id: tenantId, case_id: caseId, action, target: target.trim(), reason: reason.trim(),
-        payload: action === 'defender.isolate_device' ? { isolation_type: isolationType } : {},
+        payload: action === 'wazuh.block_ip' ? { ip_address: responseValue.trim() } : { username: responseValue.trim() },
         idempotency_key: idempotency,
       }),
     });
     await readJson(response);
-    setTarget(''); setReason('');
+    setTarget(''); setResponseValue(''); setReason('');
     setNotice('Response request recorded. A different owner/responder must approve it. No provider action has run.');
   }
 
@@ -123,7 +123,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   }
 
   async function execute(approval: LiveApproval) {
-    const expected = (approval.action === 'defender.isolate_device' ? 'CONFIRM ISOLATE ' : 'CONFIRM REVOKE_SESSIONS ') + approval.target;
+    const expected = (approval.action === 'wazuh.block_ip' ? 'CONFIRM BLOCK_IP ' : 'CONFIRM DISABLE_ACCOUNT ') + approval.target;
     if (confirmation !== expected) throw new Error('Type the exact confirmation string shown for this target.');
     const response = await authenticatedFetch('/api/firstlight/live-response/execute', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   }
 
   async function verify(approval: LiveApproval) {
-    if (verifyReference.trim().length < 3 || verifyDetail.trim().length < 8) throw new Error('Enter the provider action/audit reference and describe the independent provider-console check.');
+    if (verifyReference.trim().length < 3 || verifyDetail.trim().length < 8) throw new Error('Enter the provider action/audit reference and describe the independent Wazuh agent-side check.');
     const response = await authenticatedFetch('/api/firstlight/live-response/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -150,27 +150,23 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
 
   return <section className="private-upload" aria-labelledby="firstlight-live-response-heading">
     <strong id="firstlight-live-response-heading">Guarded live response integrations</strong>
-    <p className="hint">Optional Microsoft Defender device isolation and Entra session revocation. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
+    <p className="hint">Optional Wazuh endpoint response using two fixed built-in commands. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
     <p className={enabled && configured ? 'success-message' : 'hint'} role="status">
       {enabled && configured ? 'Server feature flag enabled · credentials present' : 'Live response disabled or not configured · simulation and investigation remain available'}
     </p>
     {canRequest && <>
       <label className="field-label" htmlFor="live-response-action">Response action</label>
       <select id="live-response-action" value={action} disabled={busy} onChange={e=>setAction(e.target.value)}>
-        <option value="defender.isolate_device">Microsoft Defender · isolate device</option>
-        <option value="entra.revoke_sessions">Microsoft Entra · revoke user sessions</option>
+        <option value="wazuh.block_ip">Wazuh · block IPv4 address</option>
+        <option value="wazuh.disable_account">Wazuh · disable local account</option>
       </select>
-      <label className="field-label" htmlFor="live-response-target">{action === 'defender.isolate_device' ? 'Exact Defender machine ID' : 'Exact Entra user ID or UPN'}</label>
-      <input id="live-response-target" maxLength={256} value={target} onChange={e=>setTarget(e.target.value)} disabled={busy} placeholder={action === 'defender.isolate_device' ? 'Defender machine ID' : 'user@organization.example'} />
-      {action === 'defender.isolate_device' && <>
-        <label className="field-label" htmlFor="live-response-isolation-type">Isolation type</label>
-        <select id="live-response-isolation-type" value={isolationType} onChange={e=>setIsolationType(e.target.value)} disabled={busy}>
-          <option value="Full">Full</option><option value="Selective">Selective</option><option value="UnManagedDevice">Unmanaged device</option>
-        </select>
-      </>}
+      <label className="field-label" htmlFor="live-response-target">Exact Wazuh agent ID (must be on the server allowlist)</label>
+      <input id="live-response-target" maxLength={256} value={target} onChange={e=>setTarget(e.target.value)} disabled={busy} placeholder="001" />
+      <label className="field-label" htmlFor="live-response-value">{action === 'wazuh.block_ip' ? 'IPv4 address to block' : 'Local account name to disable'}</label>
+      <input id="live-response-value" maxLength={128} value={responseValue} onChange={e=>setResponseValue(e.target.value)} disabled={busy} placeholder={action === 'wazuh.block_ip' ? '203.0.113.10' : 'lab-user'} />
       <label className="field-label" htmlFor="live-response-reason">Case-specific rationale</label>
       <textarea id="live-response-reason" rows={2} maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy} placeholder="Explain the evidence and why this exact response is necessary." />
-      <button className="btn btn-secondary" type="button" disabled={busy || !target.trim() || reason.trim().length < 8} onClick={()=>void run(requestApproval)}>Request live-response approval</button>
+      <button className="btn btn-secondary" type="button" disabled={busy || !target.trim() || !responseValue.trim() || reason.trim().length < 8} onClick={()=>void run(requestApproval)}>Request live-response approval</button>
     </>}
     {rows.length === 0 ? <p className="empty-state">No live-response approvals for this case.</p> : <div className="case-notes-list">{rows.map(row=><article className="case-note" key={row.approval_id}>
       <p><strong>{row.action}</strong> · {row.status}</p>
@@ -181,7 +177,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>void run(()=>decide(row.approval_id,'denied'))}>Deny</button>
       </div>}
       {row.status === 'approved' && enabled && configured && row.requested_by !== userId && row.approved_by !== userId && canDecide && <>
-        <p className="hint">Type exactly: <code>{(row.action === 'defender.isolate_device' ? 'CONFIRM ISOLATE ' : 'CONFIRM REVOKE_SESSIONS ') + row.target}</code></p>
+        <p className="hint">Type exactly: <code>{(row.action === 'wazuh.block_ip' ? 'CONFIRM BLOCK_IP ' : 'CONFIRM DISABLE_ACCOUNT ') + row.target}</code></p>
         <label className="field-label" htmlFor={'live-confirm-'+row.approval_id}>Target confirmation</label>
         <input id={'live-confirm-'+row.approval_id} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={busy} />
         <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>void run(()=>execute(row))}>Execute approved action once</button>
@@ -194,7 +190,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
           <option value="verified">Verified</option><option value="failed">Failed</option><option value="unknown">Still unknown</option>
         </select>
         <label className="field-label" htmlFor={'live-verification-'+row.approval_id}>Independent verification note</label>
-        <textarea id={'live-verification-'+row.approval_id} rows={2} value={verifyDetail} onChange={e=>setVerifyDetail(e.target.value)} disabled={busy} placeholder="Describe the independent provider-console verification." />
+        <textarea id={'live-verification-'+row.approval_id} rows={2} value={verifyDetail} onChange={e=>setVerifyDetail(e.target.value)} disabled={busy} placeholder="Describe the independent Wazuh agent-side verification." />
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>void run(()=>verify(row))}>Record independent verification</button>
       </>}
       {row.provider_reference && <p className="hint">Provider reference: <code>{row.provider_reference}</code></p>}
