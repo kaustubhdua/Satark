@@ -83,6 +83,7 @@ services:
       SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:?Set the satark_backup BYPASSRLS connection URL}
       SATARK_RESTORE_ROLE: satark_runtime
       SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_RESPONSE_DB: /data/firstlight-response.sqlite3
     volumes:
       - satark_data:/data
       - satark_backups:/backups
