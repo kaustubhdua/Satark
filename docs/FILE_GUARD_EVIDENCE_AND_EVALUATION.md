@@ -44,11 +44,11 @@ Run:
 python scripts/evaluate_file_guard.py evaluation.csv --output evaluation-report.json
 ```
 
-The report includes confusion counts, precision, recall, specificity, F1, accuracy on classified samples, coverage and conservative recall/FNR that count abstained malicious samples as misses. Metrics apply only to the supplied labelled corpus.
+The report includes confusion counts, precision, classified-sample recall, specificity, false-positive rate, F1, accuracy on classified samples, detection coverage and conservative recall/FNR that count abstained malicious samples as misses. Metrics apply only to the supplied labelled corpus.
 
 ## YARA policy
 
-The current Android release does not include a native YARA runtime or a curated mobile rule pack. Do not label YARA as an enabled Android capability. The desktop Python engine may optionally use `yara-python` with a local rules file, but any rule pack must be reviewed for provenance, license, false positives, timeouts and file-type applicability before distribution. A native Android integration requires ABI-specific build, offline, memory, battery and regression tests; it is not safe to assume that desktop `yara-python` runs under Chaquopy.
+The current Android release does not include a native YARA runtime or a curated mobile rule pack. The repository includes only a test-only EICAR fixture rule to validate the optional desktop YARA pipeline; it is not a malware detection rule pack. Do not label YARA as an enabled Android capability. The desktop Python engine may optionally use `yara-python` with a local rules file, but any rule pack must be reviewed for provenance, license, false positives, timeouts and file-type applicability before distribution. A native Android integration requires ABI-specific build, offline, memory, battery and regression tests; it is not safe to assume that desktop `yara-python` runs under Chaquopy.
 
 ## Supabase-free runtime
 
