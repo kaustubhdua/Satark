@@ -87,7 +87,7 @@ class BuiltinSignatureMatcher:
         self.detected_type = detected_type
         self._raw_tail = b""
         self._compact_tail = b""
-        self._found = set()
+        self._seen = set()
 
     def update(self, chunk):
         raw = bytes(chunk).lower()
@@ -97,35 +97,33 @@ class BuiltinSignatureMatcher:
         compact = self._compact_tail + raw.replace(bytes([0]), b"")
 
         if self.detected_type == "PDF":
-            if b"/openaction" in combined and (b"/javascript" in combined or b"/js" in combined):
-                self._found.add("PDF_OPENACTION_JAVASCRIPT")
-            if b"/launch" in combined and b"/openaction" in combined:
-                self._found.add("PDF_OPENACTION_LAUNCH")
+            if b"/openaction" in combined:
+                self._seen.add("pdf_openaction")
+            if b"/javascript" in combined or b"/js" in combined:
+                self._seen.add("pdf_javascript")
+            if b"/launch" in combined:
+                self._seen.add("pdf_launch")
 
         if self.detected_type == "OLE document":
-            if b"autoopen" in compact and b"shell" in compact:
-                self._found.add("OLE_AUTOOPEN_SHELL")
+            if b"autoopen" in compact:
+                self._seen.add("ole_autoopen")
+            if b"shell" in compact:
+                self._seen.add("ole_shell")
 
         if self.name.endswith((".ps1", ".psm1", ".bat", ".cmd")):
-            download = any(token in combined for token in (
-                b"downloadstring", b"downloadfile", b"invoke-webrequest"
-            ))
-            execute = any(token in combined for token in (
-                b"invoke-expression", b"iex(", b"start-process"
-            ))
-            if download and execute:
-                self._found.add("SCRIPT_DOWNLOAD_EXECUTE")
+            if any(token in combined for token in (b"downloadstring", b"downloadfile", b"invoke-webrequest")):
+                self._seen.add("script_download")
+            if any(token in combined for token in (b"invoke-expression", b"iex(", b"start-process")):
+                self._seen.add("script_execute")
 
         if self.name.endswith((".js", ".mjs", ".cjs")):
-            markers = sum(token in combined for token in (
-                b"eval(", b"fromcharcode", b"unescape("
-            ))
-            if markers >= 3:
-                self._found.add("JAVASCRIPT_OBFUSCATION_CLUSTER")
+            for token in (b"eval(", b"fromcharcode", b"unescape("):
+                if token in combined:
+                    self._seen.add("js:" + token.decode("ascii"))
 
         if self.detected_type == "Android DEX":
             if b"dexclassloader" in combined or b"loaddex" in combined:
-                self._found.add("DEX_DYNAMIC_LOADING")
+                self._seen.add("dex_dynamic_loading")
 
         self._raw_tail = combined[-self._RAW_TAIL_BYTES:]
         self._compact_tail = compact[-self._COMPACT_TAIL_BYTES:]
@@ -139,10 +137,20 @@ class BuiltinSignatureMatcher:
             "JAVASCRIPT_OBFUSCATION_CLUSTER": "JavaScript contains a cluster of three obfuscation-related markers.",
             "DEX_DYNAMIC_LOADING": "DEX bytecode contains a dynamic class-loading marker.",
         }
-        findings = [
-            {"rule_id": rule_id, "description": descriptions[rule_id]}
-            for rule_id in descriptions if rule_id in self._found
-        ]
+        matched = []
+        if {"pdf_openaction", "pdf_javascript"} <= self._seen:
+            matched.append("PDF_OPENACTION_JAVASCRIPT")
+        if {"pdf_openaction", "pdf_launch"} <= self._seen:
+            matched.append("PDF_OPENACTION_LAUNCH")
+        if {"ole_autoopen", "ole_shell"} <= self._seen:
+            matched.append("OLE_AUTOOPEN_SHELL")
+        if {"script_download", "script_execute"} <= self._seen:
+            matched.append("SCRIPT_DOWNLOAD_EXECUTE")
+        if len(self._seen.intersection({"js:eval(", "js:fromcharcode", "js:unescape("})) >= 3:
+            matched.append("JAVASCRIPT_OBFUSCATION_CLUSTER")
+        if "dex_dynamic_loading" in self._seen:
+            matched.append("DEX_DYNAMIC_LOADING")
+        findings = [{"rule_id": rule_id, "description": descriptions[rule_id]} for rule_id in matched]
         signals = [{
             "code": "BUILTIN_PATTERN_MATCH",
             "severity": "high",
@@ -155,7 +163,6 @@ class BuiltinSignatureMatcher:
             "matches": findings,
             "signals": signals,
         }
-
 
 def inspect_builtin_signatures(data, filename, detected_type):
     """Inspect raw bytes with bounded static patterns; never decode or extract content."""
