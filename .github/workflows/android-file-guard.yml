@@ -15,6 +15,10 @@ on:
       - "tests/test_ember_download.py"
       - "scripts/import_ember2024.py"
       - "scripts/download_ember2024.py"
+      - "scripts/build_ember2024_android_db.py"
+      - "tests/test_ember_android_db.py"
+      - "scripts/build_ember2024_android_db.py"
+      - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
   pull_request:
     paths:
@@ -75,6 +79,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests
         run: python -m unittest discover -s tests -p "test_ember_download.py" -v
+      - name: Run EMBER2024 Android starter database tests
+        run: python -m unittest discover -s tests -p "test_ember_android_db.py" -v
       - name: Set up Chaquopy-compatible Python
         uses: actions/setup-python@v5
         with:
@@ -104,6 +110,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Restore pinned EMBER2024 starter database cache
+        id: ember-db-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/satark/ember2024-starter.sqlite3
+            .cache/satark/ember2024-starter.json
+          key: satark-ember2024-8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc-apk-train-v2
+      - name: Build pinned EMBER2024 APK starter database
+        if: steps.ember-db-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/satark
+          python scripts/download_ember2024.py --output-dir .cache/satark/ember2024 --split train --file-type APK --max-download-gb 2 --max-extracted-gb 4
+          python scripts/import_ember2024.py --input-dir .cache/satark/ember2024 --output-dir .cache/satark/ember2024-csv --split train --file-type APK --rows-per-part 25000
+          python scripts/build_ember2024_android_db.py --input-dir .cache/satark/ember2024 --csv-dir .cache/satark/ember2024-csv --output-db .cache/satark/ember2024-starter.sqlite3 --split train --file-type APK
+          rm -rf .cache/satark/ember2024 .cache/satark/ember2024-csv
+      - name: Package verified historical starter database into offline app
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/assets
+          test -s .cache/satark/ember2024-starter.sqlite3
+          test -s .cache/satark/ember2024-starter.json
+          cp .cache/satark/ember2024-starter.sqlite3 android/app/src/main/assets/ember2024-starter.sqlite3
+          cp .cache/satark/ember2024-starter.json android/app/src/main/assets/ember2024-starter.json
       - name: Install Android SDK platform and build tools
         shell: bash
         run: |
@@ -129,6 +160,8 @@ jobs:
           grep -q 'copyUriToTemp' android/app/src/main/java/com/satark/mobile/MainActivity.kt
           grep -q 'copyUriToTemp' android/app/src/main/java/com/satark/mobile/FolderScanWorker.kt
           grep -q 'PeriodicWorkRequestBuilder' android/app/src/main/java/com/satark/mobile/MainActivity.kt
+          test -s android/app/src/main/assets/ember2024-starter.sqlite3
+          test -s android/app/src/main/assets/ember2024-starter.json
       - name: Compile Android app
         run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
       - name: Upload debug APK
