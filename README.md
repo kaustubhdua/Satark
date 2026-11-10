@@ -117,7 +117,7 @@ The mobile scanner does not need the repository's optional web backend. Supabase
 
 ## FIRSTLIGHT incident-response workspace
 
-SATARK also includes **FIRSTLIGHT**, a self-hosted case-based incident investigation and response workspace. It is separate from the offline Android file scanner: the Android scanner needs no network permission or hosted service. FIRSTLIGHT uses open-source Wazuh for endpoint telemetry and guarded endpoint response; no Microsoft Defender, Entra, or Microsoft tenant is required.
+SATARK also includes **FIRSTLIGHT**, a self-hosted case-based incident investigation and response workspace. It is separate from the offline Android file scanner: the Android scanner needs no network permission or hosted service. FIRSTLIGHT uses open-source Wazuh for endpoint telemetry and guarded endpoint response; no proprietary endpoint-security provider or tenant is required.
 
 FIRSTLIGHT capabilities include:
 
@@ -128,7 +128,7 @@ FIRSTLIGHT capabilities include:
 - Poll Wazuh through an optional private worker with an explicit agent allowlist, durable checkpoints and locally stored source snapshots.
 - Request guarded Wazuh Active Response actions (`firewall-drop` for a validated IPv4 address or `disable-account` for a validated local account) with one allowlisted agent, four-eyes approval, a third-party executor, exact confirmation, at-most-once submission and independent verification.
 
-**Supabase and Microsoft security products are not runtime dependencies.** The Android File Guard remains fully offline. Wazuh is self-hostable and its Manager API / Indexer credentials are configured only in the private FIRSTLIGHT server runtime; they are not used by the Android scanner.
+**Managed database and proprietary endpoint-security services are not runtime dependencies.** The Android File Guard remains fully offline. Wazuh is self-hostable and its Manager API / Indexer credentials are configured only in the private FIRSTLIGHT server runtime; they are not used by the Android scanner.
 
 Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md). For self-hosted PostgreSQL, Caddy HTTPS, secrets, deployment and recovery, follow the [production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md).
 
