@@ -793,3 +793,197 @@ label.btn { margin: 0; }
 .fl-capability p { margin: 10px 0 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
 .fl-readiness-note { margin: 14px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.55; }
 @media (prefers-reduced-motion: reduce) { .fl-readiness * { scroll-behavior: auto; transition: none !important; } }
+
+
+/* 22 · SATARK arcade command deck -----------------------------------------
+   Retro arcade/HUD cues with restrained glow, high-contrast body text and
+   reduced-motion support. The security workflow remains calm and readable.
+   ------------------------------------------------------------------------- */
+:root {
+  --bg: #070b12;
+  --surface: #0b1420;
+  --surface-2: #101f2d;
+  --surface-inset: #060c14;
+  --border: #1d3a4a;
+  --border-strong: #2d6870;
+  --text: #effcff;
+  --text-2: #b4cbd2;
+  --text-3: #8aa7b2;
+  --dawn-1: #5eead4;
+  --dawn-2: #a3e635;
+  --dawn-3: #f472b6;
+  --dawn: linear-gradient(105deg, var(--dawn-1), var(--dawn-2) 58%, var(--dawn-3));
+  --accent: #5eead4;
+  --accent-strong: #99f6e4;
+  --accent-soft: rgba(94, 234, 212, .11);
+  --accent-line: rgba(94, 234, 212, .42);
+  --primary: #a3e635;
+  --primary-hover: #bef264;
+  --primary-ink: #10180a;
+  --ok: #a3e635;
+  --ok-soft: rgba(163, 230, 53, .11);
+  --ok-line: rgba(163, 230, 53, .36);
+  --warn: #facc15;
+  --danger: #fb7185;
+  --info: #67e8f9;
+  --violet: #c4b5fd;
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 11px;
+  --radius-xl: 14px;
+  --shadow: 0 1px 0 rgba(255,255,255,.035) inset, 0 0 0 1px rgba(94,234,212,.025), 0 16px 42px -22px rgba(0,0,0,.9);
+}
+body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(94,234,212,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,234,212,.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+.shell::before {
+  height: 520px;
+  background:
+    radial-gradient(60% 95% at 50% -32%, rgba(94,234,212,.16), transparent 72%),
+    radial-gradient(38% 80% at 90% -20%, rgba(244,114,182,.09), transparent 72%);
+}
+.topbar {
+  background: rgba(5, 11, 18, .9);
+  border-bottom-color: rgba(94,234,212,.22);
+  box-shadow: 0 8px 28px rgba(0,0,0,.2);
+}
+.topbar::after { opacity: .72; height: 2px; }
+.brand-mark, .footer-brand-mark {
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.16) inset, 0 0 22px rgba(94,234,212,.2);
+}
+.nav-links a.active {
+  color: var(--accent-strong);
+  background: rgba(94,234,212,.08);
+  box-shadow: 0 0 0 1px rgba(94,234,212,.24) inset;
+}
+.nav-links a.nav-cta {
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 0 18px rgba(163,230,53,.14);
+}
+.sentinel-hero {
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(94,234,212,.24);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(135deg, rgba(94,234,212,.055), transparent 42%),
+    linear-gradient(315deg, rgba(244,114,182,.035), transparent 44%),
+    rgba(7, 13, 21, .72);
+  box-shadow: 0 0 0 4px rgba(94,234,212,.025), 0 26px 70px -46px rgba(94,234,212,.34);
+}
+.sentinel-hero::after {
+  content: "SATARK // DEFENCE GRID";
+  position: absolute;
+  z-index: -1;
+  top: 12px;
+  right: 18px;
+  color: rgba(94,234,212,.24);
+  font: 10px/1 var(--mono);
+  letter-spacing: .16em;
+}
+.sentinel-hero h1 {
+  font-weight: 720;
+  letter-spacing: -.04em;
+  text-shadow: 0 0 32px rgba(94,234,212,.1);
+}
+.sentinel-hero h1 .dawn-text { text-shadow: none; }
+.sentinel-kicker {
+  border-color: rgba(94,234,212,.3);
+  border-radius: 5px;
+  background: rgba(7,18,27,.8);
+}
+.shiny-pill > b {
+  border-radius: 3px;
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+.sentinel-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 0 22px rgba(163,230,53,.16);
+  font-weight: 700;
+}
+.sentinel-primary:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 0 28px rgba(163,230,53,.25);
+}
+.sentinel-secondary {
+  border-color: rgba(94,234,212,.4);
+  background: rgba(94,234,212,.055);
+}
+.ledger, .pipeline-card, .bento-card, .tool-card, .panel, .form-panel,
+.info-panel, .workspace-card, .signal-card, .quiz-card,
+.persistent-case-panel, .persistent-reports {
+  border-color: rgba(94,234,212,.2);
+  box-shadow: var(--shadow);
+}
+.ledger {
+  background: linear-gradient(145deg, rgba(11,26,37,.98), rgba(7,13,21,.98));
+}
+.ledger-head {
+  background: rgba(94,234,212,.045);
+  border-bottom-color: rgba(94,234,212,.2);
+}
+.ledger-id, .ledger-hash, .mono { color: #9ac5ce; }
+.ledger-row:hover { background: rgba(94,234,212,.045); }
+.pipeline-card {
+  background:
+    linear-gradient(rgba(94,234,212,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,234,212,.025) 1px, transparent 1px),
+    var(--surface);
+  background-size: 24px 24px;
+}
+.pipeline-icon, .bento-icon {
+  border-radius: 6px;
+  border-color: rgba(94,234,212,.3);
+  background: #0a1b27;
+  color: var(--accent-strong);
+  box-shadow: 0 0 18px rgba(94,234,212,.07);
+}
+.pipeline-node.is-human .pipeline-icon {
+  background: linear-gradient(var(--surface-2), var(--surface-2)) padding-box, var(--dawn) border-box;
+}
+.bento-card {
+  background: linear-gradient(145deg, rgba(12,25,36,.96), rgba(8,15,24,.98));
+}
+.bento-card:hover {
+  border-color: rgba(94,234,212,.62);
+  background: linear-gradient(145deg, rgba(14,37,47,.98), rgba(8,17,27,.98));
+  box-shadow: 0 0 0 1px rgba(94,234,212,.1), 0 14px 34px -22px rgba(94,234,212,.3);
+}
+.bento-card h3 { letter-spacing: -.015em; }
+.text-link, .text-button, .text-disclosure { color: var(--accent-strong); }
+.status-ok, .success-message { color: var(--ok); }
+.site-footer { background: #060b12; border-top-color: rgba(94,234,212,.22); }
+.route-veil-card {
+  border-color: rgba(94,234,212,.38);
+  background: rgba(7,16,25,.96);
+  box-shadow: 0 0 42px rgba(94,234,212,.12);
+}
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: #a3e635;
+  box-shadow: 0 0 0 3px rgba(163,230,53,.16);
+}
+@media (max-width: 760px) {
+  .sentinel-hero { padding: 20px 16px; }
+  .sentinel-hero::after { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sentinel-hero { animation: arcade-enter .55s cubic-bezier(.2,.7,.2,1) both; }
+  .ledger { animation: arcade-enter .7s .08s cubic-bezier(.2,.7,.2,1) both; }
+  .bento-card:hover .bento-icon { color: var(--primary); transform: translateY(-2px); }
+}
+@keyframes arcade-enter {
+  from { opacity: .72; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentinel-hero, .ledger { animation: none !important; }
+  .shiny-text, .pipeline::after, .border-beam::before { animation: none !important; }
+}
