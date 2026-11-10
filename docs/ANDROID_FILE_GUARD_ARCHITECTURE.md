@@ -72,3 +72,28 @@ A release is not complete until:
 - EMBER2024 upstream: https://github.com/FutureComputing4AI/EMBER2024
 - YARA documentation: https://yara.readthedocs.io/
 - Chaquopy documentation: https://www.chaquo.com/chaquopy/doc/current/android.html
+
+## Upstream design and implementation references
+
+The requested open-source projects were reviewed for fit:
+
+- [Hallmark](https://github.com/Nutlope/hallmark) is a design-quality skill for code agents. Apply its principles (clear hierarchy, real app task first, contrast/focus/reduced motion, responsive QA) when polishing interfaces; it is not an Android component library.
+- [shadcn/ui](https://github.com/shadcn-ui/ui) provides accessible, composable React/web components under MIT. Reuse its interaction and accessibility patterns only if a separate web companion is built; do not add React to the native Android runtime.
+- [Magic UI](https://github.com/magicuidesign/magicui) provides animated React/Tailwind components. Its animation restraint and visual ideas can inform the web companion, but its components do not drop into Android Views.
+- [Tremor](https://github.com/tremorlabs/tremor) provides React dashboard components under Apache-2.0. Its chart/dashboard patterns can inform a future web analytics view; Android should use native UI primitives.
+- [NirDiamant/GenAI_Agents](https://github.com/NirDiamant/GenAI_Agents) is a collection of generative-agent tutorials with a custom non-commercial license. It is not adopted as a scanner dependency: deterministic byte signatures and hash lookups are more reproducible, smaller, private and API-free for this product.
+
+No code from these projects is vendored into the Android app. This avoids license ambiguity, unneeded web dependencies, and a mismatch between the user's offline/no-API requirement and agent frameworks that commonly rely on model orchestration or external services.
+
+## Dataset snapshot and reproducibility
+
+EMBER2024 is a labelled malware-research feature dataset, not a complete portable list of malware signatures. Its published corpus includes about 3.2 million records across Win32, Win64, .NET, APK, ELF and PDF, from 2023-09-24 through 2024-12-14. The challenge subset has 6,315 malicious records. SATARK can turn supported upstream hash/label metadata into a local SQLite import, but a research feature vector is not the original file and does not provide complete detection coverage.
+
+For each snapshot imported into a device, the operator should retain the upstream source name, upstream release/cutoff, selected splits/file types, original and converted file SHA-256 values, conversion tool version, row counts, malicious/benign counts, and license. The app currently stores a source label per hash and does not yet enforce a cryptographically immutable whole-snapshot manifest; the source label is provenance metadata, not proof of authenticity. Do not claim otherwise.
+
+The Android app intentionally does not fetch a dataset itself. Dataset acquisition and conversion are explicit offline preparation tasks on a trusted workstation; transfer only the converted CSV and manifest to the phone. The app is empty until this step occurs.
+
+## Device memory/performance boundary
+
+The current Kotlin bridge uses a bounded in-memory byte array (64 MiB per file) before calling Python. That provides a simple bounded scan contract, but it means a 64 MiB file can temporarily require more memory than its file size due to buffers, byte-array copies and Python interop. For low-memory Android devices, measure peak resident memory and latency before increasing limits. A future streaming Chaquopy bridge must be proven with Android ContentResolver streams before replacing this path.
+
