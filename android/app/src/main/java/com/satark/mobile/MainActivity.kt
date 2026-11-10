@@ -63,61 +63,129 @@ class MainActivity : Activity() {
     }
 
     private fun buildScreen() {
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(0xFF080F1D.toInt())
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(36, 42, 36, 36)
-            setBackgroundColor(android.graphics.Color.rgb(10, 17, 31))
+            setPadding(dp(20), dp(24), dp(20), dp(32))
+            setBackgroundColor(0xFF080F1D.toInt())
         }
-        content.addView(text("SATARK", 14f, 0xFF9B8CFF.toInt(), true))
-        content.addView(text("File Guard", 32f, 0xFFF3F5FF.toInt(), true))
+
+        content.addView(text("SATARK  /  ON-DEVICE SECURITY", 11f, 0xFF9B8CFF.toInt(), true))
+        content.addView(text("File Guard", 34f, 0xFFF3F5FF.toInt(), true))
         content.addView(text(
-            "Private, offline-first file inspection. Files are fingerprinted and checked locally; document text is not extracted and files are never executed.",
+            "Private file inspection. Fingerprints and signatures stay on this device.",
             15f, 0xFFB8C2D8.toInt(), false
         ))
-        status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 12f, 0xFF78E0C1.toInt(), true)
+
+        val hero = panel()
+        hero.addView(text("LOCAL ENGINE", 11f, 0xFF78E0C1.toInt(), true))
+        hero.addView(text("Your files. Checked locally.", 21f, 0xFFF3F5FF.toInt(), true))
+        hero.addView(text(
+            "No cloud scan, no account, no remote reputation lookup. Share an attachment to SATARK or choose it below.",
+            13f, 0xFFB8C2D8.toInt(), false
+        ))
+        status = text("READY · OFFLINE SCANNING", 12f, 0xFF78E0C1.toInt(), true)
         if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             val lastScan = prefs.getLong("last_folder_scan_ms", 0L)
             val lastCount = prefs.getInt("last_folder_scan_files", 0)
             status.text = if (lastScan > 0L) {
-                "FOLDER ACCESS GRANTED · LAST SCAN " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScan)) +
+                "FOLDER ACCESS · " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScan)) +
                     " · " + lastCount + " FILES · " + prefs.getInt("last_folder_scan_alerts", 0) + " ALERTS"
             } else {
-                "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
+                "FOLDER ACCESS GRANTED · READY TO SCAN"
             }
         }
-        content.addView(status)
-        content.addView(actionButton("Choose a file") { chooseFile() })
-        content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
-        content.addView(actionButton("Enable frequent background scan (15 min, best-effort)") { enableFrequentScan() })
-        content.addView(actionButton("Enable daily background scan") { enableDailyScan() })
-        content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
-        content.addView(actionButton("Stop background scans (keep folder access)") { stopBackgroundScans() })
+        hero.addView(status)
+        content.addView(hero, panelParams())
+
+        val scanPanel = panel()
+        scanPanel.addView(sectionTitle("Quick scan"))
+        scanPanel.addView(text("Inspect one or more files shared from WhatsApp, Telegram, your browser or file manager.", 13f, 0xFFB8C2D8.toInt(), false))
+        scanPanel.addView(primaryActionButton("Choose files to scan") { chooseFile() })
+        content.addView(scanPanel, panelParams())
+
+        val folderPanel = panel()
+        folderPanel.addView(sectionTitle("Folder protection"))
+        folderPanel.addView(text("Choose a folder you control. Scheduled rescans are best-effort and may be deferred by Android.", 13f, 0xFFB8C2D8.toInt(), false))
+        folderPanel.addView(primaryActionButton("Choose a folder to monitor") { chooseFolder() })
+        folderPanel.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
+        folderPanel.addView(actionButton("Frequent scan · every 15 min (best-effort)") { enableFrequentScan() })
+        folderPanel.addView(actionButton("Daily background scan") { enableDailyScan() })
+        folderPanel.addView(actionButton("Stop background scans") { stopBackgroundScans() })
+        content.addView(folderPanel, panelParams())
+
+        val intelligencePanel = panel()
+        intelligencePanel.addView(sectionTitle("Historical intelligence"))
+        intelligencePanel.addView(text("Import a fixed, provenance-labelled snapshot. No dataset refresh happens during scans.", 13f, 0xFFB8C2D8.toInt(), false))
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
             setTextColor(0xFFF3F5FF.toInt())
             setHintTextColor(0xFF8D9AB2.toInt())
             setSingleLine(true)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF596A8A.toInt())
         }
-        content.addView(datasetSource)
+        intelligencePanel.addView(datasetSource, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8) })
         datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
-        content.addView(datasetStatus)
-        content.addView(actionButton("View historical dataset coverage") { showDatasetStats() })
-        content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
-        content.addView(actionButton("View local scan history") { showHistory() })
-        content.addView(actionButton("Clear local scan history") { clearHistory() })
-        content.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
-        content.addView(actionButton("Remove folder access and stop scheduled scans") { removeFolderAccess() })
-        content.addView(text(
-            "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
-            13f, 0xFFFFD28A.toInt(), false
+        intelligencePanel.addView(datasetStatus)
+        intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifest") { chooseDataset() })
+        intelligencePanel.addView(actionButton("View dataset coverage") { showDatasetStats() })
+        intelligencePanel.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
+        content.addView(intelligencePanel, panelParams())
+
+        val historyPanel = panel()
+        historyPanel.addView(sectionTitle("Scan history"))
+        historyPanel.addView(text("Review previous local scans and their saved evidence reports.", 13f, 0xFFB8C2D8.toInt(), false))
+        historyPanel.addView(primaryActionButton("View scan history and evidence") { showHistory() })
+        historyPanel.addView(actionButton("Clear local scan history") { clearHistory() })
+        content.addView(historyPanel, panelParams())
+
+        val privacyPanel = panel()
+        privacyPanel.addView(sectionTitle("Privacy and access boundary"))
+        privacyPanel.addView(text(
+            "SATARK reads raw bytes only to calculate SHA-256 and inspect bounded signatures. It does not extract document text, read messages or chat databases, OCR, preview, unpack or execute files. Android allows access only to files you share or folders you explicitly grant; private WhatsApp and Telegram storage remains inaccessible.",
+            13f, 0xFFB8C2D8.toInt(), false
         ))
-        content.addView(text("LATEST SCAN RESULTS", 12f, 0xFF9B8CFF.toInt(), true))
-        results = text("Share a file from WhatsApp or Telegram, or select one above. The scan runs locally on this device.", 14f, 0xFFE4E9F6.toInt(), false)
-        content.addView(results)
+        privacyPanel.addView(text(
+            "WorkManager is not continuous 24/7 protection. A no-match result is not proof that a file is safe.",
+            12f, 0xFFFFD28A.toInt(), true
+        ))
+        privacyPanel.addView(actionButton("Remove folder access and stop scheduled scans") { removeFolderAccess() })
+        content.addView(privacyPanel, panelParams())
+
+        val resultsPanel = panel()
+        resultsPanel.addView(sectionTitle("Latest scan results"))
+        results = text("No scans yet. Share a file to SATARK or choose files above. Results and evidence are stored locally.", 13f, 0xFFE4E9F6.toInt(), false)
+        resultsPanel.addView(results)
+        content.addView(resultsPanel, panelParams())
+
         scroll.addView(content)
         setContentView(scroll)
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun panel(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(18), dp(16), dp(18), dp(16))
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(0xFF121E32.toInt())
+            cornerRadius = dp(20).toFloat()
+            setStroke(dp(1), 0xFF263854.toInt())
+        }
+    }
+
+    private fun panelParams() = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+    ).apply { setMargins(0, dp(10), 0, dp(4)) }
+
+    private fun sectionTitle(value: String): TextView =
+        text(value, 17f, 0xFFF3F5FF.toInt(), true)
 
     private fun text(value: String, size: Float, color: Int, bold: Boolean): TextView =
         TextView(this).apply {
@@ -125,20 +193,37 @@ class MainActivity : Activity() {
             textSize = size
             setTextColor(color)
             if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, 10, 0, 14)
+            setLineSpacing(dp(2).toFloat(), 1.04f)
+            setPadding(0, dp(5), 0, dp(8))
         }
 
     private fun actionButton(label: String, action: () -> Unit): Button =
         Button(this).apply {
             text = label
             isAllCaps = false
-            setTextColor(0xFF0A111F.toInt())
+            textSize = 13f
+            setTextColor(0xFFDCE6F8.toInt())
+            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF253650.toInt())
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, dp(5), 0, dp(5)) }
+        }
+
+    private fun primaryActionButton(label: String, action: () -> Unit): Button =
+        Button(this).apply {
+            text = label
+            isAllCaps = false
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(0xFF081521.toInt())
             backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF78E0C1.toInt())
             setOnClickListener { action() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 8, 0, 8) }
+            ).apply { setMargins(0, dp(7), 0, dp(7)) }
         }
 
     private fun chooseFile() {
