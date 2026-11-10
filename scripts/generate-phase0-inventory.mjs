@@ -86,7 +86,7 @@ const manifest = {
   },
   pages, apis, migrations, databaseTests, workflows, workers, providerAdapters: adapters,
   tests, envExamples: envExamples.map(file => ({ file, status: 'unverified', evidence: 'example file does not prove deployment configuration' })),
-  databaseObjects: { tables: [...tableNames].sort(), functions: [...rpcNames].sort(), status: 'unverified', note: 'Discovered from migration SQL; not compared with a live database.' },
+  databaseObjects: { tables: [...tableNames].sort(), functions: [...rpcNames].sort(), status: 'unverified', note: 'Discovered from Alembic migration and SQLAlchemy model source; not compared with a live database.' },
   uiActionMap: actionMap,
   migrationSafety: {
     supabaseRuntime: 'ABSENT',
