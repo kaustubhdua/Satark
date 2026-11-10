@@ -65,7 +65,7 @@ EMBER2024 is a research feature dataset with SHA-256 labels and metadata for Win
 
 The repository includes an original local starter rule pack for PowerShell download/execute combinations, PDF active-content markers, OLE macro automation, JavaScript obfuscation clusters and standalone DEX dynamic-loading patterns. These are review heuristics, not definitive malware signatures. Their false-positive notes and synthetic regression corpus are documented in [LOCAL_YARA_RULES.md](LOCAL_YARA_RULES.md).
 
-The desktop Python workflow can use optional `yara-python`. The Android APK does not currently bundle the native YARA engine; mobile detection remains SHA-256, fixed signatures, extension checks and filename heuristics. Do not claim mobile YARA support until a native Android ABI build and physical-device tests pass.
+The desktop Python workflow can use optional `yara-python`. The Android APK does not currently bundle the native YARA engine; mobile detection uses SHA-256, fixed format signatures, conservative built-in byte-pattern heuristics, extension checks and filename heuristics. Do not claim mobile YARA support until a native Android ABI build and physical-device tests pass.
 
 ## Supabase-free supporting web backend
 
