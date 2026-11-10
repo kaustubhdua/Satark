@@ -68,7 +68,7 @@ def available_response_actions() -> list[str]:
         return []
     actions = ["wazuh.block_ip"]
     try:
-        if _account_disable_allowlist():
+        if _agent_allowlist() & _account_disable_allowlist():
             actions.append("wazuh.disable_account")
     except ResponseIntegrationError:
         # A malformed OS-specific allowlist disables this action without
