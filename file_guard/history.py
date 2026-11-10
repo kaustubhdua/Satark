@@ -132,6 +132,10 @@ class ScanHistory:
                 FROM scan_audit AS a
                 LEFT JOIN scan_history AS h ON h.id=a.history_id
                 ORDER BY a.sequence ASC""").fetchall()
+            unlinked_history_records = int(db.execute("""SELECT COUNT(*)
+                FROM scan_history AS h
+                LEFT JOIN scan_audit AS a ON a.history_id=h.id
+                WHERE a.history_id IS NULL""").fetchone()[0])
         previous = _GENESIS
         expected_sequence = 1
         report_checks = 0
@@ -185,11 +189,13 @@ class ScanHistory:
             expected_sequence += 1
         return {
             "valid": True,
+            "complete": unlinked_history_records == 0,
             "entries": len(rows),
             "verified_reports": report_checks,
+            "unlinked_history_records": unlinked_history_records,
             "head_sha256": previous,
             "failed_sequence": None,
-            "reason": None,
+            "reason": None if unlinked_history_records == 0 else "legacy_history_not_chained",
             "authentication": "not_signed_or_remotely_anchored",
         }
 
