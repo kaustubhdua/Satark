@@ -72,7 +72,7 @@ python scripts/download_ember2024.py --output-dir data/ember2024 --split train -
 python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
-Repeat with `--file-type PDF`, `ELF` or `PE` if required. The converter reads only local JSONL metadata, writes 25,000-row CSV parts by default, and emits a manifest with per-part SHA-256 checksums. Multi-select the generated CSV parts in Android or Streamlit and retain the manifest for provenance. Confirm each part is below Android's 64 MB import limit. Public archive acquisition is a one-time network download; the Android app itself has no Internet permission and scans offline.
+Repeat with `--file-type PDF`, `ELF` or `PE` if required. The converter reads only local JSONL metadata, writes 25,000-row CSV parts by default, and emits a manifest with per-part SHA-256 checksums plus a digest-bound source archive manifest. Multi-select the generated CSV parts, the converter `*_manifest.json`, and the matching `ember2024_download_*.json` in the Android app. Do not use the legacy Streamlit interface for private files: its uploads are processed on the server. Confirm each part is below Android's 64 MB import limit. Public archive acquisition is a one-time network download; the Android app itself has no Internet permission and scans offline.
 
 ### Coverage and limitations
 
