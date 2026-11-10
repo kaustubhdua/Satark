@@ -10,8 +10,11 @@ SATARK is an **Android-first, Python-based, offline-first file security applicat
 [![Production smoke](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
+[![FIRSTLIGHT API CI](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml)
+[![Web CI](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml)
 [![Android File Guard](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
 <img src="assets/satark-banner.svg" alt="SATARK Sentinel" width="1000">
 
@@ -540,16 +543,3 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
 - [Saathi live security catalog audit](docs/SAATHI_LIVE_SECURITY_CATALOG_2026-10-21.md) — read-only live RLS and approval-ACL evidence (not authenticated end-to-end proof).
 - [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted SATARK + Ollama setup and no-internet acceptance steps.
-
-
-## File Guard evidence and evaluation
-
-Every Android scan now returns a versioned, metadata-only evidence report with the scan timestamp, SHA-256, file type, verdict, signals, local intelligence provenance, YARA availability state, specialist trace and an integrity digest. The report digest detects post-export edits; it is not a digital signature or certified chain-of-custody record. The Kotlin screen continues to consume compatibility fields from the same report.
-
-Use a separately labelled, legally acquired test corpus to measure precision, recall, false positives, specificity, F1 and coverage:
-
-    python scripts/evaluate_file_guard.py evaluation.csv --output evaluation-report.json
-
-The CSV must contain `expected` and `predicted` columns. Allowed labels are `benign`, `malicious`, and `unknown` for predictions. Unknown results count as abstentions and reduce coverage. Do not use EMBER feature metadata alone as a substitute for a representative binary test corpus.
-
-See [File Guard evidence and evaluation](docs/FILE_GUARD_EVIDENCE_AND_EVALUATION.md) and [mobile product design/open-source adaptation](docs/MOBILE_PRODUCT_DESIGN.md). The [Android physical-device QA checklist](docs/ANDROID_DEVICE_QA.md) defines the remaining release gates. Native Android YARA remains disabled until an ABI-compatible engine and reviewed, licensed rule pack have passed mobile testing.
