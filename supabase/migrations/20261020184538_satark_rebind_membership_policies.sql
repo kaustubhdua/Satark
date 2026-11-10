@@ -1,4 +1,0 @@
--- Migration-history reconciliation for the live Nirdhoom/SATARK project.
--- The SATARK-only policy rebind is defined in 20261020051000_satark_rebind_membership_policies.sql.
--- The live project recorded that same policy migration under version 20261020184538.
--- Keep this no-op to represent the recorded version without duplicating DDL.

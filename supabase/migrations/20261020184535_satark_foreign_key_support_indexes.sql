@@ -1,5 +1,0 @@
--- Migration-history reconciliation for the live Nirdhoom/SATARK project.
--- The SATARK-only support indexes are defined in
--- 20261020050000_satark_foreign_key_support_indexes.sql.
--- The live project recorded that same idempotent index migration under version 20261020184535.
--- Keep this no-op to represent the recorded version without duplicating DDL.
