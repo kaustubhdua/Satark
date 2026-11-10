@@ -94,7 +94,7 @@ EMBER2024 is a labelled malware-research feature dataset, not a complete portabl
 
 For each snapshot imported into a device, the operator should retain the upstream source name, upstream release/cutoff, selected splits/file types, original and converted file SHA-256 values, conversion tool version, row counts, malicious/benign counts, and license. The app currently stores a source label per hash and does not yet enforce a cryptographically immutable whole-snapshot manifest; the source label is provenance metadata, not proof of authenticity. Do not claim otherwise.
 
-The Android app intentionally does not fetch a dataset itself. Dataset acquisition and conversion are explicit offline preparation tasks on a trusted workstation; transfer only the converted CSV and manifest to the phone. The app is empty until this step occurs.
+The Android app intentionally does not fetch a dataset itself. Dataset acquisition and conversion are explicit offline preparation tasks on a trusted workstation; transfer the converted CSV parts, the converter manifest and the matching original downloader manifest to the phone. The app is empty until this step occurs.
 
 ## Streaming and device memory boundary
 
