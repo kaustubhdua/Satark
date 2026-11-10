@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import stat
 
-from .agents import route_file, inspect_filename, inspect_hash, inspect_yara, fuse_evidence
+from .agents import route_file, inspect_filename, inspect_hash, inspect_yara, inspect_builtin_signatures, fuse_evidence
 
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_DIRECTORY_FILES = 5000
@@ -52,6 +52,7 @@ class FileScanResult:
     intelligence_match: dict | None = None
     yara_available: bool = False
     yara_matches: list = field(default_factory=list)
+    builtin_matches: list = field(default_factory=list)
     yara_error: str | None = None
     agent_trace: list = field(default_factory=list)
     content_extracted: bool = False
@@ -99,9 +100,11 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     router = route_file(name, detected, yara_configured=bool(yara_rules_path))
     metadata = inspect_filename(name)
     hash_report = inspect_hash(digest, intelligence)
+    builtin_report = inspect_builtin_signatures(data, name, detected)
     yara_report = inspect_yara(data, yara_rules_path)
     signals.extend(metadata["signals"])
     signals.extend(hash_report["signals"])
+    signals.extend(builtin_report["signals"])
     signals.extend(yara_report["signals"])
     fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
 
@@ -110,6 +113,7 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
         {"agent":"magic_signature","status":"complete","detected_type":detected,
          "extension_compatible": (not allowed_exts or ext in allowed_exts)},
         metadata,
+        builtin_report,
         hash_report,
         yara_report,
         fusion,
@@ -117,7 +121,7 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     return FileScanResult(
         name, len(data), digest, detected, ext, fusion["verdict"], fusion["risk_level"],
         fusion["score"], signals, hash_report["match"], yara_report["available"],
-        yara_report["matches"], yara_report["error"], trace
+        yara_report["matches"], builtin_report["matches"], yara_report["error"], trace
     )
 
 def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):

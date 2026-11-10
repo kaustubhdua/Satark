@@ -20,7 +20,7 @@ The scanner must read bytes for SHA-256 and static signature checks. It does not
 3. Bounded header/form signatures used to identify the actual format.
 4. Extension-versus-signature consistency.
 5. Exact local hash lookup against a provenance-labelled historical snapshot.
-6. Optional local byte-pattern rules only where a compatible rules engine and reviewed rule pack are installed.
+6. Built-in conservative byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers; optional YARA rules on desktop when a compatible engine and reviewed rule pack are installed.
 
 No result may claim that an unrecognised or unmatched file is safe. The correct clean-state wording is **"No known threat detected by enabled local checks."**
 
@@ -41,13 +41,14 @@ Important limitations:
 - Exact SHA-256 matching only identifies byte-identical samples represented in the imported snapshot.
 - Any modification changes the hash and can evade exact matching.
 - EMBER2024's file-type and time coverage is not universal; coverage varies by imported split and type.
-- YARA and format signatures add different forms of coverage, but must not be described as proof of malware or safety.
+- Built-in byte-pattern heuristics, YARA and format signatures add different forms of coverage, but only produce review signals and must not be described as proof of malware or safety.
 - The frozen snapshot cannot identify newly discovered threats unless the user deliberately imports a separately versioned offline snapshot. That is outside the default no-new-data operating mode.
 
 ## Storage and privacy
 
 - SQLite databases are stored in Android app-private storage.
-- Scan history stores metadata and hashes, not file bytes.
+- Scan history stores metadata, hashes, specialist traces and bounded evidence signals, never file bytes.
+- The user can export a JSON evidence report through Android's system document picker; exports contain hashes and metadata only.
 - Incoming content URIs are read under temporary share grants. User-selected folder grants are persisted only after explicit consent.
 - Scans have explicit file-count, directory-depth, per-file and per-run byte limits.
 - No network permission is present in the Android manifest. Android CI enforces this as a contract.

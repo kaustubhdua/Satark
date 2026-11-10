@@ -1,104 +1,75 @@
-# SATARK local/offline deployment and acceptance
+# SATARK Android offline acceptance checklist
 
-**Goal:** run the core UI, authentication/database/storage, investigation API and local model on infrastructure controlled by the operator. This removes hosted AI dependencies and can remove hosted Supabase from the core path. It does not make remote Wazuh or Defender services reachable without a network path.
+This is the acceptance procedure for the primary SATARK File Guard product. It does not use Supabase, a hosted API, API keys, cloud AI or an online threat feed. Run it against a physical Android device and a locally prepared, legally acquired historical dataset.
 
-## Scope and limits
+## Product contract
 
-The local stack uses the repository's Supabase CLI configuration and `docker-compose.local.yml`. Supabase local provides a local Postgres/Auth/REST/Storage stack; Ollama provides local inference. The model is advisory: deterministic detection, evidence hashing, and rule-based checks must still work if Ollama is unavailable.
+- Native Android application with the Python scanner embedded through Chaquopy.
+- Android manifest has no `INTERNET` or `ACCESS_NETWORK_STATE` permission.
+- Files are inspected locally by SHA-256, fixed file-format signatures, extension consistency, filename heuristics and imported local intelligence.
+- No semantic document text extraction, OCR, preview, archive unpacking or execution.
+- WhatsApp/Telegram attachments are accessible only when the sender explicitly shares them to SATARK.
+- Folder scanning is limited to a tree the user selects through Android's Storage Access Framework.
+- Dataset acquisition is a separate one-time workstation operation. Scanning never downloads new data.
+- WorkManager is best-effort; it does not promise continuous 24/7 monitoring.
 
-This document is a runbook, not proof that offline acceptance has already passed. No offline test has been claimed until it is run on the target machine with external networking disabled.
+## Build and install
 
-## One-time preparation (internet available)
+Requirements: JDK 17, Android SDK Platform 36, Build Tools 36.0.0, Gradle 8.13 and Python 3.13 for Chaquopy.
 
-Prerequisites: Docker Engine/Desktop with Compose v2, Supabase CLI, Git, Python 3, and enough disk/RAM for local database containers and the chosen model.
+```bash
+gradle -p android --no-daemon :app:assembleDebug
+```
 
-1. From the repository root, start the **local** Supabase stack:
+Install the debug APK on a test device. A debug APK is not a signed production release.
 
-   ```bash
-   supabase start
-   supabase status -o env
-   ```
+## Prepare a historical snapshot
 
-2. Apply the repository migrations to the local database only:
+The repository includes a manual **Prepare EMBER2024 historical snapshot** GitHub Actions workflow. Choose the historical split and file-type subset, then download its CSV/provenance artifact from the workflow run. It uses the public archive downloader without an API key and does not commit dataset files to Git.
 
-   ```bash
-   supabase db reset
-   ```
+The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with its compact challenge set if device storage is limited:
 
-   This command resets the local development database. Never run it against a linked/production project.
+```bash
+python scripts/download_ember2024.py --output-dir data/ember2024 --split challenge --file-type all
+python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split challenge --file-type all
+```
 
-3. Copy the local CLI's API URL, anon/publishable key, and service-role key into an untracked local environment file. Keep service-role keys out of `NEXT_PUBLIC_*` variables and out of Git. The Docker containers need to reach the host's local Supabase API through `host.docker.internal`; the browser should use loopback. Example mapping (replace key values with those printed by the local CLI):
+Keep the source and converted manifests. Verify each CSV part's SHA-256 against the generated manifest before transferring it to the device. Import the parts using a unique source/snapshot ID. The database should remain empty until the operator explicitly imports a snapshot.
 
-   ```dotenv
-   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-   SUPABASE_URL=http://host.docker.internal:54321
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local-anon-or-publishable-key>
-   SUPABASE_PUBLISHABLE_KEY=<local-anon-or-publishable-key>
-   SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
-   FIRSTLIGHT_API_TOKEN=<random-local-secret>
-   FIRSTLIGHT_WAZUH_SYNC_TOKEN=<different-random-local-secret>
-   SATARK_OLLAMA_MODEL=qwen2.5:3b
-   ```
+A dataset label is research provenance, not proof that the original file is currently malicious or benign. The challenge set is malicious-only and cannot provide a benign denominator for accuracy measurement. Do not report precision/recall from this import alone.
 
-   Generate local-only tokens with `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`. Use a different value for each token. Do not reuse any production credential.
+## Physical-device test matrix
 
-4. Build and start the local Ollama service, then download the model while internet is available:
+1. **Single share:** share one harmless PDF from WhatsApp, one from Telegram, one from a browser and one from a file manager. Confirm the scan starts without copying the file to a server.
+2. **Multiple share:** share multiple attachments where the source app supports it. Confirm duplicate URIs are scanned once and the 20-file cap is enforced.
+3. **Picker:** select one file and multiple files through `ACTION_OPEN_DOCUMENT`.
+4. **Folder permission:** select a folder through `ACTION_OPEN_DOCUMENT_TREE`, run an immediate scan, restart SATARK and confirm the persisted grant remains usable.
+5. **Revocation:** revoke folder access in Android settings or SATARK. Confirm scheduled work stops and access errors do not crash the app.
+6. **Background scheduling:** opt into 15-minute and daily scans separately. Confirm choosing one cancels the other. Observe actual run times; do not expect exact scheduling.
+7. **Lifecycle:** reboot the device, force-stop the app, enable battery saver and enter Doze. Record whether jobs are deferred and how SATARK recovers.
+8. **Notifications:** test notification permission granted, denied and later enabled. Notification content should contain counts only, not file names or paths.
+9. **Limits:** test empty files, unknown signatures, files at the configured size limit, oversized files, large folders, deep folders and unreadable document-provider entries.
+10. **Privacy:** capture manifest permission output and verify there is no Internet permission. Disconnect networking and repeat file scan, dataset lookup, history and report workflows.
+11. **Persistence:** close/reopen the app and confirm scan history, imported hash counts and last-scan metadata persist locally.
+12. **Battery/performance:** measure scan duration, peak memory and battery use for representative small, medium and maximum-sized files on low- and mid-range devices.
 
-   ```bash
-   docker compose --env-file .env.local -f docker-compose.local.yml up -d ollama
-   docker compose --env-file .env.local -f docker-compose.local.yml exec ollama ollama pull qwen2.5:3b
-   ```
+## YARA
 
-5. Start the local application services:
+The optional desktop Python rule pack is compiled and tested in CI using `requirements-yara.txt`. The current Android APK does not bundle native YARA. Android tests should verify the supported SHA-256 and static-signature paths only; do not claim YARA parity until a native Android ABI integration has been implemented and tested on-device.
 
-   ```bash
-   docker compose --env-file .env.local -f docker-compose.local.yml up --build -d web firstlight-api streamlit
-   ```
+## Acceptance evidence
 
-   Start the persistent worker profiles only after their local database credentials and test tenant/case fixtures have been configured. Do not enable the Wazuh worker with empty/default tenant identifiers.
+Record:
+- Git commit SHA and Android workflow run.
+- Device model, Android version, OEM build and available RAM.
+- APK SHA-256 and whether it is debug or release-signed.
+- Share/picker/folder test outcomes for each source app.
+- WorkManager actual run timestamps and deferrals.
+- Notification behavior with permission granted/denied.
+- Dataset source, snapshot ID, cutoff, file types, row counts and manifest SHA-256.
+- Scan latency, peak memory, battery impact and limits tested.
+- Any failures, reproduction steps and unresolved release blockers.
 
-## Offline acceptance
+## Release gate
 
-After all images, dependencies, migrations, and model weights are cached:
-
-1. Disable external network connectivity at the host/network level. Keep Docker's local bridge and loopback access available.
-2. Run the local service probe:
-
-   ```bash
-   SATARK_OLLAMA_MODEL=qwen2.5:3b bash scripts/check-local-offline-services.sh
-   ```
-
-3. In the browser at `http://127.0.0.1:3000`, sign in with a dedicated local test account; create a case; attach a permitted test evidence artifact; run deterministic investigation; view the evidence digest and audit record.
-4. Restart the web/API services and local Supabase containers. Verify that the case, evidence, and audit record persist and that the same account can read them after restart.
-5. Stop the Ollama container and rerun deterministic analysis. The application must show AI enrichment as unavailable, not fail the core detection/investigation path.
-6. Restore external networking only after recording the outputs and commit SHA.
-
-The service probe checks local HTTP endpoints and confirms the configured Ollama model is present. It does not itself prove that the host is offline, that authentication is correctly isolated, or that database data survives restart. Those are separate acceptance steps.
-
-## Security guardrails
-
-- Do not use the Nirdhoom production project for local/offline tests. Use the local Supabase stack or Saathi test project.
-- Never use production service-role keys in browser-visible environment variables.
-- Do not connect response actions to local tests by default. Live actions require a separately reviewed trusted executor, an authorized test target, approval, and independent provider-side verification.
-- Do not claim remote Wazuh ingestion or Defender isolation in a fully offline run. Those integrations require an explicitly permitted network path.
-- Keep test identities, passwords, local secrets, model weights, logs, and evidence artifacts out of Git.
-
-## Acceptance record template
-
-Record these fields after an actual run:
-
-- Commit SHA:
-- OS / Docker / Supabase CLI versions:
-- Network disabled at host level: yes/no (evidence):
-- Local Supabase Auth health:
-- Web home and health route:
-- Ollama model tag present:
-- Sign-in and role used:
-- Case/evidence IDs (non-sensitive):
-- Deterministic analysis result and source digest:
-- Persistence after restart:
-- Deterministic mode with Ollama stopped:
-- Failures / limitations:
-- Operator and UTC timestamp:
-
-Do not mark offline acceptance passed if any required field is missing or the run used a hosted Supabase URL.
+Do not call SATARK production-complete until physical-device QA, measured performance/battery tests, real snapshot import, independently labelled detection evaluation, privacy/store disclosures, signing and release-build verification are complete. CI passing and a debug APK are necessary but insufficient.

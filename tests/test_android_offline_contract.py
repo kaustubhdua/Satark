@@ -30,6 +30,19 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("android.intent.action.SEND", actions)
         self.assertIn("android.intent.action.SEND_MULTIPLE", actions)
 
+    def test_app_has_branded_launcher_mark_and_dark_theme(self):
+        manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
+        application = manifest.find("./application")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "icon"), "@drawable/ic_satark_mark")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "theme"), "@style/AppTheme")
+        ET.parse(ANDROID / "app/src/main/res/drawable/ic_satark_mark.xml")
+        styles = ET.parse(ANDROID / "app/src/main/res/values/styles.xml").getroot()
+        theme = styles.find("./style[@name='AppTheme']")
+        self.assertIsNotNone(theme)
+        values = {item.attrib.get("name"): item.text for item in theme.findall("item")}
+        self.assertEqual(values.get("android:colorAccent"), "#78E0C1")
+        self.assertEqual(values.get("android:statusBarColor"), "#08101B")
+
     def test_android_python_has_no_network_client_imports(self):
         sources = list((ANDROID / "app/src/main/python").rglob("*.py"))
         self.assertTrue(sources, "Android Python scanner sources must exist")
@@ -76,6 +89,11 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_FILE_BYTES = 64L * 1024L * 1024L", source)
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
+
+    def test_periodic_scans_defer_when_battery_or_storage_is_low(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn(".setRequiresBatteryNotLow(true)", source)
+        self.assertIn(".setRequiresStorageNotLow(true)", source)
 
 
 if __name__ == "__main__":

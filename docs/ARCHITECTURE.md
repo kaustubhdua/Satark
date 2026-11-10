@@ -1,82 +1,98 @@
-# SATARK / FIRSTLIGHT architecture and threat model
+# SATARK architecture and threat model
 
-## System components
+## Product boundary
 
-SATARK has two user interfaces and a shared investigation platform:
+SATARK File Guard is the primary product: a native Android application with a Python inspection engine embedded through Chaquopy. Its security-critical workflow is local and offline. The Android app does not require Supabase, a hosted backend, a cloud AI provider, a threat-intelligence API, an API key, or an Internet permission.
 
-- **Next.js web workspace** — the primary multi-user interface for authenticated case work, evidence, findings, reports, approvals, and durable investigation jobs.
-- **Streamlit workspace** — the legacy/local analysis interface. Its interactive session history is temporary and is not the durable case-management store.
-- **Supabase Auth and Postgres** — user identity, tenant membership, case/evidence metadata, findings, reports, append-only audit records, approvals, investigation jobs, and Wazuh checkpoints. Row-level security (RLS) and tenant-scoped policies enforce access; the shared project also hosts other applications, so database operations must be limited to SATARK objects.
-- **Private FIRSTLIGHT FastAPI service** — the canonical deterministic investigation engine and read-only Wazuh alert preview endpoint. It fails closed when the required bearer tokens are not configured.
-- **Private persistent workers** — the Wazuh worker reads indexed alerts, revalidates its configured actor's membership, writes normalized evidence and provenance to an authorized case, and advances a durable checkpoint only after a fully drained query window. The investigation worker leases durable jobs and persists deterministic results. Neither worker performs live response actions.
-- **Optional local Ollama** — self-hosted open-weight model inference. The default analysis path uses deterministic local rules and does not require third-party AI API keys. Model output is untrusted narrative and cannot independently authorize a finding or response.
+The older Next.js, Streamlit, FIRSTLIGHT and self-hosted case-management components remain optional legacy/supporting tools in this repository. They are not required to install, scan files, store scan history, import historical intelligence or run scheduled folder scans on Android.
 
-## Trust boundaries
+## Android components
 
-1. **Browser → Next.js:** browser state and request data are untrusted. Server routes validate the Supabase access token, bound request/response sizes, and do not expose private worker credentials.
-2. **Next.js → Supabase:** authenticated user requests carry the user's token and rely on database grants and RLS. Service-role credentials must never be sent to the browser or configured as a public client variable.
-3. **Next.js → FIRSTLIGHT API:** the server-side proxy injects a strong bearer token. The private API URL and token belong in server-side environment configuration, never in `NEXT_PUBLIC_*` variables.
-4. **Persistent worker → Wazuh Indexer:** only a server-side, least-privilege read-only account may query the approved alert indices. The endpoint must be HTTPS with certificate validation unless an isolated lab explicitly opts into HTTP.
-5. **Persistent worker → Supabase:** the service-role key is limited to a private worker host. The worker revalidates the configured tenant/case/actor membership around privileged operations and writes only tenant/case-bound object paths.
-6. **SATARK → submitted URL or file:** external URL fetching and file parsing are hostile-input boundaries. Enforce network egress controls in addition to application-level validation.
-7. **Application → Ollama:** submitted content is sent to the configured model server only when the optional local model feature is invoked. Keep Ollama on a private network and do not expose its unauthenticated endpoint to the public internet.
+- **Native Android shell (Kotlin):** handles Android Sharesheet intents, Storage Access Framework grants, notifications, lifecycle and WorkManager scheduling.
+- **Python engine (Chaquopy):** computes SHA-256, reads bounded file signatures, checks extension/signature consistency, runs deterministic specialist checks, optionally evaluates YARA on supported desktop Python installations, and fuses evidence.
+- **SQLite local stores:** hold explicitly imported historical hash indicators and metadata-only scan history in app-private storage.
+- **Historical snapshot tools:** one-time workstation scripts acquire and convert the selected EMBER2024 metadata. The Android app never downloads, refreshes or queries a remote feed.
+- **WorkManager:** performs bounded, user-authorized folder rescans. Android can defer these jobs; they are not a continuous monitoring daemon.
 
-## Data flow
+## File inspection and privacy
 
-### Local threat triage
+SATARK reads raw bytes because cryptographic hashing and signature checks require bytes. It does not semantically read or display document content.
 
-User input → bounded parsing/normalization → deterministic URL/text signals → optional self-hosted Ollama summary → constrained result normalization → findings and report.
+Permitted inspection:
+1. File name and size supplied by Android.
+2. SHA-256 over the complete bounded file.
+3. A bounded header read for known file-format signatures.
+4. Filename extension versus detected-signature consistency.
+5. Exact local SHA-256 lookup against the imported historical snapshot.
+6. Optional byte-pattern rules on platforms where a reviewed YARA engine is installed.
 
-The default Next.js analysis path does not call hosted AI or threat-intelligence APIs. A deterministic no-signal result is not proof that an artifact is safe, and a heuristic score is not a probability.
+Not performed:
+- No document text extraction, OCR, image rendering, PDF preview or media decoding.
+- No archive extraction, macro execution, script execution or sandbox execution.
+- No file modification, deletion, upload or automatic quarantine.
+- No WhatsApp/Telegram chat database access or access to another app's private storage.
 
-### FIRSTLIGHT investigation
+A clean result means **"No known threat detected by enabled local checks."** It is not proof that the file is safe. Exact SHA-256 matching only identifies byte-identical files present in the selected snapshot.
 
-Authenticated case/evidence request → canonical evidence digest verification → deterministic detection/correlation rules → evidence-linked findings → timeline reconstruction and explicit gaps → report/audit persistence.
+## Android file access
 
-Raw Wazuh source snapshots are stored in the private `satark-evidence` bucket under tenant/case-bound paths. The Storage policies permit viewer access to ordinary evidence but restrict raw `wazuh/<sha256>.json` snapshots to owner/responder/analyst membership. Hashes support integrity comparison; they do not prove that the source was truthful or independently collected.
+- `ACTION_SEND` and `ACTION_SEND_MULTIPLE` receive files explicitly shared from WhatsApp, Telegram, browsers, email clients and file managers.
+- `ACTION_OPEN_DOCUMENT` lets the user select individual files.
+- `ACTION_OPEN_DOCUMENT_TREE` grants access only to a directory the user explicitly selects.
+- Persisted folder access can be stopped or revoked from SATARK.
+- The app cannot bypass Android's sandbox or read private messaging databases/directories.
 
-### Wazuh ingestion and durable jobs
+Android's Storage Access Framework deliberately grants URI-based access to user-selected documents and trees. It does not grant arbitrary access to another app's private storage.
 
-Wazuh Indexer → private read-only connector → normalized event IDs and source provenance → persistent worker → tenant/case-authorized evidence + durable checkpoint. Repeated polls are duplicate-safe; a failed poll must not advance the checkpoint. A separate private worker leases investigation jobs, persists the result, and then marks the job complete. Production operation still requires a reachable authorized Wazuh lab, least-privilege credentials, a provisioned SATARK tenant/case/member/actor, and real end-to-end verification.
+## Local protection and scheduling
 
-## URL threat model
+A shared file is scanned immediately while the sender's URI grant is available. Folder scans are bounded by file count, recursion depth, per-file bytes and total run bytes. Users can request an immediate scan or opt into a 15-minute minimum periodic interval or a daily interval.
 
-The URL scanner can cause outbound requests, so it is treated as an SSRF boundary. The application:
+Periodic WorkManager jobs are inexact and may be deferred by Doze, battery saver, standby, OEM scheduling and document-provider availability. "24/7 protection" is therefore not a truthful platform guarantee. SATARK provides immediate inspection of shared files plus best-effort scheduled rescans; it does not continuously monitor every app or every filesystem event.
 
-- permits only HTTP(S);
-- rejects URL credentials and local hostnames;
-- resolves hostnames and requires every answer to be globally routable;
-- pins the connection to a validated IP while preserving the original hostname for TLS certificate validation and SNI;
-- validates every redirect independently, limits redirect count, and blocks HTTPS-to-HTTP downgrade redirects; and
-- bounds response bytes and rejects unsupported content types.
+## Historical threat intelligence
 
-Application-level checks do not replace infrastructure egress controls. Block cloud metadata services and internal networks at the network layer, and retest in the actual hosting environment.
+EMBER2024 is a research feature dataset with SHA-256 labels and metadata for Win32, Win64, .NET, APK, ELF and PDF samples collected through 2024-12-14. It is not a universal live malware feed. SATARK converts labelled metadata only; it does not download or bundle malware binaries.
 
-## AI and response-safety model
+- Label 0 is benign, label 1 is malicious and unlabeled rows are excluded.
+- Imports are explicit, local and provenance-labelled.
+- A frozen dataset cannot discover threats first observed after its cutoff.
+- A modified file has a different SHA-256 and may not match.
+- Dataset coverage depends on the selected file types and splits.
+- A no-match result is not a benign classification.
 
-Models are untrusted analyzers, not authorities. Model narratives must remain distinct from observed evidence and deterministic rule output. Keep confidence calibrated to available evidence and expose uncertainty and gaps.
+## YARA support
 
-Response approvals currently support the simulated workflow; they are not proof of safe real-world execution. Do not enable live containment, account/session revocation, or network blocking until the target-bound authorization, durable approval consumption, audit trail, provider permissions, rollback/recovery, and real-provider tests have been independently validated. The current release keeps live response actions disabled.
+The repository includes an original local starter rule pack for PowerShell download/execute combinations, PDF active-content markers, OLE macro automation, JavaScript obfuscation clusters and standalone DEX dynamic-loading patterns. These are review heuristics, not definitive malware signatures. Their false-positive notes and synthetic regression corpus are documented in [LOCAL_YARA_RULES.md](LOCAL_YARA_RULES.md).
 
-## Persistence and privacy
+The desktop Python workflow can use optional `yara-python`. The Android APK does not currently bundle the native YARA engine; mobile detection uses SHA-256, fixed format signatures, conservative built-in byte-pattern heuristics, extension checks and filename heuristics. Do not claim mobile YARA support until a native Android ABI build and physical-device tests pass.
 
-- The Next.js workspace uses Supabase-backed durable workflows when its authentication, schema, RLS, and private API configuration are correctly provisioned.
-- The legacy Streamlit workspace keeps its history in session state; do not treat that state as durable case storage.
-- The `satark-evidence` bucket is private. Source snapshots are bounded and digest-verified. A SHA-256 digest alone is not an independently anchored chain of custody.
-- Avoid uploading secrets or regulated data until the deployment's access controls, retention policy, backup/restore, and provider agreements are reviewed.
-- Keep service-role keys, Wazuh credentials, and private API tokens in a secret manager or private runtime environment. Never commit secrets or expose them through client-side environment variables.
+## Supabase-free supporting web backend
 
-## Production release gates
+The optional legacy web workspace uses SATARK-owned FastAPI, SQLAlchemy and Alembic components. SQLite is the zero-configuration local/single-host option; PostgreSQL is optional for a self-hosted multi-instance deployment. This backend is independent of the Android scanner.
 
-Do not declare production-ready until all of the following are evidenced for the exact candidate revision:
+The application has no Supabase SDK, Supabase Auth, PostgREST, Supabase Storage, Supabase RPC, Supabase project URL or Supabase key requirement. The obsolete Supabase CLI configuration and migration directory have been removed. Existing data from any former hosted project is not automatically migrated or deleted; any needed export is a separate operator-owned task.
 
-1. All CI, CodeQL, web build, browser/accessibility, and isolated migration checks pass on the exact current `main` SHA.
-2. The shared Supabase migration history is reconciled using the documented operator procedure. Preview the linked push and verify that exactly the two approved SATARK migrations are pending before applying them; never run a broad push if the dry-run differs.
-3. Verify the six case-note, approval, and investigation-job policies use the private membership helper; verify the five SATARK foreign-key indexes and expected helper grants.
-4. Deploy the exact current `main` SHA through the authorized Vercel Git integration, verify the production alias points to that SHA, and pass production smoke. If SSO blocks the smoke workflow, use an approved public custom domain or a narrowly scoped deployment-protection bypass; do not disable SSO globally or bypass deployment quotas.
-5. Provision server-side `FIRSTLIGHT_API_URL`, strong `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN`, a private worker host, Wazuh Indexer URL/credentials, an agent allowlist, and a dedicated authorized SATARK tenant/case/actor. Keep the Supabase service-role key only on the private worker host.
-6. Run a real Wazuh-to-evidence-to-checkpoint-to-investigation-to-report end-to-end test with authorized synthetic/lab telemetry, including retry, duplicate, revoked-membership, and recovery cases.
-7. Verify backups and restore, retention/deletion controls, operational alerting, resource limits, outbound egress restrictions, and incident-response runbooks.
-8. Keep live response actions disabled until a separate reviewed release explicitly validates the complete approval and provider execution path.
+## Design references
 
-The current release status and exact external blockers are recorded in [FIRSTLIGHT implementation status](FIRSTLIGHT_IMPLEMENTATION_STATUS.md) and [deployment sign-off](DEPLOYMENT_SIGNOFF.md). Passing CI is necessary but does not prove live-provider or production readiness.
+- [Hallmark](https://github.com/Nutlope/hallmark): design review principles, hierarchy, accessibility and implementation QA.
+- [shadcn/ui](https://github.com/shadcn-ui/ui): composable UI and accessibility patterns; not included as an Android runtime dependency.
+- [Magic UI](https://github.com/magicuidesign/magicui): restrained motion and visual inspiration; React components are not used in the native app.
+- [Tremor](https://github.com/tremorlabs/tremor): dashboard and data-visualization patterns; not included in the native runtime.
+- [NirDiamant/GenAI_Agents](https://github.com/NirDiamant/GenAI_Agents): specialist routing and evidence trace ideas. Its model/API tutorial dependencies are not used; deterministic agents are preferable for reproducible offline byte inspection.
+
+No code is vendored from those projects. Their licenses and runtime assumptions differ, and the Android product intentionally avoids unnecessary dependencies and hosted services.
+
+## Release acceptance
+
+A production release requires all of the following:
+- Exact-commit Python, bridge, offline-contract, YARA and Android build tests pass.
+- Physical-device validation of WhatsApp/Telegram sharing, multiple attachments, URI revocation and Android document providers.
+- WorkManager validation across reboot, Doze, battery saver, low storage, interrupted scans and provider failures.
+- Real EMBER2024 snapshot import with preserved provenance and checksum manifests.
+- A representative independently labelled evaluation corpus and human-reviewed false positives; synthetic fixture metrics must not be marketed as real-world accuracy.
+- Memory, CPU, latency and battery measurements on low- and mid-range Android devices.
+- Signed release APK/AAB, privacy disclosures, store policy review and release signing-key custody.
+- A clear incident and rollback plan.
+
+A successful CI build verifies only the checks that ran. It does not substitute for physical-device testing, a signed release or measured detection quality.

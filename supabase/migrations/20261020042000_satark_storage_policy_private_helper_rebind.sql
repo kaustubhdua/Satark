@@ -1,4 +1,0 @@
--- Superseded by 20261020044018_satark_storage_policy_private_helper_rebind.sql.
--- The shared SATARK database already recorded migration 20261020042449 before this
--- version was introduced. The policy rebind was applied under version 20261020044018
--- so this unapplied historical version must remain a no-op to avoid out-of-order changes.

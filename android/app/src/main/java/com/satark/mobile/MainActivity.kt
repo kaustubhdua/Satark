@@ -36,6 +36,8 @@ class MainActivity : Activity() {
     private lateinit var results: TextView
     private lateinit var datasetSource: EditText
     private lateinit var datasetStatus: TextView
+    private lateinit var lastScanStatus: TextView
+    private var pendingExportJson: String? = null
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
@@ -52,6 +54,13 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::datasetStatus.isInitialized && ::lastScanStatus.isInitialized) {
+            refreshDatasetStats()
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -63,19 +72,41 @@ class MainActivity : Activity() {
     }
 
     private fun buildScreen() {
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).apply { clipToPadding = false }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(36, 42, 36, 36)
-            setBackgroundColor(android.graphics.Color.rgb(10, 17, 31))
+            setPadding(dp(20), dp(28), dp(20), dp(32))
+            setBackgroundColor(android.graphics.Color.rgb(8, 14, 27))
         }
-        content.addView(text("SATARK", 14f, 0xFF9B8CFF.toInt(), true))
-        content.addView(text("File Guard", 32f, 0xFFF3F5FF.toInt(), true))
+
+        val brand = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        brand.addView(text("◈", 25f, 0xFF78E0C1.toInt(), true))
+        val brandName = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        brandName.addView(text("SATARK", 15f, 0xFFF3F5FF.toInt(), true))
+        brandName.addView(text("FILE GUARD · OFFLINE", 10f, 0xFF8D9AB2.toInt(), true))
+        brand.addView(brandName)
+        val localTag = text("LOCAL ONLY", 10f, 0xFF78E0C1.toInt(), true).apply {
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = rounded(0xFF12352F.toInt(), 0xFF28675B.toInt())
+        }
+        brand.addView(localTag, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { gravity = android.view.Gravity.CENTER_VERTICAL; leftMargin = dp(12) })
+        content.addView(brand)
+
+        content.addView(text("Your files.\nChecked locally.", 34f, 0xFFF3F5FF.toInt(), true))
         content.addView(text(
-            "Private, offline-first file inspection. Files are fingerprinted and checked locally; document text is not extracted and files are never executed.",
-            15f, 0xFFB8C2D8.toInt(), false
+            "Share an attachment or choose a folder. SATARK fingerprints files on this device without extracting document text or sending samples anywhere.",
+            14f, 0xFFAFBCD2.toInt(), false
         ))
-        status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 12f, 0xFF78E0C1.toInt(), true)
+
+        status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 11f, 0xFF78E0C1.toInt(), true).apply {
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(0xFF102A2A.toInt(), 0xFF28564F.toInt())
+        }
         if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             val lastScan = prefs.getLong("last_folder_scan_ms", 0L)
             val lastCount = prefs.getInt("last_folder_scan_files", 0)
@@ -86,35 +117,63 @@ class MainActivity : Activity() {
                 "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
             }
         }
-        content.addView(status)
-        content.addView(actionButton("Choose a file") { chooseFile() })
-        content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
-        content.addView(actionButton("Enable frequent background scan (15 min, best-effort)") { enableFrequentScan() })
-        content.addView(actionButton("Enable daily background scan") { enableDailyScan() })
-        content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
-        content.addView(actionButton("Stop background scans (keep folder access)") { stopBackgroundScans() })
+        content.addView(panel(status))
+
+        content.addView(sectionTitle("LAST LOCAL SCAN"))
+        lastScanStatus = text("No scan history recorded on this device yet.", 12f, 0xFFAFBCD2.toInt(), false)
+        content.addView(panel(lastScanStatus))
+
+        content.addView(sectionTitle("PROTECT YOUR FILES"))
+        content.addView(actionButton("Scan a file", { chooseFile() }, true))
+        content.addView(actionButton("Choose a folder to monitor", { chooseFolder() }))
+        content.addView(actionButton("Scan selected folder now", { enqueueFolderScan() }))
+        content.addView(actionButton("Enable frequent scan · 15 min minimum", { enableFrequentScan() }))
+        content.addView(actionButton("Enable daily background scan", { enableDailyScan() }))
+        content.addView(actionButton("Stop background scans", { stopBackgroundScans() }))
+
+        content.addView(sectionTitle("HISTORICAL THREAT INTELLIGENCE"))
+        content.addView(text(
+            "Frozen local snapshot · no live feed · no automatic updates",
+            12f, 0xFFAFBCD2.toInt(), false
+        ))
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
             setTextColor(0xFFF3F5FF.toInt())
             setHintTextColor(0xFF8D9AB2.toInt())
             setSingleLine(true)
+            textSize = 14f
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(0xFF111D31.toInt(), 0xFF2B3A54.toInt())
         }
-        content.addView(datasetSource)
+        content.addView(datasetSource, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(10) })
         datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
-        content.addView(datasetStatus)
-        content.addView(actionButton("View historical dataset coverage") { showDatasetStats() })
-        content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
-        content.addView(actionButton("View local scan history") { showHistory() })
-        content.addView(actionButton("Clear local scan history") { clearHistory() })
-        content.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
-        content.addView(actionButton("Remove folder access and stop scheduled scans") { removeFolderAccess() })
+        content.addView(panel(datasetStatus))
+        content.addView(actionButton("Import historical SHA-256 CSV parts", { chooseDataset() }))
+        content.addView(actionButton("View dataset coverage", { showDatasetStats() }))
+        content.addView(actionButton("Clear imported threat dataset", { confirmClearDataset() }))
+
+        content.addView(sectionTitle("RECENT ACTIVITY"))
+        results = text(
+            "No scan selected yet. Share a file from WhatsApp or Telegram, or choose a file above. Results and history stay on this device.",
+            13f, 0xFFE4E9F6.toInt(), false
+        )
+        content.addView(panel(results))
+        content.addView(actionButton("View local scan history", { showHistory() }))
+        content.addView(actionButton("Export detailed evidence report (JSON)", { exportEvidenceReport() }))
+        content.addView(actionButton("Clear local scan history", { clearHistory() }))
+
+        content.addView(sectionTitle("PRIVACY BY DESIGN"))
+        content.addView(panel(text(
+            "SATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Background scans are best-effort and are not continuous 24/7 surveillance. Original files are never modified or deleted.",
+            12f, 0xFFFFD28A.toInt(), false
+        )))
         content.addView(text(
-            "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
-            13f, 0xFFFFD28A.toInt(), false
+            "A no-match result means no enabled local check recognised the file. It is not a guarantee of safety.",
+            11f, 0xFF8D9AB2.toInt(), false
         ))
-        content.addView(text("LATEST SCAN RESULTS", 12f, 0xFF9B8CFF.toInt(), true))
-        results = text("Share a file from WhatsApp or Telegram, or select one above. The scan runs locally on this device.", 14f, 0xFFE4E9F6.toInt(), false)
-        content.addView(results)
+
         scroll.addView(content)
         setContentView(scroll)
     }
@@ -128,18 +187,71 @@ class MainActivity : Activity() {
             setPadding(0, 10, 0, 14)
         }
 
-    private fun actionButton(label: String, action: () -> Unit): Button =
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun rounded(fill: Int, stroke: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(16).toFloat()
+            setColor(fill)
+            setStroke(dp(1), stroke)
+        }
+
+    private fun panel(child: TextView): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(12), dp(15), dp(12))
+            background = rounded(0xFF111D31.toInt(), 0xFF24334B.toInt())
+            addView(child)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(14) }
+        }
+
+    private fun sectionTitle(label: String): TextView =
+        text(label, 11f, 0xFF9B8CFF.toInt(), true).apply {
+            setPadding(0, dp(14), 0, dp(8))
+        }
+
+    private fun actionButton(label: String, action: () -> Unit, primary: Boolean = false): Button =
         Button(this).apply {
             text = label
             isAllCaps = false
-            setTextColor(0xFF0A111F.toInt())
-            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF78E0C1.toInt())
+            textSize = 14f
+            setTextColor(if (primary) 0xFF08151A.toInt() else 0xFFEAF1FF.toInt())
+            background = if (primary) {
+                rounded(0xFF78E0C1.toInt(), 0xFF78E0C1.toInt())
+            } else {
+                rounded(0xFF18263D.toInt(), 0xFF30415D.toInt())
+            }
+            setPadding(dp(14), dp(7), dp(14), dp(7))
+            minHeight = dp(52)
             setOnClickListener { action() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 8, 0, 8) }
+            ).apply { setMargins(0, dp(4), 0, dp(7)) }
         }
+
+    private fun exportEvidenceReport() {
+        status.text = "PREPARING LOCAL EVIDENCE REPORT…"
+        executor.execute {
+            try {
+                val report = Python.getInstance().getModule("android_bridge")
+                    .callAttr("export_scan_report", filesDir.absolutePath).toString()
+                mainHandler.post {
+                    pendingExportJson = report
+                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_TITLE, "satark-evidence-report-" + System.currentTimeMillis() + ".json")
+                    }
+                    startActivityForResult(intent, REQUEST_EXPORT)
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "REPORT PREPARATION FAILED · " + error.javaClass.simpleName }
+            }
+        }
+    }
 
     private fun chooseFile() {
         val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -217,12 +329,16 @@ class MainActivity : Activity() {
         executor.execute {
             try {
                 val json = Python.getInstance().getModule("android_bridge")
-                    .callAttr("scan_history", filesDir.absolutePath).toString()
+                    .callAttr("scan_history", filesDir.absolutePath, 20).toString()
                 val array = org.json.JSONArray(json)
-                val lines = (0 until array.length()).map { index ->
+                val lines = (0 until minOf(array.length(), 20)).map { index ->
                     val item = array.getJSONObject(index)
+                    val evidence = item.optJSONObject("evidence_report")
+                    val signals = item.optJSONArray("signals")?.toString(2).orEmpty()
+                    val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
-                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256")
+                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
+                        "\nSignals:\n" + signals + "\nSpecialist evidence:\n" + trace
                 }
                 mainHandler.post {
                     results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\n\n")
@@ -237,12 +353,20 @@ class MainActivity : Activity() {
     private fun refreshDatasetStats() {
         executor.execute {
             try {
-                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
-                    .callAttr("scan_stats", filesDir.absolutePath).toString())
+                val bridge = Python.getInstance().getModule("android_bridge")
+                val stats = JSONObject(bridge.callAttr("scan_stats", filesDir.absolutePath).toString())
+                val history = org.json.JSONArray(bridge.callAttr("scan_history", filesDir.absolutePath, 1).toString())
+                val latest = if (history.length() > 0) history.getJSONObject(0) else null
                 mainHandler.post {
                     datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                         stats.optInt("benign") + " BENIGN"
+                    lastScanStatus.text = if (latest == null) {
+                        "No scan history recorded on this device yet."
+                    } else {
+                        latest.optString("scanned_at") + " · " + latest.optString("filename") +
+                            " · " + latest.optString("verdict") + " · SHA-256 " + latest.optString("sha256")
+                    }
                 }
             } catch (_: Exception) {
                 mainHandler.post { datasetStatus.text = "HISTORICAL DATASET STATUS UNAVAILABLE" }
@@ -386,6 +510,21 @@ class MainActivity : Activity() {
                     status.text = "Folder access could not be persisted. Please choose the folder again."
                 }
             }
+            REQUEST_EXPORT -> {
+                val destination = data.data ?: return
+                val report = pendingExportJson ?: return
+                executor.execute {
+                    try {
+                        contentResolver.openOutputStream(destination, "wt")?.use { output ->
+                            output.write(report.toByteArray(Charsets.UTF_8))
+                        } ?: throw IllegalStateException("Android could not open the report destination")
+                        pendingExportJson = null
+                        mainHandler.post { status.text = "EVIDENCE REPORT EXPORTED · METADATA ONLY · LOCAL" }
+                    } catch (error: Exception) {
+                        mainHandler.post { status.text = "REPORT EXPORT FAILED · " + error.javaClass.simpleName }
+                    }
+                }
+            }
         }
     }
 
@@ -422,6 +561,7 @@ class MainActivity : Activity() {
             mainHandler.post {
                 results.text = output.joinToString("\n\n──────────────\n\n")
                 status.text = "SCAN COMPLETE · " + output.size + " RESULT(S) · LOCAL ONLY"
+                refreshDatasetStats()
             }
         }
     }
@@ -475,7 +615,12 @@ class MainActivity : Activity() {
         }
         WorkManager.getInstance(this).cancelUniqueWork(otherName)
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
-            .setConstraints(Constraints.Builder().build())
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresBatteryNotLow(true)
+                    .setRequiresStorageNotLow(true)
+                    .build()
+            )
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             uniqueName,
@@ -524,6 +669,7 @@ class MainActivity : Activity() {
         private const val REQUEST_FOLDER = 402
         private const val REQUEST_DATASET = 403
         private const val REQUEST_NOTIFICATIONS = 404
+        private const val REQUEST_EXPORT = 405
         private const val KEY_TREE_URI = "granted_tree_uri"
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"

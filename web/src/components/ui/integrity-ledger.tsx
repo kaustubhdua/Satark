@@ -19,7 +19,7 @@ type Snapshot = {
 };
 
 const featured = [
-  'storage.supabase',
+  'storage.self_hosted',
   'rate_limit.shared',
   'firstlight.investigation',
   'telemetry.wazuh',

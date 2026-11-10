@@ -45,7 +45,7 @@ export default function SiteHeader() {
     <>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="SATARK home" onClick={goHome}>
+        <Link className="brand" href="/" onClick={goHome}>
           <span className={'brand-mark' + (tilting ? ' is-tilting' : '')} aria-hidden="true">S</span>
           <span>SATARK<span className="brand-period">.</span></span>
         </Link>

@@ -42,3 +42,26 @@ def clear_intelligence(app_data_dir):
 def scan_stats(app_data_dir):
     root = _paths(app_data_dir)
     return json.dumps(ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3").stats())
+
+def export_scan_report(app_data_dir):
+    """Build a portable evidence report containing metadata only, never file bytes."""
+    from datetime import datetime, timezone
+
+    root = _paths(app_data_dir)
+    records = ScanHistory(root / "file_guard_history.sqlite3").list_recent(100)
+    dataset = ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3").stats()
+    report = {
+        "report_version": 1,
+        "product": "SATARK File Guard",
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "processing": "local_offline",
+        "dataset": dataset,
+        "records": records,
+        "limitations": [
+            "No-match is not proof of safety.",
+            "Exact SHA-256 matching only covers byte-identical files in the imported historical snapshot.",
+            "The report contains scan metadata and evidence signals only; it never contains original file bytes or extracted document text.",
+            "Android background scans are best-effort and are not continuous 24/7 monitoring.",
+        ],
+    }
+    return json.dumps(report, ensure_ascii=True, indent=2)
