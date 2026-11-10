@@ -6,6 +6,7 @@ The candidate now includes an offline Android File Guard, a self-hosted SATARK/F
 
 ---
 
+## Product principles
 
 1. Evidence before verdicts. Keep observations, deterministic signals, threat-intelligence results, model explanations, analyst conclusions, and response actions distinct.
 2. Missing data is not a clean result. Distinguish not requested, disabled, unavailable, no match, and match. Never turn a provider failure into "safe".
