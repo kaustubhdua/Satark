@@ -1,14 +1,14 @@
 <div align="center">
 
-# SATARK — Offline File Guard
+# SATARK — Independent Cybersecurity Platform
 
-### Android-first · Python detection engine · Local-only scanning
+### Offline File Guard · FIRSTLIGHT Incident Response · Wazuh-native telemetry
 
-**Inspect file fingerprints and signatures. Keep private content on-device.**
+**Detect, investigate and respond with open-source tooling and self-hosted infrastructure.**
 
-SATARK is an Android-first file-security application for scanning files that a user explicitly shares, selects, or makes available through an Android folder permission. The Kotlin layer handles Android integration; the Python engine performs static inspection and local SQLite lookups.
+SATARK is an independent cybersecurity project with two complementary products: an Android-first, offline static file-inspection application and FIRSTLIGHT, a self-hosted incident investigation and response workspace. Its Python detection and investigation modules are designed to work without paid hosted AI or Microsoft Defender. Wazuh is the authorized endpoint telemetry and response integration; it does not replace SATARK's own detection logic.
 
-**No hosted detection APIs. No API keys. No file uploads. No chat reading. No cloud dependency for Android scanning.**
+**No Microsoft Defender dependency. No mandatory hosted AI API keys. Android file scanning remains offline and private. FIRSTLIGHT can run self-hosted with PostgreSQL or local SQLite.**
 
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![Android File Guard](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/android-file-guard.yml)
@@ -20,6 +20,42 @@ SATARK is an Android-first file-security application for scanning files that a u
 </div>
 
 ---
+
+## Platform at a glance
+
+| Product area | Responsibility | Primary technology |
+| --- | --- | --- |
+| SATARK File Guard | User-selected file inspection, historical hash matching, structural checks and local evidence reports | Kotlin, Python, SQLite, optional desktop YARA |
+| Detection and intelligence | Deterministic rules, file indicators, event normalization and explainable findings | Python, YARA, Sigma-compatible rule concepts |
+| FIRSTLIGHT | Tenant/case workspace, evidence integrity, timelines, investigations, reports and guarded approvals | FastAPI, Python, PostgreSQL/SQLite |
+| Endpoint telemetry | Authorized alert ingestion, bounded indexing queries and allowlisted endpoint response | Wazuh 4.14.x integration |
+| Background processing | Durable investigation and telemetry ingestion jobs | Python workers |
+| Web command center | Arcade-inspired operations interface with accessible contrast and reduced-motion support | Next.js |
+| Self-hosted operations | TLS termination, persistent volumes, separated database roles and recovery tooling | Docker Compose, PostgreSQL, Caddy |
+
+### Architecture and operational boundaries
+
+- **No Microsoft Defender integration is required.** Wazuh is the only endpoint telemetry/response provider in this architecture.
+- **Wazuh is an integration, not the product's brain.** SATARK retains its own deterministic Python detection and correlation logic. Wazuh Indexer ingestion uses a read-only identity and explicit agent allowlists.
+- **FIRSTLIGHT response is disabled by default.** Live response requires an explicitly configured private Wazuh Manager API, approved fixed actions, agent allowlists, distinct approver/executor identities, exact target confirmation and an independently recorded verification step. AI cannot trigger response actions.
+- **The mobile scanner is deliberately offline.** It scans files explicitly shared, selected or made available through Android's Storage Access Framework. It does not silently read WhatsApp/Telegram private databases or chat messages.
+- **Self-hosting is the production path for the API and evidence store.** The production Compose stack expects real secrets, a persistent data volume, TLS, SMTP, external backup retention and a verified restore drill.
+- **No hosted model is required.** Optional local Ollama analysis is advisory; deterministic findings remain available without it.
+
+### FIRSTLIGHT documentation
+
+- [FIRSTLIGHT overview and local setup](docs/FIRSTLIGHT.md)
+- [Wazuh integration and ingestion](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md)
+- [Wazuh API acceptance](docs/FIRSTLIGHT_WAZUH_API.md)
+- [Live response safety controls](docs/FIRSTLIGHT_LIVE_RESPONSE.md)
+- [Response approval executor design](docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md)
+- [Exact-commit release gate](release-gate/EXACT_SHA.md)
+
+### Self-hosted deployment
+
+The repository includes local and production Docker Compose configurations, PostgreSQL role bootstrap scripts, a Caddy TLS edge, a Wazuh lab bootstrap helper and backup/restore tooling. Start with the deployment guide at docs/SELF_HOSTED_DEPLOYMENT.md and the production environment template at deploy/production.env.example. Never commit a real environment file, database password, Wazuh credential, TLS private key, signing key or incident evidence.
+
+**Important:** configuration templates and CI mocks are not proof of a live deployment. A production release still requires a provisioned authorized Wazuh lab, disposable agents, a reachable production host, external backup destination, physical Android QA and successful exact-commit acceptance.
 
 ## Product direction
 
@@ -223,7 +259,7 @@ python -m unittest discover -s tests -p "test_ember*.py" -v
 python -m compileall -q file_guard android/app/src/main/python scripts
 ```
 
-The repository also contains broader FIRSTLIGHT, migration, PostgreSQL and web regression suites. Those legacy suites are separate from the offline Android scanning path.
+The repository also contains FIRSTLIGHT API, Wazuh adapter, tenant-isolation, migration, PostgreSQL backup/restore, web browser and accessibility regression suites. Run the focused suites relevant to the code being changed, then use the exact-commit release gate for coordinated acceptance.
 
 For labelled corpus evaluation:
 
@@ -267,8 +303,8 @@ The Android product prioritizes native platform conventions, fast scanning, clea
 | `docs/ANDROID_DEVICE_QA.md` | Physical-device QA and release checklist |
 | `docs/FILE_GUARD_EVIDENCE_AND_EVALUATION.md` | Evidence report and evaluation guidance |
 | `docs/MOBILE_PRODUCT_DESIGN.md` | Mobile product and UI design notes |
-| `web/` | Supporting/legacy web workspace, not required for mobile scanning |
-| `FIRSTLIGHT/` and related modules | Legacy incident-investigation prototype |
+| `web/` | Next.js SATARK command center and FIRSTLIGHT workspace |
+| `firstlight_api.py`, `firstlight_*`, `integrations/` | FIRSTLIGHT API, investigation workers, response ledger and Wazuh adapters |
 
 ## Contributing
 
@@ -276,4 +312,4 @@ Contributions should preserve the mobile privacy contract and offline behavior. 
 
 ---
 
-**SATARK: local inspection, historical intelligence, user-controlled access.**
+**SATARK: independent detection. FIRSTLIGHT: accountable investigation and response. Wazuh: authorized endpoint telemetry.**
