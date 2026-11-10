@@ -26,8 +26,9 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 4. Start an immediate scan or opt into best-effort 15-minute / daily WorkManager rescans.
 5. Import EMBER2024 CSV part(s), the converter `*_manifest.json`, and the matching `ember2024_download_*.json` source manifest together. SATARK verifies the source-manifest digest, pinned revision, archive provenance records and each CSV part's SHA-256 before import. Keep both manifests and record the dataset cutoff.
 6. View imported historical hash coverage, recent scan history and evidence reports, including each report's integrity digest.
-7. Export a metadata-only JSON evidence report through Android's system document picker. The digest detects later edits but is not a digital signature or proof of chain of custody.
-8. Clear local scan history independently from the intelligence database.
+7. Export the latest metadata-only JSON evidence report through Android's system document picker. The report includes its evidence digest and local audit-chain entry.
+8. Verify the local hash-chained evidence history from the Scan History panel. This detects edits/reordering within the retained chain but is not a digital signature or remote proof of authenticity.
+9. Clear local scan history and its audit chain independently from the intelligence database.
 
 ## Historical dataset
 
