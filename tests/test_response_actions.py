@@ -1,31 +1,41 @@
+from __future__ import annotations
+
 import os
 import unittest
 from unittest.mock import patch
 
 from integrations.response_actions import (
     ResponseIntegrationError,
-    _confirm,
-    isolate_defender_device,
+    _validate_payload,
     live_response_enabled,
-    revoke_entra_user_sessions,
+    preflight_live_response,
 )
 
 
-class GuardrailTests(unittest.TestCase):
+class WazuhResponseGuardrailTests(unittest.TestCase):
+    def configure(self):
+        return patch.dict(os.environ, {
+            "SATARK_ENABLE_LIVE_RESPONSE": "true",
+            "FIRSTLIGHT_WAZUH_MANAGER_API_URL": "https://wazuh-manager.example.test:55000",
+            "FIRSTLIGHT_WAZUH_MANAGER_USERNAME": "lab-user",
+            "FIRSTLIGHT_WAZUH_MANAGER_PASSWORD": "lab-password",
+            "FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS": "001",
+        }, clear=True)
+
     def test_live_actions_disabled_by_default(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(ResponseIntegrationError, "disabled"):
-                _confirm("ISOLATE", "device-123", "CONFIRM ISOLATE device-123")
+                preflight_live_response("wazuh.block_ip", "001", "CONFIRM BLOCK_IP 001")
 
     def test_exact_confirmation_required(self):
-        with patch.dict(os.environ, {"SATARK_ENABLE_LIVE_RESPONSE": "true"}):
+        with self.configure():
             with self.assertRaisesRegex(ResponseIntegrationError, "Explicit confirmation"):
-                _confirm("ISOLATE", "device-123", "yes")
+                preflight_live_response("wazuh.block_ip", "001", "yes")
 
     def test_confirmation_is_target_bound(self):
-        with patch.dict(os.environ, {"SATARK_ENABLE_LIVE_RESPONSE": "true"}):
-            with self.assertRaises(ResponseIntegrationError):
-                _confirm("ISOLATE", "device-123", "CONFIRM ISOLATE device-456")
+        with self.configure():
+            with self.assertRaisesRegex(ResponseIntegrationError, "Explicit confirmation"):
+                preflight_live_response("wazuh.block_ip", "001", "CONFIRM BLOCK_IP 002")
 
     def test_live_capability_flag(self):
         with patch.dict(os.environ, {"SATARK_ENABLE_LIVE_RESPONSE": "true"}):
@@ -33,17 +43,13 @@ class GuardrailTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertFalse(live_response_enabled())
 
-    def test_invalid_isolation_type_fails_before_authentication(self):
-        with patch.dict(os.environ, {"SATARK_ENABLE_LIVE_RESPONSE": "true"}):
-            with self.assertRaisesRegex(ResponseIntegrationError, "Isolation type"):
-                isolate_defender_device("device-123", confirmation="CONFIRM ISOLATE device-123",
-                                        isolation_type="Anything", reason="test")
+    def test_invalid_ip_fails_before_authentication(self):
+        with self.assertRaisesRegex(ResponseIntegrationError, "valid IPv4"):
+            _validate_payload("wazuh.block_ip", {"ip_address": "not-an-ip"})
 
-    def test_invalid_upn_fails_before_authentication(self):
-        with patch.dict(os.environ, {"SATARK_ENABLE_LIVE_RESPONSE": "true"}):
-            with self.assertRaisesRegex(ResponseIntegrationError, "unsupported characters"):
-                revoke_entra_user_sessions("bad/user", confirmation="CONFIRM REVOKE_SESSIONS bad/user",
-                                           reason="test")
+    def test_protected_account_fails_before_authentication(self):
+        with self.assertRaisesRegex(ResponseIntegrationError, "invalid or protected"):
+            _validate_payload("wazuh.disable_account", {"username": "root"})
 
 
 if __name__ == "__main__":
