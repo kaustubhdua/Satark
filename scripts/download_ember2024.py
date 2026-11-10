@@ -16,8 +16,28 @@ import tempfile
 from urllib.request import Request, urlopen
 import zipfile
 
-DATASET_BASE = "https://huggingface.co/datasets/joyce8/EMBER2024/resolve/main/"
+# Immutable Hugging Face dataset revision. Never follow the mutable "main" branch.
+DATASET_REVISION = "8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc"
+DATASET_BASE = f"https://huggingface.co/datasets/joyce8/EMBER2024/resolve/{DATASET_REVISION}/"
+DATASET_LICENSE = "Apache-2.0"
 FILE_TYPES = ("Win32", "Win64", "Dot_Net", "APK", "ELF", "PDF")
+
+# Git LFS object SHA-256 and byte size recorded in the verified upstream commit.
+ARCHIVE_INTEGRITY = {
+    "APK_test.zip": ("058d255e80f8390ce2b87c43a918f2ca9fdd2a114cc2162df54b9d002af1998d", 81122668),
+    "APK_train.zip": ("95f222aae5c2f68216952e12f837367bdb4e7fc206e4ddd9319d45b14e031960", 357950829),
+    "Dot_Net_test.zip": ("bc31b48cc9f4317e56620fed2f1084384292a8b50603066a88ab532cbf9f19ff", 85518369),
+    "Dot_Net_train.zip": ("ed9d17040135da955bd5667075eb4b499a5ab97e74d7e763dd11d6879b6d8fcf", 368639403),
+    "ELF_test.zip": ("f7449414e4993df34604b4efb64ae92c6844daafd607cb5002fb98e612bed002", 7350991),
+    "ELF_train.zip": ("3385e7c5089f04c46d42ecac8361c6d5141d4b76ba8343c06282430b21e2b06f", 30514963),
+    "PDF_test.zip": ("8667c85dfff1986a858839ffe3dc41b4cf0e9651c29302e00fdeab9c9cf655d0", 13225216),
+    "PDF_train.zip": ("14decb6bb1a7bd037cad92082205ecbda5514a3295786974d330a91ca869b60e", 56115817),
+    "Win32_test.zip": ("3ff3b81c0a2427e68ad5349fa8e3a6151fa99a2c7404a62774301211d6a724a8", 1100969426),
+    "Win32_train.zip": ("9be451a9cf77ace2d3c6afd332d77da884fb17fc66e5cf6db36254051d1e75c5", 5252835952),
+    "Win64_test.zip": ("ba5e5df3a01f232fefeec3aca156781b07a9fabcc6d5627ce75cf9fa61e0f9e4", 516091625),
+    "Win64_train.zip": ("0cccc711b77bbe6c676fbc23f1b11f5bd970136362d4914333b4e6c0da29c8dd", 2592795813),
+    "challenge.zip": ("2e09904fbc4541236681e3ca767ea362441d0f7541e9cc637b5c960e22bd11", 23383940),
+}
 
 def archive_url(filename: str) -> str:
     return DATASET_BASE + filename
@@ -30,39 +50,50 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 def download_archive(filename: str, archive_dir: Path, max_download_bytes: int) -> Path:
+    expected = ARCHIVE_INTEGRITY.get(filename)
+    if expected is None:
+        raise ValueError("Archive is not part of the pinned EMBER2024 snapshot.")
+    expected_sha256, expected_size = expected
+    if expected_size > max_download_bytes:
+        raise ValueError("Pinned archive exceeds configured download limit.")
     archive_dir.mkdir(parents=True, exist_ok=True)
     target = archive_dir / filename
-    if target.exists() and zipfile.is_zipfile(target):
-        return target
+    if target.exists():
+        if target.is_file() and not target.is_symlink() and target.stat().st_size == expected_size:
+            if sha256_file(target) == expected_sha256 and zipfile.is_zipfile(target):
+                return target
+        target.unlink(missing_ok=True)
+
     request = Request(archive_url(filename), headers={"User-Agent": "SATARK-FileGuard-Dataset-Importer/1.0"})
     temp_path = None
+    digest = hashlib.sha256()
+    total = 0
     try:
         with urlopen(request, timeout=90) as response:
             length = response.headers.get("Content-Length")
-            if length and int(length) > max_download_bytes:
-                raise ValueError("Archive exceeds configured download limit.")
+            if length and int(length) != expected_size:
+                raise ValueError("Archive Content-Length differs from the pinned upstream size.")
             with tempfile.NamedTemporaryFile(dir=archive_dir, suffix=".download", delete=False) as tmp:
                 temp_path = Path(tmp.name)
-                total = 0
                 while True:
                     chunk = response.read(1024 * 1024)
                     if not chunk:
                         break
                     total += len(chunk)
-                    if total > max_download_bytes:
-                        raise ValueError("Archive exceeded configured download limit while streaming.")
+                    if total > min(max_download_bytes, expected_size):
+                        raise ValueError("Archive exceeded its pinned size while streaming.")
+                    digest.update(chunk)
                     tmp.write(chunk)
+        if total != expected_size or digest.hexdigest() != expected_sha256:
+            raise ValueError("Downloaded archive does not match the pinned EMBER2024 SHA-256 and size.")
+        if temp_path is None or not zipfile.is_zipfile(temp_path):
+            raise ValueError("Downloaded payload is not a valid ZIP archive.")
+        temp_path.replace(target)
+        return target
     except Exception:
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
         raise
-    if temp_path is None:
-        raise RuntimeError("Download did not create a temporary archive.")
-    if not zipfile.is_zipfile(temp_path):
-        temp_path.unlink(missing_ok=True)
-        raise ValueError("Downloaded payload is not a valid ZIP archive.")
-    temp_path.replace(target)
-    return target
 
 def safe_extract_zip(archive: Path, destination: Path, max_extracted_bytes: int = 20 * 1024**3,
                      max_files: int = 1_000_000) -> list[str]:
@@ -125,6 +156,10 @@ def download_and_extract(output_dir: Path, split="train", file_type="APK",
     manifest = {
         "dataset": "EMBER2024",
         "upstream": "https://github.com/FutureComputing4AI/EMBER2024",
+        "dataset_mirror": "https://huggingface.co/datasets/joyce8/EMBER2024",
+        "dataset_revision": DATASET_REVISION,
+        "dataset_license": DATASET_LICENSE,
+        "collection_window": "2023-09-24 through 2024-12-14",
         "download_source": DATASET_BASE,
         "split": split,
         "file_type": file_type,
