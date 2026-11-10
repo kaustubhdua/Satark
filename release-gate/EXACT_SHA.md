@@ -27,3 +27,8 @@ The dedicated backup role is NOINHERIT and BYPASSRLS. It has explicit read privi
 ## Agent allowlist intersection
 
 The account-disable action is advertised only when its OS-specific agent IDs intersect the general live-response allowlist. The API rechecks both lists at execution time.
+
+
+## Regression cleanup
+
+The legacy response-action test suite now validates the Wazuh guardrails, the response ledger test asserts numeric agent binding, and the archive includes the SQLite response-ledger snapshot helper.
