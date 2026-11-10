@@ -102,7 +102,7 @@ def response_status(
     user: User = Depends(current_user),
     db: Session = Depends(db_session),
 ):
-    _case_access(db, user, tenant_id, case_id, {"owner", "responder", "analyst"})
+    _case_access(db, user, tenant_id, case_id, {"owner", "responder", "analyst", "viewer"})
     configured = all(os.getenv(name, "").strip() for name in (
         "MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"
     ))
