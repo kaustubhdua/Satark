@@ -40,6 +40,7 @@ class MainActivity : Activity() {
     private lateinit var results: TextView
     private lateinit var datasetSource: EditText
     private lateinit var datasetStatus: TextView
+    private var pendingExportJson: String? = null
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
@@ -162,6 +163,7 @@ class MainActivity : Activity() {
         historyPanel.addView(sectionTitle("Scan history"))
         historyPanel.addView(text("Review previous local scans and their saved evidence reports.", 13f, 0xFFB8C2D8.toInt(), false))
         historyPanel.addView(primaryActionButton("View scan history and evidence") { showHistory() })
+        historyPanel.addView(actionButton("Export latest evidence report") { exportLatestEvidenceReport() })
         historyPanel.addView(actionButton("Verify local evidence chain") { verifyAuditChain() })
         historyPanel.addView(actionButton("Clear local scan history") { clearHistory() })
         content.addView(historyPanel, panelParams())
@@ -497,6 +499,37 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun exportLatestEvidenceReport() {
+        executor.execute {
+            try {
+                val history = org.json.JSONArray(
+                    Python.getInstance().getModule("android_bridge")
+                        .callAttr("scan_history", filesDir.absolutePath).toString()
+                )
+                if (history.length() == 0) {
+                    mainHandler.post { status.text = "NO EVIDENCE REPORT TO EXPORT YET" }
+                    return@execute
+                }
+                val latest = history.getJSONObject(0)
+                val report = latest.optJSONObject("report")
+                    ?: throw IllegalStateException("Latest scan has no evidence report")
+                val payload = report.toString(2)
+                val digest = report.optString("sha256").take(12).ifBlank { "latest" }
+                mainHandler.post {
+                    pendingExportJson = payload
+                    val picker = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_TITLE, "satark-evidence-$digest.json")
+                    }
+                    startActivityForResult(picker, REQUEST_EXPORT)
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "REPORT EXPORT UNAVAILABLE · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
     private fun verifyAuditChain() {
         executor.execute {
             try {
@@ -668,6 +701,21 @@ class MainActivity : Activity() {
                 }
                 if (selected.isEmpty()) data.data?.let(selected::add)
                 if (selected.isNotEmpty()) importDatasets(selected.distinct())
+            }
+            REQUEST_EXPORT -> {
+                val destination = data.data ?: return
+                val payload = pendingExportJson ?: return
+                executor.execute {
+                    try {
+                        contentResolver.openOutputStream(destination, "w")?.use { output ->
+                            output.write(payload.toByteArray(Charsets.UTF_8))
+                        } ?: throw IllegalStateException("Android could not open the selected export destination")
+                        pendingExportJson = null
+                        mainHandler.post { status.text = "METADATA-ONLY EVIDENCE REPORT EXPORTED" }
+                    } catch (error: Exception) {
+                        mainHandler.post { status.text = "REPORT EXPORT FAILED · " + error.javaClass.simpleName }
+                    }
+                }
             }
             REQUEST_FOLDER -> {
                 val tree = data.data ?: return
@@ -885,6 +933,7 @@ class MainActivity : Activity() {
         private const val REQUEST_FOLDER = 402
         private const val REQUEST_DATASET = 403
         private const val REQUEST_NOTIFICATIONS = 404
+        private const val REQUEST_EXPORT = 405
         private const val KEY_TREE_URI = "granted_tree_uri"
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"
