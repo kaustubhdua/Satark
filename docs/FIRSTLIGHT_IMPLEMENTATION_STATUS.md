@@ -12,9 +12,9 @@ SATARK and FIRSTLIGHT are a self-hosted, open-source-first security product. SAT
 - **Wazuh response:** only fixed built-in Active Response commands are allowed: `firewall-drop` for a validated IPv4 address and `disable-account` for a validated local account on a separately allowlisted Linux/macOS lab agent. Actions are bound to one case and one numeric agent ID. A requester, distinct approver, third executor and independent verifier are required. The durable ledger records approval and execution state; ambiguous outcomes become `unknown` and are never retried automatically.
 - **Local model support:** optional Ollama specialists can provide advisory summaries. Deterministic evidence and findings remain authoritative. Core workflows do not require hosted AI API keys.
 
-## Microsoft-free product boundary
+## Wazuh-only provider boundary
 
-FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integration. The product has no Microsoft security SDK, tenant registration, Graph integration, response adapter, runtime setting or credential requirement. The API, web UI, CLI preview and documentation all describe the same Wazuh-only action model.
+FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integration. The product has no proprietary endpoint-security SDK, external tenant registration, third-party identity dependency, response adapter or credential requirement. The API, web UI, CLI preview and documentation all describe the same Wazuh-only action model.
 
 ## Current validation
 
