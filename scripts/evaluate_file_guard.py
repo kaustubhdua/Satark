@@ -21,7 +21,7 @@ MAX_EVALUATION_FILES = 100_000
 
 
 def safe_sample_path(root: Path, relative: str) -> Path:
-    if not relative or Path(relative).is_absolute() or "\\\\" in relative or "\\x00" in relative:
+    if not relative or Path(relative).is_absolute() or "\\" in relative or "\x00" in relative:
         raise ValueError("Sample path must be a safe relative path.")
     base = root.resolve()
     candidate = root / relative
