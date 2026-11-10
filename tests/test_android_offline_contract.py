@@ -98,6 +98,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
         self.assertIn("private const val MAX_FILES = 1000", source)
         self.assertIn("private const val MAX_DEPTH = 8", source)
+        self.assertIn("private const val MAX_DIRECTORIES = 2000", source)
         self.assertIn("private const val MAX_FILE_BYTES = 64L * 1024L * 1024L", source)
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
@@ -123,6 +124,14 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("val notStarted = (uniqueUris.size - acceptedUris.size)", source)
         self.assertIn('" NOT STARTED · LOCAL ONLY"', source)
         self.assertIn('"last_scan_not_started"', source)
+
+    def test_share_intake_limit_is_explicit_and_never_silently_drops_files(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("private const val MAX_SHARED_FILES = 20", source)
+        self.assertIn("val uniqueUris = uris.distinct()", source)
+        self.assertIn("val acceptedUris = uniqueUris.take(MAX_SHARED_FILES)", source)
+        self.assertIn("NOT SCANNED", source)
+        self.assertIn("last_scan_not_started", source)
 
     def test_android_scan_path_streams_from_bounded_temporary_files(self):
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
