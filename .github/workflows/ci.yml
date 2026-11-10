@@ -140,7 +140,7 @@ jobs:
               "ui/history.py", "ui/learning.py", "ui/demo.py", "ui/firstlight.py",
               "tests/test_firstlight_engine.py", "tests/test_firstlight_ingest.py",
               "tests/test_url_security.py", "tests/test_input_processing.py", "tests/test_rate_limiter.py",
-              "tests/e2e_smoke.py", "file_guard/__init__.py", "file_guard/agents.py", "file_guard/engine.py", "file_guard/intelligence.py", "file_guard/history.py", "file_guard/report.py", "file_guard/structure.py", "tests/test_file_guard.py", "tests/test_file_guard_structure.py", "tests/test_file_guard_reports_and_evaluation.py", "tests/test_android_bridge.py", "android/app/src/main/java/com/satark/mobile/ScanTempFiles.kt", "docs/OFFLINE_FILE_GUARD.md", "scripts/import_ember2024.py", "scripts/download_ember2024.py", "tests/test_ember_import.py", "tests/test_ember_download.py",
+              "tests/e2e_smoke.py", "file_guard/__init__.py", "file_guard/agents.py", "file_guard/engine.py", "file_guard/intelligence.py", "file_guard/history.py", "file_guard/report.py", "file_guard/structure.py", "tests/test_file_guard.py", "tests/test_file_guard_structure.py", "tests/test_file_guard_reports_and_evaluation.py", "tests/test_android_bridge.py", "android/app/src/main/java/com/satark/mobile/ScanTempFiles.kt", "docs/OFFLINE_FILE_GUARD.md", "scripts/import_ember2024.py", "scripts/download_ember2024.py", "scripts/build_ember2024_android_db.py", "tests/test_ember_import.py", "tests/test_ember_download.py", "tests/test_ember_android_db.py",
           ]
           missing = [
               path for path in files
