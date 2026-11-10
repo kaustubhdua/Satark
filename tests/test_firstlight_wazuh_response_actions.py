@@ -33,6 +33,8 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_agent(monkeypatch)
     captured = {}
 
     def fake_request(url, **kwargs):
+        if url.endswith("/manager/info"):
+            return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
         captured["url"] = url
         captured.update(kwargs)
         return 200, {"error": 0, "data": {"affected_items": ["001"], "failed_items": []}}
@@ -74,9 +76,11 @@ def test_http_is_only_allowed_for_localhost_lab(monkeypatch):
 def test_block_ip_rejects_acknowledgement_for_different_agent(monkeypatch):
     configure(monkeypatch)
     monkeypatch.setattr(actions, "_token", lambda: "fake-jwt")
-    monkeypatch.setattr(actions, "_request", lambda *args, **kwargs: (
-        200, {"error": 0, "data": {"affected_items": ["002"], "failed_items": []}}
-    ))
+    def fake_request(url, **kwargs):
+        if url.endswith("/manager/info"):
+            return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
+        return 200, {"error": 0, "data": {"affected_items": ["002"], "failed_items": []}}
+    monkeypatch.setattr(actions, "_request", fake_request)
     with pytest.raises(actions.ResponseIntegrationError, match="mismatched"):
         actions.execute_wazuh_response(
             "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
@@ -88,3 +92,20 @@ def test_disable_account_rejects_root_and_option_like_usernames():
         actions._validate_payload("wazuh.disable_account", {"username": "root"})
     with pytest.raises(actions.ResponseIntegrationError, match="invalid or protected"):
         actions._validate_payload("wazuh.disable_account", {"username": "-option"})
+
+def test_manager_version_gate_rejects_wazuh_5_before_submission(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(actions, "_token", lambda: "fake-jwt")
+    calls = []
+
+    def fake_request(url, **kwargs):
+        calls.append(url)
+        return 200, {"data": {"affected_items": [{"version": "v5.0.0"}]}}
+
+    monkeypatch.setattr(actions, "_request", fake_request)
+    with pytest.raises(actions.ResponseIntegrationError, match="requires a verified Wazuh Manager 4.14.x"):
+        actions.execute_wazuh_response(
+            "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
+            confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
+        )
+    assert calls == ["https://wazuh-manager.example.test:55000/manager/info"]
