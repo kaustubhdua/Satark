@@ -18,6 +18,8 @@ class AndroidOfflineContractTests(unittest.TestCase):
         }
         self.assertNotIn("android.permission.INTERNET", permissions)
         self.assertNotIn("android.permission.ACCESS_NETWORK_STATE", permissions)
+        application = manifest.find("./application")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "allowBackup"), "false")
 
     def test_manifest_exposes_share_receivers(self):
         manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
@@ -76,6 +78,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
             ("file_guard/agents.py", "android/app/src/main/python/file_guard/agents.py"),
             ("file_guard/intelligence.py", "android/app/src/main/python/file_guard/intelligence.py"),
             ("file_guard/history.py", "android/app/src/main/python/file_guard/history.py"),
+            ("file_guard/report.py", "android/app/src/main/python/file_guard/report.py"),
         )
         for root_path, android_path in pairs:
             with self.subTest(module=root_path):
