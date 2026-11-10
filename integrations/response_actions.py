@@ -183,7 +183,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     data = response.get("data", {})
     affected = data.get("affected_items", []) if isinstance(data, dict) else []
     failed = data.get("failed_items", []) if isinstance(data, dict) else []
-    if failed or (affected and agent_id not in {str(item) for item in affected}):
+    if failed or not affected or agent_id not in {str(item) for item in affected}:
         raise ResponseIntegrationError("Wazuh reported a failed or mismatched target response.")
     return ActionResult(
         "Wazuh Active Response",
