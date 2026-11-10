@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
 import re
 
@@ -11,21 +12,23 @@ _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 
 
 def build_evidence_report(scan_result, *, scanned_at=None, snapshot=None):
-    """Return a deterministic, hash-sealed report without retaining file bytes.
+    """Return a hash-sealed evidence report without retaining file bytes.
 
-    The report digest detects accidental/tampered edits after export; it is not
-    a digital signature and does not prove who collected the evidence.
+    The digest detects edits after export; it is not a digital signature and
+    does not prove collector identity, collection time, or chain of custody.
     """
     record = scan_result.to_dict() if hasattr(scan_result, "to_dict") else dict(scan_result)
     digest = str(record.get("sha256", "")).lower()
     if not _SHA256.fullmatch(digest):
         raise ValueError("Evidence report requires a valid SHA-256 digest.")
-
     timestamp = scanned_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
     if not isinstance(timestamp, str) or not timestamp:
         raise ValueError("A non-empty ISO-8601 scan timestamp is required.")
 
     intel = record.get("intelligence_match") or {}
+    signals = record.get("signals", [])[:100]
+    trace = record.get("agent_trace", [])[:32]
+    yara_matches = [str(item)[:120] for item in record.get("yara_matches", [])[:32]]
     report = {
         "report_schema": _REPORT_SCHEMA,
         "scanned_at": timestamp,
@@ -47,7 +50,7 @@ def build_evidence_report(scan_result, *, scanned_at=None, snapshot=None):
             ),
         },
         "evidence": {
-            "signals": record.get("signals", [])[:100],
+            "signals": signals,
             "intelligence_match": {
                 "matched": bool(intel),
                 "label": str(intel.get("label", ""))[:24],
@@ -58,10 +61,10 @@ def build_evidence_report(scan_result, *, scanned_at=None, snapshot=None):
             },
             "yara": {
                 "available": bool(record.get("yara_available", False)),
-                "matches": [str(item)[:120] for item in record.get("yara_matches", [])[:32]],
+                "matches": yara_matches,
                 "error": str(record.get("yara_error") or "")[:80],
             },
-            "agent_trace": record.get("agent_trace", [])[:32],
+            "agent_trace": trace,
         },
         "processing": {
             "raw_bytes_processed_for_hash_and_signatures": True,
@@ -77,6 +80,23 @@ def build_evidence_report(scan_result, *, scanned_at=None, snapshot=None):
             "Unknown or unmatched files are not thereby proven safe.",
             "A report digest is not a digital signature or independent chain-of-custody proof.",
         ],
+        # Compatibility fields keep the current Kotlin UI and notification worker stable.
+        "filename": str(record.get("filename", "unnamed"))[:255],
+        "size_bytes": max(0, int(record.get("size_bytes", 0))),
+        "sha256": digest,
+        "detected_type": str(record.get("detected_type", "unknown"))[:100],
+        "extension": str(record.get("extension", ""))[:32],
+        "verdict": str(record.get("verdict", "unknown"))[:80],
+        "risk_level": str(record.get("risk_level", "unknown"))[:24],
+        "score": max(0, min(100, int(record.get("score", 0)))),
+        "signals": signals,
+        "intelligence_match": intel or None,
+        "yara_available": bool(record.get("yara_available", False)),
+        "yara_matches": yara_matches,
+        "yara_error": str(record.get("yara_error") or "")[:80],
+        "agent_trace": trace,
+        "content_extracted": False,
+        "executed": False,
     }
     canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     report["report_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -84,7 +104,7 @@ def build_evidence_report(scan_result, *, scanned_at=None, snapshot=None):
 
 
 def verify_evidence_report(report):
-    """Verify the report's canonical digest without trusting the embedded value."""
+    """Verify the canonical digest. This is integrity checking, not authentication."""
     if not isinstance(report, dict):
         return False
     supplied = report.get("report_sha256")
@@ -93,4 +113,4 @@ def verify_evidence_report(report):
     unsigned = {key: value for key, value in report.items() if key != "report_sha256"}
     canonical = json.dumps(unsigned, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     expected = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    return hashlib.compare_digest(supplied, expected) if hasattr(hashlib, "compare_digest") else supplied == expected
+    return hmac.compare_digest(supplied, expected)
