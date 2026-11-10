@@ -7,6 +7,8 @@ on:
       - "rules/**"
       - "requirements-yara.txt"
       - "tests/test_file_guard_yara.py"
+      - "scripts/evaluate_file_guard.py"
+      - "tests/test_evaluate_file_guard.py"
       - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
@@ -23,6 +25,8 @@ on:
       - "rules/**"
       - "requirements-yara.txt"
       - "tests/test_file_guard_yara.py"
+      - "scripts/evaluate_file_guard.py"
+      - "tests/test_evaluate_file_guard.py"
       - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
@@ -67,6 +71,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_android_bridge.py" -v
       - name: Verify Supabase is absent from all application runtime source
         run: python scripts/check_no_supabase_runtime.py
+      - name: Evaluate local labelled-file detection metrics
+        run: python -m unittest discover -s tests -p "test_evaluate_file_guard.py" -v
       - name: Run EMBER2024 converter tests
         run: python -m unittest discover -s tests -p "test_ember_import.py" -v
       - name: Run EMBER2024 downloader tests
