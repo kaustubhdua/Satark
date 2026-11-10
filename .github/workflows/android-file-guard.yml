@@ -4,6 +4,9 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "rules/**"
+      - "requirements-yara.txt"
+      - "tests/test_file_guard_yara.py"
       - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
@@ -51,6 +54,10 @@ jobs:
         run: python -m compileall -q file_guard android/app/src/main/python
       - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Install optional desktop YARA engine
+        run: python -m pip install -r requirements-yara.txt
+      - name: Compile and evaluate curated local YARA rules
+        run: python -m unittest discover -s tests -p "test_file_guard_yara.py" -v
       - name: Enforce Android offline and permission contract
         run: python -m unittest discover -s tests -p "test_android_offline_contract.py" -v
       - name: Exercise the exact Android Python bridge
