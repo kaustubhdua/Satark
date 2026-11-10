@@ -21,12 +21,15 @@ MAX_EVALUATION_FILES = 100_000
 
 
 def safe_sample_path(root: Path, relative: str) -> Path:
-    if not relative or Path(relative).is_absolute():
-        raise ValueError("Sample path must be a non-empty relative path.")
+    if not relative or Path(relative).is_absolute() or "\\\\" in relative or "\\x00" in relative:
+        raise ValueError("Sample path must be a safe relative path.")
     base = root.resolve()
     candidate = root / relative
-    if candidate.is_symlink():
-        raise ValueError("Symbolic-link samples are not accepted.")
+    cursor = root
+    for part in Path(relative).parts:
+        if part in ("", ".", "..") or (cursor / part).is_symlink():
+            raise ValueError("Symbolic-link and traversal paths are not accepted.")
+        cursor = cursor / part
     resolved = candidate.resolve(strict=True)
     if not resolved.is_relative_to(base) or not resolved.is_file():
         raise ValueError("Sample path must resolve to a regular file inside the sample root.")
@@ -72,6 +75,8 @@ def evaluate(sample_root: Path, labels_csv: Path, intelligence: ThreatIntelligen
     root = sample_root.resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Sample root must be a directory.")
+    if max_file_bytes < 1 or max_file_bytes > MAX_FILE_BYTES:
+        raise ValueError("Evaluation file size limit must be between 1 byte and the scanner maximum.")
 
     rows = []
     errors = []
