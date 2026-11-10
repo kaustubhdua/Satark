@@ -81,9 +81,9 @@ export default function Home() {
         <section className="sentinel-hero" aria-labelledby="hero-title">
           <div className="dot-pattern" aria-hidden="true" />
           <div className="sentinel-hero-copy">
-            <a className="shiny-pill sentinel-kicker" href="/firstlight"><b>New</b><span className="shiny-text">FIRSTLIGHT evidence-led investigation</span><ChevronRight size={14} aria-hidden="true" /></a>
-            <h1 id="hero-title">Every second matters. Every piece of evidence counts.</h1>
-            <p className="sentinel-lede">Check suspicious messages, links and files with signals you can read. When it is more than a phishing email, FIRSTLIGHT helps reconstruct an incident from evidence. Live containment is not enabled by default.</p>
+            <a className="shiny-pill sentinel-kicker" href="/firstlight"><b>FIRSTLIGHT</b><span className="shiny-text">Evidence-led incident workspace</span><ChevronRight size={14} aria-hidden="true" /></a>
+            <h1 id="hero-title">Spot the signal. Preserve the evidence. Own the response.</h1>
+            <p className="sentinel-lede">Investigate suspicious messages, links and files with explainable checks. When an incident goes deeper, FIRSTLIGHT helps reconstruct the timeline, verify evidence and coordinate a human-approved response. Wazuh is the open-source endpoint response path; live actions stay disabled until an authorized lab is configured.</p>
             <div className="sentinel-hero-actions">
               <a className="sentinel-primary" href="/investigate"><ScanSearch size={16} aria-hidden="true" /> Start an investigation</a>
               <a className="sentinel-secondary" href="/firstlight">Open FIRSTLIGHT</a>
@@ -92,7 +92,7 @@ export default function Home() {
               <span><LockKeyhole size={14} aria-hidden="true" /> Links are never opened for you</span>
               <span><UserCheck size={14} aria-hidden="true" /> Human control over response decisions</span>
             </div>
-            <p className="field-note sentinel-privacy-note">Local deterministic checks by default. No third-party AI key is required. Optional self-hosted Ollama analysis is only used when configured.</p>
+            <p className="field-note sentinel-privacy-note">Offline-first file inspection. Self-hosted investigations. No Microsoft Defender or Entra dependency. No hosted AI key is required.</p>
           </div>
           <IntegrityLedger />
         </section>
