@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.import_ember2024 import convert, normalize_label
+from scripts.import_ember2024 import UPSTREAM_REVISION, convert, normalize_label
 
 class EmberImportTests(unittest.TestCase):
     def test_label_mapping(self):
@@ -29,6 +29,8 @@ class EmberImportTests(unittest.TestCase):
             self.assertEqual(manifest["rows"]["unlabeled_rows"], 1)
             self.assertEqual(manifest["rows"]["invalid_rows"], 1)
             self.assertEqual(len(manifest["parts"]), 2)
+            self.assertEqual(manifest["upstream_revision"], UPSTREAM_REVISION)
+            self.assertEqual(manifest["dataset_repository_license"], "Apache-2.0")
             first = (root / "out" / manifest["parts"][0]["file"]).read_text(encoding="utf-8")
             self.assertIn("benign", first)
             self.assertIn("Win32", first)
