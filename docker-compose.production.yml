@@ -50,9 +50,11 @@ services:
       FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS: ${FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS:-}
       FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP: "false"
       SATARK_ENABLE_LIVE_RESPONSE: "false"
-      SATARK_TRUSTED_PROXY_IPS: "*"
+      SATARK_TRUSTED_PROXY_IPS: 172.31.240.0/24
+      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:-}
     volumes:
       - satark_data:/data
+      - satark_backups:/backups
       - ./secrets:/run/secrets:ro
     depends_on:
       db:
@@ -171,6 +173,7 @@ services:
 volumes:
   postgres_data:
   satark_data:
+  satark_backups:
   caddy_data:
   caddy_config:
 
@@ -178,3 +181,6 @@ networks:
   backend:
     driver: bridge
     internal: false
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24
