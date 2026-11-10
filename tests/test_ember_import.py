@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.import_ember2024 import convert, normalize_label
+from scripts.import_ember2024 import UPSTREAM_REVISION, convert, normalize_label
 
 class EmberImportTests(unittest.TestCase):
     def test_label_mapping(self):
@@ -29,6 +29,8 @@ class EmberImportTests(unittest.TestCase):
             self.assertEqual(manifest["rows"]["unlabeled_rows"], 1)
             self.assertEqual(manifest["rows"]["invalid_rows"], 1)
             self.assertEqual(len(manifest["parts"]), 2)
+            self.assertEqual(manifest["upstream_revision"], UPSTREAM_REVISION)
+            self.assertEqual(manifest["dataset_repository_license"], "Apache-2.0")
             first = (root / "out" / manifest["parts"][0]["file"]).read_text(encoding="utf-8")
             self.assertIn("benign", first)
             self.assertIn("Win32", first)
@@ -50,6 +52,43 @@ class EmberImportTests(unittest.TestCase):
             csv_text = (root / "out" / manifest["parts"][0]["file"]).read_text(encoding="utf-8")
             self.assertIn("malicious", csv_text)
             self.assertNotIn("benign", csv_text)
+
+    def test_converter_binds_source_archive_provenance_and_rejects_tampering(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive_dir = root / ".archives"
+            archive_dir.mkdir()
+            archive = archive_dir / "APK_train.zip"
+            archive_bytes = b"verified pinned source archive bytes"
+            archive.write_bytes(archive_bytes)
+            source = root / "APK_train_000.jsonl"
+            source.write_text(
+                json.dumps({"sha256": "d" * 64, "label": 1, "file_type": "APK"}) + "\n",
+                encoding="utf-8",
+            )
+            download_manifest = {
+                "dataset": "EMBER2024",
+                "dataset_revision": UPSTREAM_REVISION,
+                "split": "train",
+                "file_type": "APK",
+                "archives": [{
+                    "file": archive.name,
+                    "sha256": hashlib.sha256(archive_bytes).hexdigest(),
+                    "bytes": len(archive_bytes),
+                }],
+                "extracted_jsonl_files": [source.name],
+            }
+            (root / "ember2024_download_train_apk.json").write_text(
+                json.dumps(download_manifest), encoding="utf-8"
+            )
+            manifest = convert(root, root / "out", split="train", file_type="APK")
+            self.assertEqual(manifest["source_manifest"]["dataset_revision"], UPSTREAM_REVISION)
+            self.assertEqual(len(manifest["source_manifest"]["archives"]), 1)
+
+            archive.write_bytes(archive_bytes + b"tampered")
+            with self.assertRaises(ValueError):
+                convert(root, root / "out", split="train", file_type="APK")
 
     def test_file_type_and_split_filters(self):
         with tempfile.TemporaryDirectory() as tmp:

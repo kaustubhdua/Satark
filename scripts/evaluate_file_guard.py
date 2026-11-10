@@ -145,18 +145,95 @@ def evaluate(sample_root: Path, labels_csv: Path, intelligence: ThreatIntelligen
     }
 
 
+def _metrics(tp, fp, tn, fn, abstained, total):
+    classified = total - abstained
+    precision = tp / (tp + fp) if tp + fp else None
+    recall = tp / (tp + fn) if tp + fn else None
+    specificity = tn / (tn + fp) if tn + fp else None
+    accuracy = (tp + tn) / classified if classified else None
+    f1 = (2 * precision * recall / (precision + recall)
+          if precision is not None and recall is not None and precision + recall else None)
+    return {
+        "samples": total, "classified": classified, "abstained": abstained,
+        "coverage": classified / total if total else 0.0,
+        "confusion_matrix": {"true_positive": tp, "false_positive": fp,
+                             "true_negative": tn, "false_negative": fn},
+        "precision": precision, "recall_classified": recall, "specificity": specificity,
+        "false_positive_rate": fp / (fp + tn) if fp + tn else None,
+        "accuracy_on_classified": accuracy, "detection_coverage": classified / total if total else 0.0,
+        "f1_classified": f1,
+        "note": "Metrics describe only the supplied labelled corpus, not real-world protection.",
+    }
+
+
+def evaluate_csv(path: Path) -> dict:
+    with Path(path).open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        fields = {str(name).strip().lower() for name in (reader.fieldnames or [])}
+        if not {"expected", "predicted"}.issubset(fields):
+            raise ValueError("CSV must include expected and predicted columns.")
+        rows = []
+        for line_number, raw in enumerate(reader, 2):
+            row = {str(k).strip().lower(): (v or "").strip().lower()
+                   for k, v in raw.items() if k}
+            expected, predicted = row.get("expected", ""), row.get("predicted", "")
+            if expected not in LABELS or predicted not in LABELS | {"unknown"}:
+                raise ValueError(f"Invalid expected/predicted label at CSV row {line_number}.")
+            rows.append((expected, predicted))
+
+    tp = fp = tn = fn = abstained = abstained_malicious = total = 0
+    for expected, predicted in rows:
+        total += 1
+        if predicted == "unknown":
+            abstained += 1
+            if expected == "malicious":
+                abstained_malicious += 1
+        elif expected == "malicious" and predicted == "malicious":
+            tp += 1
+        elif expected == "benign" and predicted == "malicious":
+            fp += 1
+        elif expected == "benign" and predicted == "benign":
+            tn += 1
+        else:
+            fn += 1
+
+    result = _metrics(tp, fp, tn, fn, abstained, total)
+    expected_positive = tp + fn + abstained_malicious
+    expected_negative = tn + fp + (abstained - abstained_malicious)
+    result["recall_conservative"] = tp / expected_positive if expected_positive else None
+    result["false_negative_rate_conservative"] = (
+        (fn + abstained_malicious) / expected_positive if expected_positive else None
+    )
+    result["specificity_conservative"] = tn / expected_negative if expected_negative else None
+    result["abstained_malicious"] = abstained_malicious
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--samples", type=Path, required=True, help="Directory containing labelled test files")
-    parser.add_argument("--labels", type=Path, required=True, help="CSV with path,label columns")
-    parser.add_argument("--database", type=Path, required=True, help="Local SQLite intelligence database path")
+    parser.add_argument("csv", nargs="?", type=Path, help="Optional expected,predicted evaluation CSV")
+    parser.add_argument("--output", type=Path, help="Optional JSON output for expected,predicted CSV mode")
+    parser.add_argument("--samples", type=Path, help="Directory containing labelled test files")
+    parser.add_argument("--labels", type=Path, help="Ground-truth CSV with path,label columns")
+    parser.add_argument("--database", type=Path, help="Local SQLite intelligence database path")
     parser.add_argument("--intelligence-csv", type=Path, help="Optional historical training snapshot CSV")
-    parser.add_argument("--source-id", default="local-evaluation-snapshot", help="Provenance label for the imported training snapshot")
-    parser.add_argument("--yara-rules", type=Path, help="Optional local YARA rules file")
+    parser.add_argument("--source-id", default="local-evaluation-snapshot")
+    parser.add_argument("--yara-rules", type=Path)
     parser.add_argument("--max-file-bytes", type=int, default=MAX_FILE_BYTES)
-    parser.add_argument("--output-json", type=Path, required=True)
-    parser.add_argument("--output-csv", type=Path, required=True)
+    parser.add_argument("--output-json", type=Path)
+    parser.add_argument("--output-csv", type=Path)
     args = parser.parse_args()
+
+    if args.csv:
+        report = evaluate_csv(args.csv)
+        rendered = json.dumps(report, indent=2, sort_keys=True)
+        if args.output:
+            args.output.write_text(rendered + "\n", encoding="utf-8")
+        print(rendered)
+        return
+
+    if not args.samples or not args.labels or not args.database:
+        parser.error("provide a positional expected,predicted CSV or --samples, --labels and --database")
 
     store = ThreatIntelligenceStore(args.database)
     if args.intelligence_csv:
@@ -166,26 +243,26 @@ def main():
 
     report = evaluate(args.samples, args.labels, store,
                       yara_rules_path=args.yara_rules, max_file_bytes=args.max_file_bytes)
-    args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_csv.parent.mkdir(parents=True, exist_ok=True)
-    args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    with args.output_csv.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=[
-            "path", "actual", "predicted_malicious", "verdict", "risk_level",
-            "sha256", "detected_type", "signal_codes", "known_hash_label", "yara_matches",
-        ])
-        writer.writeheader()
-        for row in report["results"]:
-            writer.writerow({**row,
-                "signal_codes": ";".join(row["signal_codes"]),
-                "yara_matches": ";".join(row["yara_matches"]),
-            })
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if args.output_csv:
+        args.output_csv.parent.mkdir(parents=True, exist_ok=True)
+        with args.output_csv.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=[
+                "path", "actual", "predicted_malicious", "verdict", "risk_level",
+                "sha256", "detected_type", "signal_codes", "known_hash_label", "yara_matches",
+            ])
+            writer.writeheader()
+            for row in report["results"]:
+                writer.writerow({**row, "signal_codes": ";".join(row["signal_codes"]),
+                                 "yara_matches": ";".join(row["yara_matches"])})
     print(json.dumps({
         "metrics": report["metrics"],
         "by_detected_type": report["by_detected_type"],
         "unscanned_errors": len(report["errors"]),
-        "json_report": str(args.output_json),
-        "csv_report": str(args.output_csv),
+        "json_report": str(args.output_json) if args.output_json else None,
+        "csv_report": str(args.output_csv) if args.output_csv else None,
     }, indent=2))
 
 

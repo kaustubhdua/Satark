@@ -84,6 +84,16 @@ class ThreatIntelligenceStore:
     def stats(self):
         with self._connect() as db:
             rows = db.execute("SELECT label,COUNT(*) n FROM hashes GROUP BY label").fetchall()
+            type_rows = db.execute(
+                "SELECT file_type,COUNT(*) n FROM hashes GROUP BY file_type ORDER BY file_type"
+            ).fetchall()
+            source_count = db.execute("SELECT COUNT(DISTINCT source) n FROM hashes").fetchone()["n"]
         counts = {r["label"]: r["n"] for r in rows}
-        return {"total": sum(counts.values()), "malicious": counts.get("malicious", 0),
-                "benign": counts.get("benign", 0)}
+        by_file_type = {r["file_type"] or "unknown": r["n"] for r in type_rows}
+        return {
+            "total": sum(counts.values()),
+            "malicious": counts.get("malicious", 0),
+            "benign": counts.get("benign", 0),
+            "by_file_type": by_file_type,
+            "source_count": source_count,
+        }

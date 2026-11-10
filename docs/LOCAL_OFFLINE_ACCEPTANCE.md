@@ -10,12 +10,12 @@ This is the acceptance procedure for the primary SATARK File Guard product. It d
 - No semantic document text extraction, OCR, preview, archive unpacking or execution.
 - WhatsApp/Telegram attachments are accessible only when the sender explicitly shares them to SATARK.
 - Folder scanning is limited to a tree the user selects through Android's Storage Access Framework.
-- Dataset acquisition is a separate one-time workstation operation. Scanning never downloads new data.
+- Dataset acquisition is a separate historical workstation operation. EMBER2024 imports must include the converter manifest and pass per-part SHA-256 verification. Scanning never downloads or refreshes threat intelligence.
 - WorkManager is best-effort; it does not promise continuous 24/7 monitoring.
 
 ## Build and install
 
-Requirements: JDK 17, Android SDK Platform 36, Build Tools 36.0.0, Gradle 8.13 and Python 3.13 for Chaquopy.
+Requirements: JDK 17, Android SDK Platform 36, Build Tools 36.0.0, Gradle 8.13 and Python 3.13 for Chaquopy. The app targets Android 16 / API 36 and must be tested with edge-to-edge system bars on Android 15/16.
 
 ```bash
 gradle -p android --no-daemon :app:assembleDebug
@@ -27,14 +27,14 @@ Install the debug APK on a test device. A debug APK is not a signed production r
 
 The repository includes a manual **Prepare EMBER2024 historical snapshot** GitHub Actions workflow. Choose the historical split and file-type subset, then download its CSV/provenance artifact from the workflow run. It uses the public archive downloader without an API key and does not commit dataset files to Git.
 
-The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with its compact challenge set if device storage is limited:
+The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with a balanced APK training subset; it includes benign and malicious labels and avoids the larger Windows archives:
 
 ```bash
-python scripts/download_ember2024.py --output-dir data/ember2024 --split challenge --file-type all
-python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split challenge --file-type all
+python scripts/download_ember2024.py --output-dir data/ember2024 --split train --file-type APK
+python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
-Keep the source and converted manifests. Verify each CSV part's SHA-256 against the generated manifest before transferring it to the device. Import the parts using a unique source/snapshot ID. The database should remain empty until the operator explicitly imports a snapshot.
+Keep both the original `ember2024_download_*.json` source manifest and the converted `*_manifest.json`. Verify each CSV part's SHA-256 against the converted manifest before transferring all files to the device. Import the parts using the default or a unique source/snapshot ID. SATARK verifies that the source manifest matches the converter provenance and the pinned upstream revision. CI-built Android APKs should start with the bundled EMBER2024 APK training hash index. Local developer builds without generated assets remain empty until the operator explicitly imports a snapshot.
 
 A dataset label is research provenance, not proof that the original file is currently malicious or benign. The challenge set is malicious-only and cannot provide a benign denominator for accuracy measurement. Do not report precision/recall from this import alone.
 
@@ -69,6 +69,12 @@ Record:
 - Dataset source, snapshot ID, cutoff, file types, row counts and manifest SHA-256.
 - Scan latency, peak memory, battery impact and limits tested.
 - Any failures, reproduction steps and unresolved release blockers.
+
+## Android 16 / Play target requirement
+
+The app is configured with `targetSdk = 36`. Google Play requires new apps and app updates to target Android 16 / API 36 or higher from 31 August 2026. Android 16 also enforces edge-to-edge for API 36 targets, so validate status/navigation bar insets on real Android 16 devices and large-screen layouts.
+
+Reference: https://support.google.com/googleplay/android-developer/answer/11926878 and https://developer.android.com/about/versions/16/behavior-changes-16
 
 ## Release gate
 

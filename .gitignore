@@ -39,3 +39,6 @@ data/*.sqlite3
 # Locally downloaded historical datasets and converted hash snapshots
 data/ember2024/
 data/ember2024-csv/
+# CI-generated, checksum-verified Android starter dataset assets
+android/app/src/main/assets/ember2024-starter.sqlite3
+android/app/src/main/assets/ember2024-starter.json

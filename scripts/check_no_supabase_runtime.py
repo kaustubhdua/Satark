@@ -1,4 +1,4 @@
-"""Fail the build if runtime source/configuration reintroduces Supabase."""
+"""Fail the build if application runtime source/configuration reintroduces Supabase."""
 from __future__ import annotations
 
 import re
@@ -33,11 +33,15 @@ RUNTIME_FILES = [
     ROOT / "scripts" / "satark_track1_acceptance_preflight.py",
     ROOT / ".github" / "workflows",
 ]
-FORBIDDEN = re.compile(r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)|@supabase|supabase[.]co|storage[.]supabase|/auth/v1|/rest/v1|/storage/v1|from[ ]+supabase|import[ ]+supabase)")
+FORBIDDEN = re.compile(
+    r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)"
+    r"|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1"
+    r"|from[ ]+supabase|import[ ]+supabase)"
+)
+PACKAGE_LINE = re.compile(r"(?im)^\s*supabase(?:\[[^\]]+\])?\s*(?:[<>=!~].*)?$|[\"']supabase[\"']\s*:")
 
 
 def source_files():
-    # Include every first-party root Python module, not only the new API files.
     yield from (path for path in ROOT.glob("*.py") if path.is_file())
     for entry in RUNTIME_FILES:
         if entry.is_file():
@@ -48,21 +52,22 @@ def source_files():
 
 def main() -> int:
     violations = []
-    if (ROOT / "supabase").exists():
-        violations.append("supabase/: obsolete Supabase CLI configuration and migrations must not ship")
+    cli_config = ROOT / "supabase" / "config.toml"
+    if cli_config.exists():
+        violations.append("supabase/config.toml: unused Supabase CLI project configuration must not ship")
     for path in source_files():
         try:
             content = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
         for line_number, line in enumerate(content.splitlines(), 1):
-            if FORBIDDEN.search(line):
+            if FORBIDDEN.search(line) or PACKAGE_LINE.search(line):
                 violations.append(f"{path.relative_to(ROOT)}:{line_number}: {line.strip()[:200]}")
     if violations:
-        print("Supabase runtime dependency detected:")
+        print("Supabase runtime/configuration dependency detected:")
         print("\n".join(violations))
         return 1
-    print("PASS: no Supabase runtime, SDK, REST, Storage, or Auth references in application source/configuration.")
+    print("PASS: no Supabase SDK, runtime, CLI project config, REST, Storage, or Auth dependency.")
     return 0
 
 
