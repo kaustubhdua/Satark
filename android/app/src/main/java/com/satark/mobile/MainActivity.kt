@@ -710,7 +710,7 @@ class MainActivity : Activity() {
                     }
                     val coverage = stats.optJSONObject("by_file_type")?.keys()?.asSequence()
                         ?.joinToString(", ") { type -> type + ":" + stats.optJSONObject("by_file_type")?.optInt(type) }
-                        ?: "none"
+                        ?.ifBlank { "none" } ?: "none"
                     datasetStatus.text = prefix + " · " + total +
                         " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                         stats.optInt("benign") + " BENIGN · TYPES " + coverage
@@ -732,7 +732,7 @@ class MainActivity : Activity() {
                 val total = stats.optInt("total")
                 val coverage = stats.optJSONObject("by_file_type")?.keys()?.asSequence()
                     ?.joinToString("\n") { type -> type + ": " + stats.optJSONObject("by_file_type")?.optInt(type) }
-                    ?: "No file-type coverage"
+                    ?.ifBlank { "No file-type coverage" } ?: "No file-type coverage"
                 val message = "Local historical indicators: " + total +
                     "\nMalicious labels: " + stats.optInt("malicious") +
                     "\nBenign labels: " + stats.optInt("benign") +
