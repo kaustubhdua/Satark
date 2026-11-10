@@ -185,7 +185,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
     def test_dataset_import_has_a_historical_snapshot_id_default(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('setText("EMBER2024-2024-12-14")', source)
-        self.assertIn("EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST", source)
+        self.assertIn("EMBER2024 IMPORT REQUIRES BOTH PROVENANCE MANIFESTS", source)
 
     def test_share_intake_limit_is_explicit_and_never_silently_drops_files(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
@@ -215,7 +215,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
     def test_ember_import_requires_checksum_verified_manifest(self):
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
-        self.assertIn("EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST", activity)
+        self.assertIn("EMBER2024 IMPORT REQUIRES BOTH PROVENANCE MANIFESTS", activity)
         self.assertIn("expected_sha256", bridge)
         self.assertIn("actual != expected", bridge)
         self.assertIn("checksum_verified", bridge)
