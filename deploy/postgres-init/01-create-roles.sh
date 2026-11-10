@@ -8,7 +8,7 @@ psql --set ON_ERROR_STOP=1 \
   --set runtime_password="$SATARK_RUNTIME_DB_PASSWORD" \
   --set backup_password="$SATARK_BACKUP_DB_PASSWORD" <<'SQL'
 CREATE ROLE satark_runtime LOGIN PASSWORD :'runtime_password';
-CREATE ROLE satark_backup LOGIN BYPASSRLS PASSWORD :'backup_password';
+CREATE ROLE satark_backup LOGIN NOINHERIT BYPASSRLS PASSWORD :'backup_password';
 GRANT satark_runtime TO satark_backup;
 
 GRANT CONNECT ON DATABASE satark TO satark_runtime;
