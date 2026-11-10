@@ -5,6 +5,7 @@ import sqlite3
 import tarfile
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from sqlalchemy.engine import make_url
@@ -56,6 +57,34 @@ class SatarkBackupTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(restored_database.stat().st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(restored_evidence.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE((restored_evidence / "case-1.json").stat().st_mode), 0o600)
+
+
+    def test_firstlight_response_ledger_is_included_and_restored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database = root / "source.db"
+            evidence = root / "source-evidence"
+            evidence.mkdir()
+            ledger = root / "response-ledger.sqlite3"
+            with sqlite3.connect(database) as connection:
+                connection.execute("CREATE TABLE incidents (id INTEGER PRIMARY KEY, title TEXT)")
+                connection.execute("INSERT INTO incidents(title) VALUES ('lab incident')")
+            with sqlite3.connect(ledger) as connection:
+                connection.execute("CREATE TABLE audit_events (sequence INTEGER PRIMARY KEY, event_type TEXT)")
+                connection.execute("INSERT INTO audit_events(event_type) VALUES ('approval.requested')")
+
+            archive = root / "complete-backup.tar.gz"
+            with mock.patch.dict("os.environ", {"FIRSTLIGHT_RESPONSE_DB": str(ledger)}):
+                manifest = create_backup(archive, f"sqlite:///{database}", evidence)
+            self.assertIn("firstlight-response.sqlite3", manifest["files"])
+
+            restored_database = root / "restored.db"
+            restored_evidence = root / "restored-evidence"
+            restored_ledger = root / "restored-response-ledger.sqlite3"
+            restore_backup(archive, f"sqlite:///{restored_database}", restored_evidence, restored_ledger)
+            with sqlite3.connect(restored_ledger) as connection:
+                row = connection.execute("SELECT event_type FROM audit_events WHERE sequence=1").fetchone()
+            self.assertEqual(row[0], "approval.requested")
 
     def test_backup_checksum_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
