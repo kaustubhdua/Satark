@@ -36,6 +36,6 @@ test('shared proxy uses only the SATARK internal API configuration', async () =>
 
 test('homepage integration ledger advertises self-hosted storage only', async () => {
   const source = await readFile(new URL('../src/components/ui/integrity-ledger.tsx', import.meta.url), 'utf8');
-  assert.match(source, /storage\\.self_hosted/);
-  assert.doesNotMatch(source, /storage\\.supabase/i);
+  assert.match(source, /storage\.self_hosted/);
+  assert.doesNotMatch(source, /storage\.supabase/i);
 });
