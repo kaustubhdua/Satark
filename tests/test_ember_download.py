@@ -19,7 +19,7 @@ class EmberDownloadTests(unittest.TestCase):
         )
 
     def test_archive_integrity_catalog_covers_all_pinned_files(self):
-        self.assertEqual(len(ARCHIVE_INTEGRITY), 13)
+        self.assertEqual(len(ARCHIVE_INTEGRITY), 12)
         for filename, (digest, size) in ARCHIVE_INTEGRITY.items():
             self.assertEqual(len(digest), 64, filename)
             self.assertGreater(size, 0, filename)
@@ -60,7 +60,8 @@ class EmberDownloadTests(unittest.TestCase):
         self.assertEqual(selected_archives("train", "APK"), ["APK_train.zip"])
         self.assertEqual(selected_archives("train", "PE"),
                          ["Win32_train.zip", "Win64_train.zip", "Dot_Net_train.zip"])
-        self.assertEqual(selected_archives("challenge", "APK"), ["challenge.zip"])
+        with self.assertRaises(ValueError):
+            selected_archives("challenge", "APK")
 
     def test_safe_extract_and_zip_slip_rejection(self):
         with tempfile.TemporaryDirectory() as tmp:
