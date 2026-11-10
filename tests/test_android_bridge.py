@@ -36,6 +36,13 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertEqual(len(history), 1)
             self.assertEqual(history[0]["sha256"], digest)
             self.assertNotIn("content", history[0])
+            self.assertEqual(history[0]["evidence_report"]["agent_trace"][0]["agent"], "file_router")
+
+            report = json.loads(android_bridge.export_scan_report(tmp))
+            self.assertEqual(report["product"], "SATARK File Guard")
+            self.assertEqual(report["records"][0]["sha256"], digest)
+            self.assertEqual(report["processing"], "local_offline")
+            self.assertNotIn("content", report["records"][0])
 
             stats = json.loads(android_bridge.scan_stats(tmp))
             self.assertEqual(stats["malicious"], 1)
