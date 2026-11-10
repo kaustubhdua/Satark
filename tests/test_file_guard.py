@@ -125,6 +125,17 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(result.intelligence_match["file_type"], "APK")
             self.assertEqual(result.intelligence_match["dataset_date"], "2024-12-01")
 
+    def test_intelligence_stats_report_file_type_and_source_coverage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
+            store.import_csv(StringIO(
+                "sha256,label,file_type\n" + "a" * 64 + ",malicious,APK\n" +
+                "b" * 64 + ",benign,PDF\n"
+            ), "EMBER2024-test")
+            stats = store.stats()
+            self.assertEqual(stats["by_file_type"], {"APK": 1, "PDF": 1})
+            self.assertEqual(stats["source_count"], 1)
+
     def test_conflicting_labels_rejected(self):
         digest = hashlib.sha256(b"x").hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
