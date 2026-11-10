@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import stat
 
+from .structure import inspect_binary_structure
 from .agents import (route_file, inspect_filename, inspect_hash, inspect_builtin_signatures,
                      BuiltinSignatureMatcher, inspect_yara, fuse_evidence)
 
@@ -102,10 +103,12 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     router = route_file(name, detected, yara_configured=bool(yara_rules_path))
     metadata = inspect_filename(name)
     builtin_report = inspect_builtin_signatures(data, name, detected)
+    structure_report = inspect_binary_structure(data[:4096], detected, len(data))
     hash_report = inspect_hash(digest, intelligence)
     yara_report = inspect_yara(data, yara_rules_path)
     signals.extend(metadata["signals"])
     signals.extend(builtin_report["signals"])
+    signals.extend(structure_report["signals"])
     signals.extend(hash_report["signals"])
     signals.extend(yara_report["signals"])
     fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
@@ -116,6 +119,7 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
          "extension_compatible": (not allowed_exts or ext in allowed_exts)},
         metadata,
         builtin_report,
+        structure_report,
         hash_report,
         yara_report,
         fusion,
@@ -170,6 +174,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
         matcher = BuiltinSignatureMatcher(name, detected)
         matcher.update(pending_prefix)
     builtin_report = matcher.result()
+    structure_report = inspect_binary_structure(bytes(header), detected, total)
 
     signals = []
     if detected == "Unknown / unrecognized":
@@ -185,6 +190,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
     yara_report = inspect_yara(bytes(yara_data) if yara_data is not None else b"", yara_rules_path)
     signals.extend(metadata["signals"])
     signals.extend(builtin_report["signals"])
+    signals.extend(structure_report["signals"])
     signals.extend(hash_report["signals"])
     signals.extend(yara_report["signals"])
     fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
@@ -194,6 +200,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
          "extension_compatible": (not allowed_exts or ext in allowed_exts)},
         metadata,
         builtin_report,
+        structure_report,
         hash_report,
         yara_report,
         fusion,
