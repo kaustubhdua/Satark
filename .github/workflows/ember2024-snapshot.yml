@@ -7,9 +7,8 @@ on:
         description: Historical dataset split
         type: choice
         required: true
-        default: challenge
+        default: train
         options:
-          - challenge
           - train
           - test
       file_type:
