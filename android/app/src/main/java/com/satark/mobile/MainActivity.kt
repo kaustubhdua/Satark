@@ -615,7 +615,12 @@ class MainActivity : Activity() {
         }
         WorkManager.getInstance(this).cancelUniqueWork(otherName)
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
-            .setConstraints(Constraints.Builder().build())
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresBatteryNotLow(true)
+                    .setRequiresStorageNotLow(true)
+                    .build()
+            )
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             uniqueName,
