@@ -33,7 +33,7 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 
 The default research source is EMBER2024, with labelled feature metadata covering Win32, Win64, .NET, APK, ELF and PDF samples collected through 2024-12-14. EMBER2024 is a research dataset, not a complete universal hash feed. SATARK converts metadata hashes/labels to CSV; it does not download or bundle malware binaries. Download and conversion are explicit operator actions on a trusted development machine. Transfer the generated CSV parts to the phone for local import.
 
-For a compact malicious-only starter snapshot, prepare the EMBER2024 challenge set (6,315 labelled malicious samples) first:
+For a compact malicious-only starter snapshot, prepare the EMBER2024 challenge set (6,315 labelled malicious samples) first. You can run the manual **Prepare EMBER2024 historical snapshot** workflow in GitHub Actions to create a CSV/provenance artifact without an API key, or run the commands below locally:
 
     python scripts/download_ember2024.py --output-dir data/ember2024 --split challenge --file-type all
     python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split challenge --file-type all
