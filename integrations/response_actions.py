@@ -67,8 +67,13 @@ def available_response_actions() -> list[str]:
     except ResponseIntegrationError:
         return []
     actions = ["wazuh.block_ip"]
-    if _account_disable_allowlist():
-        actions.append("wazuh.disable_account")
+    try:
+        if _account_disable_allowlist():
+            actions.append("wazuh.disable_account")
+    except ResponseIntegrationError:
+        # A malformed OS-specific allowlist disables this action without
+        # making the entire status endpoint unavailable.
+        pass
     return actions
 
 
