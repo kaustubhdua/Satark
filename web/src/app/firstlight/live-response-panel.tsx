@@ -31,6 +31,7 @@ async function readJson(response: Response) {
 export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
+  const [availableActions, setAvailableActions] = useState<string[]>([]);
   const [rows, setRows] = useState<LiveApproval[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [chainValid, setChainValid] = useState(false);
@@ -59,6 +60,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     const [status, approvals, audit] = await Promise.all([readJson(statusResponse), readJson(approvalsResponse), readJson(auditResponse)]);
     setEnabled(status.enabled === true);
     setConfigured(status.credentials_configured === true);
+    setAvailableActions(Array.isArray(status.actions) ? status.actions.filter((item: unknown): item is string => typeof item === 'string') : []);
     setRows(Array.isArray(approvals.approvals) ? approvals.approvals : []);
     setAuditEvents(Array.isArray(audit.events) ? audit.events : []);
     setChainValid(audit.chain_valid === true);
@@ -78,6 +80,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
         if (!active) return;
         setEnabled(status.enabled === true);
         setConfigured(status.credentials_configured === true);
+        setAvailableActions(Array.isArray(status.actions) ? status.actions.filter((item: unknown): item is string => typeof item === 'string') : []);
         setRows(Array.isArray(approvals.approvals) ? approvals.approvals : []);
         setAuditEvents(Array.isArray(audit.events) ? audit.events : []);
         setChainValid(audit.chain_valid === true);
@@ -97,6 +100,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   }
 
   async function requestApproval() {
+    if (!availableActions.includes(action)) throw new Error('This Wazuh action is not configured for an eligible lab agent.');
     if (!target.trim() || !responseValue.trim() || reason.trim().length < 8) throw new Error('Enter an allowlisted Wazuh agent ID, an action value, and a reason of at least 8 characters.');
     const idempotency = globalThis.crypto?.randomUUID?.();
     if (!idempotency) throw new Error('A secure browser UUID generator is required for an idempotent request.');
@@ -156,9 +160,9 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     </p>
     {canRequest && <>
       <label className="field-label" htmlFor="live-response-action">Response action</label>
-      <select id="live-response-action" value={action} disabled={busy} onChange={e=>setAction(e.target.value)}>
-        <option value="wazuh.block_ip">Wazuh · block IPv4 address</option>
-        <option value="wazuh.disable_account">Wazuh · disable local account</option>
+      <select id="live-response-action" value={action} disabled={busy || availableActions.length === 0} onChange={e=>setAction(e.target.value)}>
+        {availableActions.includes('wazuh.block_ip') && <option value="wazuh.block_ip">Wazuh · block IPv4 address</option>}
+        {availableActions.includes('wazuh.disable_account') && <option value="wazuh.disable_account">Wazuh · disable local account (Linux/macOS)</option>}
       </select>
       <label className="field-label" htmlFor="live-response-target">Exact Wazuh agent ID (must be on the server allowlist)</label>
       <input id="live-response-target" maxLength={256} value={target} onChange={e=>setTarget(e.target.value)} disabled={busy} placeholder="001" />
