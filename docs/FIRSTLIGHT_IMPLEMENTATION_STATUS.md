@@ -11,7 +11,7 @@ This addendum describes the current self-hosted candidate branch fix/satark-firs
 - **FIRSTLIGHT durable investigations:** API enqueue/status routes and a persistent worker process case evidence, save findings and report snapshots, and record result digests. The worker shares the API database and private evidence directory.
 - **FIRSTLIGHT Wazuh:** bounded read-only preview plus an optional persistent private worker with agent allowlisting, source-object preservation, overlap windows and durable checkpoints. Real Indexer connectivity still requires operator credentials and a lab endpoint.
 - **FIRSTLIGHT response:** the candidate branch integrates the durable SQLite response ledger into authenticated API routes and the persistent case UI. Requests are case-bound; approval requires a different operator; execution requires a third operator and exact target confirmation; provider submission is distinct from independent verification. The feature flag remains disabled by default. Mocked tests do not prove real Microsoft tenant connectivity.
-- **Optional model analysis:** local Ollama is advisory only. The deterministic engine remains the authoritative fallback; no paid hosted AI API is required for core FIRSTLIGHT operation.
+- **Optional model analysis:** local Ollama specialists can run in direct and durable background investigations. Their output is advisory only; deterministic findings remain authoritative and no paid hosted AI API is required for core FIRSTLIGHT operation.
 
 ## Candidate changes in this branch
 
@@ -36,6 +36,10 @@ This addendum describes the current self-hosted candidate branch fix/satark-firs
 **Current decision:** implementation is substantially integrated, but production readiness remains NO-GO until the exact-head automated checks and externally dependent lab/operational gates above are evidenced. No real Microsoft action, Wazuh connection, production deployment, or physical-device test is claimed by this addendum.
 
 ---
+
+## Historical audit log — superseded architecture snapshots
+
+The records below preserve earlier October 2026 audit findings, including the former shared-Supabase architecture. They are historical evidence only and are not current deployment instructions. Use the 2026-11-11 addendum above and the current self-hosted runbooks for the present architecture.
 
 # FIRSTLIGHT implementation status
 
