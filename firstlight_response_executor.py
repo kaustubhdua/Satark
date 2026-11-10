@@ -8,6 +8,7 @@ is marked unknown and must be reconciled manually before any further action.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 import sqlite3
@@ -198,9 +199,20 @@ class ResponseLedger:
         if action == "wazuh.block_ip":
             if set(value) != {"ip_address"} or not isinstance(value["ip_address"], str) or len(value["ip_address"]) > 64:
                 raise ResponseExecutionError("Wazuh IP block payload must contain one bounded ip_address.")
+            try:
+                address = ipaddress.ip_address(value["ip_address"])
+            except ValueError:
+                raise ResponseExecutionError("Wazuh IP block requires a valid IPv4 address.") from None
+            if address.version != 4 or address.is_unspecified or address.is_multicast:
+                raise ResponseExecutionError("Wazuh IP block requires a unicast IPv4 address.")
+            value["ip_address"] = str(address)
         elif action == "wazuh.disable_account":
             if set(value) != {"username"} or not isinstance(value["username"], str) or len(value["username"]) > 128:
                 raise ResponseExecutionError("Wazuh account-disable payload must contain one bounded username.")
+            username = value["username"].strip()
+            if not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", username) or username.startswith("-") or username == "root":
+                raise ResponseExecutionError("Wazuh account-disable username is invalid or protected.")
+            value["username"] = username
         else:
             raise ResponseExecutionError("Action is not allowlisted for live execution.")
         try:
@@ -222,6 +234,8 @@ class ResponseLedger:
         idempotency_key = _text(idempotency_key, "idempotency_key", 128)
         if action not in _ALLOWED_ACTIONS:
             raise ResponseExecutionError("Action is not allowlisted for live execution.")
+        if not re.fullmatch(r"\d{3,}", target):
+            raise ResponseExecutionError("Wazuh response target must be a numeric agent ID.")
         if not isinstance(expires_in_seconds, int) or isinstance(expires_in_seconds, bool) or not 30 <= expires_in_seconds <= 86400:
             raise ResponseExecutionError("Approval expiry must be between 30 seconds and 24 hours.")
         normalized_payload = self._validate_payload(action, payload)
