@@ -19,6 +19,7 @@ type LiveApproval = {
   decision_reason?: string | null;
 };
 
+type AuditEvent = { sequence: number; event_type: string; actor_id: string; created_at: string; payload?: Record<string, unknown> };
 type Props = { tenantId: string; caseId: string; userId: string; role: string };
 
 async function readJson(response: Response) {
@@ -31,6 +32,9 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   const [enabled, setEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [rows, setRows] = useState<LiveApproval[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [chainValid, setChainValid] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'verified' | 'failed' | 'unknown'>('verified');
   const [action, setAction] = useState('defender.isolate_device');
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('');
@@ -47,14 +51,17 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
 
   async function refresh() {
     const query = '?tenant_id=' + encodeURIComponent(tenantId) + '&case_id=' + encodeURIComponent(caseId);
-    const [statusResponse, approvalsResponse] = await Promise.all([
+    const [statusResponse, approvalsResponse, auditResponse] = await Promise.all([
       authenticatedFetch('/api/firstlight/live-response/status' + query),
       authenticatedFetch('/api/firstlight/live-response/approvals' + query),
+      authenticatedFetch('/api/firstlight/live-response/audit' + query),
     ]);
-    const [status, approvals] = await Promise.all([readJson(statusResponse), readJson(approvalsResponse)]);
+    const [status, approvals, audit] = await Promise.all([readJson(statusResponse), readJson(approvalsResponse), readJson(auditResponse)]);
     setEnabled(status.enabled === true);
     setConfigured(status.credentials_configured === true);
     setRows(Array.isArray(approvals.approvals) ? approvals.approvals : []);
+    setAuditEvents(Array.isArray(audit.events) ? audit.events : []);
+    setChainValid(audit.chain_valid === true);
   }
 
   useEffect(() => {
@@ -62,15 +69,18 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     const load = async () => {
       try {
         const query = '?tenant_id=' + encodeURIComponent(tenantId) + '&case_id=' + encodeURIComponent(caseId);
-        const [statusResponse, approvalsResponse] = await Promise.all([
+        const [statusResponse, approvalsResponse, auditResponse] = await Promise.all([
           authenticatedFetch('/api/firstlight/live-response/status' + query),
           authenticatedFetch('/api/firstlight/live-response/approvals' + query),
+          authenticatedFetch('/api/firstlight/live-response/audit' + query),
         ]);
-        const [status, approvals] = await Promise.all([readJson(statusResponse), readJson(approvalsResponse)]);
+        const [status, approvals, audit] = await Promise.all([readJson(statusResponse), readJson(approvalsResponse), readJson(auditResponse)]);
         if (!active) return;
         setEnabled(status.enabled === true);
         setConfigured(status.credentials_configured === true);
         setRows(Array.isArray(approvals.approvals) ? approvals.approvals : []);
+        setAuditEvents(Array.isArray(audit.events) ? audit.events : []);
+        setChainValid(audit.chain_valid === true);
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : 'Live response status is unavailable.');
       }
@@ -130,11 +140,11 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tenant_id: tenantId, case_id: caseId, approval_id: approval.approval_id,
-        status: 'verified', provider_reference: verifyReference.trim(), detail: verifyDetail.trim(),
+        status: verificationStatus, provider_reference: verifyReference.trim(), detail: verifyDetail.trim(),
       }),
     });
     await readJson(response);
-    setVerifyReference(''); setVerifyDetail('');
+    setVerifyReference(''); setVerifyDetail(''); setVerificationStatus('verified');
     setNotice('Independent operator attestation recorded. SATARK does not independently query or certify the provider state.');
   }
 
@@ -179,13 +189,30 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
       {(row.status === 'submitted' || row.status === 'unknown') && row.executor_id !== userId && row.requested_by !== userId && row.approved_by !== userId && canDecide && <>
         <label className="field-label" htmlFor={'live-reference-'+row.approval_id}>Provider action / audit reference</label>
         <input id={'live-reference-'+row.approval_id} value={verifyReference} onChange={e=>setVerifyReference(e.target.value)} disabled={busy} placeholder="Reference from provider console" />
+        <label className="field-label" htmlFor={'live-verification-status-'+row.approval_id}>Provider-side result</label>
+        <select id={'live-verification-status-'+row.approval_id} value={verificationStatus} onChange={e=>setVerificationStatus(e.target.value as 'verified' | 'failed' | 'unknown')} disabled={busy}>
+          <option value="verified">Verified</option><option value="failed">Failed</option><option value="unknown">Still unknown</option>
+        </select>
         <label className="field-label" htmlFor={'live-verification-'+row.approval_id}>Independent verification note</label>
         <textarea id={'live-verification-'+row.approval_id} rows={2} value={verifyDetail} onChange={e=>setVerifyDetail(e.target.value)} disabled={busy} placeholder="Describe the independent provider-console verification." />
         <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>void run(()=>verify(row))}>Record independent verification</button>
       </>}
+      {row.provider_reference && <p className="hint">Provider reference: <code>{row.provider_reference}</code></p>}
       {row.result_detail && <p className="hint">{row.result_detail}</p>}
       {row.decision_reason && <p className="hint">Decision rationale: {row.decision_reason}</p>}
     </article>)}</div>}
+    <div className="private-upload">
+      <strong>Response audit trail</strong>
+      <p className={chainValid ? 'success-message' : 'error-message'} role="status">
+        {chainValid ? 'Local response audit chain verifies.' : 'Response audit chain could not be verified.'}
+      </p>
+      {auditEvents.length === 0 ? <p className="hint">No response audit events have been recorded for this case.</p> :
+        <div className="case-notes-list">{auditEvents.slice().reverse().map(event=><p className="case-note" key={event.sequence}>
+          <strong>#{event.sequence} · {event.event_type}</strong>
+          <small>{event.created_at ? new Date(event.created_at).toLocaleString() : 'Timestamp unavailable'} · actor {String(event.actor_id || '').slice(0,8)}</small>
+        </p>)}</div>}
+      <p className="hint">The chain is stored locally. It is tamper-evident against ordinary application edits, not an external signature or proof against a privileged database administrator.</p>
+    </div>
     {notice && <p className="success-message" role="status">{notice}</p>}
     {error && <p className="error-message" role="alert">{error}</p>}
   </section>;
