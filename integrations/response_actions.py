@@ -26,6 +26,7 @@ class ActionResult:
     target: str
     status: str
     detail: str
+    provider_reference: str | None = None
 
 
 def _request_json(
@@ -86,6 +87,23 @@ def _confirm(action: str, target: str, confirmation: str) -> None:
         raise ResponseIntegrationError("Target identifier is invalid.")
 
 
+def preflight_live_response(action: str, target: str, confirmation: str) -> None:
+    """Validate the explicit execution gate and required server configuration before claiming an approval."""
+    phrases = {
+        "defender.isolate_device": "ISOLATE",
+        "entra.revoke_sessions": "REVOKE_SESSIONS",
+    }
+    phrase = phrases.get(action)
+    if not phrase:
+        raise ResponseIntegrationError("Action is not allowlisted for live response.")
+    _confirm(phrase, target, confirmation)
+    tenant = _required_env("MICROSOFT_TENANT_ID")
+    _required_env("MICROSOFT_CLIENT_ID")
+    _required_env("MICROSOFT_CLIENT_SECRET")
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", tenant):
+        raise ResponseIntegrationError("Microsoft tenant ID has an invalid format.")
+
+
 def _access_token(scope: str) -> str:
     tenant = _required_env("MICROSOFT_TENANT_ID")
     client_id = _required_env("MICROSOFT_CLIENT_ID")
@@ -144,9 +162,11 @@ def isolate_defender_device(
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         body={"Comment": f"SATARK approved response: {reason}", "IsolationType": isolation_type},
     )
+    reference = payload.get("id") or payload.get("machineActionId") if isinstance(payload, dict) else None
     return ActionResult("Microsoft Defender for Endpoint", "isolate_device", device_id,
                         "submitted" if status in {200, 201, 202} else "unknown",
-                        "Provider accepted the isolation request; verify final machine-action status in Defender.")
+                        "Provider accepted the isolation request; verify final machine-action status in Defender.",
+                        str(reference)[:256] if reference else None)
 
 
 def revoke_entra_user_sessions(
@@ -172,7 +192,8 @@ def revoke_entra_user_sessions(
     )
     return ActionResult("Microsoft Entra ID", "revoke_sign_in_sessions", user_id_or_upn,
                         "submitted" if 200 <= status < 300 else "unknown",
-                        "Provider accepted the session-revocation request; token invalidation can take several minutes.")
+                        "Provider accepted the session-revocation request; token invalidation can take several minutes.",
+                        None)
 
 
 def live_response_enabled() -> bool:
