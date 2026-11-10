@@ -105,6 +105,8 @@ class BuiltinSignatureMatcher:
                 self._seen.add("pdf_launch")
 
         if self.detected_type == "OLE document":
+            # Record each token independently: Office macro markers can be
+            # separated by hundreds of bytes or span different read chunks.
             if b"autoopen" in compact:
                 self._seen.add("ole_autoopen")
             if b"shell" in compact:
