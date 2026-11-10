@@ -182,6 +182,13 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('archive.optString("sha256").matches', source)
         self.assertIn('exported_rows', source)
 
+    def test_android_snapshot_installation_runs_off_the_ui_thread(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        on_create = source.split("override fun onCreate", 1)[1].split("override fun onNewIntent", 1)[0]
+        self.assertLess(on_create.index("executor.execute"), on_create.index("installBundledSnapshotIfMissing()"))
+        self.assertIn("ensurePython()", on_create)
+        self.assertIn("mainHandler.post", on_create)
+
     def test_android_installs_only_checksum_verified_bundled_historical_database(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/android-file-guard.yml").read_text(encoding="utf-8")
