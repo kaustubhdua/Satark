@@ -19,7 +19,7 @@ type LiveApproval = {
   decision_reason?: string | null;
 };
 
-type AuditEvent = { sequence: number; event_type: string; actor_id: string; created_at: string; payload?: Record<string, unknown> };
+type AuditEvent = { sequence: number; event_type: string; actor_id: string; occurred_at: string; payload?: Record<string, unknown> };
 type Props = { tenantId: string; caseId: string; userId: string; role: string };
 
 async function readJson(response: Response) {
@@ -209,7 +209,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
       {auditEvents.length === 0 ? <p className="hint">No response audit events have been recorded for this case.</p> :
         <div className="case-notes-list">{auditEvents.slice().reverse().map(event=><p className="case-note" key={event.sequence}>
           <strong>#{event.sequence} · {event.event_type}</strong>
-          <small>{event.created_at ? new Date(event.created_at).toLocaleString() : 'Timestamp unavailable'} · actor {String(event.actor_id || '').slice(0,8)}</small>
+          <small>{event.occurred_at ? new Date(event.occurred_at).toLocaleString() : 'Timestamp unavailable'} · actor {String(event.actor_id || '').slice(0,8)}</small>
         </p>)}</div>}
       <p className="hint">The chain is stored locally. It is tamper-evident against ordinary application edits, not an external signature or proof against a privileged database administrator.</p>
     </div>
