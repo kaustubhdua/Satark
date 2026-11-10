@@ -546,4 +546,4 @@ Use a separately labelled, legally acquired test corpus to measure precision, re
 
 The CSV must contain `expected` and `predicted` columns. Allowed labels are `benign`, `malicious`, and `unknown` for predictions. Unknown results count as abstentions and reduce coverage. Do not use EMBER feature metadata alone as a substitute for a representative binary test corpus.
 
-See [File Guard evidence and evaluation](docs/FILE_GUARD_EVIDENCE_AND_EVALUATION.md) and [mobile product design/open-source adaptation](docs/MOBILE_PRODUCT_DESIGN.md). Native Android YARA remains disabled until an ABI-compatible engine and reviewed, licensed rule pack have passed mobile testing.
+See [File Guard evidence and evaluation](docs/FILE_GUARD_EVIDENCE_AND_EVALUATION.md) and [mobile product design/open-source adaptation](docs/MOBILE_PRODUCT_DESIGN.md). The [Android physical-device QA checklist](docs/ANDROID_DEVICE_QA.md) defines the remaining release gates. Native Android YARA remains disabled until an ABI-compatible engine and reviewed, licensed rule pack have passed mobile testing.
