@@ -103,10 +103,16 @@ class MainActivity : Activity() {
             val folderWasLatest = folderScanAt >= foregroundScanAt
             val lastCount = if (folderWasLatest) prefs.getInt("last_folder_scan_files", 0)
                 else prefs.getInt("last_scan_files", 0)
+            val lastSkipped = if (folderWasLatest) prefs.getInt("last_folder_scan_skipped", 0)
+                else prefs.getInt("last_scan_failed", 0)
             val lastAlerts = if (folderWasLatest) prefs.getInt("last_folder_scan_alerts", 0) else 0
+            val limitNote = if (folderWasLatest && prefs.getBoolean("last_folder_scan_limit_reached", false)) {
+                " · LIMIT REACHED — RUN AGAIN TO CONTINUE"
+            } else ""
             status.text = "LAST LOCAL SCAN · " +
                 java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastScanAt)) +
-                " · " + lastCount + " FILES · " + lastAlerts + " ALERTS"
+                " · " + lastCount + " SCANNED · " + lastSkipped + " SKIPPED · " +
+                lastAlerts + " ALERTS" + limitNote
         } else if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             status.text = "FOLDER ACCESS GRANTED · READY TO SCAN"
         }
