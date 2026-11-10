@@ -513,6 +513,9 @@ class MainActivity : Activity() {
                 val latest = history.getJSONObject(0)
                 val report = latest.optJSONObject("report")
                     ?: throw IllegalStateException("Latest scan has no evidence report")
+                if (report.optString("report_sha256").isBlank()) {
+                    throw IllegalStateException("Latest scan has no verified evidence report")
+                }
                 val payload = report.toString(2)
                 val digest = report.optString("sha256").take(12).ifBlank { "latest" }
                 mainHandler.post {
