@@ -166,30 +166,86 @@ class MainActivity : Activity() {
 
     private fun importDatasets(uris: List<Uri>) {
         val source = datasetSource.text.toString().trim()
-        status.text = "IMPORTING " + uris.size + " OFFLINE CSV PART(S)…"
+        val manifests = uris.filter { displayName(it).lowercase().endsWith("_manifest.json") }
+        val csvUris = uris.filter { displayName(it).lowercase().endsWith(".csv") }.take(100)
+        if (csvUris.isEmpty()) {
+            status.text = "SELECT ONE OR MORE CSV PARTS"
+            return
+        }
+        if (source.startsWith("EMBER2024", ignoreCase = true) && manifests.size != 1) {
+            status.text = "EMBER2024 IMPORT REQUIRES EXACTLY ONE CONVERTER MANIFEST"
+            results.text = "Select the matching *_manifest.json file together with its CSV part files. SATARK will verify each part checksum before importing."
+            return
+        }
+        if (manifests.size > 1) {
+            status.text = "SELECT ONLY ONE DATASET MANIFEST"
+            return
+        }
+        status.text = "VERIFYING OFFLINE DATASET MANIFEST…"
         executor.execute {
+            var manifestParts: Map<String, String> = emptyMap()
+            var manifestError: String? = null
+            if (manifests.size == 1) {
+                try {
+                    val manifestBytes = readBounded(manifests.first())
+                    val manifest = JSONObject(String(manifestBytes, Charsets.UTF_8))
+                    val parts = manifest.optJSONArray("parts")
+                        ?: throw IllegalArgumentException("Manifest has no parts list")
+                    val parsed = mutableMapOf<String, String>()
+                    for (index in 0 until parts.length()) {
+                        val part = parts.getJSONObject(index)
+                        val filename = part.optString("file")
+                        val digest = part.optString("sha256").lowercase()
+                        if (filename.isBlank() || !digest.matches(Regex("^[a-f0-9]{64}$"))) {
+                            throw IllegalArgumentException("Manifest contains an invalid part entry")
+                        }
+                        if (parsed.put(filename, digest) != null) {
+                            throw IllegalArgumentException("Manifest contains duplicate filenames")
+                        }
+                    }
+                    manifestParts = parsed
+                } catch (error: Exception) {
+                    manifestError = error.javaClass.simpleName
+                }
+            }
+
             var inserted = 0
             var skipped = 0
             var rejected = 0
             var failures = 0
+            var checksumVerified = 0
             val summaries = mutableListOf<String>()
-            uris.take(100).forEachIndexed { index, uri ->
-                try {
-                    val bytes = readBounded(uri)
-                    val sourceId = (source + ":" + displayName(uri)).take(160)
-                    val response = Python.getInstance().getModule("android_bridge")
-                        .callAttr("import_csv_snapshot", bytes, sourceId, filesDir.absolutePath).toString()
-                    val counts = JSONObject(response).getJSONObject("import")
-                    inserted += counts.optInt("inserted")
-                    skipped += counts.optInt("skipped")
-                    rejected += counts.optInt("rejected")
-                    summaries.add(displayName(uri) + " · imported " + counts.optInt("inserted"))
-                } catch (error: Exception) {
-                    failures += 1
-                    summaries.add(displayName(uri) + " · rejected (" + error.javaClass.simpleName + ")")
-                }
-                mainHandler.post {
-                    status.text = "IMPORTING PART " + (index + 1) + " / " + minOf(uris.size, 100)
+            if (manifestError != null) {
+                failures = csvUris.size
+                summaries.add("Manifest rejected · " + manifestError)
+            } else {
+                csvUris.forEachIndexed { index, uri ->
+                    val name = displayName(uri)
+                    try {
+                        val expected = if (manifests.isNotEmpty()) {
+                            manifestParts[name] ?: throw IllegalArgumentException("CSV part is not listed in the selected manifest")
+                        } else {
+                            ""
+                        }
+                        val bytes = readBounded(uri)
+                        val sourceId = (source + ":" + name).take(160)
+                        val response = Python.getInstance().getModule("android_bridge")
+                            .callAttr("import_csv_snapshot", bytes, sourceId, filesDir.absolutePath, expected).toString()
+                        val payload = JSONObject(response)
+                        val counts = payload.getJSONObject("import")
+                        inserted += counts.optInt("inserted")
+                        skipped += counts.optInt("skipped")
+                        rejected += counts.optInt("rejected")
+                        if (payload.optBoolean("checksum_verified")) checksumVerified += 1
+                        summaries.add(name + " · imported " + counts.optInt("inserted") +
+                            if (payload.optBoolean("checksum_verified")) " · checksum verified" else " · checksum not supplied")
+                    } catch (error: Exception) {
+                        failures += 1
+                        summaries.add(name + " · rejected (" + error.javaClass.simpleName + ")")
+                    }
+                    mainHandler.post {
+                        status.text = "IMPORTING PART " + (index + 1) + " / " + csvUris.size
+                    }
                 }
             }
             val stats = try {
@@ -199,12 +255,12 @@ class MainActivity : Activity() {
                 JSONObject()
             }
             mainHandler.post {
-                results.text = "EMBER / historical CSV import complete\nInserted: " + inserted +
+                results.text = "Historical CSV import complete\nInserted: " + inserted +
                     " · Duplicates: " + skipped + " · Invalid rows: " + rejected +
-                    " · Failed files: " + failures + "\n\nCurrent local dataset: " +
-                    stats.optInt("total") + " hashes (" + stats.optInt("malicious") +
-                    " malicious · " + stats.optInt("benign") + " benign)\n\n" +
-                    summaries.joinToString("\n")
+                    " · Failed files: " + failures + "\nChecksum-verified parts: " + checksumVerified +
+                    "\n\nCurrent local dataset: " + stats.optInt("total") + " hashes (" +
+                    stats.optInt("malicious") + " malicious · " + stats.optInt("benign") +
+                    " benign)\n\n" + summaries.joinToString("\n")
                 datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
                     " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
                     stats.optInt("benign") + " BENIGN"
