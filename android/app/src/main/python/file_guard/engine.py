@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 import stat
 
-from .agents import route_file, inspect_filename, inspect_hash, inspect_yara, fuse_evidence
+from .agents import (route_file, inspect_filename, inspect_hash, inspect_builtin_signatures,
+                     BuiltinSignatureMatcher, inspect_yara, fuse_evidence)
 
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_DIRECTORY_FILES = 5000
@@ -92,24 +93,29 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
     detected, allowed_exts = _type(data[:4096])
     signals = []
     if detected == "Unknown / unrecognized":
-        signals.append({"code":"UNKNOWN_SIGNATURE","severity":"low","detail":"No supported file signature recognized."})
+        signals.append({"code": "UNKNOWN_SIGNATURE", "severity": "low",
+                        "detail": "No supported file signature recognized."})
     if allowed_exts and ext not in allowed_exts:
-        signals.append({"code":"EXTENSION_SIGNATURE_MISMATCH","severity":"high","detail":f"{ext or '(none)'} extension conflicts with {detected} signature."})
+        signals.append({"code": "EXTENSION_SIGNATURE_MISMATCH", "severity": "high",
+                        "detail": f"{ext or '(none)'} extension conflicts with {detected} signature."})
 
     router = route_file(name, detected, yara_configured=bool(yara_rules_path))
     metadata = inspect_filename(name)
+    builtin_report = inspect_builtin_signatures(data, name, detected)
     hash_report = inspect_hash(digest, intelligence)
     yara_report = inspect_yara(data, yara_rules_path)
     signals.extend(metadata["signals"])
+    signals.extend(builtin_report["signals"])
     signals.extend(hash_report["signals"])
     signals.extend(yara_report["signals"])
     fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
 
     trace = [
         router,
-        {"agent":"magic_signature","status":"complete","detected_type":detected,
+        {"agent": "magic_signature", "status": "complete", "detected_type": detected,
          "extension_compatible": (not allowed_exts or ext in allowed_exts)},
         metadata,
+        builtin_report,
         hash_report,
         yara_report,
         fusion,
@@ -120,12 +126,17 @@ def scan_bytes(data, filename, *, intelligence=None, yara_rules_path=None, max_b
         yara_report["matches"], yara_report["error"], trace
     )
 
+
 def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, max_bytes=MAX_FILE_BYTES):
-    """Hash and identify a stream incrementally; buffer full bytes only for optional YARA."""
+    """Hash and match static indicators incrementally without retaining the file body."""
     digest = hashlib.sha256()
     header = bytearray()
+    pending_prefix = bytearray()
+    matcher = None
     yara_data = bytearray() if yara_rules_path else None
+    name = Path(filename or "unnamed").name[:255]
     total = 0
+
     while True:
         chunk = stream.read(min(1024 * 1024, max_bytes + 1 - total))
         if not chunk:
@@ -139,10 +150,27 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
         if yara_data is not None:
             yara_data.extend(chunk)
 
-    name = Path(filename or "unnamed").name[:255]
+        if matcher is None:
+            needed = max(0, 12 - len(pending_prefix))
+            take = min(len(chunk), needed)
+            pending_prefix.extend(chunk[:take])
+            if len(pending_prefix) >= 12:
+                detected_for_match, _ = _type(bytes(header))
+                matcher = BuiltinSignatureMatcher(name, detected_for_match)
+                matcher.update(pending_prefix)
+                if take < len(chunk):
+                    matcher.update(chunk[take:])
+        else:
+            matcher.update(chunk)
+
     ext = Path(name).suffix.lower()
     sha256 = digest.hexdigest()
     detected, allowed_exts = _type(bytes(header))
+    if matcher is None:
+        matcher = BuiltinSignatureMatcher(name, detected)
+        matcher.update(pending_prefix)
+    builtin_report = matcher.result()
+
     signals = []
     if detected == "Unknown / unrecognized":
         signals.append({"code": "UNKNOWN_SIGNATURE", "severity": "low",
@@ -156,6 +184,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
     hash_report = inspect_hash(sha256, intelligence)
     yara_report = inspect_yara(bytes(yara_data) if yara_data is not None else b"", yara_rules_path)
     signals.extend(metadata["signals"])
+    signals.extend(builtin_report["signals"])
     signals.extend(hash_report["signals"])
     signals.extend(yara_report["signals"])
     fusion = fuse_evidence(signals, hash_report["match"], yara_report["matches"])
@@ -164,6 +193,7 @@ def scan_stream(stream, filename, *, intelligence=None, yara_rules_path=None, ma
         {"agent": "magic_signature", "status": "complete", "detected_type": detected,
          "extension_compatible": (not allowed_exts or ext in allowed_exts)},
         metadata,
+        builtin_report,
         hash_report,
         yara_report,
         fusion,
