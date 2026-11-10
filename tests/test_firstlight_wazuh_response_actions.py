@@ -53,6 +53,10 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_agent(monkeypatch)
 def test_disable_account_uses_allowlisted_builtin_and_strict_username(monkeypatch):
     configure(monkeypatch)
     assert actions._validate_payload("wazuh.disable_account", {"username": "lab-user"}) == ["lab-user"]
+    with pytest.raises(actions.ResponseIntegrationError, match="ACCOUNT_DISABLE_AGENT_IDS"):
+        actions.preflight_live_response("wazuh.disable_account", "001", "CONFIRM DISABLE_ACCOUNT 001")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "001")
+    actions.preflight_live_response("wazuh.disable_account", "001", "CONFIRM DISABLE_ACCOUNT 001")
     with pytest.raises(actions.ResponseIntegrationError, match="unsupported"):
         actions._validate_payload("wazuh.disable_account", {"username": "lab;user"})
     with pytest.raises(actions.ResponseIntegrationError, match="valid IPv4"):
