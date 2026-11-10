@@ -163,7 +163,7 @@ class ResponseLedgerTests(unittest.TestCase):
                 "UPDATE response_approvals SET payload_json='{}' WHERE approval_id=?",
                 (self.approval.approval_id,),
             )
-        self.assertEqual(self.ledger.get_approval(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a").target, "device-lab-01")
+        self.assertEqual(self.ledger.get_approval(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a").target, "001")
 
     def test_denial_is_terminal(self):
         denied = self.ledger.decide(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",
