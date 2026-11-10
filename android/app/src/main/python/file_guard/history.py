@@ -35,10 +35,10 @@ class ScanHistory:
         db.row_factory = sqlite3.Row
         return db
 
-    def add(self, result):
+    def add(self, result, *, snapshot=None):
         record = result.to_dict() if hasattr(result, "to_dict") else dict(result)
         scanned_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        report = build_evidence_report(record, scanned_at=scanned_at)
+        report = build_evidence_report(record, scanned_at=scanned_at, snapshot=snapshot)
         with self._connect() as db:
             db.execute("""INSERT INTO scan_history
                 (scanned_at,filename,size_bytes,sha256,detected_type,verdict,risk_level,signals_json,report_json)
