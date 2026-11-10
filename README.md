@@ -130,7 +130,7 @@ FIRSTLIGHT capabilities include:
 
 **Supabase and Microsoft security products are not runtime dependencies.** The Android File Guard remains fully offline. Wazuh is self-hostable and its Manager API / Indexer credentials are configured only in the private FIRSTLIGHT server runtime; they are not used by the Android scanner.
 
-Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md).
+Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md). For self-hosted PostgreSQL, Caddy HTTPS, secrets, deployment and recovery, follow the [production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md).
 
 ## Build and run the Android app
 
