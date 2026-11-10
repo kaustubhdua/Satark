@@ -36,13 +36,12 @@ RUNTIME_FILES = [
 FORBIDDEN = re.compile(
     r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)"
     r"|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1"
-    r"|from[ ]+supabase|import[ ]+supabase"
-    r"|(?:^|[<>=\s])supabase(?:[<>=\s]|$))"
+    r"|from[ ]+supabase|import[ ]+supabase)"
 )
+PACKAGE_LINE = re.compile(r"(?im)^\s*supabase(?:\[[^\]]+\])?\s*(?:[<>=!~].*)?$|[\"']supabase[\"']\s*:")
 
 
 def source_files():
-    # Include every first-party root Python module, not only the new API files.
     yield from (path for path in ROOT.glob("*.py") if path.is_file())
     for entry in RUNTIME_FILES:
         if entry.is_file():
@@ -62,7 +61,7 @@ def main() -> int:
         except (UnicodeDecodeError, OSError):
             continue
         for line_number, line in enumerate(content.splitlines(), 1):
-            if FORBIDDEN.search(line):
+            if FORBIDDEN.search(line) or PACKAGE_LINE.search(line):
                 violations.append(f"{path.relative_to(ROOT)}:{line_number}: {line.strip()[:200]}")
     if violations:
         print("Supabase runtime/configuration dependency detected:")
