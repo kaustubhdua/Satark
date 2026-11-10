@@ -149,7 +149,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     ]
 
 
-def test_response_api_rejects_unknown_actions_and_duplicate_idempotency(response_app):
+def test_response_api_rejects_unknown_actions(response_app):
     client, ids, active_user = response_app
     active_user[0] = backend.SessionLocal().get(backend.User, ids["users"][0])
     body = {
