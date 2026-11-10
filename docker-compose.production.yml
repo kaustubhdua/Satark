@@ -83,7 +83,7 @@ services:
       SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:?Set the satark_backup BYPASSRLS connection URL}
       SATARK_EVIDENCE_DIR: /data/evidence
     volumes:
-      - satark_data:/data:ro
+      - satark_data:/data
       - satark_backups:/backups
     depends_on:
       db:
