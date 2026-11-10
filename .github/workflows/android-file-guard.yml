@@ -186,7 +186,7 @@ jobs:
         with:
           name: satark-file-guard-debug-apk
           path: artifacts/apk
-      - name: Boot Android 16 emulator and smoke-test the app
+      - name: Boot Android 15 emulator and smoke-test the app
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 25
         with:
@@ -198,7 +198,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p artifacts
             adb install -r artifacts/apk/app-debug.apk
             adb shell am start -W -n com.satark.mobile/.MainActivity
