@@ -329,7 +329,7 @@ class MainActivity : Activity() {
         executor.execute {
             try {
                 val json = Python.getInstance().getModule("android_bridge")
-                    .callAttr("scan_history", filesDir.absolutePath).toString()
+                    .callAttr("scan_history", filesDir.absolutePath, 20).toString()
                 val array = org.json.JSONArray(json)
                 val lines = (0 until minOf(array.length(), 20)).map { index ->
                     val item = array.getJSONObject(index)
@@ -355,7 +355,7 @@ class MainActivity : Activity() {
             try {
                 val bridge = Python.getInstance().getModule("android_bridge")
                 val stats = JSONObject(bridge.callAttr("scan_stats", filesDir.absolutePath).toString())
-                val history = org.json.JSONArray(bridge.callAttr("scan_history", filesDir.absolutePath).toString())
+                val history = org.json.JSONArray(bridge.callAttr("scan_history", filesDir.absolutePath, 1).toString())
                 val latest = if (history.length() > 0) history.getJSONObject(0) else null
                 mainHandler.post {
                     datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
