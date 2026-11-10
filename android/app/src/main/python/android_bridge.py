@@ -1,4 +1,5 @@
 """Small JSON bridge called from Kotlin through Chaquopy."""
+import hashlib
 import json
 from io import StringIO
 from pathlib import Path
@@ -25,12 +26,18 @@ def scan_shared_file_path(path, filename, app_data_dir):
     report = ScanHistory(root / "file_guard_history.sqlite3").add(result)
     return json.dumps(report, ensure_ascii=True)
 
-def import_csv_snapshot(data, source_name, app_data_dir):
+def import_csv_snapshot(data, source_name, app_data_dir, expected_sha256=None):
+    raw = bytes(data)
+    expected = str(expected_sha256 or "").strip().lower()
+    actual = hashlib.sha256(raw).hexdigest()
+    if expected and actual != expected:
+        raise ValueError("Dataset CSV checksum does not match its manifest.")
     root = _paths(app_data_dir)
     store = ThreatIntelligenceStore(root / "file_guard_intelligence.sqlite3")
-    text = bytes(data).decode("utf-8-sig")
+    text = raw.decode("utf-8-sig")
     outcome = store.import_csv(StringIO(text), str(source_name), max_rows=2_000_000)
-    return json.dumps({"import": outcome, "stats": store.stats()}, ensure_ascii=True)
+    return json.dumps({"import": outcome, "stats": store.stats(),
+                       "checksum_verified": bool(expected), "sha256": actual}, ensure_ascii=True)
 
 def scan_history(app_data_dir):
     root = _paths(app_data_dir)
