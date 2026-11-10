@@ -5,12 +5,12 @@ This checklist is for real-device validation. CI builds and emulator smoke tests
 ## Device matrix
 
 Test at minimum:
-- Android 7/API 24 (minimum supported platform).
+- Android API 24 on a supported 64-bit ARM (`arm64-v8a`) device; the current Python 3.13 build does not package 32-bit ARM (`armeabi-v7a`).
 - Android 13/API 33 or later (runtime notification permission).
 - Android 16/API 36 (current target); retain Android 15/API 35 compatibility coverage.
 - One device with aggressive OEM background restrictions (for example Xiaomi/Redmi, Oppo/Realme, Vivo or Samsung battery management).
 
-Record device model, Android build, SATARK APK SHA-256, test date and battery mode for every run.
+Record device model, Android build, device ABI (`arm64-v8a` or emulator `x86_64`), SATARK APK SHA-256, test date and battery mode for every run. Do not list 32-bit ARM devices as supported test targets for this build.
 
 ## Share-to-SATARK tests
 
