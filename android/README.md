@@ -12,7 +12,7 @@ SATARK is an Android-first, Python-based, offline-first file security applicatio
 
 ## Build
 
-Requirements: JDK 17, Android SDK Platform 36 / Build Tools 36.0.0, Gradle 8.13, Android Gradle Plugin 8.13.2, and Python 3.13 for Chaquopy build integration.
+Requirements: JDK 17, Android SDK Platform 36 / Build Tools 36.0.0, Gradle 8.13, Android Gradle Plugin 8.13.2, and Python 3.13 for Chaquopy build integration. The app targets Android 16 / API 36 (Google Play target requirement) and supports Android 7.0+ (minSdk 24).
 
     gradle -p android --no-daemon :app:assembleDebug
 
