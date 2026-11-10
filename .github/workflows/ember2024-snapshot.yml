@@ -12,10 +12,10 @@ on:
           - train
           - test
       file_type:
-        description: File-type subset (challenge archive contains its own mixed set)
+        description: File-type subset from the pinned historical snapshot
         type: choice
         required: true
-        default: all
+        default: APK
         options:
           - all
           - APK
