@@ -182,6 +182,19 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('archive.optString("sha256").matches', source)
         self.assertIn('exported_rows', source)
 
+    def test_android_installs_only_checksum_verified_bundled_historical_database(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/android-file-guard.yml").read_text(encoding="utf-8")
+        self.assertIn("installBundledSnapshotIfMissing()", source)
+        self.assertIn('assets.open("ember2024-starter.sqlite3")', source)
+        self.assertIn('assets.open("ember2024-starter.json")', source)
+        self.assertIn('metadata.optString("dataset_revision") != pinnedRevision', source)
+        self.assertIn("actualSha256 != expectedSha256", source)
+        self.assertIn('File(filesDir, "file_guard_intelligence.sqlite3")', source)
+        self.assertIn("Restore bundled EMBER2024 APK starter snapshot", source)
+        self.assertIn("Build pinned EMBER2024 APK starter database", workflow)
+        self.assertIn("Package verified historical starter database into offline app", workflow)
+
     def test_dataset_import_has_a_historical_snapshot_id_default(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('setText("EMBER2024-2024-12-14")', source)
