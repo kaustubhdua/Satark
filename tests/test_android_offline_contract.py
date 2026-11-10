@@ -112,6 +112,13 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("exportLatestEvidenceReport", source)
         self.assertIn("pendingExportJson = null", source)
 
+    def test_audit_status_discloses_legacy_unlinked_history(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        history = (ANDROID / "app/src/main/python/file_guard/history.py").read_text(encoding="utf-8")
+        self.assertIn('payload.optBoolean("complete", true)', source)
+        self.assertIn('unlinked_history_records', history)
+        self.assertIn("LEGACY RECORD(S) UNLINKED", source)
+
     def test_android_history_exposes_local_hash_chain_verification(self):
         bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
