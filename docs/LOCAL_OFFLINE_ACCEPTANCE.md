@@ -27,11 +27,11 @@ Install the debug APK on a test device. A debug APK is not a signed production r
 
 The repository includes a manual **Prepare EMBER2024 historical snapshot** GitHub Actions workflow. Choose the historical split and file-type subset, then download its CSV/provenance artifact from the workflow run. It uses the public archive downloader without an API key and does not commit dataset files to Git.
 
-The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with its compact challenge set if device storage is limited:
+The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with a balanced APK training subset; it includes benign and malicious labels and avoids the larger Windows archives:
 
 ```bash
-python scripts/download_ember2024.py --output-dir data/ember2024 --split challenge --file-type all
-python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split challenge --file-type all
+python scripts/download_ember2024.py --output-dir data/ember2024 --split train --file-type APK
+python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
 Keep the source and converted manifests. Verify each CSV part's SHA-256 against the generated manifest before transferring it to the device. Import the parts using a unique source/snapshot ID. The database should remain empty until the operator explicitly imports a snapshot.
