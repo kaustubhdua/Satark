@@ -1,6 +1,6 @@
 # SATARK File Guard — product and technical contract
 
-**Product direction:** Android-first, Python-based, offline-first file threat inspection.
+**Product direction:** Android-first, Python-based, offline-first file threat inspection. The app targets Android 16 / API 36 (minSdk 24) and uses edge-to-edge window insets.
 
 ## Non-negotiable product boundaries
 
