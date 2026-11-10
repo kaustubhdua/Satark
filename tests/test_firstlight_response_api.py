@@ -21,6 +21,10 @@ def response_app(monkeypatch, tmp_path):
     backend.Base.metadata.create_all(engine)
     monkeypatch.setenv("FIRSTLIGHT_RESPONSE_DB", str(tmp_path / "response.sqlite3"))
     monkeypatch.delenv("SATARK_ENABLE_LIVE_RESPONSE", raising=False)
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_API_URL", "https://wazuh-manager.example.test:55000")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_USERNAME", "test-user")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD", "test-password")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS", "001")
 
     db = backend.SessionLocal()
     users = []
