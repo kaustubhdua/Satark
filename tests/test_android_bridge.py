@@ -10,6 +10,7 @@ import unittest
 ANDROID_PYTHON = Path(__file__).resolve().parents[1] / "android/app/src/main/python"
 sys.path.insert(0, str(ANDROID_PYTHON))
 android_bridge = importlib.import_module("android_bridge")
+from file_guard.report import verify_evidence_report
 
 
 class AndroidBridgeTests(unittest.TestCase):
@@ -31,6 +32,10 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertFalse(scanned["content_extracted"])
             self.assertFalse(scanned["executed"])
             self.assertEqual(scanned["intelligence_match"]["dataset_date"], "2024-12-14")
+            self.assertEqual(scanned["report_schema"], "satark.file-guard.evidence/v1")
+            self.assertTrue(verify_evidence_report(scanned))
+            self.assertEqual(scanned["file"]["sha256"], digest)
+            self.assertFalse(scanned["processing"]["semantic_content_extracted"])
 
             history = json.loads(android_bridge.scan_history(tmp))
             self.assertEqual(len(history), 1)
