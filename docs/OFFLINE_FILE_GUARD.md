@@ -9,7 +9,8 @@ SATARK File Guard is an app-oriented, local-first file-security workflow for fil
 - SHA-256 exact-match lookup against a historical, locally imported SQLite index.
 - Magic-byte identification for common document, archive, executable, image and Android DEX formats.
 - Extension/signature mismatch and double-extension heuristics.
-- Conservative built-in byte-pattern heuristics for selected PDF active actions, OLE macro automation markers, script download/execute combinations, JavaScript obfuscation clusters and DEX dynamic loading. These work in the Android Python engine without native dependencies and only raise review findings.\n- Optional YARA rules in the desktop Python engine when local `yara-python` and a reviewed rules file are installed. The Android build does not bundle native YARA.
+- Conservative built-in byte-pattern heuristics for selected PDF active actions, OLE macro automation markers, script download/execute combinations, JavaScript obfuscation clusters and DEX dynamic loading. These work in the Android Python engine without native dependencies and only raise review findings.
+- Optional YARA rules in the desktop Python engine when local `yara-python` and a reviewed rules file are installed. The Android build does not bundle native YARA.
 - No document text extraction, OCR, rendering, archive unpacking, file execution, preview, deletion or automatic quarantine.
 - Unknown files are not labelled safe. A no-match verdict means only that enabled checks found no known indicator.
 
