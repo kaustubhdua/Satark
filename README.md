@@ -36,7 +36,7 @@ File Guard is the current product direction: a privacy-first local file scanner 
 - Local SQLite intelligence store populated through explicit import of a provenance-labelled historical CSV snapshot; EMBER2024 CSV parts are checked against the converter manifest before import.
 - Metadata-only evidence reports preserve scan time, hash, local dataset provenance, specialist findings and a canonical integrity digest. SQLite scan history also maintains a local hash-chained audit log that can be verified in-app; it detects edits/reordering within the retained chain but is not a digital signature or remote proof of authenticity.
 - No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
-- Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the explicit one-time `scripts/download_ember2024.py` downloader and local `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
+- Historical intelligence is frozen to EMBER2024 (2023–2024, six file types). CI-built Android APKs bundle a compact APK training hash index generated from the pinned dataset revision; additional file-type subsets can be prepared with the explicit one-time downloader and converter. No malware binaries are bundled.
 - No semantic file-content extraction, OCR, preview, execution, archive unpacking or automatic deletion.
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
