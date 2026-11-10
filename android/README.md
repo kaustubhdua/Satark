@@ -44,7 +44,7 @@ The frozen database does not learn new threat intelligence. A newly discovered m
 
 ## Background scanning and Android limits
 
-WorkManager's periodic interval minimum is 15 minutes, but execution is inexact and can be delayed by Doze, battery optimization, provider availability or OEM behavior. SATARK therefore provides event-driven Share-to-SATARK scanning plus best-effort folder rescans; it cannot promise uninterrupted, second-by-second 24/7 monitoring.
+WorkManager's periodic interval minimum is 15 minutes, but execution is inexact and can be delayed by Doze, battery optimization, provider availability or OEM behavior. Periodic scans also defer when Android reports low battery or low storage. SATARK therefore provides event-driven Share-to-SATARK scanning plus best-effort folder rescans; it cannot promise uninterrupted, second-by-second 24/7 monitoring.
 
 Android 11+ restricts access to other apps' private data and app-specific external directories. SATARK cannot bypass these controls. A folder tree must be explicitly selected by the user, and Android may block protected locations such as Android/data, Android/obb and the Download root from tree selection.
 
