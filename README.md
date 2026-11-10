@@ -53,7 +53,7 @@ SATARK is an independent cybersecurity project with two complementary products: 
 
 ### Self-hosted deployment
 
-The repository includes local and production Docker Compose configurations, PostgreSQL role bootstrap scripts, a Caddy TLS edge, a Wazuh lab bootstrap helper and backup/restore tooling. Start with the deployment guide at docs/SELF_HOSTED_DEPLOYMENT.md and the production environment template at deploy/production.env.example. Never commit a real environment file, database password, Wazuh credential, TLS private key, signing key or incident evidence.
+The repository includes local and production Docker Compose configurations, PostgreSQL role bootstrap scripts, a Caddy TLS edge, a Wazuh lab bootstrap helper and backup/restore tooling. Start with the deployment guide at docs/PRODUCTION_DEPLOYMENT.md and the production environment template at deploy/production.env.example. Never commit a real environment file, database password, Wazuh credential, TLS private key, signing key or incident evidence.
 
 **Important:** configuration templates and CI mocks are not proof of a live deployment. A production release still requires a provisioned authorized Wazuh lab, disposable agents, a reachable production host, external backup destination, physical Android QA and successful exact-commit acceptance.
 
