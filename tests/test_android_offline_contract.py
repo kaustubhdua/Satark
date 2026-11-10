@@ -84,6 +84,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("_manifest.json", activity)
         self.assertIn("expected_sha256", bridge)
         self.assertIn("Dataset CSV checksum does not match its manifest.", bridge)
+        self.assertIn("csvUris.size > 256", activity)
 
 
 if __name__ == "__main__":
