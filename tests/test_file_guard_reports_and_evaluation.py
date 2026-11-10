@@ -10,7 +10,7 @@ from file_guard.report import build_evidence_report, verify_evidence_report
 
 class EvidenceReportTests(unittest.TestCase):
     def test_report_is_metadata_only_and_digest_verifies(self):
-        result = scan_bytes(b"%PDF-1.7 sample", "sample.pdf")
+        result = scan_bytes(b"%PDF-1.7 PRIVATE-DOCUMENT-BODY", "sample.pdf")
         report = build_evidence_report(result, scanned_at="2026-11-10T12:00:00+00:00")
         self.assertEqual(report["report_schema"], "satark.file-guard.evidence/v1")
         self.assertEqual(report["file"]["sha256"], result.sha256)
@@ -18,7 +18,7 @@ class EvidenceReportTests(unittest.TestCase):
         self.assertFalse(report["processing"]["semantic_content_extracted"])
         self.assertFalse(report["processing"]["file_executed"])
         self.assertTrue(verify_evidence_report(report))
-        self.assertNotIn("content", json.dumps(report).lower())
+        self.assertNotIn("PRIVATE-DOCUMENT-BODY", json.dumps(report))
 
     def test_report_detects_tampering(self):
         report = build_evidence_report(scan_bytes(b"hello", "hello.bin"))
