@@ -11,7 +11,7 @@ FIRSTLIGHT is SATARK's incident-response workspace. It turns authorized telemetr
 5. Run the deterministic Python investigation, review the event timeline, rule IDs, evidence references, severity rationale, uncertainty and evidence gaps.
 6. Save evidence, findings and a reproducible report snapshot to the self-hosted database. Queue a durable investigation job when the case needs background processing.
 7. Record immutable analyst notes and simulation decisions. The audit history is stored by the self-hosted backend.
-8. If an authorized organization configures the optional Microsoft integration, request a case-bound response approval. A different operator approves it, a third operator executes it after exact target confirmation, and a fourth distinct operator records independent provider-console verification.
+8. If an authorized organization configures the optional Wazuh Manager API integration, request a case-bound response approval. A different operator approves it, a third operator executes it after exact target confirmation, and a fourth distinct operator records independent provider-console verification.
 
 ## Components
 
@@ -30,7 +30,7 @@ See [Wazuh integration](FIRSTLIGHT_WAZUH_INTEGRATION.md) and [Wazuh API acceptan
 
 ## Guarded live response
 
-The browser now has a case-scoped response panel backed by the durable local response ledger. Supported actions are Microsoft Defender for Endpoint device isolation and Microsoft Entra session revocation. The feature is **disabled by default** and never triggered by AI. It requires server-side Microsoft app credentials, explicit server feature enablement, a fixed action allowlist, four-eyes approval, a third executor, exact target confirmation, at-most-once submission, and separate independent verification.
+The browser now has a case-scoped response panel backed by the durable local response ledger. Supported actions are Wazuh Active Response: block one validated IPv4 address with firewall-drop or disable one validated local account with disable-account on one explicitly allowlisted agent. The feature is **disabled by default** and never triggered by AI. It requires private Wazuh Manager API credentials, explicit server feature enablement, fixed command allowlisting, four-eyes approval, a third executor, exact target confirmation, at-most-once submission, and separate independent verification.
 
 A provider submission is not proof of completed containment. SATARK records an operator attestation after the operator verifies state in the provider console; it does not claim an automatic provider-side verification.
 
@@ -52,8 +52,8 @@ The API and durable investigation worker use the internal Ollama service URL. If
 - Hashes establish byte consistency against a stored digest, not original source authenticity or truthfulness.
 - Rule matches and optional model findings are triage leads, not proof of compromise or calibrated probabilities.
 - No shell command, malware execution, network block, or automatic endpoint action is inferred from AI output.
-- Real Defender/Entra actions affect a real tenant when enabled and correctly configured. Use only an authorized lab target with a recovery plan.
-- Wazuh and Microsoft integrations require a real, authorized self-hosted environment; mock tests do not prove live connectivity.
+- Wazuh Active Response affects the selected enrolled endpoint when enabled and correctly configured. Use only a disposable lab agent with a tested reversal/recovery path.
+- Wazuh integrations require a real, authorized self-hosted environment; mock tests do not prove live connectivity.
 - Audit hash chains are tamper-evident against ordinary application changes, not privileged-host administrators. Export/anchor them independently for stronger evidence.
 
 ## Local run
@@ -87,4 +87,4 @@ python -m unittest discover -s tests -p "test_firstlight*.py" -v
 python -m unittest discover -s tests -p "test_satark_backend*.py" -v
 ```
 
-The test suite covers deterministic engine behavior, bounded ingestion, persistence contracts, worker processing, approval state transitions, four-eyes controls, at-most-once response execution, recovery-to-unknown, and mocked provider submission. Physical Wazuh/Defender/Entra acceptance still requires authorized lab infrastructure.
+The test suite covers deterministic engine behavior, bounded ingestion, persistence contracts, worker processing, approval state transitions, four-eyes controls, at-most-once response execution, recovery-to-unknown, and mocked provider submission. Physical Wazuh acceptance still requires authorized lab infrastructure.
