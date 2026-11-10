@@ -32,7 +32,7 @@ SATARK includes an independently authored, standard-library Linux sensor for bou
 
 File Guard is the current product direction: a privacy-first local file scanner for files received through WhatsApp, Telegram, downloads and other apps.
 
-- Python static inspection engine with SHA-256, file-format signatures, extension mismatch checks and local historical hash matching. Native YARA is not bundled in the Android app.
+- Python static inspection engine with SHA-256, file-format signatures, conservative built-in byte-pattern heuristics, extension mismatch checks and local historical hash matching. Native YARA is not bundled in the Android app.
 - Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
 - No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
 - Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the explicit one-time `scripts/download_ember2024.py` downloader and local `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
@@ -40,7 +40,7 @@ File Guard is the current product direction: a privacy-first local file scanner 
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
 
-The Android application includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, local scan history, offline CSV hash import and best-effort WorkManager scans. Android CI builds the debug APK and checks the no-network contract; physical-device QA, performance/battery testing, signing and store acceptance remain outstanding. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md). The Streamlit page is a legacy development interface; uploaded bytes reach the Streamlit host, so do not use it for private files.
+The Android application targets Android 16 / API 36 and includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, built-in byte-pattern checks, local scan history, offline CSV hash import and best-effort WorkManager scans. Android CI builds the debug APK and checks the no-network contract; physical-device QA, performance/battery testing, signing and store acceptance remain outstanding. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md). The Streamlit page is a legacy development interface; uploaded bytes reach the Streamlit host, so do not use it for private files.
 
 ## Contents
 
