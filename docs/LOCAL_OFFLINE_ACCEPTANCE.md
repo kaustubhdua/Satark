@@ -10,7 +10,7 @@ This is the acceptance procedure for the primary SATARK File Guard product. It d
 - No semantic document text extraction, OCR, preview, archive unpacking or execution.
 - WhatsApp/Telegram attachments are accessible only when the sender explicitly shares them to SATARK.
 - Folder scanning is limited to a tree the user selects through Android's Storage Access Framework.
-- Dataset acquisition is a separate one-time workstation operation. Scanning never downloads new data.
+- Dataset acquisition is a separate historical workstation operation. EMBER2024 imports must include the converter manifest and pass per-part SHA-256 verification. Scanning never downloads or refreshes threat intelligence.
 - WorkManager is best-effort; it does not promise continuous 24/7 monitoring.
 
 ## Build and install
