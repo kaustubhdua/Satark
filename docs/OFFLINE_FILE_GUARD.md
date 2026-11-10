@@ -40,8 +40,8 @@ Implemented in the Android scaffold:
 - System file picker using `ACTION_OPEN_DOCUMENT`.
 - User-granted directory selection using `ACTION_OPEN_DOCUMENT_TREE`.
 - Persisted URI read permission for the selected tree.
-- Local Python SHA-256 and file-signature scanning.
-- Local SQLite scan history, multi-part historical CSV hash snapshot import and user-controlled reset of history/database.
+- Streaming Python SHA-256 and file-signature scanning through bounded app-private temporary files; only the first 4 KiB is retained for format identification and byte-pattern checks.
+- Local SQLite scan history with versioned metadata-only evidence reports and integrity digests; multi-part historical CSV hash snapshot import with EMBER2024 manifest checksum verification and user-controlled reset of history/database.
 - User control to release persisted folder permissions and cancel scheduled scans.
 - WorkManager one-time and best-effort daily scheduled folder scans, bounded to 1,000 files, 8 directory levels, 64 MB/file and 512 MB/run.
 - Optional Android notifications when a background scan finds files requiring review; notification text contains only a count.
