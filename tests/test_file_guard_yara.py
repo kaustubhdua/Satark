@@ -37,7 +37,7 @@ class YaraRulePackTests(unittest.TestCase):
 
     def test_rule_pack_compiles(self):
         self.assertTrue(RULES.is_file())
-        self.assertGreaterEqual(len(self.compiled.rules), 5)
+        self.assertTrue(self.compiled.match(data=SAMPLES[0][2], timeout=3))
 
     def test_synthetic_corpus_precision_recall_and_false_positive_rate(self):
         tp = fp = tn = fn = 0
