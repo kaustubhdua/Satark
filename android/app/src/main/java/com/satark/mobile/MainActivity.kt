@@ -565,10 +565,15 @@ class MainActivity : Activity() {
     }
 
     private fun scanUris(uris: List<Uri>) {
-        status.text = "SCANNING " + uris.size + " FILE(S) LOCALLY…"
+        val uniqueUris = uris.distinct()
+        val acceptedUris = uniqueUris.take(MAX_SHARED_FILES)
+        val notStarted = (uniqueUris.size - acceptedUris.size).coerceAtLeast(0)
+        status.text = "SCANNING " + acceptedUris.size + " OF " + uniqueUris.size + " FILE(S) LOCALLY…"
         executor.execute {
             val output = mutableListOf<String>()
-            uris.take(20).forEach { uri ->
+            var scannedCount = 0
+            var failedCount = 0
+            acceptedUris.forEach { uri ->
                 try {
                     val name = displayName(uri)
                     val temp = copyUriToTemp(uri)
@@ -602,17 +607,28 @@ class MainActivity : Activity() {
                         "Evidence signals:\n" + item.optJSONArray("signals")?.toString(2).orEmpty() +
                         "\nAgent trace:\n" + item.optJSONArray("agent_trace")?.toString(2).orEmpty() + safetyNote
                     )
+                    scannedCount += 1
                 } catch (error: Exception) {
+                    failedCount += 1
                     output.add("SCAN INCOMPLETE · " + error.javaClass.simpleName + ". The file was not modified.")
                 }
             }
+            if (notStarted > 0) {
+                output.add(
+                    "NOT SCANNED · " + notStarted + " additional shared file(s) exceeded the per-share limit of " +
+                    MAX_SHARED_FILES + ". Share the remaining files in another batch."
+                )
+            }
             prefs.edit()
                 .putLong("last_scan_ms", System.currentTimeMillis())
-                .putInt("last_scan_files", output.size)
+                .putInt("last_scan_files", scannedCount)
+                .putInt("last_scan_failed", failedCount)
+                .putInt("last_scan_not_started", notStarted)
                 .apply()
             mainHandler.post {
                 results.text = output.joinToString("\n\n──────────────\n\n")
-                status.text = "SCAN COMPLETE · " + output.size + " RESULT(S) · LOCAL ONLY"
+                status.text = "SCAN FINISHED · " + scannedCount + " SCANNED · " +
+                    failedCount + " FAILED · " + notStarted + " NOT STARTED · LOCAL ONLY"
             }
         }
     }
@@ -694,6 +710,7 @@ class MainActivity : Activity() {
             .build()
         val request = PeriodicWorkRequestBuilder<FolderScanWorker>(interval, unit)
             .setConstraints(constraints)
+            .addTag(FOLDER_SCAN_TAG)
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             uniqueName,
@@ -706,6 +723,7 @@ class MainActivity : Activity() {
     private fun stopBackgroundScans() {
         WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_PERIODIC_NAME)
         WorkManager.getInstance(this).cancelUniqueWork(FolderScanWorker.UNIQUE_FREQUENT_NAME)
+        WorkManager.getInstance(this).cancelUniqueWork(IMMEDIATE_FOLDER_SCAN_NAME)
         WorkManager.getInstance(this).cancelAllWorkByTag(FOLDER_SCAN_TAG)
         status.text = if (prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             "BACKGROUND SCANS STOPPED · NO SAVED FOLDER PERMISSION"
@@ -746,5 +764,6 @@ class MainActivity : Activity() {
         private const val KEY_TREE_FLAGS = "granted_tree_flags"
         private const val FOLDER_SCAN_TAG = "satark-folder-scan"
         private const val IMMEDIATE_FOLDER_SCAN_NAME = "satark-file-guard-immediate-folder-scan"
+        private const val MAX_SHARED_FILES = 20
     }
 }
