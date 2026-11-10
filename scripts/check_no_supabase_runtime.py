@@ -7,6 +7,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_FILES = [
     ROOT / "web" / "src",
+    ROOT / "android" / "app" / "src" / "main",
+    ROOT / "android" / "app" / "build.gradle.kts",
+    ROOT / "android" / "build.gradle.kts",
+    ROOT / "android" / "settings.gradle.kts",
     ROOT / "web" / "next.config.ts",
     ROOT / "web" / "Dockerfile",
     ROOT / "web" / "scripts",
