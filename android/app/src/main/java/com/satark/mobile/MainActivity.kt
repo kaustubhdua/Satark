@@ -63,19 +63,41 @@ class MainActivity : Activity() {
     }
 
     private fun buildScreen() {
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).apply { clipToPadding = false }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(36, 42, 36, 36)
-            setBackgroundColor(android.graphics.Color.rgb(10, 17, 31))
+            setPadding(dp(20), dp(28), dp(20), dp(32))
+            setBackgroundColor(android.graphics.Color.rgb(8, 14, 27))
         }
-        content.addView(text("SATARK", 14f, 0xFF9B8CFF.toInt(), true))
-        content.addView(text("File Guard", 32f, 0xFFF3F5FF.toInt(), true))
+
+        val brand = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        brand.addView(text("◈", 25f, 0xFF78E0C1.toInt(), true))
+        val brandName = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        brandName.addView(text("SATARK", 15f, 0xFFF3F5FF.toInt(), true))
+        brandName.addView(text("FILE GUARD · OFFLINE", 10f, 0xFF8D9AB2.toInt(), true))
+        brand.addView(brandName)
+        val localTag = text("LOCAL ONLY", 10f, 0xFF78E0C1.toInt(), true).apply {
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = rounded(0xFF12352F.toInt(), 0xFF28675B.toInt())
+        }
+        brand.addView(localTag, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { gravity = android.view.Gravity.CENTER_VERTICAL; leftMargin = dp(12) })
+        content.addView(brand)
+
+        content.addView(text("Your files.\nChecked locally.", 34f, 0xFFF3F5FF.toInt(), true))
         content.addView(text(
-            "Private, offline-first file inspection. Files are fingerprinted and checked locally; document text is not extracted and files are never executed.",
-            15f, 0xFFB8C2D8.toInt(), false
+            "Share an attachment or choose a folder. SATARK fingerprints files on this device without extracting document text or sending samples anywhere.",
+            14f, 0xFFAFBCD2.toInt(), false
         ))
-        status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 12f, 0xFF78E0C1.toInt(), true)
+
+        status = text("LOCAL ENGINE READY · NO NETWORK LOOKUPS", 11f, 0xFF78E0C1.toInt(), true).apply {
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(0xFF102A2A.toInt(), 0xFF28564F.toInt())
+        }
         if (!prefs.getString(KEY_TREE_URI, null).isNullOrBlank()) {
             val lastScan = prefs.getLong("last_folder_scan_ms", 0L)
             val lastCount = prefs.getInt("last_folder_scan_files", 0)
@@ -86,35 +108,58 @@ class MainActivity : Activity() {
                 "USER-GRANTED FOLDER ACCESS · LOCAL SCANNING AVAILABLE"
             }
         }
-        content.addView(status)
-        content.addView(actionButton("Choose a file") { chooseFile() })
-        content.addView(actionButton("Choose a folder to monitor") { chooseFolder() })
-        content.addView(actionButton("Enable frequent background scan (15 min, best-effort)") { enableFrequentScan() })
-        content.addView(actionButton("Enable daily background scan") { enableDailyScan() })
-        content.addView(actionButton("Scan selected folder now") { enqueueFolderScan() })
-        content.addView(actionButton("Stop background scans (keep folder access)") { stopBackgroundScans() })
+        content.addView(panel(status))
+
+        content.addView(sectionTitle("PROTECT YOUR FILES"))
+        content.addView(actionButton("Scan a file", { chooseFile() }, true))
+        content.addView(actionButton("Choose a folder to monitor", { chooseFolder() }))
+        content.addView(actionButton("Scan selected folder now", { enqueueFolderScan() }))
+        content.addView(actionButton("Enable frequent scan · 15 min minimum", { enableFrequentScan() }))
+        content.addView(actionButton("Enable daily background scan", { enableDailyScan() }))
+        content.addView(actionButton("Stop background scans", { stopBackgroundScans() }))
+
+        content.addView(sectionTitle("HISTORICAL THREAT INTELLIGENCE"))
+        content.addView(text(
+            "Frozen local snapshot · no live feed · no automatic updates",
+            12f, 0xFFAFBCD2.toInt(), false
+        ))
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
             setTextColor(0xFFF3F5FF.toInt())
             setHintTextColor(0xFF8D9AB2.toInt())
             setSingleLine(true)
+            textSize = 14f
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(0xFF111D31.toInt(), 0xFF2B3A54.toInt())
         }
-        content.addView(datasetSource)
+        content.addView(datasetSource, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(10) })
         datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
-        content.addView(datasetStatus)
-        content.addView(actionButton("View historical dataset coverage") { showDatasetStats() })
-        content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
-        content.addView(actionButton("View local scan history") { showHistory() })
-        content.addView(actionButton("Clear local scan history") { clearHistory() })
-        content.addView(actionButton("Clear imported threat dataset") { confirmClearDataset() })
-        content.addView(actionButton("Remove folder access and stop scheduled scans") { removeFolderAccess() })
+        content.addView(panel(datasetStatus))
+        content.addView(actionButton("Import historical SHA-256 CSV parts", { chooseDataset() }))
+        content.addView(actionButton("View dataset coverage", { showDatasetStats() }))
+        content.addView(actionButton("Clear imported threat dataset", { confirmClearDataset() }))
+
+        content.addView(sectionTitle("RECENT ACTIVITY"))
+        results = text(
+            "No scan selected yet. Share a file from WhatsApp or Telegram, or choose a file above. Results and history stay on this device.",
+            13f, 0xFFE4E9F6.toInt(), false
+        )
+        content.addView(panel(results))
+        content.addView(actionButton("View local scan history", { showHistory() }))
+        content.addView(actionButton("Clear local scan history", { clearHistory() }))
+
+        content.addView(sectionTitle("PRIVACY BY DESIGN"))
+        content.addView(panel(text(
+            "SATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Background scans are best-effort and are not continuous 24/7 surveillance. Original files are never modified or deleted.",
+            12f, 0xFFFFD28A.toInt(), false
+        )))
         content.addView(text(
-            "ACCESS BOUNDARY\nSATARK can inspect only files you share or locations you explicitly grant through Android's file picker. It cannot read WhatsApp or Telegram private chat databases. Folder scans are best-effort background work, not continuous 24/7 surveillance.",
-            13f, 0xFFFFD28A.toInt(), false
+            "A no-match result means no enabled local check recognised the file. It is not a guarantee of safety.",
+            11f, 0xFF8D9AB2.toInt(), false
         ))
-        content.addView(text("LATEST SCAN RESULTS", 12f, 0xFF9B8CFF.toInt(), true))
-        results = text("Share a file from WhatsApp or Telegram, or select one above. The scan runs locally on this device.", 14f, 0xFFE4E9F6.toInt(), false)
-        content.addView(results)
+
         scroll.addView(content)
         setContentView(scroll)
     }
@@ -128,17 +173,49 @@ class MainActivity : Activity() {
             setPadding(0, 10, 0, 14)
         }
 
-    private fun actionButton(label: String, action: () -> Unit): Button =
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun rounded(fill: Int, stroke: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(16).toFloat()
+            setColor(fill)
+            setStroke(dp(1), stroke)
+        }
+
+    private fun panel(child: TextView): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(12), dp(15), dp(12))
+            background = rounded(0xFF111D31.toInt(), 0xFF24334B.toInt())
+            addView(child)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(14) }
+        }
+
+    private fun sectionTitle(label: String): TextView =
+        text(label, 11f, 0xFF9B8CFF.toInt(), true).apply {
+            setPadding(0, dp(14), 0, dp(8))
+        }
+
+    private fun actionButton(label: String, action: () -> Unit, primary: Boolean = false): Button =
         Button(this).apply {
             text = label
             isAllCaps = false
-            setTextColor(0xFF0A111F.toInt())
-            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF78E0C1.toInt())
+            textSize = 14f
+            setTextColor(if (primary) 0xFF08151A.toInt() else 0xFFEAF1FF.toInt())
+            background = if (primary) {
+                rounded(0xFF78E0C1.toInt(), 0xFF78E0C1.toInt())
+            } else {
+                rounded(0xFF18263D.toInt(), 0xFF30415D.toInt())
+            }
+            setPadding(dp(14), dp(7), dp(14), dp(7))
+            minHeight = dp(52)
             setOnClickListener { action() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 8, 0, 8) }
+            ).apply { setMargins(0, dp(4), 0, dp(7)) }
         }
 
     private fun chooseFile() {
