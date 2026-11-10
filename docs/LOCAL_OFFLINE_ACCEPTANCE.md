@@ -25,6 +25,8 @@ Install the debug APK on a test device. A debug APK is not a signed production r
 
 ## Prepare a historical snapshot
 
+The repository includes a manual **Prepare EMBER2024 historical snapshot** GitHub Actions workflow. Choose the historical split and file-type subset, then download its CSV/provenance artifact from the workflow run. It uses the public archive downloader without an API key and does not commit dataset files to Git.
+
 The recommended research source is EMBER2024. It contains labelled metadata for Win32, Win64, .NET, APK, ELF and PDF samples observed through 2024-12-14. Start with its compact challenge set if device storage is limited:
 
 ```bash
