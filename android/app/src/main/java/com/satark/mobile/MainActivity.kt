@@ -50,17 +50,29 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ScanTempFiles.cleanup(cacheDir)
-        try {
-            installBundledSnapshotIfMissing()
-        } catch (error: Exception) {
-            starterSnapshotError = error.javaClass.simpleName
-        }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        ensurePython()
         buildScreen()
-        refreshDatasetStats()
+        status.text = "INITIALIZING LOCAL OFFLINE ENGINE"
+        executor.execute {
+            try {
+                try {
+                    installBundledSnapshotIfMissing()
+                } catch (error: Exception) {
+                    starterSnapshotError = error.javaClass.simpleName
+                }
+                ensurePython()
+                mainHandler.post {
+                    if (starterSnapshotError != null) {
+                        status.text = "STARTER SNAPSHOT INSTALL FAILED · " + starterSnapshotError
+                    }
+                    refreshDatasetStats()
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "OFFLINE ENGINE STARTUP FAILED · " + error.javaClass.simpleName }
+            }
+        }
         handleIncomingIntent(intent)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
