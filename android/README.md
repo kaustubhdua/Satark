@@ -12,7 +12,7 @@ SATARK is an Android-first, Python-based, offline-first file security applicatio
 
 ## Build
 
-Requirements: JDK 17, Android SDK Platform 36 / Build Tools 36.0.0, Gradle 8.13, Android Gradle Plugin 8.13.2, and Python 3.13 for Chaquopy build integration. The app targets Android 16 / API 36 (Google Play target requirement) and supports Android 7.0+ (minSdk 24).
+Requirements: JDK 17, Android SDK Platform 36 / Build Tools 36.0.0, Gradle 8.13, Android Gradle Plugin 8.13.2, and Python 3.13 for Chaquopy build integration. The app targets Android 16 / API 36 (Google Play target requirement) and has `minSdk = 24`. The published build supports **64-bit ARM (`arm64-v8a`) Android devices** and **`x86_64` emulators** only; 32-bit ARM (`armeabi-v7a`) devices are not supported by this Python 3.13 build.
 
     gradle -p android --no-daemon :app:assembleDebug
 
@@ -20,7 +20,7 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 
 ## Use
 
-1. Install the debug APK on an Android 7.0+ device (API 24+).
+1. Install the debug APK on an API 24+ **64-bit ARM (`arm64-v8a`) device** or an `x86_64` emulator. An API 24 device with only a 32-bit ARM ABI is not supported.
 2. Share one or more files from WhatsApp or Telegram to SATARK, or use Choose a file.
 3. For folder scanning, choose a folder through Android's directory picker and grant read access.
 4. Start an immediate scan or opt into best-effort 15-minute / daily WorkManager rescans.
