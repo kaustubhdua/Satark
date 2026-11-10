@@ -32,6 +32,7 @@ on:
       - "docker-compose.production.yml"
       - "deploy/Caddyfile"
       - "deploy/production.env.example"
+      - "deploy/postgres-init/**"
       - ".github/workflows/firstlight-api-ci.yml"
   pull_request:
     paths:
@@ -153,8 +154,11 @@ jobs:
 
       - name: Validate production PostgreSQL and TLS Compose stack
         env:
-          POSTGRES_PASSWORD: test-only-password
-          SATARK_DATABASE_URL: postgresql+psycopg://satark:test-only-password@db:5432/satark
+          POSTGRES_PASSWORD: test-only-admin-password
+          SATARK_RUNTIME_DB_PASSWORD: test-only-runtime-password
+          SATARK_BACKUP_DB_PASSWORD: test-only-backup-password
+          SATARK_DATABASE_URL: postgresql+psycopg://satark_runtime:test-only-runtime-password@db:5432/satark
+          SATARK_BACKUP_DATABASE_URL: postgresql+psycopg://satark_backup:test-only-backup-password@db:5432/satark
           SATARK_DOMAIN: satark.example.test
           ACME_EMAIL: ci@example.test
           SATARK_MFA_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
@@ -171,7 +175,9 @@ jobs:
           FIRSTLIGHT_WAZUH_TENANT_ID: 00000000-0000-4000-8000-000000000001
           FIRSTLIGHT_WAZUH_CASE_ID: 00000000-0000-4000-8000-000000000002
           FIRSTLIGHT_WAZUH_ACTOR_ID: 00000000-0000-4000-8000-000000000003
-        run: docker compose -f docker-compose.production.yml config --quiet
+        run: |
+          sh -n deploy/postgres-init/01-create-roles.sh
+          docker compose -f docker-compose.production.yml config --quiet
 
       - name: Build API and worker images
         run: |
