@@ -29,7 +29,15 @@ app = FastAPI(title="FIRSTLIGHT Investigation API", version="1.0.0", docs_url=No
 
 # SATARK application persistence and identity are provided by the self-hosted API.
 from satark_backend import router as satark_router
+from firstlight_response_api import router as response_router, recover_interrupted_executions
 app.include_router(satark_router)
+app.include_router(response_router)
+
+
+@app.on_event("startup")
+def recover_response_actions_after_restart() -> None:
+    # An interrupted provider call is ambiguous. Mark it unknown and never retry it.
+    recover_interrupted_executions()
 
 
 class EvidenceInput(BaseModel):
