@@ -37,11 +37,11 @@ class EmberImportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "challenge.jsonl").write_text(
-                json.dumps({"sha256": "c" * 64, "label": 1, "file_type": "APK"}) + "\\n",
+                json.dumps({"sha256": "c" * 64, "label": 1, "file_type": "APK"}) + "\n",
                 encoding="utf-8",
             )
             (root / "APK_train.jsonl").write_text(
-                json.dumps({"sha256": "a" * 64, "label": 0, "file_type": "APK"}) + "\\n",
+                json.dumps({"sha256": "a" * 64, "label": 0, "file_type": "APK"}) + "\n",
                 encoding="utf-8",
             )
             manifest = convert(root, root / "out", split="challenge", file_type="all")
