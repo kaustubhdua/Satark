@@ -375,10 +375,15 @@ class MainActivity : Activity() {
                     val assessment = report?.optJSONObject("assessment")
                     val evidence = report?.optJSONObject("evidence")
                     val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
+                    val snapshot = report?.optJSONObject("snapshot")
+                    val source = evidence?.optJSONObject("intelligence_match")?.optString("source").orEmpty()
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
                         " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
                         "\nEvidence report: " + report?.optString("report_sha256").orEmpty() +
                         "\nAssessment: " + assessment?.optString("interpretation").orEmpty() +
+                        "\nSnapshot: " + snapshot?.optInt("total") + " hashes · " +
+                        snapshot?.optInt("malicious") + " malicious · " + snapshot?.optInt("benign") + " benign" +
+                        "\nMatched source: " + source +
                         "\nAgent trace:\n" + trace
                 }
                 mainHandler.post {
@@ -562,6 +567,9 @@ class MainActivity : Activity() {
                     }
                     val item = JSONObject(json)
                     val verdict = item.optString("verdict")
+                    val snapshot = item.optJSONObject("snapshot") ?: JSONObject()
+                    val intelMatch = item.optJSONObject("intelligence_match") ?: JSONObject()
+                    val intelSource = intelMatch.optString("source").ifBlank { "No exact hash match" }
                     val safetyNote = if (verdict == "No known threat detected") {
                         "\nNo enabled check matched. This is not proof the file is safe."
                     } else {
@@ -575,6 +583,9 @@ class MainActivity : Activity() {
                         "SHA-256: " + item.optString("sha256") + "\n" +
                         "Evidence report SHA-256: " + item.optString("report_sha256") + "\n" +
                         "Scanned at: " + item.optString("scanned_at") + "\n" +
+                        "Historical snapshot: " + snapshot.optInt("total") + " hashes · " +
+                        snapshot.optInt("malicious") + " malicious · " + snapshot.optInt("benign") + " benign\n" +
+                        "Matched intelligence source: " + intelSource + "\n" +
                         "Evidence signals:\n" + item.optJSONArray("signals")?.toString(2).orEmpty() +
                         "\nAgent trace:\n" + item.optJSONArray("agent_trace")?.toString(2).orEmpty() + safetyNote
                     )
