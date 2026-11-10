@@ -79,6 +79,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
             ("file_guard/intelligence.py", "android/app/src/main/python/file_guard/intelligence.py"),
             ("file_guard/history.py", "android/app/src/main/python/file_guard/history.py"),
             ("file_guard/report.py", "android/app/src/main/python/file_guard/report.py"),
+            ("file_guard/structure.py", "android/app/src/main/python/file_guard/structure.py"),
         )
         for root_path, android_path in pairs:
             with self.subTest(module=root_path):
