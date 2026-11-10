@@ -221,12 +221,19 @@ class MainActivity : Activity() {
                 val array = org.json.JSONArray(json)
                 val lines = (0 until array.length()).map { index ->
                     val item = array.getJSONObject(index)
+                    val report = item.optJSONObject("report")
+                    val assessment = report?.optJSONObject("assessment")
+                    val evidence = report?.optJSONObject("evidence")
+                    val trace = evidence?.optJSONArray("agent_trace")?.toString(2).orEmpty()
                     item.optString("scanned_at") + " · " + item.optString("verdict") +
-                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256")
+                        " · " + item.optString("filename") + "\nSHA-256: " + item.optString("sha256") +
+                        "\nEvidence report: " + report?.optString("report_sha256").orEmpty() +
+                        "\nAssessment: " + assessment?.optString("interpretation").orEmpty() +
+                        "\nAgent trace:\n" + trace
                 }
                 mainHandler.post {
-                    results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\n\n")
-                    status.text = "LOCAL HISTORY · " + lines.size + " RECORD(S)"
+                    results.text = if (lines.isEmpty()) "No local scan history yet." else lines.joinToString("\n\n──────────────\n\n")
+                    status.text = "LOCAL HISTORY · " + lines.size + " RECORD(S) · EVIDENCE REPORTS SAVED"
                 }
             } catch (error: Exception) {
                 mainHandler.post { status.text = "HISTORY UNAVAILABLE · " + error.javaClass.simpleName }
