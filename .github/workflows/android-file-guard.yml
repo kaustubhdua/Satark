@@ -4,6 +4,7 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
@@ -16,6 +17,7 @@ on:
     paths:
       - "android/**"
       - "file_guard/**"
+      - "scripts/check_no_supabase_runtime.py"
       - "tests/test_file_guard.py"
       - "tests/test_android_offline_contract.py"
       - "tests/test_android_bridge.py"
