@@ -18,11 +18,24 @@ MAGIC = [
     (b"PK\x03\x04", "ZIP container", {".zip", ".apk", ".docx", ".xlsx", ".pptx", ".jar"}),
     (b"\x89PNG\r\n\x1a\n", "PNG image", {".png"}),
     (b"\xff\xd8\xff", "JPEG image", {".jpg", ".jpeg"}),
-    (b"GIF87a", "GIF image", {".gif"}), (b"GIF89a", "GIF image", {".gif"}),
+    (b"GIF87a", "GIF image", {".gif"}),
+    (b"GIF89a", "GIF image", {".gif"}),
     (b"Rar!\x1a\x07", "RAR archive", {".rar"}),
     (b"7z\xbc\xaf\x27\x1c", "7-Zip archive", {".7z"}),
     (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "OLE document", {".doc", ".xls", ".ppt", ".msg"}),
     (b"dex\n", "Android DEX", {".dex"}),
+    (b"BM", "BMP image", {".bmp"}),
+    (b"II*\x00", "TIFF image", {".tif", ".tiff"}),
+    (b"MM\x00*", "TIFF image", {".tif", ".tiff"}),
+    (b"fLaC", "FLAC audio", {".flac"}),
+    (b"OggS", "OGG container", {".ogg", ".oga", ".ogv"}),
+    (b"\x1f\x8b", "GZIP archive", {".gz", ".tgz"}),
+    (b"BZh", "BZIP2 archive", {".bz2"}),
+    (b"\xfd7zXZ\x00", "XZ archive", {".xz"}),
+    (b"\x28\xb5\x2f\xfd", "Zstandard archive", {".zst"}),
+    (b"SQLite format 3\x00", "SQLite database", {".sqlite", ".sqlite3", ".db"}),
+    (b"ID3", "MP3 audio", {".mp3"}),
+    (b"MSCF", "Microsoft cabinet archive", {".cab"}),
 ]
 
 @dataclass
@@ -47,6 +60,22 @@ class FileScanResult:
         return asdict(self)
 
 def _type(header):
+    # RIFF-based formats share a container signature; inspect only the fixed
+    # four-byte form identifier, never parse or extract the payload.
+    if header.startswith(b"RIFF") and len(header) >= 12:
+        form = header[8:12]
+        if form == b"WEBP":
+            return "WebP image", {".webp"}
+        if form == b"WAVE":
+            return "WAV audio", {".wav"}
+        if form == b"AVI ":
+            return "AVI video", {".avi"}
+    # ISO base media files (including MP4) carry the ftyp box at byte offset 4.
+    if len(header) >= 8 and header[4:8] == b"ftyp":
+        return "ISO base media / MP4", {".mp4", ".m4v", ".mov"}
+    # RAR 5.0 has a longer signature than the legacy RAR 4.x marker.
+    if header.startswith(b"Rar!\\x1a\\x07\\x01\\x00"):
+        return "RAR archive", {".rar"}
     for signature, label, extensions in MAGIC:
         if header.startswith(signature):
             return label, extensions
