@@ -1,4 +1,4 @@
-"""Fail the build if runtime source/configuration reintroduces Supabase."""
+"""Fail the build if application runtime source/configuration reintroduces Supabase."""
 from __future__ import annotations
 
 import re
@@ -33,7 +33,12 @@ RUNTIME_FILES = [
     ROOT / "scripts" / "satark_track1_acceptance_preflight.py",
     ROOT / ".github" / "workflows",
 ]
-FORBIDDEN = re.compile(r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1|from[ ]+supabase|import[ ]+supabase)")
+FORBIDDEN = re.compile(
+    r"(?i:SUPABASE_(?:URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY|ANON_KEY|DB_PASSWORD|JWT_SECRET|DATABASE_URL)"
+    r"|@supabase|supabase[.]co|/auth/v1|/rest/v1|/storage/v1"
+    r"|from[ ]+supabase|import[ ]+supabase"
+    r"|(?:^|[<>=\s])supabase(?:[<>=\s]|$))"
+)
 
 
 def source_files():
@@ -48,6 +53,9 @@ def source_files():
 
 def main() -> int:
     violations = []
+    cli_config = ROOT / "supabase" / "config.toml"
+    if cli_config.exists():
+        violations.append("supabase/config.toml: unused Supabase CLI project configuration must not ship")
     for path in source_files():
         try:
             content = path.read_text(encoding="utf-8")
@@ -57,10 +65,10 @@ def main() -> int:
             if FORBIDDEN.search(line):
                 violations.append(f"{path.relative_to(ROOT)}:{line_number}: {line.strip()[:200]}")
     if violations:
-        print("Supabase runtime dependency detected:")
+        print("Supabase runtime/configuration dependency detected:")
         print("\n".join(violations))
         return 1
-    print("PASS: no Supabase runtime, SDK, REST, Storage, or Auth references in application source/configuration.")
+    print("PASS: no Supabase SDK, runtime, CLI project config, REST, Storage, or Auth dependency.")
     return 0
 
 
