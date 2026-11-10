@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var results: TextView
     private lateinit var datasetSource: EditText
+    private lateinit var datasetStatus: TextView
     private val maxBytes = 64L * 1024L * 1024L
     private val prefs by lazy { getSharedPreferences("satark_file_guard", MODE_PRIVATE) }
 
@@ -42,6 +43,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         ensurePython()
         buildScreen()
+        refreshDatasetStats()
         handleIncomingIntent(intent)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -98,6 +100,9 @@ class MainActivity : Activity() {
             setSingleLine(true)
         }
         content.addView(datasetSource)
+        datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
+        content.addView(datasetStatus)
+        content.addView(actionButton("View historical dataset coverage") { showDatasetStats() })
         content.addView(actionButton("Import historical SHA-256 CSV") { chooseDataset() })
         content.addView(actionButton("View local scan history") { showHistory() })
         content.addView(actionButton("Clear local scan history") { clearHistory() })
@@ -187,10 +192,22 @@ class MainActivity : Activity() {
                     status.text = "IMPORTING PART " + (index + 1) + " / " + minOf(uris.size, 100)
                 }
             }
+            val stats = try {
+                JSONObject(Python.getInstance().getModule("android_bridge")
+                    .callAttr("scan_stats", filesDir.absolutePath).toString())
+            } catch (_: Exception) {
+                JSONObject()
+            }
             mainHandler.post {
                 results.text = "EMBER / historical CSV import complete\nInserted: " + inserted +
                     " · Duplicates: " + skipped + " · Invalid rows: " + rejected +
-                    " · Failed files: " + failures + "\n\n" + summaries.joinToString("\n")
+                    " · Failed files: " + failures + "\n\nCurrent local dataset: " +
+                    stats.optInt("total") + " hashes (" + stats.optInt("malicious") +
+                    " malicious · " + stats.optInt("benign") + " benign)\n\n" +
+                    summaries.joinToString("\n")
+                datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
+                    " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
+                    stats.optInt("benign") + " BENIGN"
                 status.text = "OFFLINE DATASET IMPORT FINISHED"
             }
         }
@@ -217,6 +234,46 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun refreshDatasetStats() {
+        executor.execute {
+            try {
+                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
+                    .callAttr("scan_stats", filesDir.absolutePath).toString())
+                mainHandler.post {
+                    datasetStatus.text = "HISTORICAL DATASET · " + stats.optInt("total") +
+                        " HASHES · " + stats.optInt("malicious") + " MALICIOUS · " +
+                        stats.optInt("benign") + " BENIGN"
+                }
+            } catch (_: Exception) {
+                mainHandler.post { datasetStatus.text = "HISTORICAL DATASET STATUS UNAVAILABLE" }
+            }
+        }
+    }
+
+    private fun showDatasetStats() {
+        executor.execute {
+            try {
+                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
+                    .callAttr("scan_stats", filesDir.absolutePath).toString())
+                val total = stats.optInt("total")
+                val message = "Local historical indicators: " + total +
+                    "\\nMalicious labels: " + stats.optInt("malicious") +
+                    "\\nBenign labels: " + stats.optInt("benign") +
+                    "\\n\\nThe database is frozen between explicit imports. A no-match result is not proof that a file is safe."
+                mainHandler.post {
+                    results.text = message
+                    status.text = if (total == 0) {
+                        "NO HISTORICAL HASH SNAPSHOT IMPORTED"
+                    } else {
+                        "LOCAL HISTORICAL INTELLIGENCE READY"
+                    }
+                }
+            } catch (error: Exception) {
+                mainHandler.post { status.text = "DATASET STATUS UNAVAILABLE · " + error.javaClass.simpleName }
+            }
+        }
+    }
+
     private fun confirmClearDataset() {
         AlertDialog.Builder(this)
             .setTitle("Clear imported threat dataset?")
@@ -232,6 +289,7 @@ class MainActivity : Activity() {
                 Python.getInstance().getModule("android_bridge")
                     .callAttr("clear_intelligence", filesDir.absolutePath)
                 mainHandler.post {
+                    datasetStatus.text = "HISTORICAL DATASET · 0 HASHES · IMPORT A SNAPSHOT TO ENABLE HASH MATCHING"
                     status.text = "LOCAL THREAT DATASET CLEARED"
                     results.text = "Imported hash indicators were removed. The scanner now has no historical hash coverage until a new snapshot is imported."
                 }
