@@ -180,8 +180,9 @@ def fuse_evidence(signals, hash_match=None, yara_matches=None):
         return {"agent": "evidence_fusion", "score": max(score, 80), "verdict": "Signature match",
                 "risk_level": "high", "precedence": "local_yara"}
     if score >= 40:
+        precedence = "metadata_mismatch" if codes & {"EXTENSION_SIGNATURE_MISMATCH", "DOUBLE_EXTENSION"} else "builtin_byte_pattern"
         return {"agent": "evidence_fusion", "score": score, "verdict": "Suspicious",
-                "risk_level": "high", "precedence": "metadata_mismatch"}
+                "risk_level": "high", "precedence": precedence}
     if score >= 20:
         return {"agent": "evidence_fusion", "score": score, "verdict": "Needs review",
                 "risk_level": "medium", "precedence": "heuristic"}
