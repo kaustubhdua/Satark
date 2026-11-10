@@ -174,6 +174,16 @@ jobs:
           name: satark-file-guard-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Build unsigned release APK and Android App Bundle
+        run: gradle -p android :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
+      - name: Upload unsigned release outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: satark-file-guard-release-unsigned
+          path: |
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
 
   android-emulator-smoke:
     name: Install and launch APK on Android emulator
