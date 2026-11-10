@@ -140,6 +140,7 @@ class MainActivity : Activity() {
         intelligencePanel.addView(text("Import a fixed, provenance-labelled snapshot. No dataset refresh happens during scans.", 13f, 0xFFB8C2D8.toInt(), false))
         datasetSource = EditText(this).apply {
             hint = "Dataset source / snapshot ID"
+            setText("EMBER2024-2024-12-14")
             setTextColor(0xFFF3F5FF.toInt())
             setHintTextColor(0xFF8D9AB2.toInt())
             setSingleLine(true)
