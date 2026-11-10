@@ -35,7 +35,7 @@ No result may claim that an unrecognised or unmatched file is safe. The correct 
 
 ## Historical intelligence
 
-EMBER2024 is a research dataset containing features and labels for roughly 3.2 million samples across Win32, Win64, .NET, APK, ELF and PDF, with a collection window ending 2024-12-14. It is not itself a ready-made universal malware hash feed. SATARK's converter extracts SHA-256 labels from dataset metadata; it does not download or bundle malware binaries. The app imports CSV snapshots locally and stores provenance.
+EMBER2024 is a research dataset containing labelled metadata for roughly 3.2 million samples across Win32, Win64, .NET, APK, ELF and PDF, with a collection window ending 2024-12-14. Its metadata records include SHA-256 hashes and labels, so SATARK can convert them directly into a compact exact-hash index. It is not a universal malware feed: coverage is limited to the included historical samples and file types. SATARK does not download or bundle malware binaries. The downloader pins Hugging Face revision 8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc and verifies each archive against its recorded SHA-256 and byte size before extraction. The challenge archive is excluded from automated download until its full LFS digest can be independently verified.
 
 Important limitations:
 - Exact SHA-256 matching only identifies byte-identical samples represented in the imported snapshot.
