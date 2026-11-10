@@ -104,6 +104,15 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_android_history_exposes_local_hash_chain_verification(self):
+        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("def verify_scan_audit", bridge)
+        self.assertIn('callAttr("verify_scan_audit"', activity)
+        self.assertIn('Verify local evidence chain', activity)
+        self.assertIn('audit?.optString("entry_sha256")', activity)
+        self.assertIn("not a digital signature or remote proof of authenticity", activity)
+
     def test_folder_scan_persists_and_surfaces_partial_scan_status(self):
         worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
         activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
