@@ -24,9 +24,9 @@ The debug APK is written to android/app/build/outputs/apk/debug/app-debug.apk. G
 2. Share one or more files from WhatsApp or Telegram to SATARK, or use Choose a file.
 3. For folder scanning, choose a folder through Android's directory picker and grant read access.
 4. Start an immediate scan or opt into best-effort 15-minute / daily WorkManager rescans.
-5. Import historical CSV snapshots using the source ID field. Keep the source manifest and record the dataset cutoff.
-6. View imported historical hash coverage, the latest local scan timestamp and recent evidence signals.
-7. Export a metadata-only JSON evidence report through Android's system document picker.
+5. Import EMBER2024 CSV part(s) together with the converter-generated manifest; SATARK verifies each part's SHA-256 before import. Keep the manifest and record the dataset cutoff.
+6. View imported historical hash coverage, recent scan history and evidence reports, including each report's integrity digest.
+7. Export a metadata-only JSON evidence report through Android's system document picker. The digest detects later edits but is not a digital signature or proof of chain of custody.
 8. Clear local scan history independently from the intelligence database.
 
 ## Historical dataset
