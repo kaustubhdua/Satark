@@ -334,7 +334,7 @@ class MainActivity : Activity() {
                                 throw IllegalArgumentException("Source archive record is invalid")
                             }
                         }
-                        if (manifest.optJSONObject("rows")?.optInt("exported_rows", 0) ?: 0 <= 0) {
+                        if ((manifest.optJSONObject("rows")?.optInt("exported_rows", 0) ?: 0) <= 0) {
                             throw IllegalArgumentException("Historical snapshot contains no labelled hashes")
                         }
                     }
