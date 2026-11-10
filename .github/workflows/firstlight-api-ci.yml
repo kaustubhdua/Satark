@@ -156,6 +156,9 @@ jobs:
       - name: Validate Wazuh lab bootstrap shell
         run: bash -n scripts/bootstrap_wazuh_lab.sh
 
+      - name: Validate PostgreSQL role bootstrap shell
+        run: sh -n deploy/postgres-init/01-create-roles.sh
+
       - name: Validate local self-hosted Compose configuration
         run: docker compose -f docker-compose.local.yml config --quiet
 
