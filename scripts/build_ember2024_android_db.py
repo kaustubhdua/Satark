@@ -7,6 +7,11 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import sys
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from file_guard.intelligence import ThreatIntelligenceStore
 from scripts.import_ember2024 import UPSTREAM_REVISION, sha256_file, verify_source_manifest
