@@ -117,7 +117,7 @@ The mobile scanner does not need the repository's optional web backend. Supabase
 
 ## FIRSTLIGHT incident-response workspace
 
-SATARK also includes **FIRSTLIGHT**, a self-hosted case-based incident investigation and response workspace. It is separate from the offline Android file scanner: the Android scanner needs no network permission or hosted service. FIRSTLIGHT uses open-source Wazuh for endpoint telemetry and guarded endpoint response; no proprietary endpoint-security provider or tenant is required.
+SATARK also includes **FIRSTLIGHT**, a self-hosted case-based incident investigation and response workspace. The web workspace uses a neon arcade-inspired command-deck visual system: midnight surfaces, cyan/lime accents, restrained HUD details, clear readable type, keyboard-visible focus and reduced-motion support. It is separate from the offline Android file scanner: the Android scanner needs no network permission or hosted service. FIRSTLIGHT uses open-source Wazuh for endpoint telemetry and guarded endpoint response; no proprietary endpoint-security provider or tenant is required.
 
 FIRSTLIGHT capabilities include:
 
