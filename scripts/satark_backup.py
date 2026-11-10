@@ -296,6 +296,11 @@ def _rebase_evidence_paths(database_url: str, source_root: Path | None, target_r
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
+            restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
+            if make_url(database_url).drivername.startswith("postgresql") and restore_role:
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
+                    raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
+                connection.execute(text(f"SET ROLE {restore_role}"))
             if "satark_evidence" not in inspect(connection).get_table_names():
                 return 0
             rows = connection.execute(text(
