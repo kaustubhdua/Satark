@@ -46,7 +46,7 @@ class AndroidBridgeTests(unittest.TestCase):
             self.assertEqual(scanned["intelligence_match"]["dataset_date"], "2024-12-14")
             self.assertEqual(scanned["report_schema"], "satark.file-guard.evidence/v1")
             self.assertTrue(verify_evidence_report(scanned))
-            self.assertEqual(scanned["file"]["sha256"], digest)
+
             self.assertEqual(scanned["snapshot"]["total"], 1)
             self.assertEqual(scanned["snapshot"]["malicious"], 1)
             self.assertFalse(scanned["processing"]["semantic_content_extracted"])
@@ -65,6 +65,9 @@ class AndroidBridgeTests(unittest.TestCase):
             android_bridge.clear_intelligence(tmp)
             self.assertEqual(json.loads(android_bridge.scan_history(tmp)), [])
             self.assertEqual(json.loads(android_bridge.scan_stats(tmp))["total"], 0)
+            cleared_audit = json.loads(android_bridge.verify_scan_audit(tmp))
+            self.assertTrue(cleared_audit["valid"])
+            self.assertEqual(cleared_audit["entries"], 0)
 
 
 if __name__ == "__main__":

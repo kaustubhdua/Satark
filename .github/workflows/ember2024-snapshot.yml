@@ -1,0 +1,107 @@
+name: Prepare EMBER2024 historical snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      split:
+        description: Historical dataset split
+        type: choice
+        required: true
+        default: train
+        options:
+          - train
+          - test
+      file_type:
+        description: File-type subset from the pinned historical snapshot
+        type: choice
+        required: true
+        default: APK
+        options:
+          - all
+          - APK
+          - PDF
+          - ELF
+          - PE
+          - Win32
+          - Win64
+          - Dot_Net
+      max_download_gb:
+        description: Maximum size allowed for each downloaded archive
+        type: string
+        required: true
+        default: "2"
+      max_extracted_gb:
+        description: Maximum total extracted metadata size
+        type: string
+        required: true
+        default: "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ember2024-snapshot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare local-import CSV and provenance manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download historical EMBER2024 metadata (manual one-time action)
+        run: |
+          python scripts/download_ember2024.py \
+            --output-dir data/ember2024 \
+            --split "${{ inputs.split }}" \
+            --file-type "${{ inputs.file_type }}" \
+            --max-download-gb "${{ inputs.max_download_gb }}" \
+            --max-extracted-gb "${{ inputs.max_extracted_gb }}"
+      - name: Convert labelled metadata to mobile-sized CSV parts
+        run: |
+          python scripts/import_ember2024.py \
+            --input-dir data/ember2024 \
+            --output-dir data/ember2024-csv \
+            --split "${{ inputs.split }}" \
+            --file-type "${{ inputs.file_type }}" \
+            --rows-per-part 10000
+      - name: Verify generated part checksums and label contract
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json
+          from pathlib import Path
+          root = Path("data/ember2024-csv")
+          manifests = list(root.glob("ember2024_*_manifest.json"))
+          if len(manifests) != 1:
+              raise SystemExit(f"Expected exactly one converted manifest, found {len(manifests)}")
+          manifest = json.loads(manifests[0].read_text(encoding="utf-8"))
+          if manifest["rows"]["exported_rows"] <= 0:
+              raise SystemExit("No labelled SHA-256 rows were exported")
+          for part in manifest["parts"]:
+              path = root / part["file"]
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              if digest != part["sha256"]:
+                  raise SystemExit(f"Checksum mismatch: {path.name}")
+              with path.open(newline="", encoding="utf-8") as stream:
+                  reader = csv.DictReader(stream)
+                  if not {"sha256", "label", "file_type", "dataset_date"}.issubset(reader.fieldnames or []):
+                      raise SystemExit(f"Missing required columns: {path.name}")
+                  for row in reader:
+                      if row["label"] not in {"benign", "malicious"}:
+                          raise SystemExit(f"Invalid label in {path.name}")
+          print(json.dumps({"rows": manifest["rows"], "parts": len(manifest["parts"])}, indent=2))
+          PY
+      - name: Upload CSV snapshot and provenance manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember2024-${{ inputs.split }}-${{ inputs.file_type }}
+          path: |
+            data/ember2024-csv/*.csv
+            data/ember2024-csv/*_manifest.json
+            data/ember2024/ember2024_download_*.json
+          if-no-files-found: error
+          retention-days: 30

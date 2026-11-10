@@ -125,6 +125,17 @@ class FileGuardTests(unittest.TestCase):
             self.assertEqual(result.intelligence_match["file_type"], "APK")
             self.assertEqual(result.intelligence_match["dataset_date"], "2024-12-01")
 
+    def test_intelligence_stats_report_file_type_and_source_coverage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ThreatIntelligenceStore(Path(tmp) / "intel.sqlite3")
+            store.import_csv(StringIO(
+                "sha256,label,file_type\n" + "a" * 64 + ",malicious,APK\n" +
+                "b" * 64 + ",benign,PDF\n"
+            ), "EMBER2024-test")
+            stats = store.stats()
+            self.assertEqual(stats["by_file_type"], {"APK": 1, "PDF": 1})
+            self.assertEqual(stats["source_count"], 1)
+
     def test_conflicting_labels_rejected(self):
         digest = hashlib.sha256(b"x").hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
@@ -132,6 +143,65 @@ class FileGuardTests(unittest.TestCase):
             store.import_csv(StringIO(f"sha256,label\n{digest},benign\n"), "snapshot-a")
             with self.assertRaises(ValueError):
                 store.import_csv(StringIO(f"sha256,label\n{digest},malicious\n"), "snapshot-b")
+
+    def test_builtin_byte_patterns_run_in_direct_and_chunked_stream_scans(self):
+        class ChunkedReader:
+            def __init__(self, payload, chunk_size=7):
+                self.stream = BytesIO(payload)
+                self.chunk_size = chunk_size
+
+            def read(self, requested=-1):
+                return self.stream.read(self.chunk_size if requested < 0 else min(requested, self.chunk_size))
+
+        pdf = b"%PDF-1.7\n" + (b"A" * 8192) + b"/OpenAction /JavaScript"
+        direct = scan_bytes(pdf, "sample.pdf")
+        streamed = scan_stream(ChunkedReader(pdf), "sample.pdf")
+        for result in (direct, streamed):
+            codes = [signal["code"] for signal in result.signals]
+            self.assertIn("BUILTIN_PATTERN_MATCH", codes)
+            builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+            self.assertIn("PDF_OPENACTION_JAVASCRIPT", [item["rule_id"] for item in builtin["matches"]])
+        self.assertEqual(direct.sha256, streamed.sha256)
+        self.assertEqual(direct.verdict, streamed.verdict)
+
+        script = b"downloadstring" + (b" " * 512) + b"Invoke-Expression"
+        script_result = scan_stream(ChunkedReader(script, chunk_size=5), "payload.ps1")
+        builtin = next(item for item in script_result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("SCRIPT_DOWNLOAD_EXECUTE", [item["rule_id"] for item in builtin["matches"]])
+
+    def test_ole_macro_tokens_match_when_separated_across_chunks(self):
+        from file_guard.engine import scan_stream
+        payload = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" +
+                   b"A" * 512 + b"AutoOpen" + b"B" * 512 + b"Shell")
+        class SmallChunks:
+            def __init__(self, value):
+                self.stream = BytesIO(value)
+            def read(self, requested=-1):
+                return self.stream.read(11 if requested < 0 else min(requested, 11))
+        result = scan_stream(SmallChunks(payload), "macro.doc")
+        builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("OLE_AUTOOPEN_SHELL", [item["rule_id"] for item in builtin["matches"]])
+
+    def test_javascript_markers_are_accumulated_across_stream_chunks(self):
+        from file_guard.engine import scan_stream
+        payload = b"eval(" + b"A" * 200 + b"fromCharCode" + b"B" * 200 + b"unescape("
+        class SmallChunks:
+            def __init__(self, value):
+                self.stream = BytesIO(value)
+            def read(self, requested=-1):
+                return self.stream.read(9 if requested < 0 else min(requested, 9))
+        result = scan_stream(SmallChunks(payload), "payload.js")
+        builtin = next(item for item in result.agent_trace if item["agent"] == "builtin_byte_signatures")
+        self.assertIn("JAVASCRIPT_OBFUSCATION_CLUSTER", [item["rule_id"] for item in builtin["matches"]])
+
+    def test_incremental_builtin_matcher_retains_only_bounded_overlap(self):
+        from file_guard.agents import BuiltinSignatureMatcher
+        matcher = BuiltinSignatureMatcher("sample.pdf", "PDF")
+        for _ in range(1000):
+            matcher.update(b"ordinary-data-" * 1024)
+        self.assertLessEqual(len(matcher._raw_tail), matcher._RAW_TAIL_BYTES)
+        self.assertLessEqual(len(matcher._compact_tail), matcher._COMPACT_TAIL_BYTES)
+        self.assertEqual(matcher.result()["status"], "no_match")
 
     def test_stream_size_limit(self):
         with self.assertRaises(ValueError):

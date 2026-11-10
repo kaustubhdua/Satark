@@ -28,8 +28,8 @@ const by = (label, predicate) => all.filter(predicate).map(file => ({ label, fil
 
 const pages = by('page', p => /^web\/src\/app\/.*\/page\.(tsx|ts|jsx|js)$/.test(p) || /^web\/src\/app\/page\.(tsx|ts|jsx|js)$/.test(p));
 const apis = by('api', p => /^web\/src\/app\/api\/.*\/route\.(tsx|ts|js)$/.test(p));
-const migrations = by('migration', p => /^supabase\/migrations\/.*\.sql$/.test(p));
-const databaseTests = by('database-test', p => /^supabase\/tests\/.*\.sql$/.test(p));
+const migrations = by('migration', p => /^migrations\/versions\/.*\.py$/.test(p));
+const databaseTests = by('database-test', p => /^tests\/.*(?:database|migration|tenant).*\.py$/.test(p) || /^web\/tests\/.*(?:database|migration|tenant).*\.mjs$/.test(p));
 const workflows = by('workflow', p => /^\.github\/workflows\/.*\.ya?ml$/.test(p));
 const workers = by('worker', p => /(^|\/)([^/]*worker[^/]*\.(py|ts|tsx|js|mjs))$/i.test(p));
 const adapters = by('provider-adapter', p => /(^|\/)(integrations\/|.*wazuh.*\.(py|ts|js|mjs)$|ai_provider\.py$|threat_intel\.py$)/i.test(p));
@@ -83,8 +83,10 @@ const manifest = {
   databaseObjects: { tables: [...tableNames].sort(), functions: [...rpcNames].sort(), status: 'unverified', note: 'Discovered from migration SQL; not compared with a live database.' },
   uiActionMap: actionMap,
   migrationSafety: {
-    sharedSupabaseWrites: 'FROZEN',
-    reason: 'Known migration-ledger mismatch; require project-ref confirmation, ledger reconciliation and exact reviewed dry-run before any write.',
+    supabaseRuntime: 'ABSENT',
+    migrationSource: 'ALEMBIC',
+    migrationPath: 'migrations/versions',
+    reason: 'Supabase CLI configuration and migrations are removed; SATARK-owned Alembic migrations manage the optional self-hosted backend.',
   },
 };
 const output = process.argv[2] || 'docs/generated/phase0-inventory.json';

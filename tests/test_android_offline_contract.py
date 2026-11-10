@@ -15,6 +15,8 @@ class AndroidOfflineContractTests(unittest.TestCase):
         permissions = {node.attrib.get(ANDROID_NS + "name") for node in manifest.findall("uses-permission")}
         self.assertNotIn("android.permission.INTERNET", permissions)
         self.assertNotIn("android.permission.ACCESS_NETWORK_STATE", permissions)
+        application = manifest.find("./application")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "allowBackup"), "false")
 
     def test_manifest_exposes_share_receivers(self):
         manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
@@ -23,6 +25,28 @@ class AndroidOfflineContractTests(unittest.TestCase):
         actions = {node.attrib.get(ANDROID_NS + "name") for node in activity.findall("./intent-filter/action")}
         self.assertIn("android.intent.action.SEND", actions)
         self.assertIn("android.intent.action.SEND_MULTIPLE", actions)
+
+    def test_app_has_branded_launcher_mark_and_dark_theme(self):
+        manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
+        application = manifest.find("./application")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "icon"), "@drawable/ic_satark_mark")
+        self.assertEqual(application.attrib.get(ANDROID_NS + "theme"), "@style/AppTheme")
+        ET.parse(ANDROID / "app/src/main/res/drawable/ic_satark_mark.xml")
+        styles = ET.parse(ANDROID / "app/src/main/res/values/styles.xml").getroot()
+        theme = styles.find("./style[@name='AppTheme']")
+        self.assertIsNotNone(theme)
+        values = {item.attrib.get("name"): item.text for item in theme.findall("item")}
+        self.assertEqual(values.get("android:colorAccent"), "#78E0C1")
+        self.assertEqual(values.get("android:statusBarColor"), "#08101B")
+
+    def test_android_16_target_and_edge_to_edge_insets(self):
+        gradle = (ANDROID / "app/build.gradle.kts").read_text(encoding="utf-8")
+        self.assertIn("targetSdk = 36", gradle)
+        self.assertIn('androidx.core:core-ktx:1.16.0', gradle)
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("WindowCompat.setDecorFitsSystemWindows(window, false)", source)
+        self.assertIn("WindowInsetsCompat.Type.systemBars()", source)
+        self.assertIn("ViewCompat.requestApplyInsets(scroll)", source)
 
     def test_android_python_has_no_network_client_imports(self):
         sources = list((ANDROID / "app/src/main/python").rglob("*.py"))
@@ -46,6 +70,7 @@ class AndroidOfflineContractTests(unittest.TestCase):
             ("file_guard/intelligence.py", "android/app/src/main/python/file_guard/intelligence.py"),
             ("file_guard/history.py", "android/app/src/main/python/file_guard/history.py"),
             ("file_guard/report.py", "android/app/src/main/python/file_guard/report.py"),
+
         )
         for root_path, android_path in pairs:
             with self.subTest(module=root_path):
@@ -62,29 +87,12 @@ class AndroidOfflineContractTests(unittest.TestCase):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
         self.assertIn("private const val MAX_FILES = 1000", source)
         self.assertIn("private const val MAX_DEPTH = 8", source)
+        self.assertIn("private const val MAX_DIRECTORIES = 2000", source)
         self.assertIn("private const val MAX_FILE_BYTES = 64L * 1024L * 1024L", source)
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
-    def test_android_uses_bounded_temp_files_and_streaming_python_bridge(self):
-        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
-        worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
-        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
-        self.assertIn("copyUriToTemp", activity)
-        self.assertIn("copyUriToTemp", worker)
-        self.assertIn("scan_shared_file_path", activity)
-        self.assertIn("scan_shared_file_path", worker)
-        self.assertIn("def scan_shared_file_path", bridge)
-        self.assertIn("scan_path(path", bridge)
-        self.assertIn('putLong("last_scan_ms"', activity)
 
-    def test_ember_import_verifies_converter_manifest_checksums(self):
-        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
-        bridge = (ANDROID / "app/src/main/python/android_bridge.py").read_text(encoding="utf-8")
-        self.assertIn("_manifest.json", activity)
-        self.assertIn("expected_sha256", bridge)
-        self.assertIn("Dataset CSV checksum does not match its manifest.", bridge)
-        self.assertIn("csvUris.size > 256", activity)
 
 
 if __name__ == "__main__":

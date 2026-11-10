@@ -29,15 +29,16 @@ SATARK includes an independently authored, standard-library Linux sensor for bou
 
 File Guard is the current product direction: a privacy-first local file scanner for files received through WhatsApp, Telegram, downloads and other apps.
 
-- Python static inspection engine with SHA-256, file-format signatures, extension mismatch checks and local historical hash matching. Native YARA is not bundled in the Android app.
-- Local SQLite intelligence store populated only through explicit import of a traceable historical CSV snapshot.
+- Python streaming inspection engine with SHA-256, file-format signatures, bounded PE/ELF/DEX structural checks, conservative byte-pattern heuristics, extension mismatch checks and local historical hash matching. Android retains only a bounded header; native YARA is not bundled in the Android app.
+- Local SQLite intelligence store is seeded in CI-built Android APKs with a compact, checksum-verified EMBER2024 APK training snapshot. Additional historical CSV snapshots can be imported locally after source-manifest and per-part checksum verification.
+- Metadata-only evidence reports preserve scan time, hash, local dataset provenance, specialist findings and a canonical integrity digest. SQLite scan history also maintains a local hash-chained audit log that can be verified in-app; it detects edits/reordering within the retained chain but is not a digital signature or remote proof of authenticity.
 - No hosted analysis APIs, API keys, cloud reputation lookups, telemetry uploads or automatic dataset updates.
-- Historical intelligence can be prepared from EMBER2024 (2023–2024, six file types) using the explicit one-time `scripts/download_ember2024.py` downloader and local `scripts/import_ember2024.py` converter; the app ships with no fabricated or preloaded indicators.
+- Historical intelligence is frozen to EMBER2024 (2023–2024, six file types). CI-built Android APKs bundle a compact APK training hash index generated from the pinned dataset revision; additional file-type subsets can be prepared with the explicit one-time downloader and converter. No malware binaries are bundled.
 - No semantic file-content extraction, OCR, preview, execution, archive unpacking or automatic deletion.
 - Android access is permission-based: Share-to-SATARK, Android system file picker and explicitly granted folder access. Private messaging databases are out of scope.
 - A frozen dataset supports real-time local inspection of newly shared files, not real-time discovery of newly emerging malware.
 
-The Android application includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, local scan history, offline CSV hash import and best-effort WorkManager scans. Android CI builds the debug APK and checks the no-network contract; physical-device QA, performance/battery testing, signing and store acceptance remain outstanding. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md). The Streamlit page is a legacy development interface; uploaded bytes reach the Streamlit host, so do not use it for private files.
+The Android application targets Android 16 / API 36 and includes Kotlin Sharesheet receivers, system file picker and user-granted folder access, a Chaquopy Python engine, bounded temporary-file streaming, built-in byte-pattern checks, local SQLite scan history, manifest-verified offline CSV hash import, metadata-only evidence reports and best-effort WorkManager scans. Android CI builds the debug APK and checks the no-network contract; physical-device QA, performance/battery testing, signing and store acceptance remain outstanding. See [Android File Guard architecture](docs/ANDROID_FILE_GUARD_ARCHITECTURE.md). The Streamlit page is a legacy development interface; uploaded bytes reach the Streamlit host, so do not use it for private files.
 
 ## Contents
 
@@ -218,15 +219,15 @@ docker compose -f docker-compose.local.yml up --build
 
 The web UI is served at `http://localhost:3000`. To enable the optional Wazuh ingestion worker, configure the `FIRSTLIGHT_WAZUH_*` target, read-only Indexer, and initial checkpoint values in `.env`, then run `docker compose -f docker-compose.local.yml --profile wazuh up --build`. For multi-instance deployments, set `SATARK_DATABASE_URL` to a dedicated PostgreSQL database and use a shared private durable evidence volume accessible to the API and workers. Back up the database and evidence volume together. Do not expose the database, evidence directory, or worker port publicly.
 
-The replacement is being validated on `remove-supabase-runtime-dependency`. Until the complete API/UI/PostgreSQL regression suite and deployment acceptance checks pass on the latest commit, treat it as a migration candidate rather than a production-ready release. Existing legacy Supabase data is not automatically imported or deleted; keep any old project intact until a separately validated export/import and backup process is complete. Password recovery/email verification and workspace member invitation are not yet provided by the self-hosted identity service; account creation is currently direct signup.
+The Android File Guard does not use this web backend. The repository's application runtime is Supabase-independent: the obsolete Supabase CLI configuration and SQL migration directory have been removed, and CI checks that Supabase SDK/Auth/REST/Storage references are not reintroduced into runtime source. The optional web backend uses SATARK-owned SQLAlchemy/Alembic persistence; SQLite is the local/single-host default and PostgreSQL is optional for self-hosted multi-instance operation. Existing data in any former Supabase project is not automatically imported or deleted; export it separately only if it is needed. The Android app remains fully usable without this web backend.
 
 ### Main trust boundaries
 
-1. **Browser to Streamlit:** browser/UI state is presentation state and is not trusted as durable evidence.
+1. **Android OS to SATARK:** shared URIs and Storage Access Framework grants are scoped capabilities; the app reads only the bytes the user explicitly shares or selects.
 2. **Input to preprocessing:** uploaded and pasted content is subject to format-specific bounds and validation.
 3. **Server to user-supplied URL:** URL retrieval is an SSRF-sensitive operation. The implementation validates eligible HTTP(S) destinations, checks DNS results, pins connections to validated IPs, revalidates redirects, blocks HTTPS-to-HTTP downgrade redirects, and limits response size/type.
 4. **Application to local model:** prepared evidence is sent only to the operator-controlled Ollama endpoint when local model inference is configured; no hosted AI provider is used.
-5. **Browser to application backend:** same-origin HttpOnly sessions are checked by FastAPI; each case/evidence/report/job query is scoped through the user's workspace membership. The backend owns relational persistence and private evidence bytes; PostgreSQL is recommended for multi-instance deployments.
+5. **Optional web workspace to self-hosted backend:** same-origin HttpOnly sessions are checked by SATARK-owned FastAPI; each case/evidence/report/job query is scoped through workspace membership. This legacy web path is separate from the offline Android scanner.
 
 ### Processing flow for a scanner
 
@@ -510,6 +511,11 @@ Contributions are welcome, especially focused improvements to reliability, acces
 
 - [FIRSTLIGHT workflow and safety boundaries](docs/FIRSTLIGHT.md)
 - [Architecture and threat model](docs/ARCHITECTURE.md)
+- [Supabase-free runtime and persistence](docs/SUPABASE_FREE.md)
+- [Local YARA rules and synthetic evaluation](docs/LOCAL_YARA_RULES.md)
+- [Built-in Android and desktop byte signatures](docs/BUILTIN_BYTE_SIGNATURES.md)
+- [Detection evaluation methodology and metrics](docs/DETECTION_EVALUATION.md)
+- [Manual EMBER2024 snapshot workflow](.github/workflows/ember2024-snapshot.yml)
 - [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
 - [UI design notes](docs/UI_DESIGN.md)
 - [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)

@@ -1,4 +1,6 @@
 import json
+
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +8,7 @@ from pathlib import Path
 from scripts.evaluate_file_guard import evaluate_csv
 from file_guard.engine import scan_bytes
 from file_guard.report import build_evidence_report, verify_evidence_report
+
 
 
 class EvidenceReportTests(unittest.TestCase):
@@ -28,6 +31,7 @@ class EvidenceReportTests(unittest.TestCase):
     def test_report_requires_sha256(self):
         with self.assertRaises(ValueError):
             build_evidence_report({"sha256": "not-a-hash"})
+
 
 
 class EvaluationTests(unittest.TestCase):

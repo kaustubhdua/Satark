@@ -16,7 +16,7 @@ SATARK File Guard statically inspects files that a user explicitly shares with t
 
 ## Storage
 
-The Android app stores the imported hash database and scan history in its private application storage. Scan history contains file name, size, SHA-256, detected type, verdict, timestamp and rule signals; it does not store file bytes. The user can clear scan history or clear the imported threat-intelligence database from the app. Clearing history does not clear the threat database, and clearing the database does not clear scan history.
+The Android app stores the imported hash database and scan history in its private application storage. Scan history contains file name, size, SHA-256, detected type, verdict, timestamp, bounded specialist traces and evidence signals; it does not store file bytes. A JSON evidence export contains metadata only and is written only to a destination the user selects. The user can clear scan history or clear the imported threat-intelligence database from the app. Clearing history does not clear the threat database, and clearing the database does not clear scan history.
 
 ## Permissions and user control
 

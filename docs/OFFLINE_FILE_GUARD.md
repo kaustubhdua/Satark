@@ -8,8 +8,10 @@ SATARK File Guard is an app-oriented, local-first file-security workflow for fil
 
 - SHA-256 exact-match lookup against a historical, locally imported SQLite index.
 - Magic-byte identification for common document, archive, executable, image and Android DEX formats.
+- Bounded PE, ELF and DEX header-structure validation for invalid offsets, truncated headers, impossible table bounds and malformed header fields; findings are review signals, not malware proof.
 - Extension/signature mismatch and double-extension heuristics.
-- Optional YARA rules in the desktop Python engine when local `yara-python` and a reviewed rules file are installed. The first Android build does not bundle YARA.
+- Conservative built-in byte-pattern heuristics for selected PDF active actions, OLE macro automation markers, script download/execute combinations, JavaScript obfuscation clusters and DEX dynamic loading. These work in the Android Python engine without native dependencies and only raise review findings.
+- Optional YARA rules in the desktop Python engine when local `yara-python` and a reviewed rules file are installed. The Android build does not bundle native YARA.
 - No document text extraction, OCR, rendering, archive unpacking, file execution, preview, deletion or automatic quarantine.
 - Unknown files are not labelled safe. A no-match verdict means only that enabled checks found no known indicator.
 
@@ -32,15 +34,15 @@ Reference: https://github.com/NirDiamant/GenAI_Agents
 
 ## Android implementation
 
-The standalone Android project is in `android/` and uses Kotlin + Chaquopy 17.2 / Python 3.13. Chaquopy's current requirements are minSdk 24 and supported Android Gradle Plugin versions 7.3–9.4; this project targets Android API 35, minSdk 24 and 64-bit ARM/emulator ABIs.
+The standalone Android project is in `android/` and uses Kotlin + Chaquopy 17.2 / Python 3.13. Chaquopy's current requirements are minSdk 24 and supported Android Gradle Plugin versions 7.3–9.4; this project targets Android API 36 (Android 16), minSdk 24 and 64-bit ARM/emulator ABIs. The app uses edge-to-edge system-bar insets for Android 15/16 layouts.
 
 Implemented in the Android scaffold:
 - Android Sharesheet receivers for `ACTION_SEND` and `ACTION_SEND_MULTIPLE`.
 - System file picker using `ACTION_OPEN_DOCUMENT`.
 - User-granted directory selection using `ACTION_OPEN_DOCUMENT_TREE`.
 - Persisted URI read permission for the selected tree.
-- Local Python SHA-256 and file-signature scanning.
-- Local SQLite scan history, multi-part historical CSV hash snapshot import and user-controlled reset of history/database.
+- Streaming Python SHA-256 and file-signature scanning through bounded app-private temporary files; only the first 4 KiB is retained for format identification and byte-pattern checks.
+- Local SQLite scan history with versioned metadata-only evidence reports and a verifiable hash-chained audit log; multi-part historical CSV hash snapshot import with source-manifest and per-part checksum verification and user-controlled reset of history/database.
 - User control to release persisted folder permissions and cancel scheduled scans.
 - WorkManager one-time and best-effort daily scheduled folder scans, bounded to 1,000 files, 8 directory levels, 64 MB/file and 512 MB/run.
 - Optional Android notifications when a background scan finds files requiring review; notification text contains only a count.
@@ -55,8 +57,8 @@ A frozen dataset cannot discover newly emerging threats. Real-time means a newly
 
 The preferred first historical hash source is **EMBER2024**, rather than older PE-only EMBER2017/2018 or the very large SOREL-20M corpus.
 
-- The official project describes 3.2 million labelled samples across Win32, Win64, .NET, APK, ELF and PDF.
-- Its collection window is 24 September 2023 through 14 December 2024; the chronological split contains 2,626,000 training samples and 606,000 test samples, plus a 6,315-sample challenge set.
+- The official project describes 3.2 million labelled metadata records across Win32, Win64, .NET, APK, ELF and PDF, including per-record SHA-256 hashes and labels.
+- Its collection window is 24 September 2023 through 14 December 2024; the chronological split contains 2,626,000 training records and 606,000 test records, plus a 6,315-record malicious-only challenge set.
 - Binary labels are 0 = benign, 1 = malicious and -1 = unlabeled; the converter excludes unlabeled rows rather than treating them as benign.
 - The upstream project repository is Apache-2.0 licensed. Review dataset terms and cite the upstream paper before redistributing derived data.
 - The download contains metadata/features and hashes, not original malware binaries.
@@ -70,7 +72,7 @@ python scripts/download_ember2024.py --output-dir data/ember2024 --split train -
 python scripts/import_ember2024.py --input-dir data/ember2024 --output-dir data/ember2024-csv --split train --file-type APK
 ```
 
-Repeat with `--file-type PDF`, `ELF` or `PE` if required. The converter reads only local JSONL metadata, writes 25,000-row CSV parts by default, and emits a manifest with per-part SHA-256 checksums. Multi-select the generated CSV parts in Android or Streamlit and retain the manifest for provenance. Confirm each part is below Android's 64 MB import limit. Public archive acquisition is a one-time network download; the Android app itself has no Internet permission and scans offline.
+Repeat with `--file-type PDF`, `ELF` or `PE` if required. The converter reads only local JSONL metadata, writes 25,000-row CSV parts by default, and emits a manifest with per-part SHA-256 checksums plus a digest-bound source archive manifest. Multi-select the generated CSV parts, the converter `*_manifest.json`, and the matching `ember2024_download_*.json` in the Android app. Do not use the legacy Streamlit interface for private files: its uploads are processed on the server. Confirm each part is below Android's 64 MB import limit. Public archive acquisition is a one-time network download; the Android app itself has no Internet permission and scans offline.
 
 ### Coverage and limitations
 

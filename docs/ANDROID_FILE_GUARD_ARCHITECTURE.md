@@ -1,6 +1,6 @@
 # SATARK File Guard — product and technical contract
 
-**Product direction:** Android-first, Python-based, offline-first file threat inspection.
+**Product direction:** Android-first, Python-based, offline-first file threat inspection. The app targets Android 16 / API 36 (minSdk 24) and uses edge-to-edge window insets.
 
 ## Non-negotiable product boundaries
 
@@ -19,8 +19,9 @@ The scanner must read bytes for SHA-256 and static signature checks. It does not
 2. SHA-256 over the complete byte stream.
 3. Bounded header/form signatures used to identify the actual format.
 4. Extension-versus-signature consistency.
-5. Exact local hash lookup against a provenance-labelled historical snapshot.
-6. Optional local byte-pattern rules only where a compatible rules engine and reviewed rule pack are installed.
+5. Bounded PE, ELF and DEX header-structure checks for malformed offsets, sizes and table bounds.
+6. Exact local hash lookup against a provenance-labelled historical snapshot.
+7. Built-in conservative byte-pattern heuristics for selected PDF, OLE, PowerShell, JavaScript and DEX markers; optional YARA rules on desktop when a compatible engine and reviewed rule pack are installed.
 
 No result may claim that an unrecognised or unmatched file is safe. The correct clean-state wording is **"No known threat detected by enabled local checks."**
 
@@ -35,19 +36,21 @@ No result may claim that an unrecognised or unmatched file is safe. The correct 
 
 ## Historical intelligence
 
-EMBER2024 is a research dataset containing features and labels for roughly 3.2 million samples across Win32, Win64, .NET, APK, ELF and PDF, with a collection window ending 2024-12-14. It is not itself a ready-made universal malware hash feed. SATARK's converter extracts SHA-256 labels from dataset metadata; it does not download or bundle malware binaries. The app imports CSV snapshots locally and stores provenance.
+EMBER2024 is a research dataset containing labelled metadata for roughly 3.2 million samples across Win32, Win64, .NET, APK, ELF and PDF, with a collection window ending 2024-12-14. Its metadata records include SHA-256 hashes and labels, so SATARK can convert them directly into a compact exact-hash index. It is not a universal malware feed: coverage is limited to the included historical samples and file types. SATARK does not download or bundle malware binaries. The downloader pins Hugging Face revision 8cc201a3d2a1cb2957123eb5ad996d5a3178bbcc and verifies each archive against its recorded SHA-256 and byte size before extraction. The challenge archive is excluded from automated download until its full LFS digest can be independently verified.
 
 Important limitations:
 - Exact SHA-256 matching only identifies byte-identical samples represented in the imported snapshot.
 - Any modification changes the hash and can evade exact matching.
 - EMBER2024's file-type and time coverage is not universal; coverage varies by imported split and type.
-- YARA and format signatures add different forms of coverage, but must not be described as proof of malware or safety.
+- Built-in byte-pattern heuristics, YARA and format signatures add different forms of coverage, but only produce review signals and must not be described as proof of malware or safety.
 - The frozen snapshot cannot identify newly discovered threats unless the user deliberately imports a separately versioned offline snapshot. That is outside the default no-new-data operating mode.
 
 ## Storage and privacy
 
 - SQLite databases are stored in Android app-private storage.
-- Scan history stores metadata and hashes, not file bytes.
+- Scan history stores metadata, hashes, specialist traces and bounded evidence signals, never file bytes.
+- Each new scan is linked into a local SHA-256 hash-chained audit log; the app can verify the chain and export the latest metadata-only evidence report. This is tamper-evident against partial edits/reordering, not signed or remotely anchored.
+- The user can export a JSON evidence report through Android's system document picker; exports contain hashes and metadata only.
 - Incoming content URIs are read under temporary share grants. User-selected folder grants are persisted only after explicit consent.
 - Scans have explicit file-count, directory-depth, per-file and per-run byte limits.
 - No network permission is present in the Android manifest. Android CI enforces this as a contract.
@@ -91,9 +94,9 @@ EMBER2024 is a labelled malware-research feature dataset, not a complete portabl
 
 For each snapshot imported into a device, the operator should retain the upstream source name, upstream release/cutoff, selected splits/file types, original and converted file SHA-256 values, conversion tool version, row counts, malicious/benign counts, and license. The app currently stores a source label per hash and does not yet enforce a cryptographically immutable whole-snapshot manifest; the source label is provenance metadata, not proof of authenticity. Do not claim otherwise.
 
-The Android app intentionally does not fetch a dataset itself. Dataset acquisition and conversion are explicit offline preparation tasks on a trusted workstation; transfer only the converted CSV and manifest to the phone. The app is empty until this step occurs.
+The Android app intentionally does not fetch or refresh a dataset at runtime. CI builds generate a compact starter SQLite index from the pinned EMBER2024 APK training metadata and bundle only SHA-256 labels and metadata, never file binaries. On first launch the app copies the asset to app-private storage and verifies its SHA-256. Additional dataset acquisition and conversion remain explicit preparation tasks; transfer the converted CSV parts, converter manifest and matching original downloader manifest to import them offline. Local developer builds without the generated assets remain empty until an operator imports a snapshot.
 
-## Device memory/performance boundary
+## Streaming and device memory boundary
 
-The Android foreground and folder workers now copy each authorized URI to a bounded temporary file in the app-private cache, then call the Python `scan_path` bridge. Python reads the file incrementally in 1 MiB chunks, computes SHA-256 and retains only the first 4 KiB for format signatures. Full-file buffering is enabled only when an optional desktop YARA rules path is explicitly configured; the Android bridge does not configure YARA. Temporary files are deleted in a `finally` path after scanning. This reduces peak heap pressure compared with passing a 64 MiB Kotlin byte array through Chaquopy. The 64 MiB per-file and 512 MiB per-folder-run limits remain. Device profiling is still required for storage I/O, temporary-cache pressure, peak RSS and battery use; do not increase limits without measurements.
+
 

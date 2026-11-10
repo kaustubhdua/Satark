@@ -30,8 +30,8 @@ jobs:
           if (!inventory.counts.pages || !inventory.counts.apiRoutes || !inventory.counts.migrations) {
             throw new Error('Expected page, API and migration inventory to be non-empty.');
           }
-          if (inventory.migrationSafety.sharedSupabaseWrites !== 'FROZEN') {
-            throw new Error('Shared Supabase write freeze must remain active until reconciliation.');
+          if (inventory.migrationSafety.supabaseRuntime !== 'ABSENT' || inventory.migrationSafety.migrationSource !== 'ALEMBIC') {
+            throw new Error('Inventory must confirm the Supabase-free Alembic migration boundary.');
           }
           for (const group of required) {
             for (const item of inventory[group]) {

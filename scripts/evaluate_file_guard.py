@@ -1,18 +1,9 @@
-#!/usr/bin/env python3
-"""Calculate transparent metrics from a human-labelled File Guard evaluation CSV.
 
-Input columns: expected,predicted. Values are benign, malicious, or unknown
-(predicted only). Unknown predictions count as abstentions, never as clean.
-No sample binaries are read by this evaluator.
 """
 from __future__ import annotations
 
 import argparse
 import csv
-import json
-from pathlib import Path
-
-LABELS = {"benign", "malicious"}
 
 
 def _metrics(tp, fp, tn, fn, abstained, total):
@@ -24,24 +15,13 @@ def _metrics(tp, fp, tn, fn, abstained, total):
     f1 = (2 * precision * recall / (precision + recall)
           if precision is not None and recall is not None and precision + recall else None)
     return {
-        "samples": total,
-        "classified": classified,
-        "abstained": abstained,
-        "coverage": classified / total if total else 0.0,
-        "confusion_matrix": {"true_positive": tp, "false_positive": fp,
-                             "true_negative": tn, "false_negative": fn},
-        "precision": precision,
-        "recall_classified": recall,
-        "specificity": specificity,
-        "false_positive_rate": fp / (fp + tn) if fp + tn else None,
-        "accuracy_on_classified": accuracy,
-        "detection_coverage": classified / total if total else 0.0,
+
         "f1_classified": f1,
         "note": "Metrics describe only the supplied labelled corpus, not real-world protection.",
     }
 
 
-def evaluate_csv(path):
+
     with Path(path).open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
         fields = {str(name).strip().lower() for name in (reader.fieldnames or [])}
@@ -86,14 +66,7 @@ def evaluate_csv(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("csv", type=Path, help="Human-labelled evaluation CSV")
-    parser.add_argument("--output", type=Path, help="Optional JSON report destination")
-    args = parser.parse_args()
-    report = evaluate_csv(args.csv)
-    rendered = json.dumps(report, indent=2, sort_keys=True)
-    if args.output:
-        args.output.write_text(rendered + "\n", encoding="utf-8")
-    print(rendered)
+
 
 
 if __name__ == "__main__":

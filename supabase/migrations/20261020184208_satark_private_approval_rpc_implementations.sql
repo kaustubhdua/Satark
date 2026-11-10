@@ -1,5 +1,0 @@
--- Migration-history reconciliation for the live Nirdhoom/SATARK project.
--- The private approval RPC implementation is applied by
--- 20261020052000_satark_private_approval_rpc_implementations.sql.
--- The shared project recorded that implementation under version 20261020184208.
--- Keep this no-op so the recorded live version is represented without duplicating DDL.

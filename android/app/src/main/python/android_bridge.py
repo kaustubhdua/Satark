@@ -43,6 +43,10 @@ def scan_history(app_data_dir):
     root = _paths(app_data_dir)
     return json.dumps(ScanHistory(root / "file_guard_history.sqlite3").list_recent(100), ensure_ascii=True)
 
+def verify_scan_audit(app_data_dir):
+    root = _paths(app_data_dir)
+    return json.dumps(ScanHistory(root / "file_guard_history.sqlite3").verify_audit_chain(), ensure_ascii=True)
+
 def clear_scan_history(app_data_dir):
     root = _paths(app_data_dir)
     ScanHistory(root / "file_guard_history.sqlite3").clear()
