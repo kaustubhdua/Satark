@@ -1,3 +1,12 @@
+# SATARK / FIRSTLIGHT architecture change — 2026-11-11
+
+- Removed Microsoft Defender / Entra response adapters and all associated runtime environment variables from the active application configuration.
+- FIRSTLIGHT now has a Wazuh-only guarded response adapter using the Wazuh Manager API Active Response endpoint. It permits only the fixed built-in `firewall-drop` and `disable-account` commands, with validated parameters, one numeric agent ID from an explicit allowlist, TLS verification, exact confirmation, four-eyes approval, a third executor, and the existing at-most-once audit ledger.
+- The live-response feature remains disabled by default. Wazuh API submission is not proof that the endpoint applied the action; independent verification and a documented reversal path are required.
+- Added mocked adapter tests and included them in FIRSTLIGHT API CI. Added a CI PostgreSQL backup/restore drill using `pg_dump`, `pg_restore`, an isolated temporary database and a committed marker row. This is CI recovery evidence, not a production database restore drill.
+- The current Wazuh lab deployment remains an operator-hosted service. A real lab Manager/Indexer, enrolled disposable agent, credentials and endpoint-side verification are still required before live response can be accepted.
+- Microsoft-specific historical audit notes below are retained for traceability only; they do not describe the current architecture or runtime.
+
 # Current implementation addendum — 2026-11-11
 
 This addendum describes the current self-hosted candidate branch fix/satark-firstlight-end-to-end-2026-11-11. It supersedes older Supabase-backed architecture notes below where they conflict; the historical notes are retained only for audit traceability.
@@ -10,7 +19,7 @@ This addendum describes the current self-hosted candidate branch fix/satark-firs
 - **FIRSTLIGHT authenticated workspace:** the Next.js workspace uses the same-origin server proxy and self-hosted SATARK session cookies. Cases, memberships, notes, evidence, findings, reports, approvals, audit events and investigation jobs are backed by the self-hosted API/database.
 - **FIRSTLIGHT durable investigations:** API enqueue/status routes and a persistent worker process case evidence, save findings and report snapshots, and record result digests. The worker shares the API database and private evidence directory.
 - **FIRSTLIGHT Wazuh:** bounded read-only preview plus an optional persistent private worker with agent allowlisting, source-object preservation, overlap windows and durable checkpoints. Real Indexer connectivity still requires operator credentials and a lab endpoint.
-- **FIRSTLIGHT response:** the candidate branch integrates the durable SQLite response ledger into authenticated API routes and the persistent case UI. Requests are case-bound; approval requires a different operator; execution requires a third operator and exact target confirmation; provider submission is distinct from independent verification. The feature flag remains disabled by default. Mocked tests do not prove real Microsoft tenant connectivity.
+- **FIRSTLIGHT response:** the candidate branch integrates the durable SQLite response ledger into authenticated API routes and the persistent case UI. Requests are case-bound; approval requires a different operator; execution requires a third operator and exact target confirmation; provider submission is distinct from independent verification. The feature flag remains disabled by default. The Wazuh adapter is mocked in CI; a live lab acceptance run remains necessary.
 - **Optional model analysis:** local Ollama specialists can run in direct and durable background investigations. Their output is advisory only; deterministic findings remain authoritative and no paid hosted AI API is required for core FIRSTLIGHT operation.
 
 ## Candidate changes in this branch
@@ -28,12 +37,12 @@ This addendum describes the current self-hosted candidate branch fix/satark-firs
 - Validate Android share intents and SAF grants/revocation on real WhatsApp/Telegram and supported OEM devices; emulator smoke is not a substitute.
 - Run an independently labelled real-file corpus evaluation and record detection coverage/false-positive metrics. EMBER metadata is not proof of antivirus performance.
 - Run the Wazuh worker against an authorized lab Indexer with a real alert; verify persisted source bytes, checkpoint advancement, restart recovery and membership enforcement.
-- Run the Microsoft response lifecycle only in an authorized disposable tenant/device/account. Verify provider-side state, recovery/unisolation and audit references. Do not enable the feature flag in production before that review.
+- Run the Wazuh Active Response lifecycle only against disposable allowlisted lab agents. Verify the Manager API submission, endpoint-side action, reversal/recovery and audit references. Do not enable the feature flag in production before that review.
 - Run an isolated backup/restore drill covering the self-hosted database, evidence directory and response ledger.
 - Configure production TLS, secrets, durable volumes, SMTP/MFA policy as required, backup retention, monitoring, signing and release disclosures.
 - Verify the exact deployed revision and perform post-deploy smoke/recovery tests. A CI artifact or READY deployment alone is not proof of production readiness.
 
-**Current decision:** implementation is substantially integrated, but production readiness remains NO-GO until the exact-head automated checks and externally dependent lab/operational gates above are evidenced. No real Microsoft action, Wazuh connection, production deployment, or physical-device test is claimed by this addendum.
+**Current decision:** implementation is substantially integrated, but production readiness remains NO-GO until the exact-head automated checks and externally dependent lab/operational gates above are evidenced. No live Wazuh connection, production deployment, or physical-device test is claimed by this addendum.
 
 ---
 
