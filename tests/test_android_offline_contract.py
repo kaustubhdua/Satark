@@ -104,6 +104,15 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L", source)
         self.assertIn("!isStopped", source)
 
+    def test_abandoned_scan_temp_files_are_cleaned_on_app_and_worker_start(self):
+        source = (ANDROID / "app/src/main/java/com/satark/mobile/ScanTempFiles.kt").read_text(encoding="utf-8")
+        activity = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
+        self.assertIn('listOf("satark-scan-", "satark-folder-")', source)
+        self.assertIn("TimeUnit.HOURS.toMillis(6)", source)
+        self.assertIn("ScanTempFiles.cleanup(cacheDir)", activity)
+        self.assertIn("ScanTempFiles.cleanup(applicationContext.cacheDir)", worker)
+
     def test_folder_worker_bounds_attempted_files_and_directories(self):
         worker = (ANDROID / "app/src/main/java/com/satark/mobile/FolderScanWorker.kt").read_text(encoding="utf-8")
         self.assertIn("private const val MAX_FILES = 1000", worker)
