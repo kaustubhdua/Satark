@@ -58,7 +58,7 @@ services:
       SATARK_TRUSTED_PROXY_IPS: 172.31.240.0/24
     volumes:
       - satark_data:/data
-      - ./secrets:/run/secrets:ro
+      - ./secrets/backup:/run/secrets:ro
     depends_on:
       db:
         condition: service_healthy
