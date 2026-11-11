@@ -48,7 +48,10 @@ docker compose -f generate-indexer-certs.yml run --rm generator
 # Prepare one disposable Linux agent container using the official Wazuh agent
 # image. Host networking lets it reach the manager's loopback/private bind;
 # it monitors only its own container filesystem, never the host.
-mkdir -p "$DEST/wazuh-agent/config"
+mkdir -p "$DEST/wazuh-agent/config" "$DEST/wazuh-agent/events/fim"
+touch "$DEST/wazuh-agent/events/auth.log"
+chmod 700 "$DEST/wazuh-agent/events" "$DEST/wazuh-agent/events/fim"
+chmod 600 "$DEST/wazuh-agent/events/auth.log"
 cat > "$DEST/wazuh-agent/config/satark-lab-ossec.conf" <<AGENTCONF
 <ossec_config>
   <client>
@@ -107,7 +110,7 @@ Before starting the stack:
        WAZUH_MANAGER_SERVER="$BIND_ADDRESS" docker compose -f docker-compose.satark-lab.yml up -d
      Wait for it to appear as Active in the Wazuh Dashboard and record its numeric ID.
   5. Generate synthetic events inside the agent container:
-       docker compose -f docker-compose.satark-lab.yml exec wazuh.agent sh -lc 'mkdir -p /tmp/satark-lab/fim; touch /tmp/satark-lab/fim/marker.txt; printf "<14>Nov 11 00:00:00 satark-lab-agent sshd: Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2\\n" >> /tmp/satark-lab/auth.log'
+       docker compose -f docker-compose.satark-lab.yml exec wazuh.agent sh -lc 'touch /tmp/satark-lab/fim/marker.txt; printf "<14>%s satark-lab-agent sshd: Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2\\n" "$(date "+%b %d %H:%M:%S")" >> /tmp/satark-lab/auth.log'
      Verify actual alerts in the Indexer; do not treat the command itself as proof of ingestion.
   6. Configure FIRSTLIGHT_WAZUH_MANAGER_API_URL, USERNAME, PASSWORD,
      MANAGER_CA_BUNDLE and RESPONSE_AGENT_IDS in SATARK's private .env.
