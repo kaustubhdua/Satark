@@ -20,21 +20,30 @@ A database backup alone is not a complete evidence backup. The current satark_ba
 - Keep at least one encrypted copy outside the source host and storage failure domain.
 - Exclude secrets, signing keys, session cookies and credentials from backups/manifests unless a separately approved secrets backup policy exists.
 
-## Backup utility
+## Automated encrypted off-host backup
 
-The production Compose profile runs a one-shot backup container. Its privileged BYPASSRLS credential is isolated from the web/API process.
+The production Compose profile uses a dedicated `satark-backup` image. It contains the PostgreSQL 16 client matching the production PostgreSQL 16 server, the archive utility, and the open-source Restic client. The API runtime never receives the privileged backup database URL or Restic credentials.
 
-~~~bash
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
-  create --output "/backups/satark-$STAMP.tar.gz"
-docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
-  verify "/backups/satark-$STAMP.tar.gz"
-~~~
+1. Configure `SATARK_BACKUP_DATABASE_URL` with the dedicated `satark_backup` identity.
+2. Configure an independent remote `RESTIC_REPOSITORY` (for example, a private S3-compatible bucket) and provider credentials in the root `.env`.
+3. Create `secrets/restic-password` with a unique repository password, readable only by the backup container's UID/GID 10001. Store a separate recovery copy in an approved password manager or offline vault.
+4. Initialize the remote repository once:
 
-The archive contains a consistent SQL database dump, evidence objects and the FIRSTLIGHT response ledger snapshot when that SQLite file exists. The response ledger is integrity-checked when snapshotted and restored. Quiesce API and worker writes before taking the full archive so all persistence planes represent the same point in time. Encrypt the archive and copy it outside the source host.
+   ```bash
+   docker compose -f docker-compose.production.yml --profile backup run --rm --entrypoint restic satark-backup init
+   ```
 
-For PostgreSQL, the backup role is separate from the runtime role and has BYPASSRLS only for the backup/restore utility. Restored objects are reassigned to the configured runtime role. Do not grant BYPASSRLS to the API runtime identity.
+5. Start and inspect the scheduler:
+
+   ```bash
+   docker compose -f docker-compose.production.yml --profile backup up -d satark-backup
+   docker compose -f docker-compose.production.yml logs -f satark-backup
+   restic snapshots --tag satark
+   ```
+
+The scheduler runs immediately and then at `SATARK_BACKUP_INTERVAL_SECONDS` (default 86400 seconds). Each run creates the SQL/evidence/response-ledger archive, verifies its SHA-256 manifest, uploads it to Restic, checks a configured subset of repository data, applies daily/weekly/monthly retention, and confirms a tagged snapshot is visible. It fails closed if the remote repository or password is unavailable. See [PRODUCTION_BACKUPS.md](PRODUCTION_BACKUPS.md) for the full operator procedure.
+
+The archive contains a database snapshot, evidence objects and the FIRSTLIGHT response-ledger snapshot when configured. Evidence objects are treated as immutable; still schedule a controlled recovery window and verify the recovered database, evidence and response ledger together. The scheduler does not itself prove a successful restore. Keep live response disabled until a separate restore and Wazuh lab acceptance is signed off.
 
 ## Restore drill (isolated target only)
 
