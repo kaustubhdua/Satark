@@ -67,7 +67,7 @@ def main() -> int:
     required = ("File Guard", "Choose files to scan", "Choose a folder to monitor")
     missing = [label for label in required if label not in combined]
     if missing:
-        raise SystemExit("SATARK UI is missing expected accessible controls: " + ", ".join(missing))
+        raise SystemExit("SATARK UI is missing expected labels or accessible controls: " + ", ".join(missing))
 
     logs = run("adb", "logcat", "-d", "-t", "4000", timeout=60)
     fatal = ("FATAL EXCEPTION", "com.chaquo.python.PyException")
