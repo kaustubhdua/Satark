@@ -10,6 +10,7 @@ snapshot before changing evidence mutation semantics. Restic encrypts off-host.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
@@ -56,6 +57,32 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
     drivername = "postgresql" if url.drivername.startswith("postgresql") else url.drivername
     safe_url = str(url.set(drivername=drivername, password=None, username=url.username))
     return safe_url, env
+
+
+@contextmanager
+def _pg_auth_env(url):
+    """Yield a private passfile for callers that explicitly need file-based libpq auth."""
+    _, env = _pg_env(url)
+
+    def escape_pgpass(value: str) -> str:
+        return value.replace("\\", "\\\\").replace(":", "\\:")
+
+    descriptor, filename = tempfile.mkstemp(prefix="satark-pgpass-")
+    passfile = Path(filename)
+    os.close(descriptor)
+    try:
+        os.chmod(passfile, 0o600)
+        passfile.write_text(
+            ":".join(escape_pgpass(value) for value in (
+                url.host or "*", str(url.port or "*"), url.database or "*",
+                url.username or "*", url.password or "",
+            )) + "\n",
+            encoding="utf-8",
+        )
+        env["PGPASSFILE"] = str(passfile)
+        yield env
+    finally:
+        passfile.unlink(missing_ok=True)
 
 
 def _sqlite_path(url) -> Path:
