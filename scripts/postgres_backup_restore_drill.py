@@ -45,14 +45,30 @@ def main() -> int:
         with psycopg.connect(source_url) as connection:
             connection.execute(sql.SQL("CREATE TABLE IF NOT EXISTS {} (marker text PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now())").format(sql.Identifier(table)))
             connection.execute(sql.SQL("INSERT INTO {} (marker) VALUES (%s) ON CONFLICT DO NOTHING").format(sql.Identifier(table)), (marker,))
+        dump_command = ["pg_dump", "--format=custom", "--no-owner", "--no-privileges", "--file", str(backup)]
+        if source.host:
+            dump_command.extend(["--host", source.host])
+        if source.port:
+            dump_command.extend(["--port", str(source.port)])
+        if source.username:
+            dump_command.extend(["--username", source.username])
+        dump_command.extend(["--dbname", source_db])
         with _pg_auth_env(source) as auth_env:
-            run(["pg_dump", "--format=custom", "--no-owner", "--no-privileges", "--file", str(backup), source_url], auth_env)
+            run(dump_command, auth_env)
         if not backup.is_file() or backup.stat().st_size == 0:
             raise RuntimeError("pg_dump did not produce a non-empty backup.")
         with psycopg.connect(admin_url, autocommit=True) as admin:
             admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(restore_db)))
+        restore_command = ["pg_restore", "--no-owner", "--no-privileges", "--exit-on-error"]
+        if source.host:
+            restore_command.extend(["--host", source.host])
+        if source.port:
+            restore_command.extend(["--port", str(source.port)])
+        if source.username:
+            restore_command.extend(["--username", source.username])
+        restore_command.extend(["--dbname", restore_db, str(backup)])
         with _pg_auth_env(source.set(database=restore_db)) as auth_env:
-            run(["pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname", restore_url, str(backup)], auth_env)
+            run(restore_command, auth_env)
         with psycopg.connect(restore_url) as restored:
             row = restored.execute(sql.SQL("SELECT marker FROM {} WHERE marker = %s").format(sql.Identifier(table)), (marker,)).fetchone()
             if not row or row[0] != marker:
