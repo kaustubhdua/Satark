@@ -44,6 +44,55 @@ sed -i \
   -e "s|\"9200:9200\"|\"$BIND_ADDRESS:9200:9200\"|" \
   -e "s|443:5601|$BIND_ADDRESS:8443:5601|" "$COMPOSE_FILE"
 docker compose -f generate-indexer-certs.yml run --rm generator
+
+# Prepare one disposable Linux agent container using the official Wazuh agent
+# image. Host networking lets it reach the manager's loopback/private bind;
+# it monitors only its own container filesystem, never the host.
+mkdir -p "$DEST/wazuh-agent/config"
+cat > "$DEST/wazuh-agent/config/satark-lab-ossec.conf" <<AGENTCONF
+<ossec_config>
+  <client>
+    <server>
+      <address>$BIND_ADDRESS</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+    </server>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_restart>yes</auto_restart>
+  </client>
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>30</frequency>
+    <scan_on_start>yes</scan_on_start>
+    <directories check_all="yes" realtime="yes">/tmp/satark-lab/fim</directories>
+  </syscheck>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/tmp/satark-lab/auth.log</location>
+  </localfile>
+</ossec_config>
+AGENTCONF
+cat > "$DEST/wazuh-agent/docker-compose.satark-lab.yml" <<'AGENTCOMPOSE'
+services:
+  wazuh.agent:
+    image: wazuh/wazuh-agent:4.14.10
+    hostname: satark-lab-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - WAZUH_MANAGER_SERVER=${WAZUH_MANAGER_SERVER:-127.0.0.1}
+    volumes:
+      - ./config/satark-lab-ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
+      - satark_lab_agent_data:/var/ossec/data
+      - satark_lab_agent_logs:/var/ossec/logs
+      - satark_lab_agent_events:/tmp/satark-lab
+volumes:
+  satark_lab_agent_data:
+  satark_lab_agent_logs:
+  satark_lab_agent_events:
+AGENTCOMPOSE
+chmod 600 "$DEST/wazuh-agent/config/satark-lab-ossec.conf" "$DEST/wazuh-agent/docker-compose.satark-lab.yml"
 cat <<EOF
 
 Wazuh $VERSION lab files and TLS certificates are prepared at:
@@ -53,10 +102,16 @@ Before starting the stack:
   1. Review the upstream Wazuh Docker security/password instructions.
   2. Replace every default password and rotate the manager API credentials.
   3. Ports are bound to $BIND_ADDRESS (loopback by default); use only a private lab IPv4 address for remote disposable agents. The dashboard is exposed locally on port 8443.
-  4. Enroll disposable test agents and record their numeric IDs.
-  5. Configure FIRSTLIGHT_WAZUH_MANAGER_API_URL, USERNAME, PASSWORD,
+  4. Start the prepared disposable Linux agent (it monitors its own container only):
+       cd "$DEST/wazuh-agent"
+       WAZUH_MANAGER_SERVER="$BIND_ADDRESS" docker compose -f docker-compose.satark-lab.yml up -d
+     Wait for it to appear as Active in the Wazuh Dashboard and record its numeric ID.
+  5. Generate synthetic events inside the agent container:
+       docker compose -f docker-compose.satark-lab.yml exec wazuh.agent sh -lc 'mkdir -p /tmp/satark-lab/fim; touch /tmp/satark-lab/fim/marker.txt; printf "<14>Nov 11 00:00:00 satark-lab-agent sshd: Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2\\n" >> /tmp/satark-lab/auth.log'
+     Verify actual alerts in the Indexer; do not treat the command itself as proof of ingestion.
+  6. Configure FIRSTLIGHT_WAZUH_MANAGER_API_URL, USERNAME, PASSWORD,
      MANAGER_CA_BUNDLE and RESPONSE_AGENT_IDS in SATARK's private .env.
-  6. Confirm the manager certificate SAN matches the URL used by SATARK.
+  7. Confirm the manager certificate SAN matches the URL used by SATARK.
 
 Then start the lab from this directory:
   docker compose up -d
