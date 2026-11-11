@@ -453,8 +453,8 @@ def restore_backup(
             if target_url.username:
                 command.extend(["--username", target_url.username])
             command.extend(["--dbname", target_url.database, str(work / "database.dump")])
-            with _pg_auth_env(target_url) as env:
-                subprocess.run(command, env=env, check=True, timeout=3600)
+            _, env = _pg_env(target_url)
+            subprocess.run(command, env=env, check=True, timeout=3600)
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
