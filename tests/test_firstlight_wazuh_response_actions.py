@@ -59,7 +59,7 @@ def test_disable_account_uses_allowlisted_builtin_and_strict_username(monkeypatc
         actions.preflight_live_response("wazuh.disable_account", "001", "CONFIRM DISABLE_ACCOUNT 001")
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "001")
     actions.preflight_live_response("wazuh.disable_account", "001", "CONFIRM DISABLE_ACCOUNT 001")
-    with pytest.raises(actions.ResponseIntegrationError, match="unsupported"):
+    with pytest.raises(actions.ResponseIntegrationError, match="invalid or protected"):
         actions._validate_payload("wazuh.disable_account", {"username": "lab;user"})
     with pytest.raises(actions.ResponseIntegrationError, match="valid IPv4"):
         actions._validate_payload("wazuh.block_ip", {"ip_address": "not-an-ip"})
