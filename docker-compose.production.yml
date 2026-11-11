@@ -81,6 +81,7 @@ services:
       dockerfile: Dockerfile.firstlight-backup
     entrypoint: ["/bin/sh", "-lc"]
     command: |
+      set -e
       while true; do
         /app/scripts/run_satark_backup.sh
         sleep "${SATARK_BACKUP_INTERVAL_SECONDS:-86400}"
@@ -95,6 +96,9 @@ services:
       RESTIC_CHECK_SUBSET: ${RESTIC_CHECK_SUBSET:-5%}
       SATARK_BACKUP_INTERVAL_SECONDS: ${SATARK_BACKUP_INTERVAL_SECONDS:-86400}
       SATARK_BACKUP_HOST: ${SATARK_BACKUP_HOST:-satark-production}
+      RESTIC_KEEP_DAILY: ${RESTIC_KEEP_DAILY:-7}
+      RESTIC_KEEP_WEEKLY: ${RESTIC_KEEP_WEEKLY:-4}
+      RESTIC_KEEP_MONTHLY: ${RESTIC_KEEP_MONTHLY:-12}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-}
