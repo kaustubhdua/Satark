@@ -120,7 +120,6 @@ class SatarkBackupTests(unittest.TestCase):
 
 
     def test_postgres_auth_uses_private_temporary_passfile_and_cleans_it(self):
-        import os
         import stat
 
         url = make_url("postgresql+psycopg://satark:p%40ss%3Aword@db.internal:5432/satark")
