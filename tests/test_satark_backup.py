@@ -124,7 +124,9 @@ class SatarkBackupTests(unittest.TestCase):
 
         url = make_url("postgresql+psycopg://satark:p%40ss%3Aword@db.internal:5432/satark")
         with _pg_auth_env(url) as env:
-            self.assertNotIn("PGPASSWORD", env)
+            # PGPASSWORD is passed only to the pg_dump/pg_restore child process;
+            # the private 0600 passfile remains available for libpq.
+            self.assertEqual(env["PGPASSWORD"], "p@ss:word")
             passfile = Path(env["PGPASSFILE"])
             self.assertTrue(passfile.is_file())
             self.assertEqual(stat.S_IMODE(passfile.stat().st_mode), 0o600)
