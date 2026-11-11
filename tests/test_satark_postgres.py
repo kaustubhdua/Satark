@@ -259,7 +259,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             )) is None
             visible_memberships = db.scalars(select(backend.Membership)).all()
             assert visible_memberships
-            assert all(row.user_id == user_id for row in visible_memberships)
+            assert {row.user_id for row in visible_memberships} == {user_id, invitee_id}
             db.add(backend.Case(
                 tenant_id=outsider_tenant_id, title="RLS write attempt",
                 created_by=user_id,
@@ -298,7 +298,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             finally:
                 if target_engine is not None:
                     target_engine.dispose()
-                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
                     admin.execute(
                         "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()",
                         (target_name,),
@@ -312,7 +312,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
         # terminate its remaining sessions before dropping the test schema.
         admin_url = make_url(url).set(drivername="postgresql", database="postgres")
         test_database = make_url(url).database
-        with psycopg.connect(str(admin_url), autocommit=True) as admin:
+        with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
             admin.execute(
                 "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
                 "WHERE datname = %s AND pid <> pg_backend_pid()",
