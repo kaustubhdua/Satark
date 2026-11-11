@@ -18,7 +18,7 @@ RUN set -eux; \
       > /etc/apt/sources.list.d/pgdg.list; \
     apt-get update; \
     apt-get install -y --no-install-recommends postgresql-client-16; \
-    test "$(pg_dump --version | sed -E 's/.* ([0-9]+).*/\1/')" = "16"; \
+    pg_dump --version | grep -Eq ' \(PostgreSQL\) 16\.'; \
     rm -rf /var/lib/apt/lists/*
 
 COPY firstlight-api-requirements.txt ./requirements.txt
