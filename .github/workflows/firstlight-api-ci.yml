@@ -161,8 +161,10 @@ jobs:
       - name: Enforce Microsoft-free runtime provider boundary
         run: python scripts/check_no_microsoft_runtime.py
 
-      - name: Validate Wazuh lab bootstrap shell
-        run: bash -n scripts/bootstrap_wazuh_lab.sh
+      - name: Validate Wazuh and backup shell scripts
+        run: |
+          bash -n scripts/bootstrap_wazuh_lab.sh
+          sh -n scripts/run_satark_backup.sh
 
       - name: Validate PostgreSQL role bootstrap shell
         run: sh -n deploy/postgres-init/01-create-roles.sh
@@ -184,6 +186,11 @@ jobs:
           SATARK_SMTP_USERNAME: ci
           SATARK_SMTP_PASSWORD: test-only
           SATARK_SMTP_FROM: SATARK <ci@example.test>
+          RESTIC_REPOSITORY: s3:https://s3.example.test/satark-ci
+          RESTIC_PASSWORD_FILE: /tmp/restic-password
+          AWS_ACCESS_KEY_ID: ci
+          AWS_SECRET_ACCESS_KEY: test-only
+          AWS_DEFAULT_REGION: us-east-1
           FIRSTLIGHT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIRSTLIGHT_WAZUH_INDEXER_URL: https://wazuh-indexer.example.test:9200
@@ -202,9 +209,11 @@ jobs:
           docker build -f Dockerfile.firstlight-api -t satark-firstlight-api:ci .
           docker build -f Dockerfile.firstlight-worker -t satark-firstlight-worker:ci .
           docker build -f Dockerfile.firstlight-investigation-worker -t satark-firstlight-investigation-worker:ci .
+          docker build -f Dockerfile.firstlight-backup -t satark-firstlight-backup:ci .
 
       - name: Smoke-test API and worker imports
         run: |
           docker run --rm --entrypoint python satark-firstlight-api:ci -c "import firstlight_api, firstlight_response_api, firstlight_response_executor, firstlight_engine, firstlight_rules, firstlight_agents, firstlight_wazuh, satark_backend, integrations.response_actions"
           docker run --rm --entrypoint python satark-firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
           docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider, satark_backend"
+          docker run --rm --entrypoint restic satark-firstlight-backup:ci version
