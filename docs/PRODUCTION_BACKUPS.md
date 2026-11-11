@@ -19,8 +19,11 @@ Create `secrets/restic-password` with a long, unique Restic repository password 
 mkdir -p secrets
 umask 077
 openssl rand -base64 48 > secrets/restic-password
-chmod 600 secrets/restic-password
+sudo chown root:10001 secrets/restic-password
+chmod 0440 secrets/restic-password
 ```
+
+The backup container runs as UID/GID 10001, so the mounted password file must be readable by that group and must not be world-readable. Keep the `secrets` directory itself restricted to administrators.
 
 The password is not recoverable from the repository. Store a separate copy in an approved password manager or offline recovery vault. Do not commit it.
 
