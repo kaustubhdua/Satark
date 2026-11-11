@@ -98,10 +98,31 @@ def _copy_database(database_url: str, destination: Path) -> str:
         if not shutil.which("pg_dump"):
             raise RuntimeError("pg_dump is required to back up PostgreSQL.")
         safe_url, env = _pg_env(url)
-        subprocess.run(
-            ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination), safe_url],
-            env=env, check=True, timeout=3600,
-        )
+        # libpq's PGPASSWORD environment handling can be affected by inherited
+        # runner/container variables. Use a private, short-lived passfile so the
+        # exact credential parsed from the SQLAlchemy URL is unambiguous and is
+        # never placed in the pg_dump process arguments.
+        def escape_pgpass(value: str) -> str:
+            return value.replace("\\\\", "\\\\\\\\").replace(":", "\\\\:")
+
+        passfile = Path(tempfile.mkstemp(prefix="satark-pgpass-")[1])
+        try:
+            os.chmod(passfile, 0o600)
+            passfile.write_text(
+                ":".join(escape_pgpass(value) for value in (
+                    url.host or "*", str(url.port or "*"), url.database or "*",
+                    url.username or "*", url.password or "",
+                )) + "\\n",
+                encoding="utf-8",
+            )
+            env.pop("PGPASSWORD", None)
+            env["PGPASSFILE"] = str(passfile)
+            subprocess.run(
+                ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination), safe_url],
+                env=env, check=True, timeout=3600,
+            )
+        finally:
+            passfile.unlink(missing_ok=True)
         return "postgresql"
     raise ValueError("Only SQLite and PostgreSQL SATARK databases are supported.")
 
