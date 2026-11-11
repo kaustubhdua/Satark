@@ -50,7 +50,7 @@ Wazuh rule levels and FIRSTLIGHT heuristic matches are triage signals, not calib
 
 1. Run this CLI in an authorized Wazuh lab and preserve redacted output, exact commit SHA and report hash.
 2. For durable ingestion, run the separate Wazuh worker and verify source-object persistence, checkpoint advancement, duplicate handling and restart recovery against the same self-hosted case.
-3. Test the guarded workspace response lifecycle against an authorized disposable Microsoft tenant/device/account; verify provider-side completion and recovery/unisolation.
+3. Test the guarded workspace response lifecycle against disposable, explicitly allowlisted Wazuh agents; verify Manager acceptance, endpoint-side action state, independent verification, and the documented reversal/recovery procedure.
 4. Run tenant-isolation and role checks against the self-hosted PostgreSQL deployment with separate test workspaces and users.
 5. Complete backup/restore drills for the database, evidence directory and response ledger.
 6. Run clean-install tests and verify the exact candidate SHA in the deployment environment before claiming production readiness.
