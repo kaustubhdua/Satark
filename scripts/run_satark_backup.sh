@@ -10,6 +10,16 @@ umask 077
 : "${SATARK_BACKUP_HOST:=satark-production}"
 : "${RESTIC_CHECK_SUBSET:=5%}"
 
+# Reject local-path repositories: a same-host Restic directory is not an
+# independent backup failure domain. Require an explicit remote backend.
+case "$RESTIC_REPOSITORY" in
+  s3:*|sftp:*|rest:*|rclone:*|azure:*|gs:*|b2:*|swift:*) ;;
+  *)
+    echo "RESTIC_REPOSITORY must use an off-host Restic backend (s3, sftp, rest, rclone, azure, gs, b2, or swift)." >&2
+    exit 2
+    ;;
+esac
+
 if [ ! -r "$RESTIC_PASSWORD_FILE" ]; then
   echo "Restic password file is missing or unreadable: $RESTIC_PASSWORD_FILE" >&2
   exit 2
