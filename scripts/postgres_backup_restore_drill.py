@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.satark_backup import _pg_auth_env
+from scripts.satark_backup import _pg_env
 
 
 def run(command: list[str], env: dict[str, str]) -> None:
@@ -63,8 +63,8 @@ def main() -> int:
         if source.username:
             dump_command.extend(["--username", source.username])
         dump_command.extend(["--dbname", source_db])
-        with _pg_auth_env(source) as auth_env:
-            run(dump_command, auth_env)
+        _, auth_env = _pg_env(source)
+        run(dump_command, auth_env)
         if not backup.is_file() or backup.stat().st_size == 0:
             raise RuntimeError("pg_dump did not produce a non-empty backup.")
         with connect(admin_url, autocommit=True) as admin:
@@ -77,8 +77,8 @@ def main() -> int:
         if source.username:
             restore_command.extend(["--username", source.username])
         restore_command.extend(["--dbname", restore_db, str(backup)])
-        with _pg_auth_env(source.set(database=restore_db)) as auth_env:
-            run(restore_command, auth_env)
+        _, auth_env = _pg_env(source.set(database=restore_db))
+        run(restore_command, auth_env)
         with connect(restore_url) as restored:
             row = restored.execute(sql.SQL("SELECT marker FROM {} WHERE marker = %s").format(sql.Identifier(table)), (marker,)).fetchone()
             if not row or row[0] != marker:
