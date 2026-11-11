@@ -39,3 +39,9 @@ The legacy response-action test suite now validates the Wazuh guardrails, the re
 - The CI boundary scan covers the complete web app (including build configuration), Android sources and Gradle manifests, Python services/scripts, container/deployment configuration, and GitHub workflow definitions.
 - `scripts/check_no_microsoft_runtime.py` enforces this invariant in FIRSTLIGHT API CI. Historical migration documentation may describe the removal; it is not a runtime dependency.
 - Wazuh is the supported endpoint telemetry/response integration. Keep Active Response disabled until the authorized disposable-agent acceptance gate passes.
+
+## Off-host backup gate
+
+- The production backup profile uses the open-source Restic client and refuses to report success unless the encrypted archive is uploaded to a separately configured repository and the repository check completes.
+- The remote repository password must be held outside the host and outside Git; the backup container receives it as a read-only secret.
+- A successful CI pg_dump/pg_restore test is not proof that the production S3-compatible repository or independent recovery host is configured. Record a real restore drill before production acceptance.
