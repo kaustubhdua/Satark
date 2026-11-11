@@ -32,3 +32,9 @@ The account-disable action is advertised only when its OS-specific agent IDs int
 ## Regression cleanup
 
 The legacy response-action test suite now validates the Wazuh guardrails, the response ledger test asserts numeric agent binding, and the archive includes the SQLite response-ledger snapshot helper.
+
+## Provider independence invariant
+
+- The runtime source, dependency manifests, container configuration, Android app source, web source, and deployment configuration must remain free of Microsoft Defender/Entra SDKs, endpoints, OAuth credentials, and provider-specific response actions.
+- `scripts/check_no_microsoft_runtime.py` enforces this invariant in FIRSTLIGHT API CI. Historical migration documentation may describe the removal; it is not a runtime dependency.
+- Wazuh is the supported endpoint telemetry/response integration. Keep Active Response disabled until the authorized disposable-agent acceptance gate passes.
