@@ -4,9 +4,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates postgresql-client restic \
-    && rm -rf /var/lib/apt/lists/*
+# The production database is PostgreSQL 16. Debian's default
+# postgresql-client meta-package can lag the server major version, and
+# pg_dump refuses to dump a newer server. Install the matching PGDG client.
+RUN set -eux; \
+    . /etc/os-release; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg restic; \
+    install -d /usr/share/postgresql-common/pgdg; \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg; \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends postgresql-client-16; \
+    test "$(pg_dump --version | sed -E 's/.* ([0-9]+).*/\\1/')" = "16"; \
+    rm -rf /var/lib/apt/lists/*
 
 COPY firstlight-api-requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
