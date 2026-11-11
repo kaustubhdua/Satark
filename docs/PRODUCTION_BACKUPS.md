@@ -18,12 +18,14 @@ Create `secrets/restic-password` with a long, unique Restic repository password 
 ```sh
 mkdir -p secrets
 umask 077
+sudo chown root:10001 secrets
+chmod 0710 secrets
 openssl rand -base64 48 > secrets/restic-password
 sudo chown root:10001 secrets/restic-password
 chmod 0440 secrets/restic-password
 ```
 
-The backup container runs as UID/GID 10001, so the mounted password file must be readable by that group and must not be world-readable. Keep the `secrets` directory itself restricted to administrators.
+The API and backup containers run as UID/GID 10001. The secret directory is owned by root:10001 with mode 0710 so the service group can traverse it without listing its contents; the password file is group-readable (0440) and never world-readable. Apply the same owner/mode pattern to any mounted Wazuh CA certificate.
 
 The password is not recoverable from the repository. Store a separate copy in an approved password manager or offline recovery vault. Do not commit it.
 
