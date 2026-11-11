@@ -97,6 +97,45 @@ services:
     cap_drop: [ALL]
     networks: [backend]
 
+  satark-backup:
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: Dockerfile.firstlight-backup
+    entrypoint: ["/bin/sh", "-lc"]
+    command: |
+      while true; do
+        /app/scripts/run_satark_backup.sh
+        sleep "${SATARK_BACKUP_INTERVAL_SECONDS:-86400}"
+      done
+    environment:
+      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:?Set the satark_backup BYPASSRLS connection URL}
+      SATARK_EVIDENCE_DIR: /data/evidence
+      FIRSTLIGHT_RESPONSE_DB: /data/firstlight-response.sqlite3
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?Set an independent off-host Restic repository}
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      RESTIC_CACHE_DIR: /tmp/restic-cache
+      RESTIC_CHECK_SUBSET: ${RESTIC_CHECK_SUBSET:-5%}
+      SATARK_BACKUP_INTERVAL_SECONDS: ${SATARK_BACKUP_INTERVAL_SECONDS:-86400}
+      SATARK_BACKUP_HOST: ${SATARK_BACKUP_HOST:-satark-production}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-}
+    volumes:
+      - satark_data:/data:ro
+      - satark_backups:/backups
+      - ./secrets:/run/secrets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    networks: [backend]
+
   firstlight-investigation-worker:
     build:
       context: .
