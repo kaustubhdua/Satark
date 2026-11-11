@@ -24,7 +24,7 @@ sudo chmod 0750 secrets/backup
 sudo chmod 0440 secrets/backup/restic-password
 ```
 
-The backup container runs as UID/GID 10001 and mounts only `secrets/backup`; no API or Wazuh credentials are exposed to it. The directory is group-traversable (0750) and the password file is group-readable (0440), neither world-readable. The API's separate Wazuh CA mount can remain under `secrets` with its own restricted permissions.
+The backup container runs as UID/GID 10001 and mounts only `secrets/backup`; no API or Wazuh credentials are exposed to it. The directory is group-traversable (0750) and the password file is group-readable (0440), neither world-readable. The API and Wazuh worker mount only `secrets/wazuh` for CA certificates; the backup container mounts only `secrets/backup` and cannot read Wazuh credentials.
 
 The password is not recoverable from the repository. Store a separate copy in an approved password manager or offline recovery vault. Do not commit it.
 
