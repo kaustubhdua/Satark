@@ -49,7 +49,7 @@ Do not restore over the live database or evidence volume. On an isolated recover
 1. List and choose a known-good snapshot: `restic snapshots --tag satark`.
 2. Restore the snapshot to a temporary directory: `restic restore <snapshot-id> --target /recovery/restore`.
 3. Run `python scripts/satark_backup.py verify /recovery/restore/backups/satark-....tar.gz`.
-4. Restore into an empty isolated PostgreSQL database and evidence directory using `python scripts/satark_backup.py restore <archive> --database-url <isolated-target-url> --evidence-dir /recovery/evidence`.
+4. Restore into an empty isolated PostgreSQL database and evidence directory using `python scripts/satark_backup.py restore <archive> --database-url <isolated-target-url> --evidence-dir /recovery/evidence --response-ledger /recovery/firstlight-response.sqlite3`.
 5. Verify evidence hashes, FIRSTLIGHT response ledger integrity, login/MFA recovery, case access and application readiness before considering failover.
 
 The repository destination, access keys, password vault and recovery host must be independent of the production host. CI's local PostgreSQL round-trip test is not a substitute for a real off-host recovery exercise. The backup service fails closed if Restic is not configured or the remote repository is unavailable.
