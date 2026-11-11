@@ -259,8 +259,9 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             visible_memberships = db.scalars(select(backend.Membership).where(
                 backend.Membership.tenant_id == tenant_id
             )).all()
-            assert visible_memberships
-            assert {row.user_id for row in visible_memberships} == {user_id, invitee_id}
+            # The table policy is deliberately self-only, even inside a tenant.
+            # Co-member enumeration is available only through the authorized API.
+            assert {row.user_id for row in visible_memberships} == {user_id}
             db.add(backend.Case(
                 tenant_id=outsider_tenant_id, title="RLS write attempt",
                 created_by=user_id,
