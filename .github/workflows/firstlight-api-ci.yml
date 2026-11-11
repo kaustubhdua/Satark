@@ -25,6 +25,8 @@ on:
       - "tests/test_satark_migrations.py"
       - "tests/test_satark_postgres.py"
       - "scripts/check_no_supabase_runtime.py"
+      - "scripts/check_no_microsoft_runtime.py"
+      - "scripts/check_no_microsoft_runtime.py"
       - "scripts/bootstrap_wazuh_lab.sh"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
@@ -152,6 +154,9 @@ jobs:
 
       - name: Enforce Supabase-free application runtime
         run: python scripts/check_no_supabase_runtime.py
+
+      - name: Enforce Microsoft-free runtime provider boundary
+        run: python scripts/check_no_microsoft_runtime.py
 
       - name: Validate Wazuh lab bootstrap shell
         run: bash -n scripts/bootstrap_wazuh_lab.sh
