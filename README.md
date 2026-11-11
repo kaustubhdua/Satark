@@ -166,7 +166,7 @@ FIRSTLIGHT capabilities include:
 
 **Managed database and proprietary endpoint-security services are not runtime dependencies.** The Android File Guard remains fully offline. The supported Active Response adapter is pinned to Wazuh 4.14.x (lab bootstrap: 4.14.10); Wazuh 5.x requires a separate response adapter. Manager API / Indexer credentials are configured only in the private FIRSTLIGHT server runtime; they are not used by the Android scanner.
 
-Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md). For self-hosted PostgreSQL, Caddy HTTPS, secrets, deployment and recovery, follow the [production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md).
+Live response is disabled by default and is not triggered by AI. A provider submission is not proof of completed containment. Real-provider acceptance requires an authorized Wazuh lab manager and disposable allowlisted agent. See [FIRSTLIGHT overview](docs/FIRSTLIGHT.md), [Wazuh setup](docs/FIRSTLIGHT_WAZUH_INTEGRATION.md), [guarded response](docs/FIRSTLIGHT_LIVE_RESPONSE.md), and [backup/restore](docs/FIRSTLIGHT_BACKUP_RESTORE.md). For self-hosted PostgreSQL, Caddy HTTPS, secrets, deployment and recovery, follow the [production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md) and the [encrypted off-site backup runbook](docs/PRODUCTION_BACKUPS.md).
 
 ## Build and run the Android app
 
