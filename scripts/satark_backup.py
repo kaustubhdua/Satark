@@ -69,9 +69,12 @@ def _pg_auth_env(url):
     os.close(descriptor)
     try:
         os.chmod(passfile, 0o600)
+        # Match the exact endpoint used by libpq rather than relying on a
+        # wildcard host entry. This keeps credentials scoped to this backup
+        # target and avoids host-alias mismatches in CI/container environments.
         passfile.write_text(
             ":".join(escape_pgpass(value) for value in (
-                "*", str(url.port or "*"), url.database or "*",
+                url.host or "*", str(url.port or "*"), url.database or "*",
                 url.username or "*", url.password or "",
             )) + "\n",
             encoding="utf-8",
