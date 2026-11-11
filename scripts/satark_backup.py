@@ -343,11 +343,6 @@ def _rebase_evidence_paths(database_url: str, source_root: Path | None, target_r
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
-            restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
-            if make_url(database_url).drivername.startswith("postgresql") and restore_role:
-                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
-                    raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
-                connection.execute(text(f"SET ROLE {restore_role}"))
             if "satark_evidence" not in inspect(connection).get_table_names():
                 return 0
             rows = connection.execute(text(
@@ -437,16 +432,6 @@ def restore_backup(
                      str(work / "database.dump")],
                     env=env, check=True, timeout=3600,
                 )
-            restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
-            if restore_role:
-                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
-                    raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
-                engine = create_engine(target_database_url, pool_pre_ping=True)
-                try:
-                    with engine.begin() as connection:
-                        connection.execute(text(f"REASSIGN OWNED BY satark_backup TO {restore_role}"))
-                finally:
-                    engine.dispose()
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
@@ -466,6 +451,19 @@ def restore_backup(
     manifest["evidence_objects_rebased"] = _rebase_evidence_paths(
         target_database_url, source_root, target_evidence_dir
     )
+    # Rebase while the restore credential still owns the restored tables and
+    # retains BYPASSRLS. Only then transfer ownership to the unprivileged runtime
+    # role; SET ROLE runtime here would re-enable forced RLS and block the repair.
+    restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
+    if manifest["database_engine"] == "postgresql" and restore_role:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
+            raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
+        engine = create_engine(target_database_url, pool_pre_ping=True)
+        try:
+            with engine.begin() as connection:
+                connection.execute(text(f"REASSIGN OWNED BY satark_backup TO {restore_role}"))
+        finally:
+            engine.dispose()
     return manifest
 
 
