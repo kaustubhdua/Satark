@@ -33,7 +33,7 @@ FORBIDDEN = re.compile(
 )
 SKIP_PARTS = {
     ".git", ".next", "node_modules", ".venv", "venv", "__pycache__",
-    "build", "dist", "docs", "tests", "assets", "coverage",
+    "build", "dist", "docs", "tests", "test", "assets", "coverage", ".gradle",
 }
 
 
@@ -49,7 +49,7 @@ def runtime_files() -> list[Path]:
         ROOT / "integrations",
         ROOT / "scripts",
         ROOT / "web" / "src",
-        ROOT / "android" / "app" / "src" / "main",
+        ROOT / "android",
         ROOT / ".github" / "workflows",
         ROOT / "deploy",
     )
@@ -62,6 +62,9 @@ def runtime_files() -> list[Path]:
             if any(part in SKIP_PARTS for part in path.parts):
                 continue
             files.add(path)
+    for manifest in (ROOT / "web" / "package.json", ROOT / "web" / "package-lock.json"):
+        if manifest.is_file():
+            files.add(manifest)
     files.discard(SELF)
     return sorted(files)
 
