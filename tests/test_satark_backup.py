@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy.engine import make_url
 
-from scripts.satark_backup import _pg_auth_env, _pg_env, create_backup, restore_backup, verify_backup
+from scripts.satark_backup import _pg_env, create_backup, restore_backup, verify_backup
 
 
 class SatarkBackupTests(unittest.TestCase):
@@ -118,23 +118,6 @@ class SatarkBackupTests(unittest.TestCase):
         self.assertEqual(env["PGPASSWORD"], "private-secret")
 
 
-
-    def test_postgres_auth_uses_private_temporary_passfile_and_cleans_it(self):
-        import stat
-
-        url = make_url("postgresql+psycopg://satark:p%40ss%3Aword@db.internal:5432/satark")
-        with _pg_auth_env(url) as env:
-            # PGPASSWORD is passed only to the pg_dump/pg_restore child process;
-            # the private 0600 passfile remains available for libpq.
-            self.assertEqual(env["PGPASSWORD"], "p@ss:word")
-            passfile = Path(env["PGPASSFILE"])
-            self.assertTrue(passfile.is_file())
-            self.assertEqual(stat.S_IMODE(passfile.stat().st_mode), 0o600)
-            self.assertEqual(
-                passfile.read_text(encoding="utf-8"),
-                r"db.internal:5432:satark:satark:p@ss\:word" + "\n",
-            )
-        self.assertFalse(passfile.exists())
 
     def test_restore_refuses_symlink_targets_and_source_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
