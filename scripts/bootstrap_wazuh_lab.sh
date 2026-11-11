@@ -89,11 +89,10 @@ services:
       - ./config/satark-lab-ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
       - satark_lab_agent_data:/var/ossec/data
       - satark_lab_agent_logs:/var/ossec/logs
-      - satark_lab_agent_events:/tmp/satark-lab
+      - ./events:/tmp/satark-lab
 volumes:
   satark_lab_agent_data:
   satark_lab_agent_logs:
-  satark_lab_agent_events:
 AGENTCOMPOSE
 chmod 600 "$DEST/wazuh-agent/config/satark-lab-ossec.conf" "$DEST/wazuh-agent/docker-compose.satark-lab.yml"
 cat <<EOF
@@ -105,19 +104,23 @@ Before starting the stack:
   1. Review the upstream Wazuh Docker security/password instructions.
   2. Replace every default password and rotate the manager API credentials.
   3. Ports are bound to $BIND_ADDRESS (loopback by default); use only a private lab IPv4 address for remote disposable agents. The dashboard is exposed locally on port 8443.
-  4. Start the prepared disposable Linux agent (it monitors its own container only):
-       cd "$DEST/wazuh-agent"
-       WAZUH_MANAGER_SERVER="$BIND_ADDRESS" docker compose -f docker-compose.satark-lab.yml up -d
-     Wait for it to appear as Active in the Wazuh Dashboard and record its numeric ID.
-  5. Generate synthetic events inside the agent container:
-       docker compose -f docker-compose.satark-lab.yml exec wazuh.agent sh -lc 'touch /tmp/satark-lab/fim/marker.txt; printf "<14>%s satark-lab-agent sshd: Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2\\n" "$(date "+%b %d %H:%M:%S")" >> /tmp/satark-lab/auth.log'
-     Verify actual alerts in the Indexer; do not treat the command itself as proof of ingestion.
-  6. Configure FIRSTLIGHT_WAZUH_MANAGER_API_URL, USERNAME, PASSWORD,
-     MANAGER_CA_BUNDLE and RESPONSE_AGENT_IDS in SATARK's private .env.
-  7. Confirm the manager certificate SAN matches the URL used by SATARK.
 
-Then start the lab from this directory:
+Start the central Manager, Indexer and Dashboard first:
+  cd "$DEST/single-node"
   docker compose up -d
+
+Then start the prepared disposable Linux agent (it monitors only its own container):
+  cd "$DEST/wazuh-agent"
+  WAZUH_MANAGER_SERVER="$BIND_ADDRESS" docker compose -f docker-compose.satark-lab.yml up -d
+Wait for it to appear as Active in the Wazuh Dashboard and record its numeric ID.
+
+Generate synthetic events inside the agent container:
+  docker compose -f docker-compose.satark-lab.yml exec wazuh.agent sh -lc 'touch /tmp/satark-lab/fim/marker.txt; printf "<14>%s satark-lab-agent sshd: Failed password for invalid user satark-lab from 198.51.100.23 port 2222 ssh2\n" "$(date "+%b %d %H:%M:%S")" >> /tmp/satark-lab/auth.log'
+Verify actual alerts in the Indexer; do not treat the command itself as proof of ingestion.
+
+Configure FIRSTLIGHT_WAZUH_MANAGER_API_URL, USERNAME, PASSWORD,
+MANAGER_CA_BUNDLE and RESPONSE_AGENT_IDS in SATARK's private .env.
+Confirm the manager certificate SAN matches the URL used by SATARK.
 
 Local endpoints (when using the default loopback bind):
   Manager API: https://127.0.0.1:55000
