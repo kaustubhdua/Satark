@@ -1,8 +1,11 @@
 """Create, verify, and restore a SATARK database + private-evidence backup.
 
-Quiesce API/worker writes before creating a backup so the database snapshot and
-filesystem evidence archive represent the same point in time. Encrypt the
-resulting archive with an approved offline/managed key before moving it off-host.
+PostgreSQL dumps use an MVCC snapshot. Evidence objects are immutable, atomically
+written before their metadata commits, and retained after ambiguous commit
+outcomes; the later filesystem archive can contain harmless orphan objects but
+must never omit an object referenced by the database snapshot. Preserve this
+write-ordering invariant, or quiesce writers/use a coordinated filesystem
+snapshot before changing evidence mutation semantics. Restic encrypts off-host.
 """
 from __future__ import annotations
 
