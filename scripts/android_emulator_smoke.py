@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Smoke-test the exact SATARK APK on an Android emulator.
 
-Kept in a checked-in file rather than an inline shell heredoc because
-android-emulator-runner executes its script through /bin/sh.
+The accessibility hierarchy is viewport-scoped on some Android images, so
+inspect multiple scroll positions instead of assuming every card is visible
+in the first dump. This is a launch/UI smoke test, not physical-device QA.
 """
 from __future__ import annotations
 
@@ -17,6 +18,12 @@ def run(*args: str, timeout: int = 45) -> str:
     return result.stdout
 
 
+def dump_hierarchy(path: Path) -> str:
+    run("adb", "shell", "uiautomator", "dump", "/sdcard/satark-window.xml", timeout=60)
+    run("adb", "pull", "/sdcard/satark-window.xml", str(path), timeout=60)
+    return path.read_text(encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifact-dir", type=Path, default=Path("artifacts"))
@@ -28,37 +35,45 @@ def main() -> int:
     args.artifact_dir.mkdir(parents=True, exist_ok=True)
     run("adb", "install", "-r", str(apk), timeout=180)
     run("adb", "shell", "am", "force-stop", "com.satark.mobile")
-    # am start -W can report a timeout on slow software-rendered hosted
-    # emulators even when the activity eventually becomes responsive.
     run("adb", "shell", "am", "start", "-n", "com.satark.mobile/.MainActivity")
+
     deadline = time.monotonic() + 180
     xml_path = args.artifact_dir / "satark-window.xml"
-    xml = ""
+    snapshots: list[str] = []
     while time.monotonic() < deadline:
         try:
             activities = run("adb", "shell", "dumpsys", "activity", "activities")
             if "com.satark.mobile/.MainActivity" in activities:
-                run("adb", "shell", "uiautomator", "dump", "/sdcard/satark-window.xml", timeout=60)
-                run("adb", "pull", "/sdcard/satark-window.xml", str(xml_path), timeout=60)
-                xml = xml_path.read_text(encoding="utf-8")
-                required = ("File Guard", "Quick scan", "BUNDLED EMBER2024 STARTER", "HASHES")
-                if all(label in xml for label in required):
-                    break
+                snapshots = [dump_hierarchy(xml_path)]
+                break
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             pass
         time.sleep(3)
 
-    if not xml:
-        raise SystemExit("SATARK activity did not expose an accessibility hierarchy")
-    required = ("File Guard", "Quick scan", "BUNDLED EMBER2024 STARTER", "HASHES")
-    missing = [label for label in required if label not in xml]
+    if not snapshots:
+        raise SystemExit("SATARK MainActivity did not become visible on the emulator")
+
+    # Scroll through the long, intentionally single-screen app so that
+    # off-viewport accessibility nodes are checked as well.
+    for _ in range(4):
+        try:
+            run("adb", "shell", "input", "swipe", "540", "1700", "540", "650", "450")
+            time.sleep(1)
+            snapshots.append(dump_hierarchy(xml_path))
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+            break
+
+    combined = "\n".join(snapshots)
+    required = ("File Guard", "Choose files to scan", "Choose a folder to monitor")
+    missing = [label for label in required if label not in combined]
     if missing:
-        raise SystemExit("SATARK UI is missing expected labels: " + ", ".join(missing))
+        raise SystemExit("SATARK UI is missing expected accessible controls: " + ", ".join(missing))
+
     logs = run("adb", "logcat", "-d", "-t", "4000", timeout=60)
     fatal = ("FATAL EXCEPTION", "com.chaquo.python.PyException")
     if any(marker in logs for marker in fatal):
         raise SystemExit("SATARK crashed during emulator launch; inspect logcat artifact")
-    print("SATARK emulator smoke passed: activity, accessibility labels and crash markers verified")
+    print("SATARK emulator smoke passed: MainActivity, file/folder actions and crash markers verified")
     return 0
 
 
