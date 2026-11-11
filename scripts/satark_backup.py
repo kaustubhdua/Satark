@@ -147,8 +147,10 @@ def _copy_database(database_url: str, destination: Path) -> str:
         # libpq treats a missing PGPASSFILE differently from an empty one.
         # The backup helper creates a private, mode-0600 passfile so credentials
         # are never placed on the process command line or inherited as PGPASSWORD.
-        with _pg_auth_env(url) as env:
-            subprocess.run(command, env=env, check=True, timeout=3600)
+        _, env = _pg_env(url)
+        # libpq's PGPASSWORD is inherited only by this short-lived pg_dump
+        # process; the secret is never placed in argv or written to disk.
+        subprocess.run(command, env=env, check=True, timeout=3600)
         return "postgresql"
     raise ValueError("Only SQLite and PostgreSQL SATARK databases are supported.")
 
