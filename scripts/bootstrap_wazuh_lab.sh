@@ -16,6 +16,7 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 2
 fi
 BIND_ADDRESS="${WAZUH_LAB_BIND_ADDRESS:-127.0.0.1}"
+DEST="$(python3 -c 'import os,sys; print(os.path.abspath(sys.argv[1]))' "$DEST")"
 python3 - "$BIND_ADDRESS" <<'PY'
 import ipaddress
 import sys
