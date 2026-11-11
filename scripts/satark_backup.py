@@ -103,16 +103,18 @@ def _copy_database(database_url: str, destination: Path) -> str:
         # exact credential parsed from the SQLAlchemy URL is unambiguous and is
         # never placed in the pg_dump process arguments.
         def escape_pgpass(value: str) -> str:
-            return value.replace("\\\\", "\\\\\\\\").replace(":", "\\\\:")
+            return value.replace("\\", "\\\\").replace(":", "\\:")
 
-        passfile = Path(tempfile.mkstemp(prefix="satark-pgpass-")[1])
+        passfile_fd, passfile_name = tempfile.mkstemp(prefix="satark-pgpass-")
+        passfile = Path(passfile_name)
+        os.close(passfile_fd)
         try:
             os.chmod(passfile, 0o600)
             passfile.write_text(
                 ":".join(escape_pgpass(value) for value in (
                     url.host or "*", str(url.port or "*"), url.database or "*",
                     url.username or "*", url.password or "",
-                )) + "\\n",
+                )) + "\n",
                 encoding="utf-8",
             )
             env.pop("PGPASSWORD", None)
