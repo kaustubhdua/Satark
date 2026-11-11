@@ -10,7 +10,6 @@ snapshot before changing evidence mutation semantics. Restic encrypts off-host.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import hashlib
 import hmac
 import json
@@ -57,41 +56,6 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
     drivername = "postgresql" if url.drivername.startswith("postgresql") else url.drivername
     safe_url = str(url.set(drivername=drivername, password=None, username=url.username))
     return safe_url, env
-
-
-@contextmanager
-def _pg_auth_env(url):
-    """Yield a libpq environment with a private passfile for this exact URL."""
-    _, env = _pg_env(url)
-
-    def escape_pgpass(value: str) -> str:
-        return value.replace("\\", "\\\\").replace(":", "\\:")
-
-    descriptor, filename = tempfile.mkstemp(prefix="satark-pgpass-")
-    passfile = Path(filename)
-    os.close(descriptor)
-    try:
-        os.chmod(passfile, 0o600)
-        # Match the exact endpoint used by libpq rather than relying on a
-        # wildcard host entry. This keeps credentials scoped to this backup
-        # target and avoids host-alias mismatches in CI/container environments.
-        passfile.write_text(
-            ":".join(escape_pgpass(value) for value in (
-                url.host or "*", str(url.port or "*"), url.database or "*",
-                url.username or "*", url.password or "",
-            )) + "\n",
-            encoding="utf-8",
-        )
-        # Keep the private passfile as the primary credential source. Some
-        # libpq builds used by distro-packaged pg_dump have inconsistent
-        # PGPASSFILE matching when host aliases resolve to IPv6; PGPASSWORD is
-        # scoped only to this child process and keeps backup/restore reliable.
-        env["PGPASSFILE"] = str(passfile)
-        if url.password:
-            env["PGPASSWORD"] = url.password
-        yield env
-    finally:
-        passfile.unlink(missing_ok=True)
 
 
 def _sqlite_path(url) -> Path:
