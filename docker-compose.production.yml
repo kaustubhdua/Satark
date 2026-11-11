@@ -78,29 +78,6 @@ services:
     profiles: ["backup"]
     build:
       context: .
-      dockerfile: Dockerfile.firstlight-api
-    entrypoint: ["python", "scripts/satark_backup.py"]
-    environment:
-      SATARK_BACKUP_DATABASE_URL: ${SATARK_BACKUP_DATABASE_URL:?Set the satark_backup BYPASSRLS connection URL}
-      SATARK_RESTORE_ROLE: satark_runtime
-      SATARK_EVIDENCE_DIR: /data/evidence
-      FIRSTLIGHT_RESPONSE_DB: /data/firstlight-response.sqlite3
-    volumes:
-      - satark_data:/data
-      - satark_backups:/backups
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
-    networks: [backend]
-
-  satark-backup:
-    profiles: ["backup"]
-    build:
-      context: .
       dockerfile: Dockerfile.firstlight-backup
     entrypoint: ["/bin/sh", "-lc"]
     command: |
