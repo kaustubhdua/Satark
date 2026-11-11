@@ -257,9 +257,16 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert db.scalar(select(backend.Case).where(
                 backend.Case.tenant_id == outsider_tenant_id
             )) is None
-            visible_memberships = db.scalars(select(backend.Membership)).all()
+            visible_memberships = db.scalars(select(backend.Membership).where(
+                backend.Membership.tenant_id == tenant_id
+            )).all()
             assert visible_memberships
             assert {row.user_id for row in visible_memberships} == {user_id, invitee_id}
+            # The invitee also receives a personal workspace at signup. Its
+            # membership must not be visible to an unrelated tenant member.
+            assert db.scalar(select(backend.Membership.id).where(
+                backend.Membership.tenant_id == outsider_tenant_id
+            )) is None
             db.add(backend.Case(
                 tenant_id=outsider_tenant_id, title="RLS write attempt",
                 created_by=user_id,
