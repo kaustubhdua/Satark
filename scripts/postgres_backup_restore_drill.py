@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
 import psycopg
 from psycopg import sql
 from sqlalchemy.engine import make_url
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from scripts.satark_backup import _pg_auth_env
 
