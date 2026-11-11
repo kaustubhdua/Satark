@@ -139,10 +139,10 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                 backend.Membership.tenant_id == tenant_id,
                 backend.Membership.user_id == user_id,
             ))
-            # Workspace members can view the other memberships in their own
-            # tenant; RLS must hide other tenants, not co-members.
-            assert visible_owner_membership is not None
-            assert visible_owner_membership.role == "owner"
+            # Direct table reads expose only the caller's own membership.
+            # The authorized members API separately returns co-members after
+            # checking tenant membership; raw SQL must not widen that access.
+            assert visible_owner_membership is None
             invitee_db.close()
 
             evidence = client.post("/api/evidence", data={
