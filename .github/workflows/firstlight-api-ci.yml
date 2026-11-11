@@ -220,3 +220,4 @@ jobs:
           docker run --rm --entrypoint python satark-firstlight-worker:ci -c "import firstlight_wazuh_worker, firstlight_engine, firstlight_rules"
           docker run --rm --entrypoint python satark-firstlight-investigation-worker:ci -c "import firstlight_investigation_worker, firstlight_engine, firstlight_rules, firstlight_agents, ai_provider, satark_backend"
           docker run --rm --entrypoint restic satark-firstlight-backup:ci version
+          docker run --rm --entrypoint pg_dump satark-firstlight-backup:ci --version | grep -E "pg_dump \(PostgreSQL\) 16\."
