@@ -7,6 +7,7 @@ resulting archive with an approved offline/managed key before moving it off-host
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
@@ -55,6 +56,33 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
     return safe_url, env
 
 
+@contextmanager
+def _pg_auth_env(url):
+    """Yield a libpq environment with a private passfile for this exact URL."""
+    _, env = _pg_env(url)
+
+    def escape_pgpass(value: str) -> str:
+        return value.replace("\\", "\\\\").replace(":", "\\:")
+
+    descriptor, filename = tempfile.mkstemp(prefix="satark-pgpass-")
+    passfile = Path(filename)
+    os.close(descriptor)
+    try:
+        os.chmod(passfile, 0o600)
+        passfile.write_text(
+            ":".join(escape_pgpass(value) for value in (
+                url.host or "*", str(url.port or "*"), url.database or "*",
+                url.username or "*", url.password or "",
+            )) + "\n",
+            encoding="utf-8",
+        )
+        env.pop("PGPASSWORD", None)
+        env["PGPASSFILE"] = str(passfile)
+        yield env
+    finally:
+        passfile.unlink(missing_ok=True)
+
+
 def _sqlite_path(url) -> Path:
     if not url.database or url.database == ":memory:":
         raise ValueError("A file-backed SQLite database is required for backups.")
@@ -97,34 +125,12 @@ def _copy_database(database_url: str, destination: Path) -> str:
         _require_postgres_bypass_rls(database_url, "backup")
         if not shutil.which("pg_dump"):
             raise RuntimeError("pg_dump is required to back up PostgreSQL.")
-        safe_url, env = _pg_env(url)
-        # libpq's PGPASSWORD environment handling can be affected by inherited
-        # runner/container variables. Use a private, short-lived passfile so the
-        # exact credential parsed from the SQLAlchemy URL is unambiguous and is
-        # never placed in the pg_dump process arguments.
-        def escape_pgpass(value: str) -> str:
-            return value.replace("\\", "\\\\").replace(":", "\\:")
-
-        passfile_fd, passfile_name = tempfile.mkstemp(prefix="satark-pgpass-")
-        passfile = Path(passfile_name)
-        os.close(passfile_fd)
-        try:
-            os.chmod(passfile, 0o600)
-            passfile.write_text(
-                ":".join(escape_pgpass(value) for value in (
-                    url.host or "*", str(url.port or "*"), url.database or "*",
-                    url.username or "*", url.password or "",
-                )) + "\n",
-                encoding="utf-8",
-            )
-            env.pop("PGPASSWORD", None)
-            env["PGPASSFILE"] = str(passfile)
+        safe_url, _ = _pg_env(url)
+        with _pg_auth_env(url) as env:
             subprocess.run(
                 ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination), safe_url],
                 env=env, check=True, timeout=3600,
             )
-        finally:
-            passfile.unlink(missing_ok=True)
         return "postgresql"
     raise ValueError("Only SQLite and PostgreSQL SATARK databases are supported.")
 
@@ -424,12 +430,13 @@ def restore_backup(
             os.replace(staged_db, target_db)
             os.chmod(target_db, 0o600)
         else:
-            safe_url, env = _pg_env(target_url)
-            subprocess.run(
-                ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl", "--dbname", safe_url,
-                 str(work / "database.dump")],
-                env=env, check=True, timeout=3600,
-            )
+            safe_url, _ = _pg_env(target_url)
+            with _pg_auth_env(target_url) as env:
+                subprocess.run(
+                    ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl", "--dbname", safe_url,
+                     str(work / "database.dump")],
+                    env=env, check=True, timeout=3600,
+                )
             restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
             if restore_role:
                 if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
