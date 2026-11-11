@@ -24,6 +24,7 @@ def database(monkeypatch, tmp_path):
     yield engine
     backend.Base.metadata.drop_all(engine)
     engine.dispose()
+    backend.SessionLocal.configure(bind=backend.engine)
 
 
 def seed_job():
@@ -46,7 +47,8 @@ def seed_job():
     return result
 
 
-def test_worker_claims_and_persists_investigation(database):
+def test_worker_claims_and_persists_investigation(database, monkeypatch):
+    monkeypatch.delenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", raising=False)
     tenant_id, case_id, user_id, job_id = seed_job()
     worker = InvestigationJobWorker()
     outcome = worker.run_once()
@@ -59,6 +61,63 @@ def test_worker_claims_and_persists_investigation(database):
     assert len(job.result_sha256) == 64
     assert report is not None
     assert report.snapshot_sha256 == job.result_sha256
+    assert job.result["agent_analysis"]["mode"] == "deterministic_only"
+    db.close()
+
+
+def test_worker_persists_optional_local_agent_results_without_replacing_deterministic_findings(database, monkeypatch):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    root = Path(os.environ["SATARK_EVIDENCE_DIR"])
+    object_dir = root / tenant_id / case_id
+    object_dir.mkdir(parents=True, exist_ok=True)
+    raw = b'{"event_id":"agent-evidence-1","timestamp":"2026-11-09T10:00:00Z","source":"test","kind":"auth","summary":"Test login event"}'
+    object_path = object_dir / "agent-evidence.json"
+    object_path.write_bytes(raw)
+    evidence_id = "55555555-5555-4555-8555-555555555555"
+    db = backend.SessionLocal()
+    db.add(backend.Evidence(
+        id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
+        source_label="Test", event_kind="authentication", observed_at=backend.utcnow(),
+        summary="Test login event", source_sha256=hashlib.sha256(raw).hexdigest(),
+        size_bytes=len(raw), content_type="application/json",
+        original_filename="agent-evidence.json", metadata_json={}, created_by=user_id,
+    ))
+    db.commit()
+    db.close()
+    observed = []
+
+    def fake_agents(evidence):
+        observed.extend(evidence)
+        return {
+            "enabled": True, "mode": "independent_local_model_agents",
+            "agents": [{"agent_id": "timeline_analyst", "status": "ok", "summary": "Advisory only."}],
+            "limitations": ["Mocked local model result."],
+        }
+
+    monkeypatch.setattr("firstlight_investigation_worker.run_independent_agents", fake_agents)
+    outcome = InvestigationJobWorker().run_once()
+    assert outcome["status"] == "succeeded"
+    assert len(observed) == 1
+    assert observed[0]["id"] == evidence_id
+    db = backend.SessionLocal()
+    job = db.get(backend.InvestigationJob, job_id)
+    assert job.result["agent_analysis"]["mode"] == "independent_local_model_agents"
+    assert job.result["investigation"]["findings"] is not None
+    assert "No live response action was executed." in job.result["limitations"]
+    db.close()
+
+
+def test_worker_keeps_deterministic_result_when_local_agents_fail(database, monkeypatch):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    monkeypatch.setenv("FIRSTLIGHT_MODEL_AGENTS_ENABLED", "true")
+    monkeypatch.setattr("firstlight_investigation_worker.run_independent_agents",
+                        lambda _evidence: (_ for _ in ()).throw(RuntimeError("local Ollama unavailable")))
+    outcome = InvestigationJobWorker().run_once()
+    assert outcome["status"] == "succeeded"
+    db = backend.SessionLocal()
+    job = db.get(backend.InvestigationJob, job_id)
+    assert job.result["agent_analysis"]["mode"] == "agent_error"
+    assert job.result["investigation"] is not None
     db.close()
 
 

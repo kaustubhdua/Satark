@@ -29,6 +29,7 @@ from firstlight_wazuh_worker import WazuhSatarkWorker
 @pytest.mark.skipif(not os.getenv("SATARK_TEST_POSTGRES_URL"), reason="PostgreSQL integration URL is not configured")
 def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, tmp_path):
     url = os.environ["SATARK_TEST_POSTGRES_URL"]
+    original_engine = backend.engine
     engine = create_engine(url, pool_pre_ping=True)
     backend.SessionLocal.configure(bind=engine)
     backend.Base.metadata.drop_all(engine)
@@ -49,8 +50,8 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
         """)).all()
         assert len(protected) == 12
         assert all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
-    # Exercise RLS as a non-owner, non-superuser application role. PostgreSQL
-    # superusers bypass RLS even when FORCE ROW LEVEL SECURITY is enabled.
+    # Exercise RLS through a real non-superuser login. SET ROLE from a
+    # superuser connection is not an adequate simulation of the API runtime.
     with engine.begin() as connection:
         connection.exec_driver_sql("""
             DO $body$
@@ -59,22 +60,20 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                     EXECUTE 'DROP OWNED BY satark_app_test';
                     EXECUTE 'DROP ROLE satark_app_test';
                 END IF;
-                EXECUTE 'CREATE ROLE satark_app_test NOLOGIN';
+                EXECUTE 'CREATE ROLE satark_app_test LOGIN PASSWORD ''satark-app-test-password''';
             END
             $body$
         """)
+        connection.exec_driver_sql("GRANT CONNECT ON DATABASE satark_test TO satark_app_test")
         connection.exec_driver_sql("GRANT USAGE ON SCHEMA public TO satark_app_test")
         connection.exec_driver_sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO satark_app_test")
+        connection.exec_driver_sql("GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO satark_app_test")
 
-    def use_application_role(dbapi_connection, _connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("SET ROLE satark_app_test")
-        cursor.close()
-
-    event.listen(engine, "connect", use_application_role)
-    engine.dispose()
-    monkeypatch.setattr(backend, "engine", engine)
-    monkeypatch.setattr(backend, "DB_URL", url)
+    app_url = make_url(url).set(username="satark_app_test", password="satark-app-test-password")
+    app_engine = create_engine(app_url, pool_pre_ping=True)
+    backend.SessionLocal.configure(bind=app_engine)
+    monkeypatch.setattr(backend, "engine", app_engine)
+    monkeypatch.setattr(backend, "DB_URL", app_url.render_as_string(hide_password=False))
     try:
         with TestClient(app, base_url="http://testserver") as client:
             readiness = client.get("/api/health/storage")
@@ -136,10 +135,14 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             owner_db.close()
             invitee_db = backend.SessionLocal()
             backend.set_rls_user_context(invitee_db, invitee_id)
-            assert invitee_db.scalar(select(backend.Membership).where(
+            visible_owner_membership = invitee_db.scalar(select(backend.Membership).where(
                 backend.Membership.tenant_id == tenant_id,
                 backend.Membership.user_id == user_id,
-            )) is None
+            ))
+            # Direct table reads expose only the caller's own membership.
+            # The authorized members API separately returns co-members after
+            # checking tenant membership; raw SQL must not widen that access.
+            assert visible_owner_membership is None
             invitee_db.close()
 
             evidence = client.post("/api/evidence", data={
@@ -253,9 +256,12 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert db.scalar(select(backend.Case).where(
                 backend.Case.tenant_id == outsider_tenant_id
             )) is None
-            visible_memberships = db.scalars(select(backend.Membership)).all()
-            assert visible_memberships
-            assert all(row.user_id == user_id for row in visible_memberships)
+            visible_memberships = db.scalars(select(backend.Membership).where(
+                backend.Membership.tenant_id == tenant_id
+            )).all()
+            # The table policy is deliberately self-only, even inside a tenant.
+            # Co-member enumeration is available only through the authorized API.
+            assert {row.user_id for row in visible_memberships} == {user_id}
             db.add(backend.Case(
                 tenant_id=outsider_tenant_id, title="RLS write attempt",
                 created_by=user_id,
@@ -275,10 +281,10 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert verify_backup(backup_archive)["format"] == "satark-backup-v1"
             target_name = "satark_restore_" + uuid.uuid4().hex[:12]
             admin_url = make_url(url).set(drivername="postgresql", database="postgres")
-            target_url = str(make_url(url).set(database=target_name))
+            target_url = make_url(url).set(database=target_name).render_as_string(hide_password=False)
             target_engine = None
             try:
-                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
                     admin.execute(f'CREATE DATABASE "{target_name}"')
                 restored_evidence = tmp_path / "restored-postgres-evidence"
                 restored_manifest = restore_backup(backup_archive, target_url, restored_evidence)
@@ -294,18 +300,37 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             finally:
                 if target_engine is not None:
                     target_engine.dispose()
-                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
                     admin.execute(
                         "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()",
                         (target_name,),
                     )
                     admin.execute(f'DROP DATABASE IF EXISTS "{target_name}"')
     finally:
-        event.remove(engine, "connect", use_application_role)
+        app_engine.dispose()
+        backend.SessionLocal.configure(bind=original_engine)
         engine.dispose()
-        backend.Base.metadata.drop_all(engine)
-        with engine.begin() as connection:
-            connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
-            connection.exec_driver_sql("DROP OWNED BY satark_app_test")
-            connection.exec_driver_sql("DROP ROLE IF EXISTS satark_app_test")
-        engine.dispose()
+        # TestClient/worker teardown can leave an idle PostgreSQL session
+        # holding a relation lock. This database is dedicated to this CI job;
+        # terminate its remaining sessions before dropping the test schema.
+        admin_url = make_url(url).set(drivername="postgresql", database="postgres")
+        test_database = make_url(url).database
+        with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
+            admin.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = %s AND pid <> pg_backend_pid()",
+                (test_database,),
+            )
+        cleanup_engine = create_engine(
+            url,
+            pool_pre_ping=True,
+            connect_args={"options": "-c lock_timeout=5s -c statement_timeout=30s"},
+        )
+        try:
+            backend.Base.metadata.drop_all(cleanup_engine)
+            with cleanup_engine.begin() as connection:
+                connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+                connection.exec_driver_sql("DROP OWNED BY satark_app_test")
+                connection.exec_driver_sql("DROP ROLE IF EXISTS satark_app_test")
+        finally:
+            cleanup_engine.dispose()

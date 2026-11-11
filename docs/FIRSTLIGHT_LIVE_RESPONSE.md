@@ -1,58 +1,49 @@
-# FIRSTLIGHT live response integrations
+# FIRSTLIGHT Wazuh Active Response
 
-## Scope
+## Current integration
 
-SATARK includes an opt-in Microsoft integration adapter for:
-- Microsoft Defender for Endpoint device isolation.
-- Microsoft Entra ID session revocation for a named user.
+FIRSTLIGHT uses Wazuh 4.14.x as its only endpoint-response provider. The lab bootstrap pins 4.14.10. There is no Microsoft Defender or Entra integration, SDK, tenant configuration, or runtime dependency.
 
-These are real tenant-side operations when configured with valid Microsoft app credentials and permissions. They are **not enabled by default**, are not wired to automatic AI decisions, and have not been live-tested against a tenant by this repository change. No credentials are included.
+The authenticated case workspace is backed by the durable SQLite response ledger. It supports two fixed Wazuh built-in Active Response commands:
 
-## Required server-side configuration
+- `wazuh.block_ip` → Wazuh `firewall-drop`, with one validated IPv4 address.
+- `wazuh.disable_account` → Wazuh `disable-account`, with one validated local account name.
 
-Set these only in the trusted server/host secret manager:
-- `SATARK_ENABLE_LIVE_RESPONSE=true` (otherwise every action fails closed)
-- `MICROSOFT_TENANT_ID`
-- `MICROSOFT_CLIENT_ID`
-- `MICROSOFT_CLIENT_SECRET`
+The API never accepts arbitrary shell commands, script names, command arguments, agent discovery, or all-agent execution. Before submission, the adapter reads `/manager/info` and refuses to send commands unless the Manager reports version 4.14.x. Wazuh 5.x is not supported by this adapter because its Active Response architecture removed the 4.x `PUT /active-response` endpoint. It submits only to a single explicitly allowlisted Wazuh agent ID.
 
-The app registration must be granted the least-privilege Microsoft API permissions and admin consent required by the target action. Defender device isolation requires the Microsoft Defender for Endpoint `Machine.Isolate` permission and an eligible device. Entra session revocation requires `User.RevokeSessions.All`. Review the current vendor documentation and your tenant's role/device-group policies before enabling.
+## Required server configuration
+
+Set these only in the trusted FIRSTLIGHT API runtime:
+
+- `SATARK_ENABLE_LIVE_RESPONSE=true` — explicit opt-in; default is false.
+- `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private Wazuh Manager API base URL, normally HTTPS port 55000.
+- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` and `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege Wazuh API account.
+- `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional path to the private CA certificate; TLS verification remains enabled.
+- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — comma-separated numeric IDs of disposable lab agents only.
+- `FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP=true` — accepted only for localhost development; never use it for a network endpoint.
+
+The response identity must have only the Wazuh API permissions needed to submit Active Response. The disable-account action locks a local account on supported Linux/macOS agents; it does not terminate existing sessions and must never target root. Keep the API private and do not publish port 55000 to the public internet.
+
+## Human controls
+
+- The request is bound to one tenant, case, action, exact agent ID, validated parameters, reason, idempotency key and expiry.
+- Requester cannot approve or deny their own request.
+- A third operator distinct from requester and approver executes the action.
+- The server re-checks case membership, feature flag, agent allowlist, fixed action and exact confirmation.
+- Confirmation strings are `CONFIRM BLOCK_IP <agent-id>` or `CONFIRM DISABLE_ACCOUNT <agent-id>`.
+- The action is claimed once in the durable ledger before the provider call. Replays are rejected.
+- A Wazuh API acceptance is recorded as `submitted`, never as verified containment.
+- An uncertain network/process outcome becomes `unknown` and is not retried automatically.
+- A separate operator records a verification attestation only after checking the agent and endpoint state independently.
+
+## Operational safety
+
+Use disposable lab endpoints. Configure and test Wazuh's own Active Response command definitions and timeout/reversal behavior before enabling this feature. In particular, `firewall-drop` and `disable-account` have operational consequences and may interrupt network or user access. Keep out-of-band administrative access and a documented recovery route. Never add production agents to the response allowlist until an independent security review approves the policy.
+
+## Verification status
+
+Automated tests use a mocked Wazuh Manager API and validate request shape, fixed command allowlisting, agent scoping, TLS policy, explicit confirmation and the durable four-eyes ledger. These tests do not prove that a real lab manager accepted or executed a command. Record real lab API responses, endpoint-side state, recovery behavior and audit evidence before enabling live response outside a disposable environment.
 
 Official references:
-- https://learn.microsoft.com/en-us/defender-endpoint/api/isolate-machine
-- https://learn.microsoft.com/en-us/graph/api/user-revokesigninsessions
-
-## Human approval and safety controls
-
-- Live response is disabled unless the explicit server-side feature flag is enabled.
-- Every call requires an exact, action- and target-bound confirmation string.
-- The operator must provide a target ID/UPN and a reason; no target is inferred from AI output.
-- Requests have a finite timeout, redirects are rejected, provider response bodies are not surfaced to the UI, and target values are URL-encoded.
-- The API response means the provider accepted/submitted the action, not that containment has completed. Verify the machine action or user session state in the vendor console.
-- Never expose client secrets to browser code or commit them to the repository.
-- Start with a dedicated test tenant and a disposable test endpoint/account. Keep a documented recovery/unisolation procedure and independent administrator access.
-
-## What remains unimplemented
-
-- No firewall/network appliance block action is implemented. Defender device isolation is endpoint containment, not a universal network firewall rule.
-- No live action is triggered from FIRSTLIGHT's current simulated approval UI yet.
-- No immutable external audit anchor, durable case store, or independently timestamped evidence manifest is implemented.
-- No tenant has been connected or live action verified in this change.
-
-Before presenting this as a live-response product, integrate these adapters into an authenticated operator workflow, store approvals and results in durable append-only storage, independently anchor audit manifests, add integration tests in a disposable tenant, and exercise rollback/unisolation.
-
-
-## Operator CLI for explicit live actions
-
-The repository also includes `scripts/firstlight_live_response.py`, a direct operator path to the guarded adapters above. It is intentionally not called automatically by the investigation agent.
-
-Example (only in an authorized test tenant with a disposable device/account and approved app permissions):
-
-```bash
-python scripts/firstlight_live_response.py --action isolate-device --target '<exact-defender-machine-id>' --reason 'Case FL-123: approved containment' --execute-live-action
-python scripts/firstlight_live_response.py --action revoke-user-sessions --target '<exact-user-id-or-upn>' --reason 'Case FL-123: approved session revocation' --execute-live-action
-```
-
-The command requires an interactive terminal, the explicit `--execute-live-action` flag, `SATARK_ENABLE_LIVE_RESPONSE=true` in the trusted runtime environment, server-side Microsoft credentials, a non-empty reason, and an exact confirmation typed at the prompt. A mismatch or non-interactive invocation makes no provider call. Never use a real user or device as a test target without the tenant owner's authorization and a recovery plan.
-
-The command reports provider submission, not completion. Verify the resulting machine action or session state in the Microsoft console. The CLI does not currently persist the approval/action result into the durable FIRSTLIGHT case audit store, and the web approval UI is still not wired to these adapters. This is an explicit remaining production gate, not a completed integration.
+- Wazuh Server API — Active Response: https://documentation.wazuh.com/4.14/user-manual/api/reference.html
+- Wazuh Active Response module: https://github.com/wazuh/wazuh/tree/master/src/active-response

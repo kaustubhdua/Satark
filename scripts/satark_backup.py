@@ -1,16 +1,21 @@
 """Create, verify, and restore a SATARK database + private-evidence backup.
 
-Quiesce API/worker writes before creating a backup so the database snapshot and
-filesystem evidence archive represent the same point in time. Encrypt the
-resulting archive with an approved offline/managed key before moving it off-host.
+PostgreSQL dumps use an MVCC snapshot. Evidence objects are immutable, atomically
+written before their metadata commits, and retained after ambiguous commit
+outcomes; the later filesystem archive can contain harmless orphan objects but
+must never omit an object referenced by the database snapshot. Preserve this
+write-ordering invariant, or quiesce writers/use a coordinated filesystem
+snapshot before changing evidence mutation semantics. Restic encrypts off-host.
 """
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -52,6 +57,32 @@ def _pg_env(url) -> tuple[str, dict[str, str]]:
     drivername = "postgresql" if url.drivername.startswith("postgresql") else url.drivername
     safe_url = str(url.set(drivername=drivername, password=None, username=url.username))
     return safe_url, env
+
+
+@contextmanager
+def _pg_auth_env(url):
+    """Yield a private passfile for callers that explicitly need file-based libpq auth."""
+    _, env = _pg_env(url)
+
+    def escape_pgpass(value: str) -> str:
+        return value.replace("\\", "\\\\").replace(":", "\\:")
+
+    descriptor, filename = tempfile.mkstemp(prefix="satark-pgpass-")
+    passfile = Path(filename)
+    os.close(descriptor)
+    try:
+        os.chmod(passfile, 0o600)
+        passfile.write_text(
+            ":".join(escape_pgpass(value) for value in (
+                url.host or "*", str(url.port or "*"), url.database or "*",
+                url.username or "*", url.password or "",
+            )) + "\n",
+            encoding="utf-8",
+        )
+        env["PGPASSFILE"] = str(passfile)
+        yield env
+    finally:
+        passfile.unlink(missing_ok=True)
 
 
 def _sqlite_path(url) -> Path:
@@ -96,11 +127,21 @@ def _copy_database(database_url: str, destination: Path) -> str:
         _require_postgres_bypass_rls(database_url, "backup")
         if not shutil.which("pg_dump"):
             raise RuntimeError("pg_dump is required to back up PostgreSQL.")
-        safe_url, env = _pg_env(url)
-        subprocess.run(
-            ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination), safe_url],
-            env=env, check=True, timeout=3600,
-        )
+        command = ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination)]
+        if url.host:
+            command.extend(["--host", url.host])
+        if url.port:
+            command.extend(["--port", str(url.port)])
+        if url.username:
+            command.extend(["--username", url.username])
+        command.extend(["--dbname", url.database])
+        # libpq treats a missing PGPASSFILE differently from an empty one.
+        # The backup helper creates a private, mode-0600 passfile so credentials
+        # are never placed on the process command line or inherited as PGPASSWORD.
+        _, env = _pg_env(url)
+        # libpq's PGPASSWORD is inherited only by this short-lived pg_dump
+        # process; the secret is never placed in argv or written to disk.
+        subprocess.run(command, env=env, check=True, timeout=3600)
         return "postgresql"
     raise ValueError("Only SQLite and PostgreSQL SATARK databases are supported.")
 
@@ -122,7 +163,25 @@ def _archive_evidence(evidence_dir: Path, destination: Path) -> None:
                 archive.add(item, arcname=item.relative_to(root).as_posix(), recursive=False)
 
 
-def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[str, Any]:
+def _copy_response_ledger(source_path: Path, destination: Path) -> bool:
+    raw_path = source_path.expanduser()
+    if raw_path.is_symlink():
+        raise ValueError("FIRSTLIGHT response ledger must not be a symbolic link.")
+    if not raw_path.exists():
+        return False
+    source = raw_path.resolve()
+    if not source.is_file():
+        raise ValueError("FIRSTLIGHT response ledger must be a regular file.")
+    with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src:
+        with sqlite3.connect(destination) as dst:
+            src.backup(dst)
+            result = dst.execute("PRAGMA integrity_check").fetchone()
+            if not result or result[0] != "ok":
+                raise ValueError("FIRSTLIGHT response ledger failed SQLite integrity_check.")
+    return True
+
+
+def create_backup(output: Path, database_url: str, evidence_dir: Path, response_ledger_path: Path | None = None) -> dict[str, Any]:
     output = output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
@@ -138,15 +197,21 @@ def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[s
         database_file.rename(work / database_name)
         evidence_file = work / "evidence.tar.gz"
         _archive_evidence(evidence_dir, evidence_file)
+        ledger_source = response_ledger_path or (Path(os.environ["FIRSTLIGHT_RESPONSE_DB"]) if os.getenv("FIRSTLIGHT_RESPONSE_DB") else None)
+        ledger_name = "firstlight-response.sqlite3"
+        include_ledger = bool(ledger_source and _copy_response_ledger(ledger_source, work / ledger_name))
+        files = {
+            database_name: sha256_file(work / database_name),
+            "evidence.tar.gz": sha256_file(evidence_file),
+        }
+        if include_ledger:
+            files[ledger_name] = sha256_file(work / ledger_name)
         manifest = {
             "format": "satark-backup-v1",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "database_engine": database_kind,
             "evidence_root": str(evidence_root),
-            "files": {
-                database_name: sha256_file(work / database_name),
-                "evidence.tar.gz": sha256_file(evidence_file),
-            },
+            "files": files,
             "restore_note": "Restore only into an empty target database and evidence directory.",
         }
         manifest_file = work / "manifest.json"
@@ -154,7 +219,11 @@ def create_backup(output: Path, database_url: str, evidence_dir: Path) -> dict[s
         temporary_output = output.with_name(output.name + ".tmp")
         try:
             with tarfile.open(temporary_output, "w:gz") as archive:
-                for name in (database_name, "evidence.tar.gz", "manifest.json"):
+                archive_names = [database_name, "evidence.tar.gz"]
+                if include_ledger:
+                    archive_names.append(ledger_name)
+                archive_names.append("manifest.json")
+                for name in archive_names:
                     archive.add(work / name, arcname=name, recursive=False)
             os.chmod(temporary_output, 0o600)
             os.replace(temporary_output, output)
@@ -185,7 +254,8 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
             database_name = "database.dump"
         else:
             raise ValueError("Backup database file is missing.")
-        if set(by_name) != expected_names | {database_name}:
+        optional_ledger = {"firstlight-response.sqlite3"} if "firstlight-response.sqlite3" in by_name else set()
+        if set(by_name) != expected_names | {database_name} | optional_ledger:
             raise ValueError("Backup contains unexpected files.")
         manifest_raw = archive.extractfile(by_name["manifest.json"])
         if manifest_raw is None:
@@ -200,9 +270,10 @@ def verify_backup(archive_path: Path) -> dict[str, Any]:
             raise ValueError("Backup evidence root is invalid.")
         if (manifest["database_engine"] == "sqlite") != (database_name == "database.sqlite"):
             raise ValueError("Backup database file does not match its manifest.")
-        if set(manifest.get("files", {})) != {database_name, "evidence.tar.gz"}:
+        expected_files = {database_name, "evidence.tar.gz"} | optional_ledger
+        if set(manifest.get("files", {})) != expected_files:
             raise ValueError("Backup manifest file inventory is invalid.")
-        for name in (database_name, "evidence.tar.gz"):
+        for name in sorted(expected_files):
             source = archive.extractfile(by_name[name])
             if source is None:
                 raise ValueError(f"Backup file cannot be read: {name}")
@@ -309,6 +380,7 @@ def restore_backup(
     archive_path: Path,
     target_database_url: str,
     target_evidence_dir: Path,
+    target_response_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     manifest = verify_backup(archive_path)
     raw_evidence_target = target_evidence_dir.expanduser()
@@ -318,6 +390,13 @@ def restore_backup(
     if target_evidence_dir.exists() and (not target_evidence_dir.is_dir() or any(target_evidence_dir.iterdir())):
         raise FileExistsError("Target evidence directory must be empty.")
     target_evidence_dir.parent.mkdir(parents=True, exist_ok=True)
+    ledger_in_archive = "firstlight-response.sqlite3" in manifest.get("files", {})
+    response_target = target_response_ledger_path or (Path(os.environ["FIRSTLIGHT_RESPONSE_DB"]) if os.getenv("FIRSTLIGHT_RESPONSE_DB") else None)
+    if ledger_in_archive:
+        if response_target is None:
+            raise ValueError("Backup contains a FIRSTLIGHT response ledger; provide --response-ledger or set FIRSTLIGHT_RESPONSE_DB.")
+        if response_target.expanduser().is_symlink() or response_target.expanduser().exists():
+            raise FileExistsError("Target FIRSTLIGHT response ledger must not already exist.")
     target_url = make_url(target_database_url)
     if manifest["database_engine"] == "sqlite":
         target_db = _sqlite_target_path(target_url)
@@ -335,7 +414,10 @@ def restore_backup(
     with tempfile.TemporaryDirectory(prefix="satark-restore-", dir=target_evidence_dir.parent) as temporary:
         work = Path(temporary)
         with tarfile.open(archive_path, "r:gz") as archive:
-            for name in ("database.sqlite" if manifest["database_engine"] == "sqlite" else "database.dump", "evidence.tar.gz"):
+            restore_names = ["database.sqlite" if manifest["database_engine"] == "sqlite" else "database.dump", "evidence.tar.gz"]
+            if ledger_in_archive:
+                restore_names.append("firstlight-response.sqlite3")
+            for name in restore_names:
                 source = archive.extractfile(name)
                 if source is None:
                     raise ValueError(f"Backup file cannot be read: {name}")
@@ -354,20 +436,48 @@ def restore_backup(
             os.replace(staged_db, target_db)
             os.chmod(target_db, 0o600)
         else:
-            safe_url, env = _pg_env(target_url)
-            subprocess.run(
-                ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl", "--dbname", safe_url,
-                 str(work / "database.dump")],
-                env=env, check=True, timeout=3600,
-            )
+            command = ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl"]
+            if target_url.host:
+                command.extend(["--host", target_url.host])
+            if target_url.port:
+                command.extend(["--port", str(target_url.port)])
+            if target_url.username:
+                command.extend(["--username", target_url.username])
+            command.extend(["--dbname", target_url.database, str(work / "database.dump")])
+            _, env = _pg_env(target_url)
+            subprocess.run(command, env=env, check=True, timeout=3600)
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
+        if ledger_in_archive and response_target is not None:
+            response_target = response_target.expanduser().resolve()
+            response_target.parent.mkdir(parents=True, exist_ok=True)
+            staged_ledger = work / "firstlight-response.sqlite3"
+            with sqlite3.connect(f"file:{staged_ledger}?mode=ro", uri=True) as ledger_db:
+                integrity = ledger_db.execute("PRAGMA integrity_check").fetchone()
+                if not integrity or integrity[0] != "ok":
+                    raise ValueError("Restored FIRSTLIGHT response ledger failed integrity_check.")
+            os.chmod(staged_ledger, 0o600)
+            os.replace(staged_ledger, response_target)
+            os.chmod(response_target, 0o600)
     source_root_value = manifest.get("evidence_root")
     source_root = Path(source_root_value) if source_root_value else None
     manifest["evidence_objects_rebased"] = _rebase_evidence_paths(
         target_database_url, source_root, target_evidence_dir
     )
+    # Rebase while the restore credential still owns the restored tables and
+    # retains BYPASSRLS. Only then transfer ownership to the unprivileged runtime
+    # role; SET ROLE runtime here would re-enable forced RLS and block the repair.
+    restore_role = os.getenv("SATARK_RESTORE_ROLE", "").strip()
+    if manifest["database_engine"] == "postgresql" and restore_role:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", restore_role):
+            raise ValueError("SATARK_RESTORE_ROLE is not a valid PostgreSQL role name.")
+        engine = create_engine(target_database_url, pool_pre_ping=True)
+        try:
+            with engine.begin() as connection:
+                connection.execute(text(f"REASSIGN OWNED BY satark_backup TO {restore_role}"))
+        finally:
+            engine.dispose()
     return manifest
 
 
@@ -391,6 +501,7 @@ def main() -> int:
     restore.add_argument("archive", type=Path)
     restore.add_argument("--database-url", default=os.getenv("SATARK_BACKUP_DATABASE_URL") or os.getenv("SATARK_DATABASE_URL", ""))
     restore.add_argument("--evidence-dir", type=Path, default=Path(os.getenv("SATARK_EVIDENCE_DIR", "./data/evidence")))
+    restore.add_argument("--response-ledger", type=Path, default=Path(os.environ["FIRSTLIGHT_RESPONSE_DB"]) if os.getenv("FIRSTLIGHT_RESPONSE_DB") else None)
     args = parser.parse_args()
     try:
         if args.command == "create":
@@ -405,7 +516,7 @@ def main() -> int:
         else:
             if not args.database_url:
                 raise ValueError("Set SATARK_DATABASE_URL or pass --database-url.")
-            manifest = restore_backup(args.archive, args.database_url, args.evidence_dir)
+            manifest = restore_backup(args.archive, args.database_url, args.evidence_dir, args.response_ledger)
             print(json.dumps({"status": "restored", "manifest": manifest}, indent=2))
         return 0
     except Exception as exc:

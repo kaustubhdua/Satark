@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import io
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -633,3 +637,51 @@ def test_storage_health_fails_when_mandatory_security_controls_are_misconfigured
     assert response.json()["security_controls"] == {
         "mandatory_mfa": True, "mandatory_email_verification": True,
     }
+
+def test_evidence_bytes_survive_ambiguous_commit_acknowledgement(client, monkeypatch, tmp_path):
+    user_id = register(client, "ambiguous-commit@example.test")
+    tenant_id = client.post("/api/workspaces", json={"name": "Commit recovery"}, headers=origin()).json()["id"]
+    case = client.post("/api/cases", json={
+        "tenant_id": tenant_id, "title": "Evidence commit recovery",
+    }, headers=origin()).json()["case"]
+    evidence_root = tmp_path / "evidence"
+    monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(evidence_root))
+    db = backend.SessionLocal()
+    user = db.get(backend.User, user_id)
+    assert user is not None
+    original_commit = backend.Session.commit
+
+    def commit_then_lose_acknowledgement(session):
+        original_commit(session)
+        raise RuntimeError("simulated lost commit acknowledgement")
+
+    upload = backend.UploadFile(filename="event.txt", file=io.BytesIO(b"durable evidence bytes"))
+    with monkeypatch.context() as patch:
+        patch.setattr(backend.Session, "commit", commit_then_lose_acknowledgement)
+        with pytest.raises(RuntimeError, match="lost commit acknowledgement"):
+            asyncio.run(backend.upload_evidence(
+                tenant_id=tenant_id,
+                case_id=case["id"],
+                source_label="commit recovery test",
+                event_kind="test",
+                observed_at="2026-11-11T00:00:00+00:00",
+                summary="Verify immutable bytes survive uncertain commit outcomes",
+                file=upload,
+                user=user,
+                db=db,
+            ))
+    db.close()
+
+    verify_db = backend.SessionLocal()
+    try:
+        row = verify_db.scalar(backend.select(backend.Evidence).where(
+            backend.Evidence.tenant_id == tenant_id,
+            backend.Evidence.case_id == case["id"],
+            backend.Evidence.source_label == "commit recovery test",
+        ))
+        assert row is not None
+        assert Path(row.object_key).is_file()
+        assert Path(row.object_key).read_bytes() == b"durable evidence bytes"
+    finally:
+        verify_db.close()
+

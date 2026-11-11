@@ -1724,7 +1724,10 @@ async def upload_evidence(
         raise HTTPException(409, "Identical evidence already exists in this case.")
     except Exception:
         db.rollback()
-        object_path.unlink(missing_ok=True)
+        # A transport failure can occur after PostgreSQL committed but before
+        # the client received its acknowledgement. Keep the immutable object:
+        # an orphan is recoverable, while deleting a committed object's bytes
+        # would create evidence metadata that points to missing content.
         raise
     return {"evidence": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "source_label": row.source_label, "event_kind": row.event_kind, "observed_at": row.observed_at.isoformat(), "summary": row.summary, "source_sha256": digest, "size_bytes": row.size_bytes, "content_type": row.content_type, "original_filename": name, "created_by": user.id, "created_at": row.created_at.isoformat()}}
 
@@ -1777,7 +1780,10 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
         db.commit()
     except Exception:
         db.rollback()
-        object_path.unlink(missing_ok=True)
+        # A transport failure can occur after PostgreSQL committed but before
+        # the client received its acknowledgement. Keep the immutable object:
+        # an orphan is recoverable, while deleting a committed object's bytes
+        # would create evidence metadata that points to missing content.
         raise
     return {"evidence": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id,
         "source_label": source, "event_kind": kind, "observed_at": observed.isoformat(),

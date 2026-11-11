@@ -1,87 +1,57 @@
-"""Explicitly approved Microsoft Defender / Entra response CLI.
+"""Preview a Wazuh response request; live execution is case-approval-only.
 
-This tool can perform real, high-impact tenant actions. It never infers targets
-from findings and requires a separate opt-in flag, server-side feature flag,
-interactive terminal, reason, and exact target-bound confirmation.
+This CLI deliberately cannot call the Wazuh Manager API. Submit and execute
+responses through the authenticated FIRSTLIGHT case workspace so tenant
+membership, four-eyes approval, a third executor and the durable audit ledger
+cannot be bypassed.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 
-from integrations.response_actions import (
-    ResponseIntegrationError,
-    isolate_defender_device,
-    live_response_enabled,
-    revoke_entra_user_sessions,
-)
+from integrations.response_actions import ResponseIntegrationError, _validate_payload
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--action", required=True, choices=("isolate-device", "revoke-user-sessions"))
-    parser.add_argument("--target", required=True, help="Exact Defender device ID or Entra user ID/UPN")
-    parser.add_argument("--reason", required=True, help="Incident/case reference and justification; 1–1000 characters")
-    parser.add_argument("--isolation-type", choices=("Full", "Selective", "UnManagedDevice"), default="Full")
-    parser.add_argument("--execute-live-action", action="store_true", help="Required second opt-in; without it, no provider request is made")
+    parser.add_argument("--action", required=True, choices=("block-ip", "disable-account"))
+    parser.add_argument("--agent-id", required=True, help="Exact numeric Wazuh agent ID")
+    parser.add_argument("--ip-address", help="IPv4 address for block-ip")
+    parser.add_argument("--username", help="Local account name for disable-account (Linux/macOS allowlist only)")
+    parser.add_argument("--reason", required=True, help="Case reference and justification; 1–1000 characters")
     args = parser.parse_args(argv)
 
-    if not args.execute_live_action:
-        print("No action performed. Re-run with --execute-live-action only after reviewing the target and impact.", file=sys.stderr)
+    action = "wazuh.block_ip" if args.action == "block-ip" else "wazuh.disable_account"
+    payload = {"ip_address": args.ip_address} if action == "wazuh.block_ip" else {"username": args.username}
+    if not re.fullmatch(r"\d{3,}", args.agent_id):
+        print("Preview refused: Wazuh agent ID must be numeric.", file=sys.stderr)
         return 2
-    if not sys.stdin.isatty():
-        print("No action performed: live response requires an interactive terminal for target-bound confirmation.", file=sys.stderr)
+    if not args.reason.strip() or len(args.reason.strip()) > 1000:
+        print("Preview refused: a reason of 1–1000 characters is required.", file=sys.stderr)
         return 2
-    if not live_response_enabled():
-        print("No action performed: SATARK_ENABLE_LIVE_RESPONSE is not enabled in the trusted server environment.", file=sys.stderr)
-        return 2
-    if not args.target.strip() or not args.reason.strip():
-        print("No action performed: target and reason are required.", file=sys.stderr)
+    try:
+        validated = _validate_payload(action, payload)
+    except ResponseIntegrationError as exc:
+        print(f"Preview refused: {exc}", file=sys.stderr)
         return 2
 
-    verb = "ISOLATE" if args.action == "isolate-device" else "REVOKE_SESSIONS"
-    expected = f"CONFIRM {verb} {args.target}"
-    print("LIVE SECURITY RESPONSE — REVIEW BEFORE CONTINUING")
-    print(f"Action: {args.action}")
-    print(f"Exact target: {args.target}")
-    print(f"Reason: {args.reason}")
-    if args.action == "isolate-device":
-        print(f"Isolation type: {args.isolation_type}")
-        print("Impact: the device may lose access to network resources while isolated.")
-    else:
-        print("Impact: the user may need to authenticate again; session invalidation can take time.")
-    print("This sends a real request to Microsoft. It is not a simulation.")
-    try:
-        confirmation = input(f"Type exactly {expected!r} to continue: ")
-        if confirmation != expected:
-            print("No action performed: confirmation did not match.", file=sys.stderr)
-            return 2
-        if args.action == "isolate-device":
-            result = isolate_defender_device(
-                args.target,
-                confirmation=confirmation,
-                isolation_type=args.isolation_type,
-                reason=args.reason,
-            )
-        else:
-            result = revoke_entra_user_sessions(
-                args.target,
-                confirmation=confirmation,
-                reason=args.reason,
-            )
-        print(json.dumps({
-            "provider": result.provider,
-            "action": result.action,
-            "target": result.target,
-            "status": result.status,
-            "detail": result.detail,
-            "note": "Provider submission is not proof of completion. Verify final status in the Microsoft security/identity console.",
-        }, indent=2, sort_keys=True))
-        return 0 if result.status == "submitted" else 3
-    except (ResponseIntegrationError, EOFError, KeyboardInterrupt) as exc:
-        print(f"No confirmed successful response: {exc}", file=sys.stderr)
-        return 2
+    field = "ip_address" if action == "wazuh.block_ip" else "username"
+    confirmation = ("CONFIRM BLOCK_IP " if action == "wazuh.block_ip" else "CONFIRM DISABLE_ACCOUNT ") + args.agent_id
+    print(json.dumps({
+        "provider": "Wazuh Active Response",
+        "action": action,
+        "agent_id": args.agent_id,
+        field: validated[0],
+        "reason": args.reason.strip(),
+        "confirmation_phrase_for_case_workspace": confirmation,
+        "live_execution": False,
+        "execution_route": "Authenticated FIRSTLIGHT case request → distinct approver → third executor → independent verification",
+        "note": "This command only previews the request. It never contacts Wazuh or executes a response.",
+    }, indent=2, sort_keys=True))
+    return 0
 
 
 if __name__ == "__main__":

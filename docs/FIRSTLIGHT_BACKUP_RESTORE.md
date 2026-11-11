@@ -1,71 +1,60 @@
-# FIRSTLIGHT backup and restore runbook
+# FIRSTLIGHT backup and restore runbook (self-hosted)
 
-This is an operational procedure, not a claim that a restore drill has passed. Run it only from an approved private operator host. Never write backups into the same failure domain as the source system, and never restore into the shared production project as a test.
+This runbook covers the self-hosted SATARK/FIRSTLIGHT persistence planes. It is a procedure, not evidence that a restore drill has passed.
 
-## Scope
+## Persistence planes
 
-FIRSTLIGHT uses two independent persistence planes:
+1. **SATARK database:** users, sessions, workspaces, memberships, cases, notes, evidence metadata, findings, reports, audit events, approvals, Wazuh checkpoints and durable investigation jobs. Configured with `SATARK_DATABASE_URL` (PostgreSQL recommended for production; SQLite for local development).
+2. **Evidence objects:** private original uploads and Wazuh source snapshots under `SATARK_EVIDENCE_DIR`.
+3. **Live-response ledger:** append-only response approvals and action audit chain in `FIRSTLIGHT_RESPONSE_DB`.
+4. **Optional model assets:** local Ollama model store, if the operator uses model-assisted advisory analysis. This is not required for deterministic operation.
 
-1. Supabase Postgres: cases, memberships, evidence metadata, findings, reports, job state, approvals and audit-chain records.
-2. Supabase Storage: raw Wazuh source snapshots and any exported evidence objects in the private `satark-evidence` bucket.
+A database backup alone is not a complete evidence backup. The current satark_backup.py archive includes the database, evidence object archive and optional FIRSTLIGHT response-ledger snapshot, with SHA-256 manifest verification.
 
-A database backup alone is **not** a complete evidence backup.
+## Backup requirements
 
-## Required controls
+- Use a private operator host and a dedicated backup identity.
+- Encrypt backups at rest and in transit; restrict filesystem permissions.
+- Use immutable, timestamped backup directories; never overwrite an earlier backup set.
+- Record UTC start/end times, commit SHA, database type/version, schema revision, evidence object count/bytes, and manifest digest.
+- Keep at least one encrypted copy outside the source host and storage failure domain.
+- Exclude secrets, signing keys, session cookies and credentials from backups/manifests unless a separately approved secrets backup policy exists.
 
-- Use a dedicated backup identity with only the permissions required for export; do not expose the service-role key to browser code or commit it.
-- Encrypt backup files at rest and in transit; restrict the backup directory to the operator account.
-- Record UTC start/end times, project ID, migration versions, object count, byte count and manifest digest.
-- Keep at least one copy outside the source project's account/region and apply the documented retention policy.
-- Never overwrite an existing backup set. Each run gets a new, immutable directory.
-- Do not include secrets in manifests or logs. Restrict access to exported personal/security telemetry.
+## Automated encrypted off-host backup
 
-## Database export
+The production Compose profile uses a dedicated `satark-backup` image. It contains the PostgreSQL 16 client matching the production PostgreSQL 16 server, the archive utility, and the open-source Restic client. The API runtime never receives the privileged backup database URL or Restic credentials.
 
-Use the Supabase-supported database backup/PITR export for the project plan, or a database connection with an appropriately scoped role. A typical private-host export is:
+1. Configure `SATARK_BACKUP_DATABASE_URL` with the dedicated `satark_backup` identity.
+2. Configure an independent remote `RESTIC_REPOSITORY` (for example, a private S3-compatible bucket) and provider credentials in the root `.env`.
+3. Create `secrets/restic-password` with a unique repository password, readable only by the backup container's UID/GID 10001. Store a separate recovery copy in an approved password manager or offline vault.
+4. Initialize the remote repository once:
 
-```bash
-umask 077
-export PGHOST='your-database-host'
-export PGPORT='5432'
-export PGDATABASE='postgres'
-export PGUSER='your-backup-role'
-read -rsp 'Database password: ' PGPASSWORD; export PGPASSWORD; echo
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$HOME/firstlight-backups/$STAMP"
-pg_dump --format=custom --no-owner --no-privileges \
-  --file="$HOME/firstlight-backups/$STAMP/postgres.dump"
-unset PGPASSWORD
-sha256sum "$HOME/firstlight-backups/$STAMP/postgres.dump" \
-  > "$HOME/firstlight-backups/$STAMP/database.sha256"
-```
+   ```bash
+   docker compose -f docker-compose.production.yml --profile backup run --rm --entrypoint restic satark-backup init
+   ```
 
-Use the connection parameters from the trusted Supabase dashboard; do not guess the host. For production recovery, use the supported backup/PITR capability available on the project's plan and record its recovery point. A logical dump is not a substitute for point-in-time recovery when the recovery objective requires it.
+5. Start and inspect the scheduler:
 
-## Storage object export
+   ```bash
+   docker compose -f docker-compose.production.yml --profile backup up -d satark-backup
+   docker compose -f docker-compose.production.yml logs -f satark-backup
+   restic snapshots --tag satark
+   ```
 
-Enumerate objects in `satark-evidence` using the authenticated Supabase Storage API from a private host. Page through the listing; never assume the first page is complete. For every object, download the exact bytes and record:
+The scheduler runs immediately and then at `SATARK_BACKUP_INTERVAL_SECONDS` (default 86400 seconds). Each run creates the SQL/evidence/response-ledger archive, verifies its SHA-256 manifest, uploads it to Restic, checks a configured subset of repository data, applies daily/weekly/monthly retention, and confirms a tagged snapshot is visible. It fails closed if the remote repository or password is unavailable. See [PRODUCTION_BACKUPS.md](PRODUCTION_BACKUPS.md) for the full operator procedure.
 
-- bucket and exact object path;
-- byte length and SHA-256 of the downloaded bytes;
-- download timestamp in UTC;
-- response/verification status;
-- manifest format version.
-
-Verify each downloaded object's SHA-256 against the digest encoded in its tenant/case-scoped path when the object is a Wazuh snapshot. Fail the backup if any object cannot be listed or downloaded; do not silently omit failures. Store the manifest beside the encrypted object archive and hash the manifest itself. Never place the service-role key in command-line arguments or logs.
+The archive contains a database snapshot, evidence objects and the FIRSTLIGHT response-ledger snapshot when configured. Evidence objects are treated as immutable; still schedule a controlled recovery window and verify the recovered database, evidence and response ledger together. The scheduler does not itself prove a successful restore. Keep live response disabled until a separate restore and Wazuh lab acceptance is signed off.
 
 ## Restore drill (isolated target only)
 
-1. Provision an isolated Supabase project/database with the same supported PostgreSQL major version and compatible extensions.
-2. Apply the repository migrations in order and compare the resulting migration history with the backup's recorded history.
-3. Restore the database dump into the isolated target. Keep production traffic and external integrations disconnected.
-4. Recreate the private `satark-evidence` bucket with its intended private visibility and object-size limit before importing objects.
-5. Restore object bytes without changing paths. Verify every restored byte count and SHA-256 against the manifest.
-6. Verify database RLS and FORCE RLS, grants, storage policies, approval constraints, audit-chain verification and the service-role-only worker checkpoint/job tables.
-7. Run case/evidence/finding/report/job/approval readback checks with least-privilege test identities; verify cross-tenant and viewer-role access is denied.
-8. Recompute the audit chain using the project's verification RPC. A valid hash chain proves internal consistency, not independent source authenticity.
-9. Record measured RPO/RTO, any missing objects, every failure and the operator sign-off. Delete the isolated target only after preserving the drill record.
+1. Provision an isolated host with compatible Python, database and filesystem permissions.
+2. Restore the verified archive into an isolated empty database/data volume with the backup utility; verify the SQL database, evidence objects and response ledger are all present.
+3. Restore evidence files to the exact `SATARK_EVIDENCE_DIR` layout and verify every manifest hash.
+4. Verify the restored response ledger's SQLite integrity and hash-chained audit sequence.
+5. Apply/verify the repository schema revision using the project's documented migration process.
+6. Run authenticated workspace, case, evidence, finding, report, job and approval readback checks with least-privilege identities.
+7. Confirm cross-workspace reads/writes are denied.
+8. Verify queued/expired jobs recover safely and response actions left in `executing` are marked `unknown`, never retried.
+9. Record RPO/RTO, object counts, digests, failures and operator sign-off.
 
-## Release gate
-
-Do not mark backup/recovery complete until the isolated database **and** Storage objects have both been restored and verified. No production restore drill has been run as part of the current FIRSTLIGHT work; a dedicated isolated target and least-privilege identities are required.
+Never restore into a live production host as a test. Do not declare recovery complete until database, evidence objects and response ledger have all been restored and verified.

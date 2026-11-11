@@ -9,7 +9,7 @@ This path queries a **configured real Wazuh Indexer** and investigates the retur
 - Set credentials only in the trusted server environment or secret manager. Never put them in the command line, browser, source control, or chat.
 - At least one explicit Wazuh agent ID must be configured in `FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS`.
 - The command seals each returned source event, verifies its integrity, runs deterministic investigation rules, and writes a JSON report with Wazuh document identity and source-record SHA-256.
-- It **does not** isolate endpoints, revoke sessions, block network traffic, or trigger a response action. The report's response section is proposal-only because the approval workflow is not yet wired to the live response adapters.
+- This standalone CLI **does not** isolate endpoints, revoke sessions, block network traffic, or trigger a response action. Its report's response section remains proposal-only. The separate authenticated FIRSTLIGHT workspace has a guarded live-response panel and durable approval API; see [live response integrations](FIRSTLIGHT_LIVE_RESPONSE.md).
 
 ## Configure
 
@@ -48,11 +48,11 @@ Wazuh rule levels and FIRSTLIGHT heuristic matches are triage signals, not calib
 
 ## Remaining gates for a real end-to-end SOC response
 
-1. Run this command in an authorized Wazuh lab and preserve the redacted command output, exact commit SHA, and report hash as acceptance evidence.
-2. Add a durable, tenant-isolated case/evidence store and an independently verifiable append-only audit anchor.
-3. Wire authenticated operator approval to the existing live-response adapter with target-bound authorization, replay protection, idempotency, policy checks, and rollback.
-4. Validate live response against a disposable endpoint/account, confirm provider-side completion, and exercise recovery/unisolation.
-5. Run dedicated tenant-isolation integration tests with the least-privilege test identities; missing CI secrets mean those tests are blocked, not passed.
+1. Run this CLI in an authorized Wazuh lab and preserve redacted output, exact commit SHA and report hash.
+2. For durable ingestion, run the separate Wazuh worker and verify source-object persistence, checkpoint advancement, duplicate handling and restart recovery against the same self-hosted case.
+3. Test the guarded workspace response lifecycle against disposable, explicitly allowlisted Wazuh agents; verify Manager acceptance, endpoint-side action state, independent verification, and the documented reversal/recovery procedure.
+4. Run tenant-isolation and role checks against the self-hosted PostgreSQL deployment with separate test workspaces and users.
+5. Complete backup/restore drills for the database, evidence directory and response ledger.
 6. Run clean-install tests and verify the exact candidate SHA in the deployment environment before claiming production readiness.
 
 See also [FIRSTLIGHT live response integrations](FIRSTLIGHT_LIVE_RESPONSE.md), [Wazuh integration](FIRSTLIGHT_WAZUH_INTEGRATION.md), and [implementation status](FIRSTLIGHT_IMPLEMENTATION_STATUS.md).

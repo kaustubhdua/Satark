@@ -1,21 +1,10 @@
 # SATARK Sentinel — product completion roadmap
 
-**Status date:** 2026-10-14  
-**Goal:** a polished, evidence-led, human-controlled security investigation workspace, with FIRSTLIGHT as the primary workflow and SATARK's triage tools as supporting capabilities.
+**Current implementation note — 2026-11-11:** This roadmap began as an earlier product audit and includes historical Supabase-era tasks. The current candidate is the self-hosted, Supabase-free architecture documented in [FIRSTLIGHT implementation status](FIRSTLIGHT_IMPLEMENTATION_STATUS.md), [FIRSTLIGHT architecture](FIRSTLIGHT.md), and [Android File Guard architecture](ANDROID_FILE_GUARD_ARCHITECTURE.md). Do not interpret old Supabase checkboxes below as current runtime requirements.
 
-This is an acceptance plan, not a claim that listed work is complete. A feature is "real" only when the UI action is connected to a server operation, returns or persists a verifiable result as appropriate, handles failure safely, and has an automated test.
+The candidate includes offline Android File Guard, a self-hosted SATARK/FIRSTLIGHT workspace, persistent investigations and reports, optional local Ollama analysis, optional Wazuh 4.14.x telemetry ingestion, and a disabled-by-default Wazuh 4.14 Active Response workflow. Wazuh 5.x is not compatible with the current Manager API response adapter. The current endpoint integration is Wazuh-only; no Microsoft security provider is required. Exact-head CI is being rerun after the latest response, backup, and arcade-theme changes. Real-device Android QA, independently labelled malware-corpus evaluation, authorized Wazuh lab acceptance, external backup/restore drills, production signing and exact-commit deployment verification remain open. The product is not production-ready until those evidence gates pass.
 
-## Research and inspiration
-
-These are references for patterns and standards, not instructions to clone a UI:
-
-- [TheHive analyst workflows](https://docs.strangebee.com/): triage alerts, convert them to cases, manage observables, run analyzers, document actions, and export reports. Make SATARK's investigation lifecycle equally explicit and connected.
-- [Wazuh dashboard documentation](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/navigating-the-wazuh-dashboard.html): separate security domains, severity context, connected/disconnected states, and drill-down from overview to details.
-- [Security Onion dashboards](https://docs.securityonion.net/en/2.4/dashboards.html): deliberate filtering, time ranges, refresh behavior, and inclusion/exclusion of case and detection data.
-- [MITRE ATT&CK data and tools](https://attack.mitre.org/resources/working-with-attack/): versioned STIX/TAXII or maintained official data for technique references and defensive coverage; show data version and source date.
-- [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md): local model inference with JSON-schema output. Schema validity is not proof that a model's claims are true.
-- [OWASP Top 10:2025](https://top10.owasp.org/2025/0x00_2025-Introduction/): prioritize access control, configuration, supply-chain integrity, authentication, logging, and safe error handling.
-- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/): threat-model prompt injection, data disclosure, unbounded consumption, retrieval risk, and excessive agency.
+---
 
 ## Product principles
 
@@ -62,7 +51,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ### P0.2 Identity, authorization, and tenant isolation
 - [ ] Write a route-by-route authorization matrix for cases, evidence, findings, reports, audit verification, uploads, and integrations.
 - [ ] Test that user A cannot read, mutate, export, or verify user B's tenant/case data by changing IDs.
-- [ ] Test Supabase RLS and server-side authorization with distinct test identities; do not infer isolation solely from RLS being enabled.
+- [ ] Test self-hosted PostgreSQL row-level security and server-side authorization with distinct test identities; do not infer isolation solely from RLS being enabled.
 - [ ] Confirm service-role credentials are server-only and never bundled to clients.
 - [ ] Define session expiry, sign-out, unauthorized/forbidden UX, and recovery states.
 - [ ] Add negative tests for missing identity, malformed IDs, cross-tenant references, and privilege escalation.
@@ -145,7 +134,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - [ ] Separate recommendation, approval, execution, and verification.
 - [ ] Bind approvals to tenant, case, target, action, expiry, and actor.
 - [ ] Add idempotency, audit entries, least-privilege scopes, dry-run mode, and rollback where supported.
-- [ ] Validate Microsoft Defender/Entra adapters in a dedicated test tenant with authorized non-destructive actions before claiming live support.
+- [ ] Validate Wazuh Indexer ingestion and fixed Active Response commands in a dedicated disposable lab with endpoint-side verification and a tested recovery procedure.
 - [ ] If credentials/test tenant are absent, leave connector disabled and state the dependency.
 
 **Acceptance:** simulated actions are never presented as live; enabled integrations have end-to-end contract tests and documented failure/recovery.

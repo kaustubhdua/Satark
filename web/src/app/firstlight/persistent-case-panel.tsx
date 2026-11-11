@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import LiveResponsePanel from './live-response-panel';
 import {
   authenticatedFetch, createCase, getActiveTenant, getSession, listCases, listMyTenants, setActiveTenant,
   type SatarkSession, type SatarkTenant,
@@ -579,7 +580,7 @@ export default function PersistentCasePanel({
         </div>
         <div className="private-upload" aria-labelledby="simulation-approvals-heading">
           <strong id="simulation-approvals-heading">Simulation-only response approvals</strong>
-          <p className="hint">Approval records are bound to the exact action payload and audited in Postgres. They never execute endpoint isolation, account changes, or other live response.</p>
+          <p className="hint">These are durable training decisions stored by the self-hosted backend. They never execute endpoint isolation, account changes, or other live response.</p>
           <label className="field-label" htmlFor="simulation-approval-reason">Proposed simulated action and rationale</label>
           <textarea id="simulation-approval-reason" maxLength={1000} rows={2} value={approvalReason} onChange={e=>setApprovalReason(e.target.value)} disabled={busy} placeholder="Explain why the case should be marked contained in the simulation." />
           <button className="btn btn-secondary" type="button" disabled={busy || approvalReason.trim().length < 8 || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void requestSimulatedApproval()}>Request simulated approval</button>
@@ -597,6 +598,7 @@ export default function PersistentCasePanel({
             {approval.decided_by && <small>Decision by {approval.decided_by.slice(0,8)}{approval.decision_reason ? ' · ' + approval.decision_reason : ''}</small>}
           </article>) : <p className="empty-state">No durable approval requests for this case.</p>}</div>
         </div>
+        <LiveResponsePanel tenantId={tenant.id} caseId={currentCaseId} userId={session.user.id} role={tenant.role} />
         <div className="private-upload">
           <strong>Immutable analyst notes</strong>
           <div className="case-notes-list">{notes.length ? notes.map(note=><article className="case-note" key={note.id}><p>{note.body}</p><small>{new Date(note.created_at).toLocaleString()} · {note.created_by.slice(0,8)}</small></article>) : <p className="empty-state">No notes yet.</p>}</div>

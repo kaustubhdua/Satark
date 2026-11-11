@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+from pathlib import Path
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -17,7 +18,7 @@ import ssl
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 MAX_PAGE_SIZE = 500
@@ -31,8 +32,9 @@ class _NoRedirectHandler(HTTPRedirectHandler):
         return None
 
 
-def _open_url(request: Request, timeout: float):
-    return build_opener(_NoRedirectHandler()).open(request, timeout=timeout)
+def _open_url(request: Request, timeout: float, ca_bundle: str | None = None):
+    context = ssl.create_default_context(cafile=ca_bundle) if ca_bundle else ssl.create_default_context()
+    return build_opener(_NoRedirectHandler(), HTTPSHandler(context=context)).open(request, timeout=timeout)
 
 
 class WazuhConfigurationError(ValueError):
@@ -52,6 +54,7 @@ class WazuhIndexerConfig:
     timeout_seconds: float = 8.0
     allow_http: bool = False
     allowed_agent_ids: tuple[str, ...] = ()
+    ca_bundle: str | None = None
 
     @classmethod
     def from_env(cls) -> "WazuhIndexerConfig":
@@ -61,6 +64,9 @@ class WazuhIndexerConfig:
         index_pattern = os.getenv("FIRSTLIGHT_WAZUH_INDEX_PATTERN", DEFAULT_INDEX)
         agent_ids = tuple(sorted({item.strip() for item in os.getenv("FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS", "").split(",") if item.strip()}))
         allow_http = os.getenv("FIRSTLIGHT_WAZUH_ALLOW_HTTP", "").lower() in {"1", "true", "yes"}
+        ca_bundle = os.getenv("FIRSTLIGHT_WAZUH_INDEXER_CA_BUNDLE", "").strip() or None
+        if ca_bundle and not Path(ca_bundle).is_file():
+            raise WazuhConfigurationError("FIRSTLIGHT_WAZUH_INDEXER_CA_BUNDLE must point to a readable CA file")
         try:
             timeout = float(os.getenv("FIRSTLIGHT_WAZUH_TIMEOUT_SECONDS", "8"))
         except ValueError as exc:
@@ -85,7 +91,7 @@ class WazuhIndexerConfig:
             raise WazuhConfigurationError("FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS must list 1–100 valid authorized Wazuh agent IDs")
         if not 1 <= timeout <= 30:
             raise WazuhConfigurationError("Wazuh timeout must be between 1 and 30 seconds")
-        return cls(base_url, username, password, index_pattern, timeout, allow_http, agent_ids)
+        return cls(base_url, username, password, index_pattern, timeout, allow_http, agent_ids, ca_bundle)
 
 
 def _timestamp(value: Any) -> str:
@@ -226,7 +232,7 @@ class WazuhIndexerClient:
             method="POST",
         )
         try:
-            with _open_url(request, timeout=self.config.timeout_seconds) as response:
+            with _open_url(request, timeout=self.config.timeout_seconds, ca_bundle=self.config.ca_bundle) as response:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
                 if len(raw) > MAX_RESPONSE_BYTES:
                     raise WazuhConnectorError("Wazuh response exceeded the configured byte limit")

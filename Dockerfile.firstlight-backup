@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# The production database is PostgreSQL 16. Debian's default
+# postgresql-client meta-package can lag the server major version, and
+# pg_dump refuses to dump a newer server. Install the matching PGDG client.
+RUN set -eux; \
+    . /etc/os-release; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg restic; \
+    install -d /usr/share/postgresql-common/pgdg; \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg; \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends postgresql-client-16; \
+    pg_dump --version | grep -Eq ' \(PostgreSQL\) 16\.'; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY firstlight-api-requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY scripts/satark_backup.py ./scripts/satark_backup.py
+COPY scripts/run_satark_backup.sh ./scripts/run_satark_backup.sh
+RUN mkdir -p /backups /tmp/restic-cache \
+    && chown -R 10001:10001 /app /backups /tmp/restic-cache \
+    && chmod 0755 /app/scripts/run_satark_backup.sh
+USER 10001:10001
+ENTRYPOINT ["/app/scripts/run_satark_backup.sh"]

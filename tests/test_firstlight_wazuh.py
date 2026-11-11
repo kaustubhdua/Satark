@@ -111,8 +111,9 @@ def test_fetch_alerts_sends_bounded_query_and_basic_auth(monkeypatch):
         def __exit__(self, *args):
             self.close()
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, ca_bundle=None):
         seen["url"] = request.full_url
+        seen["ca_bundle"] = ca_bundle
         seen["timeout"] = timeout
         seen["auth"] = request.get_header("Authorization")
         seen["payload"] = json.loads(request.data)
@@ -123,6 +124,7 @@ def test_fetch_alerts_sends_bounded_query_and_basic_auth(monkeypatch):
     assert len(result) == 1
     assert seen["url"] == "https://wazuh-indexer.internal:9200/wazuh-alerts-*/_search"
     assert seen["timeout"] == 8
+    assert seen["ca_bundle"] is None
     assert seen["auth"] == "Basic " + base64.b64encode(b"firstlight-reader:not-a-real-secret").decode()
     assert seen["payload"]["size"] == 10
     assert seen["payload"]["from"] == 20
@@ -149,3 +151,24 @@ def test_fetch_alerts_fails_closed_on_malformed_hit(monkeypatch):
     monkeypatch.setattr(wazuh, "_open_url", lambda *args, **kwargs: Response(b'{"hits":{"hits":[{"_source":{}}]}}'))
     with pytest.raises(wazuh.WazuhConnectorError, match="malformed"):
         wazuh.WazuhIndexerClient(config()).fetch_alerts()
+
+def test_config_accepts_explicit_private_indexer_ca_bundle(monkeypatch, tmp_path):
+    ca_file = tmp_path / "wazuh-root-ca.pem"
+    ca_file.write_text("test CA placeholder", encoding="utf-8")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_URL", "https://wazuh-indexer:9200")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_USERNAME", "reader")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_PASSWORD", "secret")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS", "004")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_CA_BUNDLE", str(ca_file))
+    config_from_env = wazuh.WazuhIndexerConfig.from_env()
+    assert config_from_env.ca_bundle == str(ca_file)
+
+
+def test_config_rejects_missing_private_indexer_ca_bundle(monkeypatch, tmp_path):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_URL", "https://wazuh-indexer:9200")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_USERNAME", "reader")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_PASSWORD", "secret")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS", "004")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_INDEXER_CA_BUNDLE", str(tmp_path / "missing.pem"))
+    with pytest.raises(wazuh.WazuhConfigurationError, match="CA file"):
+        wazuh.WazuhIndexerConfig.from_env()

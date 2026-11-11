@@ -21,6 +21,16 @@ class AndroidOfflineContractTests(unittest.TestCase):
         application = manifest.find("./application")
         self.assertEqual(application.attrib.get(ANDROID_NS + "allowBackup"), "false")
 
+    def test_emulator_smoke_script_uses_python_loop_not_shell_for_loop(self):
+        workflow = (ROOT / ".github/workflows/android-file-guard.yml").read_text(encoding="utf-8")
+        smoke = workflow.split("android-emulator-smoke:", 1)[1]
+        self.assertIn("python3 scripts/android_emulator_smoke.py --artifact-dir artifacts", smoke)
+        self.assertNotIn("for attempt in $(seq", smoke)
+        script = (ROOT / "scripts/android_emulator_smoke.py").read_text(encoding="utf-8")
+        self.assertIn("while time.monotonic() < deadline", script)
+        self.assertIn('"uiautomator", "dump"', script)
+        self.assertIn("SATARK UI is missing expected labels", script)
+
     def test_manifest_exposes_share_receivers(self):
         manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
         activity = manifest.find("./application/activity")

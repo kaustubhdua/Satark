@@ -1,9 +1,10 @@
-"""Shared FIRSTLIGHT investigation API.
+"""Shared FIRSTLIGHT investigation and guarded response API.
 
-The case-investigation route analyzes bounded caller-supplied evidence. The
-Wazuh integration routes query the explicitly configured, read-only Wazuh
-Indexer and can investigate returned alerts. No route executes live response
-actions; Wazuh investigation results are not persisted by these API handlers.
+The deterministic engine analyzes bounded evidence. Wazuh routes provide a
+read-only preview while the private worker persists authorized alerts and
+checkpoints. Live response is separately disabled by default and requires
+case-bound four-eyes approval, explicit target confirmation, and a distinct
+executor identity.
 """
 from __future__ import annotations
 
@@ -29,7 +30,15 @@ app = FastAPI(title="FIRSTLIGHT Investigation API", version="1.0.0", docs_url=No
 
 # SATARK application persistence and identity are provided by the self-hosted API.
 from satark_backend import router as satark_router
+from firstlight_response_api import router as response_router, recover_interrupted_executions
 app.include_router(satark_router)
+app.include_router(response_router)
+
+
+@app.on_event("startup")
+def recover_response_actions_after_restart() -> None:
+    # An interrupted provider call is ambiguous. Mark it unknown and never retry it.
+    recover_interrupted_executions()
 
 
 class EvidenceInput(BaseModel):
