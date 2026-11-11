@@ -281,7 +281,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             assert verify_backup(backup_archive)["format"] == "satark-backup-v1"
             target_name = "satark_restore_" + uuid.uuid4().hex[:12]
             admin_url = make_url(url).set(drivername="postgresql", database="postgres")
-            target_url = str(make_url(url).set(database=target_name))
+            target_url = make_url(url).set(database=target_name).render_as_string(hide_password=False)
             target_engine = None
             try:
                 with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
