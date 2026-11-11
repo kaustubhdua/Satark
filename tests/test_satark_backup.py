@@ -130,7 +130,7 @@ class SatarkBackupTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(passfile.stat().st_mode), 0o600)
             self.assertEqual(
                 passfile.read_text(encoding="utf-8"),
-                r"db.internal:5432:satark:satark:p@ss\\:word" + "\\n",
+                r"db.internal:5432:satark:satark:p@ss\:word" + "\n",
             )
         self.assertFalse(passfile.exists())
 
