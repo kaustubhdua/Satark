@@ -29,6 +29,7 @@ from firstlight_wazuh_worker import WazuhSatarkWorker
 @pytest.mark.skipif(not os.getenv("SATARK_TEST_POSTGRES_URL"), reason="PostgreSQL integration URL is not configured")
 def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, tmp_path):
     url = os.environ["SATARK_TEST_POSTGRES_URL"]
+    original_engine = backend.engine
     engine = create_engine(url, pool_pre_ping=True)
     backend.SessionLocal.configure(bind=engine)
     backend.Base.metadata.drop_all(engine)
@@ -49,8 +50,8 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
         """)).all()
         assert len(protected) == 12
         assert all(row.relrowsecurity and row.relforcerowsecurity for row in protected)
-    # Exercise RLS as a non-owner, non-superuser application role. PostgreSQL
-    # superusers bypass RLS even when FORCE ROW LEVEL SECURITY is enabled.
+    # Exercise RLS through a real non-superuser login. SET ROLE from a
+    # superuser connection is not an adequate simulation of the API runtime.
     with engine.begin() as connection:
         connection.exec_driver_sql("""
             DO $body$
@@ -59,22 +60,20 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                     EXECUTE 'DROP OWNED BY satark_app_test';
                     EXECUTE 'DROP ROLE satark_app_test';
                 END IF;
-                EXECUTE 'CREATE ROLE satark_app_test NOLOGIN';
+                EXECUTE 'CREATE ROLE satark_app_test LOGIN PASSWORD ''satark-app-test-password''';
             END
             $body$
         """)
+        connection.exec_driver_sql("GRANT CONNECT ON DATABASE satark_test TO satark_app_test")
         connection.exec_driver_sql("GRANT USAGE ON SCHEMA public TO satark_app_test")
         connection.exec_driver_sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO satark_app_test")
+        connection.exec_driver_sql("GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO satark_app_test")
 
-    def use_application_role(dbapi_connection, _connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("SET ROLE satark_app_test")
-        cursor.close()
-
-    event.listen(engine, "connect", use_application_role)
-    engine.dispose()
-    monkeypatch.setattr(backend, "engine", engine)
-    monkeypatch.setattr(backend, "DB_URL", url)
+    app_url = make_url(url).set(username="satark_app_test", password="satark-app-test-password")
+    app_engine = create_engine(app_url, pool_pre_ping=True)
+    backend.SessionLocal.configure(bind=app_engine)
+    monkeypatch.setattr(backend, "engine", app_engine)
+    monkeypatch.setattr(backend, "DB_URL", app_url.render_as_string(hide_password=False))
     try:
         with TestClient(app, base_url="http://testserver") as client:
             readiness = client.get("/api/health/storage")
@@ -307,7 +306,8 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
                     )
                     admin.execute(f'DROP DATABASE IF EXISTS "{target_name}"')
     finally:
-        event.remove(engine, "connect", use_application_role)
+        app_engine.dispose()
+        backend.SessionLocal.configure(bind=original_engine)
         engine.dispose()
         # TestClient/worker teardown can leave an idle PostgreSQL session
         # holding a relation lock. This database is dedicated to this CI job;
