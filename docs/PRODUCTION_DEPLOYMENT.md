@@ -52,7 +52,7 @@ Do not enable that worker until the tenant, case, actor, Indexer role and agent 
 
 ## Backup and isolated restore
 
-Configure the dedicated `satark_backup` database role, an independent Restic repository, and the protected `secrets/restic-password` file before enabling the backup profile. Follow [PRODUCTION_BACKUPS.md](PRODUCTION_BACKUPS.md) to initialize the remote repository and start the scheduler:
+Configure the dedicated `satark_backup` database role, an independent Restic repository, and the protected `secrets/backup/restic-password` file before enabling the backup profile. Follow [PRODUCTION_BACKUPS.md](PRODUCTION_BACKUPS.md) to initialize the remote repository and start the scheduler:
 
 ```bash
 docker compose -f docker-compose.production.yml --profile backup run --rm --entrypoint restic satark-backup init
