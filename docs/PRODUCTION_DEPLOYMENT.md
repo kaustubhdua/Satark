@@ -52,19 +52,17 @@ Do not enable that worker until the tenant, case, actor, Indexer role and agent 
 
 ## Backup and isolated restore
 
-Quiesce API and workers before taking a consistent snapshot. Use the repository backup utility with the privileged backup connection, and store encrypted copies outside the host:
+Configure the dedicated `satark_backup` database role, an independent Restic repository, and the protected `secrets/restic-password` file before enabling the backup profile. Follow [PRODUCTION_BACKUPS.md](PRODUCTION_BACKUPS.md) to initialize the remote repository and start the scheduler:
 
-~~~bash
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
-  create --output "/backups/satark-$STAMP.tar.gz"
-docker compose -f docker-compose.production.yml --profile backup run --rm satark-backup \
-  verify "/backups/satark-$STAMP.tar.gz"
-~~~
+```bash
+docker compose -f docker-compose.production.yml --profile backup run --rm --entrypoint restic satark-backup init
+docker compose -f docker-compose.production.yml --profile backup up -d satark-backup
+docker compose -f docker-compose.production.yml logs -f satark-backup
+```
 
-The backup-only service holds the privileged BYPASSRLS connection; the web/API process never receives that credential. The archive includes the configured SQL database, private evidence objects, and the FIRSTLIGHT response ledger SQLite snapshot when it exists. Verify the response ledger audit chain after recovery. Do not treat the PostgreSQL dump alone as a complete application backup.
+The scheduler creates a database/evidence/response-ledger archive, verifies its SHA-256 manifest, uploads it to the independent Restic repository, checks repository data, and applies configured retention. Confirm successful snapshots and alert on a missing or failed scheduled run. A local archive or successful CI `pg_dump`/`pg_restore` test is not proof of off-host backup or recovery.
 
-For a restore drill, provision a separate host and empty database/data volume, restore the archive with scripts/satark_backup.py restore, verify every evidence hash, check the response ledger audit chain, and run tenant-isolation plus case/report readback tests. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
+For a restore drill, provision a separate host and empty database/data volume, restore a selected Restic snapshot to a temporary directory, verify the archive, and restore with `scripts/satark_backup.py` into the isolated target. Verify every evidence hash, the response-ledger audit chain, tenant isolation and application readback. Record RPO/RTO and operator sign-off. Never test restore on the live production database.
 
 ## Release discipline
 
