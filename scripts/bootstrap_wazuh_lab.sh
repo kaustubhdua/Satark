@@ -83,9 +83,13 @@ services:
     image: wazuh/wazuh-agent:4.14.10
     hostname: satark-lab-agent
     restart: unless-stopped
-    network_mode: host
+    network_mode: ${WAZUH_LAB_AGENT_NETWORK_MODE:-host}
+    cap_add:
+      - NET_ADMIN
     environment:
-      - WAZUH_MANAGER_SERVER=${WAZUH_MANAGER_SERVER:-127.0.0.1}
+      - WAZUH_MANAGER_SERVER=$BIND_ADDRESS
+      - WAZUH_MANAGER_PORT=1514
+      - WAZUH_AGENT_NAME=satark-lab-agent
     volumes:
       - ./config/satark-lab-ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
       - satark_lab_agent_data:/var/ossec/data
