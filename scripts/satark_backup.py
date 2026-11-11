@@ -144,6 +144,9 @@ def _copy_database(database_url: str, destination: Path) -> str:
         if url.username:
             command.extend(["--username", url.username])
         command.extend(["--dbname", url.database])
+        # libpq treats a missing PGPASSFILE differently from an empty one.
+        # The backup helper creates a private, mode-0600 passfile so credentials
+        # are never placed on the process command line or inherited as PGPASSWORD.
         with _pg_auth_env(url) as env:
             subprocess.run(command, env=env, check=True, timeout=3600)
         return "postgresql"
