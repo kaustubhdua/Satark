@@ -13,19 +13,18 @@ AWS_SECRET_ACCESS_KEY=...
 AWS_DEFAULT_REGION=...
 ```
 
-Create `secrets/restic-password` with a long, unique Restic repository password and protect it:
+Create `secrets/backup/restic-password` with a long, unique Restic repository password and protect it:
 
 ```sh
-mkdir -p secrets
+mkdir -p secrets/backup
 umask 077
-sudo chown root:10001 secrets
-chmod 0710 secrets
-openssl rand -base64 48 > secrets/restic-password
-sudo chown root:10001 secrets/restic-password
-chmod 0440 secrets/restic-password
+openssl rand -base64 48 > secrets/backup/restic-password
+sudo chown root:10001 secrets/backup secrets/backup/restic-password
+sudo chmod 0750 secrets/backup
+sudo chmod 0440 secrets/backup/restic-password
 ```
 
-The API and backup containers run as UID/GID 10001. The secret directory is owned by root:10001 with mode 0710 so the service group can traverse it without listing its contents; the password file is group-readable (0440) and never world-readable. Apply the same owner/mode pattern to any mounted Wazuh CA certificate.
+The backup container runs as UID/GID 10001 and mounts only `secrets/backup`; no API or Wazuh credentials are exposed to it. The directory is group-traversable (0750) and the password file is group-readable (0440), neither world-readable. The API's separate Wazuh CA mount can remain under `secrets` with its own restricted permissions.
 
 The password is not recoverable from the repository. Store a separate copy in an approved password manager or offline recovery vault. Do not commit it.
 
