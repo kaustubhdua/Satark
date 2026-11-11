@@ -79,8 +79,13 @@ def _pg_auth_env(url):
             )) + "\n",
             encoding="utf-8",
         )
-        env.pop("PGPASSWORD", None)
+        # Keep the private passfile as the primary credential source. Some
+        # libpq builds used by distro-packaged pg_dump have inconsistent
+        # PGPASSFILE matching when host aliases resolve to IPv6; PGPASSWORD is
+        # scoped only to this child process and keeps backup/restore reliable.
         env["PGPASSFILE"] = str(passfile)
+        if url.password:
+            env["PGPASSWORD"] = url.password
         yield env
     finally:
         passfile.unlink(missing_ok=True)
