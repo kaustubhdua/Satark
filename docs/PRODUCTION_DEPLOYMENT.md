@@ -21,7 +21,7 @@ The repository contains a production Compose stack, but it does not create a clo
 1. Clone the exact approved SATARK release commit onto the host.
 2. Copy deploy/production.env.example to the root .env; replace every placeholder with unique values and run chmod 600 .env.
 3. The first PostgreSQL initialization runs deploy/postgres-init/01-create-roles.sh. It creates separate satark_runtime and satark_backup roles; only the backup role has BYPASSRLS. URL-encode special characters in both database URLs. Configure SATARK_DATABASE_URL for satark_runtime and SATARK_BACKUP_DATABASE_URL for satark_backup; never use the PostgreSQL bootstrap administrator or runtime API credential for backups. Initialization scripts run only when the PostgreSQL data volume is empty, so rotate credentials through SQL after first initialization rather than expecting environment changes to alter existing roles.
-4. Put the Wazuh Manager CA certificate at ./secrets/wazuh-manager-ca.pem; keep the directory private and excluded from Git. The certificate SAN must match FIRSTLIGHT_WAZUH_MANAGER_API_URL.
+4. Put Wazuh trust anchors under `./secrets/wazuh/` (for example, `wazuh-manager-ca.pem` and `wazuh-indexer-ca.pem`). The API and Wazuh worker mount only this directory; the Restic password is isolated under `./secrets/backup/` and is never mounted into application containers. Restrict both directories to root:10001 with mode 0750 and CA files to root:10001 with mode 0440. The Manager certificate SAN must match `FIRSTLIGHT_WAZUH_MANAGER_API_URL`.
 5. Keep SATARK_ENABLE_LIVE_RESPONSE=false until the Wazuh lab response workflow and reversal have been independently tested. Configure only disposable agent IDs in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.
 
 Generate independent secrets:
