@@ -136,10 +136,14 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             owner_db.close()
             invitee_db = backend.SessionLocal()
             backend.set_rls_user_context(invitee_db, invitee_id)
-            assert invitee_db.scalar(select(backend.Membership).where(
+            visible_owner_membership = invitee_db.scalar(select(backend.Membership).where(
                 backend.Membership.tenant_id == tenant_id,
                 backend.Membership.user_id == user_id,
-            )) is None
+            ))
+            # Workspace members can view the other memberships in their own
+            # tenant; RLS must hide other tenants, not co-members.
+            assert visible_owner_membership is not None
+            assert visible_owner_membership.role == "owner"
             invitee_db.close()
 
             evidence = client.post("/api/evidence", data={
@@ -278,7 +282,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             target_url = str(make_url(url).set(database=target_name))
             target_engine = None
             try:
-                with psycopg.connect(str(admin_url), autocommit=True) as admin:
+                with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
                     admin.execute(f'CREATE DATABASE "{target_name}"')
                 restored_evidence = tmp_path / "restored-postgres-evidence"
                 restored_manifest = restore_backup(backup_archive, target_url, restored_evidence)
