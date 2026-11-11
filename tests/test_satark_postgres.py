@@ -284,7 +284,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             target_url = make_url(url).set(database=target_name).render_as_string(hide_password=False)
             target_engine = None
             try:
-                with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
+                with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
                     admin.execute(f'CREATE DATABASE "{target_name}"')
                 restored_evidence = tmp_path / "restored-postgres-evidence"
                 restored_manifest = restore_backup(backup_archive, target_url, restored_evidence)
@@ -300,7 +300,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
             finally:
                 if target_engine is not None:
                     target_engine.dispose()
-                with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
+                with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
                     admin.execute(
                         "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()",
                         (target_name,),
@@ -315,7 +315,7 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
         # terminate its remaining sessions before dropping the test schema.
         admin_url = make_url(url).set(drivername="postgresql", database="postgres")
         test_database = make_url(url).database
-        with psycopg.connect(admin_url.render_as_string(hide_password=False), autocommit=True) as admin:
+        with psycopg.connect(host=admin_url.host, port=admin_url.port, dbname=admin_url.database, user=admin_url.username, password=admin_url.password, autocommit=True) as admin:
             admin.execute(
                 "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
                 "WHERE datname = %s AND pid <> pg_backend_pid()",
