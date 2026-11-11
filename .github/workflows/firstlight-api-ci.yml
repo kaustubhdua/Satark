@@ -24,7 +24,9 @@ on:
       - "tests/test_satark_backend.py"
       - "tests/test_satark_migrations.py"
       - "tests/test_satark_postgres.py"
+      - "tests/test_satark_backup.py"
       - "scripts/check_no_supabase_runtime.py"
+      - "scripts/satark_backup.py"
       - "scripts/check_no_microsoft_runtime.py"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
@@ -56,7 +58,9 @@ on:
       - "tests/test_satark_backend.py"
       - "tests/test_satark_migrations.py"
       - "tests/test_satark_postgres.py"
+      - "tests/test_satark_backup.py"
       - "scripts/check_no_supabase_runtime.py"
+      - "scripts/satark_backup.py"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "Dockerfile.firstlight-worker"
@@ -142,6 +146,7 @@ jobs:
             tests/test_firstlight_worker_live_acceptance.py \
             tests/test_satark_backend.py \
             tests/test_satark_migrations.py \
+            tests/test_satark_backup.py \
             tests/test_satark_postgres.py
 
       - name: Perform isolated PostgreSQL backup and restore drill
