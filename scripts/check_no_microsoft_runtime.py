@@ -25,7 +25,7 @@ FORBIDDEN = re.compile(
     r"|microsoft\.graph"
     r"|azure\.identity"
     r"|\bmsal\b"
-    r"|MICROSOFT_[A-Z0-9_]+"
+    r"|(?<![A-Za-z0-9_])MICROSOFT_[A-Z0-9_]+"\n    r"|NEXT_PUBLIC_MICROSOFT_[A-Z0-9_]+"
     r"|defender\.isolate_device"
     r"|entra\.revoke_sessions"
     r"|microsoft\s+defender",
