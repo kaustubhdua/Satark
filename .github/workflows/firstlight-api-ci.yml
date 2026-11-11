@@ -26,8 +26,6 @@ on:
       - "tests/test_satark_postgres.py"
       - "scripts/check_no_supabase_runtime.py"
       - "scripts/check_no_microsoft_runtime.py"
-      - "scripts/check_no_microsoft_runtime.py"
-      - "scripts/bootstrap_wazuh_lab.sh"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
       - "Dockerfile.firstlight-worker"
