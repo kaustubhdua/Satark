@@ -71,7 +71,7 @@ def _pg_auth_env(url):
         os.chmod(passfile, 0o600)
         passfile.write_text(
             ":".join(escape_pgpass(value) for value in (
-                url.host or "*", str(url.port or "*"), url.database or "*",
+                "*", str(url.port or "*"), url.database or "*",
                 url.username or "*", url.password or "",
             )) + "\n",
             encoding="utf-8",
@@ -125,12 +125,17 @@ def _copy_database(database_url: str, destination: Path) -> str:
         _require_postgres_bypass_rls(database_url, "backup")
         if not shutil.which("pg_dump"):
             raise RuntimeError("pg_dump is required to back up PostgreSQL.")
-        safe_url, _ = _pg_env(url)
+        _, _ = _pg_env(url)
+        command = ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination)]
+        if url.host:
+            command.extend(["--host", url.host])
+        if url.port:
+            command.extend(["--port", str(url.port)])
+        if url.username:
+            command.extend(["--username", url.username])
+        command.extend(["--dbname", url.database])
         with _pg_auth_env(url) as env:
-            subprocess.run(
-                ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(destination), safe_url],
-                env=env, check=True, timeout=3600,
-            )
+            subprocess.run(command, env=env, check=True, timeout=3600)
         return "postgresql"
     raise ValueError("Only SQLite and PostgreSQL SATARK databases are supported.")
 
@@ -425,13 +430,17 @@ def restore_backup(
             os.replace(staged_db, target_db)
             os.chmod(target_db, 0o600)
         else:
-            safe_url, _ = _pg_env(target_url)
+            _, _ = _pg_env(target_url)
+            command = ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl"]
+            if target_url.host:
+                command.extend(["--host", target_url.host])
+            if target_url.port:
+                command.extend(["--port", str(target_url.port)])
+            if target_url.username:
+                command.extend(["--username", target_url.username])
+            command.extend(["--dbname", target_url.database, str(work / "database.dump")])
             with _pg_auth_env(target_url) as env:
-                subprocess.run(
-                    ["pg_restore", "--exit-on-error", "--no-owner", "--no-acl", "--dbname", safe_url,
-                     str(work / "database.dump")],
-                    env=env, check=True, timeout=3600,
-                )
+                subprocess.run(command, env=env, check=True, timeout=3600)
         if target_evidence_dir.exists():
             target_evidence_dir.rmdir()
         os.replace(staged_evidence, target_evidence_dir)
