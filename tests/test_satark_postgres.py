@@ -303,9 +303,27 @@ def test_postgres_signup_tenant_evidence_idempotent_job_and_worker(monkeypatch, 
     finally:
         event.remove(engine, "connect", use_application_role)
         engine.dispose()
-        backend.Base.metadata.drop_all(engine)
-        with engine.begin() as connection:
-            connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
-            connection.exec_driver_sql("DROP OWNED BY satark_app_test")
-            connection.exec_driver_sql("DROP ROLE IF EXISTS satark_app_test")
-        engine.dispose()
+        # TestClient/worker teardown can leave an idle PostgreSQL session
+        # holding a relation lock. This database is dedicated to this CI job;
+        # terminate its remaining sessions before dropping the test schema.
+        admin_url = make_url(url).set(drivername="postgresql", database="postgres")
+        test_database = make_url(url).database
+        with psycopg.connect(str(admin_url), autocommit=True) as admin:
+            admin.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = %s AND pid <> pg_backend_pid()",
+                (test_database,),
+            )
+        cleanup_engine = create_engine(
+            url,
+            pool_pre_ping=True,
+            connect_args={"options": "-c lock_timeout=5s -c statement_timeout=30s"},
+        )
+        try:
+            backend.Base.metadata.drop_all(cleanup_engine)
+            with cleanup_engine.begin() as connection:
+                connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+                connection.exec_driver_sql("DROP OWNED BY satark_app_test")
+                connection.exec_driver_sql("DROP ROLE IF EXISTS satark_app_test")
+        finally:
+            cleanup_engine.dispose()
