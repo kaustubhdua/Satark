@@ -48,7 +48,7 @@ def runtime_files() -> list[Path]:
     scan_roots = (
         ROOT / "integrations",
         ROOT / "scripts",
-        ROOT / "web" / "src",
+        ROOT / "web",
         ROOT / "android",
         ROOT / ".github" / "workflows",
         ROOT / "deploy",
