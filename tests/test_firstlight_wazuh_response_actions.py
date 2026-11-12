@@ -55,6 +55,7 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_linux_agent(monkey
     assert result.provider == "Wazuh Active Response"
     assert result.status == "submitted"
     assert "/active-response?agents_list=001" in captured["url"]
+    assert "wait_for_complete" not in captured["url"]
     assert captured["method"] == "PUT"
     assert captured["headers"]["Authorization"] == "Bearer fake-jwt"
     assert captured["body"] == {"command": "firewall-drop", "arguments": ["8.8.8.8"], "custom": False}
