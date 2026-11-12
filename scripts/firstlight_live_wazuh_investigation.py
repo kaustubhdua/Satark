@@ -100,10 +100,10 @@ def build_live_report(
         "case": case,
         "investigation": investigation,
         "response": {
-            "mode": "proposal_only",
+            "mode": "not_configured",
             "live_action_executed": False,
-            "reason": "The current FIRSTLIGHT investigation workflow does not connect approvals to a live response adapter. No endpoint or identity was changed.",
-            "proposals": investigation["response_proposals"],
+            "reason": "This investigation report does not create response proposals. Endpoint actions are available only through the separate guarded live-response workflow.",
+            "proposals": [],
         },
         "limitations": [
             "Only alerts returned by the configured Wazuh Indexer and allowlisted agent IDs were examined.",
