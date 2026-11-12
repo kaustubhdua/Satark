@@ -97,7 +97,7 @@ jobs:
             echo "::error::FIRSTLIGHT API/PostgreSQL/container validation job is missing or did not pass."
             exit 1
           fi
-          for step_name in "Run FIRSTLIGHT engine, API, response and worker tests" "Perform isolated PostgreSQL backup and restore drill" "Enforce Microsoft-free runtime provider boundary" "Build API and worker images" "Smoke-test API and worker imports"; do
+          for step_name in "Run FIRSTLIGHT engine, API, response and worker tests" "Perform isolated PostgreSQL backup and restore drill" "Enforce Supabase-free application runtime" "Enforce Microsoft-free runtime provider boundary" "Validate Wazuh and backup shell scripts" "Validate PostgreSQL role bootstrap shell" "Validate local self-hosted Compose configuration" "Validate production PostgreSQL and TLS Compose stack" "Build API and worker images" "Smoke-test API and worker imports"; do
             step="$(jq -c --arg name "$step_name" '[.steps[] | select(.name == $name)] | first // empty' <<< "$api_job")"
             if [[ -z "$step" || "$step" == "null" || "$(jq -r '.conclusion' <<< "$step")" != "success" ]]; then
               echo "::error::Required FIRSTLIGHT API step is missing, skipped or failed: $step_name"
