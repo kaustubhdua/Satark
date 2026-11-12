@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-
+      - name: Verify required CI for this exact commit and reject skipped acceptance jobs
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_SHA: ${{ github.sha }}
@@ -59,6 +59,9 @@ jobs:
           set -euo pipefail
           runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${WORKFLOW_SHA}&per_page=100")"
 
+          require_run() {
+            local workflow="$1"
+            local run_id
             run_id="$(jq -r --arg name "$workflow" --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
             if [[ -z "$run_id" ]]; then
               echo "::error::No successful completed $workflow run exists for exact release commit $WORKFLOW_SHA."
@@ -73,6 +76,7 @@ jobs:
           api_run="$(require_run "FIRSTLIGHT API CI")"
           android_run="$(require_run "Android File Guard")"
           inventory_run="$(require_run "Phase 0 inventory")"
+          production_smoke_run="$(require_run "Production smoke check")"
 
           ci_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run}/jobs?per_page=100")"
           ci_job="$(jq -c '[.jobs[] | select(.name == "validate")] | first // empty' <<< "$ci_jobs")"
@@ -94,7 +98,7 @@ jobs:
             echo "::error::FIRSTLIGHT API/PostgreSQL/container validation job is missing or did not pass."
             exit 1
           fi
-          for step_name in "Run FIRSTLIGHT engine, API, response and worker tests" "Perform isolated PostgreSQL backup and restore drill" "Enforce Microsoft-free runtime provider boundary" "Build API and worker images" "Smoke-test API and worker imports"; do
+          for step_name in "Run FIRSTLIGHT engine, API, response and worker tests" "Perform isolated PostgreSQL backup and restore drill" "Enforce Supabase-free application runtime" "Enforce Microsoft-free runtime provider boundary" "Validate Wazuh and backup shell scripts" "Validate PostgreSQL role bootstrap shell" "Validate local self-hosted Compose configuration" "Validate production PostgreSQL and TLS Compose stack" "Build API and worker images" "Smoke-test API and worker imports"; do
             step="$(jq -c --arg name "$step_name" '[.steps[] | select(.name == $name)] | first // empty' <<< "$api_job")"
             if [[ -z "$step" || "$step" == "null" || "$(jq -r '.conclusion' <<< "$step")" != "success" ]]; then
               echo "::error::Required FIRSTLIGHT API step is missing, skipped or failed: $step_name"
@@ -111,6 +115,33 @@ jobs:
             fi
           done
 
+          web_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${web_run}/jobs?per_page=100")"
+          web_job="$(jq -c '[.jobs[] | select(.name == "frontend")] | first // empty' <<< "$web_jobs")"
+          if [[ -z "$web_job" || "$web_job" == "null" || "$(jq -r '.conclusion' <<< "$web_job")" != "success" ]]; then
+            echo "::error::Web production build/browser validation job is missing or did not pass."
+            exit 1
+          fi
+
+          codeql_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${codeql_run}/jobs?per_page=100")"
+          codeql_job="$(jq -c '[.jobs[] | select(.name == "Analyze Python and JavaScript/TypeScript")] | first // empty' <<< "$codeql_jobs")"
+          if [[ -z "$codeql_job" || "$codeql_job" == "null" || "$(jq -r '.conclusion' <<< "$codeql_job")" != "success" ]]; then
+            echo "::error::CodeQL analysis job is missing or did not pass."
+            exit 1
+          fi
+
+          production_smoke_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${production_smoke_run}/jobs?per_page=100")"
+          production_smoke_job="$(jq -c '[.jobs[] | select(.name == "smoke")] | first // empty' <<< "$production_smoke_jobs")"
+          if [[ -z "$production_smoke_job" || "$production_smoke_job" == "null" || "$(jq -r '.conclusion' <<< "$production_smoke_job")" != "success" ]]; then
+            echo "::error::Production smoke job is missing, skipped or failed."
+            exit 1
+          fi
+          auth_smoke_step="$(jq -c '[.steps[] | select(.name == "Authenticate a dedicated production smoke account and read tenant data")] | first // empty' <<< "$production_smoke_job")"
+          if [[ -z "$auth_smoke_step" || "$auth_smoke_step" == "null" || "$(jq -r '.conclusion' <<< "$auth_smoke_step")" != "success" ]]; then
+            echo "::error::Authenticated production session and tenant readback smoke did not pass."
+            exit 1
+          fi
+
+          echo "Exact-SHA CI, web, CodeQL, FIRSTLIGHT/PostgreSQL, Android emulator, inventory and authenticated production smoke gates passed for $WORKFLOW_SHA."
 
       - name: Require exact deployed revision and all evidence gates
         env:

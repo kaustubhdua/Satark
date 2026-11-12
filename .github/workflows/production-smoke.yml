@@ -213,3 +213,73 @@ jobs:
             exit 1
           fi
 
+
+
+      - name: Authenticate a dedicated production smoke account and read tenant data
+        env:
+          SATARK_SMOKE_EMAIL: ${{ secrets.SATARK_SMOKE_EMAIL }}
+          SATARK_SMOKE_PASSWORD: ${{ secrets.SATARK_SMOKE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SATARK_SMOKE_EMAIL:-}" || -z "${SATARK_SMOKE_PASSWORD:-}" ]]; then
+            echo "::error::Authenticated production smoke requires the dedicated SATARK_SMOKE_EMAIL and SATARK_SMOKE_PASSWORD secrets."
+            exit 1
+          fi
+          base="${SATARK_PRODUCTION_URL%/}"
+          protection_args=()
+          if [[ -n "${SATARK_VERCEL_PROTECTION_BYPASS:-}" ]]; then
+            target_host="$(python -c 'import sys; from urllib.parse import urlsplit; print((urlsplit(sys.argv[1]).hostname or "").lower())' "$base")"
+            case "$target_host" in
+              satark-rose.vercel.app|satark-jyc-website.vercel.app) ;;
+              *)
+                echo "::error::The Vercel protection bypass secret may only be sent to the verified SATARK Vercel aliases."
+                exit 1
+                ;;
+            esac
+            protection_args+=(--header "x-vercel-protection-bypass: ${SATARK_VERCEL_PROTECTION_BYPASS}")
+          fi
+          jar="$(mktemp)"
+          body="$(mktemp)"
+          trap 'rm -f "$jar" "$body"' EXIT
+
+          login_payload="$(jq -n --arg email "$SATARK_SMOKE_EMAIL" --arg password "$SATARK_SMOKE_PASSWORD" '{email:$email,password:$password}')"
+          login_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie-jar "$jar" --cookie "$jar" --write-out '%{http_code}' -H 'Content-Type: application/json' --data "$login_payload" -H "Origin: $base" "$base/api/auth/login")"
+          if [[ "$login_status" != "200" ]]; then
+            echo "::error::Dedicated production smoke account authentication failed with HTTP $login_status."
+            exit 1
+          fi
+
+          session_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base/api/auth/session")"
+          if [[ "$session_status" != "200" ]] || ! jq -e '(.user.id | type) == "string" and (.user.id | length) > 0' "$body" >/dev/null; then
+            echo "::error::Authenticated production session could not be verified."
+            exit 1
+          fi
+
+          workspaces_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base/api/workspaces")"
+          if [[ "$workspaces_status" != "200" ]] || ! jq -e '(.workspaces | type) == "array" and (.workspaces | length) > 0' "$body" >/dev/null; then
+            echo "::error::Authenticated production account has no readable test workspace."
+            exit 1
+          fi
+          tenant_id="$(jq -r '.workspaces[0].id // empty' "$body")"
+          if [[ -z "$tenant_id" ]]; then
+            echo "::error::Authenticated production workspace did not return an ID."
+            exit 1
+          fi
+
+          for spec in "cases|/api/cases?tenant_id=$tenant_id" "findings|/api/findings?tenant_id=$tenant_id" "reports|/api/reports?tenant_id=$tenant_id"; do
+            key="${spec%%|*}"
+            route="${spec#*|}"
+            status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base$route")"
+            if [[ "$status" != "200" ]] || ! jq -e --arg key "$key" '(.[$key] | type) == "array"' "$body" >/dev/null; then
+              echo "::error::Authenticated production read failed or returned an invalid $key payload (HTTP $status)."
+              exit 1
+            fi
+          done
+
+          logout_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --cookie-jar "$jar" --write-out '%{http_code}' -H "Origin: $base" -X POST "$base/api/auth/logout")"
+          if [[ "$logout_status" != "200" ]]; then
+            echo "::error::Production smoke account logout failed with HTTP $logout_status."
+            exit 1
+          fi
+          echo "PASS authenticated production smoke: session, workspace, cases, findings, reports and logout."
