@@ -65,7 +65,7 @@ test('rejects records with more cells than the header', () => {
 
 test('rejects header-only CSV and unsupported headers', () => {
   assert.throws(() => parseCsv('timestamp,summary'), /header and at least one event row/i);
-  assert.throws(() => parseCsv('name,notes\na,b'), /must include event fields/i);
+  assert.throws(() => parseCsv('name,notes\na,b'), /source timestamp\\/time column/i);
 });
 
 test('CSV import does not invent an event ID, source or category', () => {
