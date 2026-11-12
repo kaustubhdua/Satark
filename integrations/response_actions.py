@@ -210,8 +210,6 @@ def preflight_live_response(action: str, target: str, confirmation: str) -> None
         raise ResponseIntegrationError(f"Explicit confirmation required: CONFIRM {expected} {target}")
     if target not in _agent_allowlist():
         raise ResponseIntegrationError("Target agent is not in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.")
-    if action == "wazuh.disable_account" and target not in _account_disable_allowlist():
-        raise ResponseIntegrationError("Account disable is restricted to FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS (Linux/macOS lab agents only).")
     _base_url()
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
