@@ -78,7 +78,7 @@ class FirstlightEngineTests(unittest.TestCase):
     def test_evidence_priority_uses_volatility_relevance_and_recency(self):
         now = datetime(2026, 10, 10, 9, 30, tzinfo=timezone.utc)
         priorities = prioritize_evidence(self.evidence, now=now)
-        self.assertEqual(priorities[0]["evidence_id"], "EV-002")
+        self.assertEqual(priorities[0]["evidence_id"], "UNIT-002")
         self.assertEqual(priorities[0]["priority"], "critical")
         self.assertTrue(any("Volatility" in reason for reason in priorities[0]["reasons"]))
         self.assertTrue(any("Recent source timestamp" in reason for reason in priorities[0]["reasons"]))
