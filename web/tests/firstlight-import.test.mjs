@@ -48,7 +48,7 @@ test('rejects empty and duplicate headers', () => {
 test('rejects CSV rows without source timestamps instead of inventing current time', () => {
   assert.throws(
     () => parseCsv('id,source,summary\nEV-1,mail,Message with no timestamp'),
-    /missing a timestamp\/time value/i
+    /source timestamp\/time column/i
   );
 });
 
@@ -60,16 +60,16 @@ test('rejects duplicate evidence IDs in CSV imports', () => {
 });
 
 test('rejects records with more cells than the header', () => {
-  assert.throws(() => parseCsv('id,summary\n1,hello,extra'), /more columns than its header/i);
+  assert.throws(() => parseCsv('timestamp,summary\n2026-10-10T10:00:00Z,hello,extra'), /more columns than its header/i);
 });
 
 test('rejects header-only CSV and unsupported headers', () => {
   assert.throws(() => parseCsv('timestamp,summary'), /header and at least one event row/i);
-  assert.throws(() => parseCsv('name,notes\na,b'), /source timestamp\\/time column/i);
+  assert.throws(() => parseCsv('name,notes\na,b'), /source timestamp\/time column/i);
 });
 
 test('CSV import does not invent an event ID, source or category', () => {
-  const [row] = parseCsv('timestamp,summary\\n2026-10-10T10:00:00Z,Observed login failure');
+  const [row] = parseCsv('timestamp,summary\n2026-10-10T10:00:00Z,Observed login failure');
   assert.equal(row.id, '');
   assert.equal(row.source, '');
   assert.equal(row.kind, '');
@@ -78,7 +78,7 @@ test('CSV import does not invent an event ID, source or category', () => {
 
 test('CSV import rejects rows without a source-backed summary', () => {
   assert.throws(
-    () => parseCsv('timestamp,source\\n2026-10-10T10:00:00Z,identity provider'),
+    () => parseCsv('timestamp,source,summary\n2026-10-10T10:00:00Z,identity provider,'),
     /will not invent event summaries/i
   );
 });
