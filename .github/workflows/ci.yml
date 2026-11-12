@@ -68,6 +68,7 @@ jobs:
           set -euo pipefail
           api_workflow=".github/workflows/firstlight-api-ci.yml"
           release_gate=".github/workflows/release-gate.yml"
+          web_workflow=".github/workflows/web-ci.yml"
           grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
           grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
           for trigger_path in \
@@ -76,6 +77,14 @@ jobs:
             "docs/RELEASE_READINESS.md" \
             "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"; do
             grep -Fq "$trigger_path" "$api_workflow"
+          done
+          for trigger_path in \
+            ".github/workflows/ci.yml" \
+            ".github/workflows/firstlight-api-ci.yml" \
+            ".github/workflows/release-gate.yml" \
+            "docs/RELEASE_READINESS.md" \
+            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"; do
+            grep -Fq "$trigger_path" "$web_workflow"
           done
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
           grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
