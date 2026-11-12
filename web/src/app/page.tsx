@@ -9,7 +9,7 @@ const ServiceReadiness = dynamic(() => import('../components/service-readiness')
 import IntegrityLedger from '../components/ui/integrity-ledger';
 import {
   ArrowRight, ArrowUpRight, ScanSearch, ShieldCheck, FileText, BookOpen, LockKeyhole, ScanLine, Eye, ShieldAlert,
-  Fingerprint, ListFilter, Radar, Clock3, SearchCheck, Route, UserCheck, Image as ImageIcon, Film, FolderKanban, ChevronRight, Terminal,
+  Fingerprint, ListFilter, Radar, Clock3, SearchCheck, UserCheck, Image as ImageIcon, Film, FolderKanban, ChevronRight, Terminal,
 } from 'lucide-react';
 
 // The order reflects the shared FIRSTLIGHT engine's deterministic investigation stages.
@@ -19,12 +19,11 @@ const stages = [
   { icon: Radar, name: 'Detection & correlation', text: 'Links signals to evidence' },
   { icon: Clock3, name: 'Timeline', text: 'Rebuilds the order of events' },
   { icon: SearchCheck, name: 'Verification & gaps', text: 'Says what is still unknown' },
-  { icon: Route, name: 'Response planning', text: 'Proposes next actions' },
 ];
 
 const bento = [
   { icon: ScanSearch, title: 'Investigate a message or link', text: 'Paste a suspicious message or URL. See the signals behind the score, without SATARK opening the link.', href: '/investigate', cta: 'Start investigating', cls: 'span-3 wide-m', dots: true },
-  { icon: ShieldCheck, title: 'FIRSTLIGHT incident command', text: 'Reconstruct an account-compromise case from sealed evidence, then review each proposed response before it is recorded.', href: '/firstlight', cta: 'Open FIRSTLIGHT', cls: 'span-3 wide-m', dots: true },
+  { icon: ShieldCheck, title: 'FIRSTLIGHT incident command', text: 'Investigate real Wazuh alerts or imported source evidence, verify findings, and access guarded response controls only when a private allowlisted lab is configured.', href: '/firstlight', cta: 'Open FIRSTLIGHT', cls: 'span-3 wide-m', dots: true },
   { icon: ScanLine, title: 'Decode a QR code', text: 'Read the destination as text before your phone opens it.', href: '/qr', cta: 'Decode a QR code', cls: 'span-2' },
   { icon: FileText, title: 'Review a document', text: 'Extract PDF or text locally and flag pressure and payment cues.', href: '/pdf-review', cta: 'Review a document', cls: 'span-2' },
   { icon: ImageIcon, title: 'Inspect an image', text: 'Read metadata markers and fingerprint the file in your browser.', href: '/image-review', cta: 'Inspect an image', cls: 'span-2' },
@@ -99,8 +98,8 @@ export default function Home() {
 
         <section className="home-section" aria-labelledby="pipeline-title">
           <div className="sentinel-section-heading">
-            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Six investigation stages, one decision for you.</h2></div>
-            <p>Each stage has a defined purpose and hands structured results to the next. Findings remain tied to evidence; this is a staged deterministic workflow, not six independent AI agents.</p>
+            <div><div className="sentinel-overline">How FIRSTLIGHT works</div><h2 id="pipeline-title">Five investigation stages, one decision for you.</h2></div>
+            <p>Each stage has a defined purpose and hands structured results to the next. Findings remain tied to evidence; this is a staged deterministic workflow, not a collection of autonomous AI agents.</p>
           </div>
           <div className="pipeline-card">
             <div className="dot-pattern" aria-hidden="true" />
@@ -116,7 +115,7 @@ export default function Home() {
                 <strong>You approve</strong><small>Nothing runs on its own</small>
               </li>
             </ol>
-            <p className="pipeline-caption">Records that change after they are sealed are quarantined before any finding is drawn, and response actions stay simulations until you approve them.</p>
+            <p className="pipeline-caption">Records that fail integrity checks are quarantined before findings are drawn. Live response is a separate saved-case Wazuh workflow, disabled until an authorized allowlisted lab is configured.</p>
           </div>
         </section>
 
