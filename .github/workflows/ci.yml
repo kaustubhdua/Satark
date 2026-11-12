@@ -71,6 +71,10 @@ jobs:
           grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
           grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
+          grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
+          grep -Fq 'tests/test_satark_postgres.py' "$api_workflow"
+          grep -Fq 'def test_workspace_case_and_tenant_isolation' tests/test_satark_backend.py
+          grep -Fq 'def test_postgres_signup_tenant_evidence_idempotent_job_and_worker' tests/test_satark_postgres.py
           for step_name in \
             "Run FIRSTLIGHT engine, API, response and worker tests" \
             "Perform isolated PostgreSQL backup and restore drill" \
