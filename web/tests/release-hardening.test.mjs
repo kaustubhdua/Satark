@@ -213,3 +213,10 @@ test('simulation-only approval endpoints are retired from the production API', (
   assert.doesNotMatch(approvalsBackend, /firstlight\/approvals/);
   assert.match(approvalsBackend, /guarded Wazuh response routes/);
 });
+
+test('homepage describes the actual deterministic stages and guarded response boundary', () => {
+  assert.match(homePage, /Five investigation stages, one decision for you/);
+  assert.doesNotMatch(homePage, /Response planning|response actions stay simulations|six independent AI agents/i);
+  assert.match(homePage, /Live response is a separate saved-case Wazuh workflow/);
+  assert.match(homePage, /private allowlisted lab is configured/);
+});
