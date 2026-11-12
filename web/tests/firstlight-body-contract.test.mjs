@@ -48,3 +48,11 @@ test('independent FIRSTLIGHT model agent implementation remains opt-in and read-
   assert.ok(agents.includes('FIRSTLIGHT_MODEL_AGENTS_ENABLED'));
   assert.ok(agents.includes('ALLOWED_TOOL_NAMES: frozenset[str] = frozenset()'));
 });
+
+test('FIRSTLIGHT never presents a locally derived import key as a source event ID', () => {
+  assert.match(page, /LOCAL-.*sourceDigest/);
+  assert.match(page, /identity_origin: hasSourceId \? 'source_record' : 'local_import_digest'/);
+  assert.match(page, /Local import identifier/);
+  assert.match(page, /Unknown source/);
+  assert.match(page, /Unknown event type/);
+});
