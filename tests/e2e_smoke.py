@@ -9,6 +9,9 @@ ARTIFACTS.mkdir(parents=True,exist_ok=True)
 
 
 def assert_layout(page, name):
+    # Streamlit's script rerun can finish after the server first responds.
+    # Wait for the actual page heading before reading body text or geometry.
+    page.locator(".satark-home-hero h1").wait_for(state="visible", timeout=30_000)
     body=page.locator("body").inner_text()
     assert "Pause the panic." in body, f"{name}: home copy missing"
     metrics=page.evaluate("""() => ({
