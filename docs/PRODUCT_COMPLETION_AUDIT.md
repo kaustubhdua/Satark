@@ -25,6 +25,7 @@ The current production Vercel deployment was queried directly, not inferred from
 - The snapshot reported FIRSTLIGHT investigation proxy and Wazuh proxy as **not configured**, and persistent storage as **not configured**.
 - Shared Upstash rate limiting was configured but its live connectivity was explicitly unverified.
 - The production Vercel environment-variable inventory did not include `SATARK_API_INTERNAL_URL`; no self-hosted API upstream is currently wired to this deployment.
+- `GET /api/auth/session` returned HTTP 503 with `The self-hosted SATARK API is not configured.`; `GET /api/firstlight/wazuh/alerts?limit=1` returned the same 503. Login, persistent cases and Wazuh access are therefore not operational through the current production deployment.
 - The unauthenticated `/firstlight` request returned the secure-session loading shell. An authenticated case workflow has not been exercised against production.
 
 **Consequence:** production currently serves the Next.js website and local deterministic analysis surfaces, but FIRSTLIGHT persistence, Wazuh preview/ingestion and guarded response are not live through the public deployment. The health endpoint correctly discloses this. Do not describe the whole product as live or production-ready until the private API, durable database/evidence storage, and authorized Wazuh lab are connected and verified.
