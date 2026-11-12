@@ -35,6 +35,8 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_agent(monkeypatch)
     def fake_request(url, **kwargs):
         if url.endswith("/manager/info"):
             return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
+        if "/agents?" in url:
+            return 200, {"data": {"affected_items": [{"id": "001", "status": "active", "os": {"platform": "ubuntu", "name": "Ubuntu"}}]}}
         captured["url"] = url
         captured.update(kwargs)
         return 200, {"error": 0, "data": {"affected_items": ["001"], "failed_items": []}}
@@ -79,6 +81,8 @@ def test_block_ip_rejects_acknowledgement_for_different_agent(monkeypatch):
     def fake_request(url, **kwargs):
         if url.endswith("/manager/info"):
             return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
+        if "/agents?" in url:
+            return 200, {"data": {"affected_items": [{"id": "001", "status": "active", "os": {"platform": "ubuntu"}}]}}
         return 200, {"error": 0, "data": {"affected_items": ["002"], "failed_items": []}}
     monkeypatch.setattr(actions, "_request", fake_request)
     with pytest.raises(actions.ResponseIntegrationError, match="mismatched"):
@@ -109,3 +113,45 @@ def test_manager_version_gate_rejects_wazuh_5_before_submission(monkeypatch):
             confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
         )
     assert calls == ["https://wazuh-manager.example.test:55000/manager/info"]
+
+ 
+def test_response_requires_exact_active_agent_before_submission(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(actions, "_token", lambda: "fake-jwt")
+    calls = []
+
+    def fake_request(url, **kwargs):
+        calls.append(url)
+        if url.endswith("/manager/info"):
+            return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
+        if "/agents?" in url:
+            return 200, {"data": {"affected_items": [{"id": "002", "status": "active", "os": {"platform": "ubuntu"}}]}}
+        raise AssertionError("Active Response must not run for a mismatched agent")
+
+    monkeypatch.setattr(actions, "_request", fake_request)
+    with pytest.raises(actions.ResponseIntegrationError, match="exactly one matching agent"):
+        actions.execute_wazuh_response(
+            "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
+            confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
+        )
+    assert all("/active-response" not in url for url in calls)
+
+
+def test_disable_account_rejects_unsupported_agent_os(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "001")
+    monkeypatch.setattr(actions, "_token", lambda: "fake-jwt")
+
+    def fake_request(url, **kwargs):
+        if url.endswith("/manager/info"):
+            return 200, {"data": {"affected_items": [{"version": "v4.14.10"}]}}
+        if "/agents?" in url:
+            return 200, {"data": {"affected_items": [{"id": "001", "status": "active", "os": {"platform": "windows", "name": "Microsoft Windows 11"}}]}}
+        raise AssertionError("Active Response must not run for an unsupported OS")
+
+    monkeypatch.setattr(actions, "_request", fake_request)
+    with pytest.raises(actions.ResponseIntegrationError, match="Linux/macOS"):
+        actions.execute_wazuh_response(
+            "wazuh.disable_account", "001", {"username": "lab-user"},
+            confirmation="CONFIRM DISABLE_ACCOUNT 001", reason="Authorized disposable lab exercise",
+        )
