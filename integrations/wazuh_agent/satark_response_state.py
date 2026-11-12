@@ -108,14 +108,22 @@ def _owned_rule(ip: str) -> tuple[str, ...]:
     return ("-s", ip, "-m", "comment", "--comment", f"SATARK:{ip}", "-j", "DROP")
 
 
+def _rule_exists(*rule: str) -> bool:
+    check = _run_iptables("-C", "INPUT", *rule)
+    if check.returncode == 0:
+        return True
+    if check.returncode == 1:
+        return False
+    raise ResponseStateError("Could not safely inspect the host firewall rules.")
+
+
 def _delete_owned_rule(ip: str) -> None:
     # Remove only the exact rule carrying SATARK's ownership marker; never
     # delete an operator's pre-existing or subsequently-added firewall rule.
     # Bound the loop in case a damaged host contains duplicate SATARK rules.
     rule = _owned_rule(ip)
     for _ in range(16):
-        check = _run_iptables("-C", "INPUT", *rule)
-        if check.returncode != 0:
+        if not _rule_exists(*rule):
             return
         delete = _run_iptables("-D", "INPUT", *rule)
         if delete.returncode != 0:
@@ -134,17 +142,14 @@ def add_block(ip_value: str, ttl_value: str | int, *, now: float | None = None) 
         state = _load(state_path)
         expiry = current_time + ttl
         if ip in state:
-            owned = _run_iptables("-C", "INPUT", *_owned_rule(ip))
-            if owned.returncode != 0:
+            if not _rule_exists(*_owned_rule(ip)):
                 raise ResponseStateError("SATARK recorded a block but its owned firewall rule is missing.")
             state[ip] = expiry
             _save(state_path, state)
             return {"status": "extended", "ip_address": ip, "expires_at": expiry}
-        orphaned = _run_iptables("-C", "INPUT", *_owned_rule(ip))
-        if orphaned.returncode == 0:
+        if _rule_exists(*_owned_rule(ip)):
             raise ResponseStateError("A SATARK-tagged firewall rule exists without its ownership record; manual recovery is required.")
-        existing = _run_iptables("-C", "INPUT", "-s", ip, "-j", "DROP")
-        if existing.returncode == 0:
+        if _rule_exists("-s", ip, "-j", "DROP"):
             return {"status": "already_blocked_unowned", "ip_address": ip}
         # Record ownership before changing the firewall. If the process dies
         # after insertion, the watchdog still knows the expiry and can reverse it.
