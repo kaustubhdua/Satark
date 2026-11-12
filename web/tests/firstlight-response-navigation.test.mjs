@@ -22,6 +22,8 @@ test('the persistent case workspace mounts the real Wazuh response panel only fo
 });
 
 test('live response retains separate approval, execution and independent verification controls', () => {
+  assert.match(liveResponse, /Refresh response status/);
+  assert.match(liveResponse, /run\(refresh, false\)/);
   assert.match(liveResponse, /Request live-response approval/);
   assert.match(liveResponse, /Execute approved action once/);
   assert.match(liveResponse, /Record independent verification/);
