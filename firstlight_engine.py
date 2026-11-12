@@ -1,13 +1,14 @@
-"""FIRSTLIGHT incident-response core for SATARK.
+"""Evidence-first FIRSTLIGHT investigation engine for SATARK.
 
-Synthetic-first incident workflow with deterministic evidence integrity,
-evidence-linked findings, a hash-chained audit trail, and approval-gated
-response simulation. No real endpoint or network actions are performed.
+Provides deterministic evidence integrity checks, evidence-linked findings,
+timeline reconstruction, prioritization and a verifiable local audit chain.
+It does not seed sample incidents or propose/execute endpoint response actions.
+Live response is a separate, explicitly guarded Wazuh subsystem.
 """
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import hashlib
 import json
 import uuid
@@ -23,42 +24,6 @@ def _canonical(value: Any) -> bytes:
 def sha256_record(record: dict[str, Any]) -> str:
     """Hash a record's canonical JSON representation."""
     return hashlib.sha256(_canonical(record)).hexdigest()
-
-
-def _event(event_id: str, timestamp: str, source: str, kind: str, summary: str, details: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "event_id": event_id,
-        "timestamp": timestamp,
-        "source": source,
-        "kind": kind,
-        "summary": summary,
-        "details": details,
-    }
-
-
-def create_demo_case() -> dict[str, Any]:
-    """Return a repeatable, fictional account-compromise scenario."""
-    start = datetime(2026, 10, 10, 9, 15, tzinfo=timezone.utc)
-    raw_events = [
-        ("EV-001", 0, "identity", "authentication", "Successful login from a new source", {"account": "analyst@example.test", "source_ip": "198.51.100.24", "result": "success", "novel_source": True}),
-        ("EV-002", 4, "endpoint", "process", "Unusual script interpreter launched", {"host": "WS-DEMO-04", "process": "powershell.exe", "parent": "outlook.exe", "rule": "unusual_parent_child"}),
-        ("EV-003", 7, "network", "connection", "Endpoint connected to a suspicious test domain", {"host": "WS-DEMO-04", "destination": "updates-example.invalid", "port": 443, "disposition": "simulated"}),
-        ("EV-004", 11, "filesystem", "file", "A staged archive was created in a temporary directory", {"host": "WS-DEMO-04", "path": "C:/Temp/collection-demo.zip", "execution": "not performed"}),
-        ("EV-005", 15, "identity", "session", "A second session token was issued", {"account": "analyst@example.test", "session": "SESSION-DEMO-2", "source_ip": "198.51.100.24"}),
-    ]
-    records = []
-    for event_id, minutes, source, kind, summary, details in raw_events:
-        timestamp = (start + timedelta(minutes=minutes)).isoformat()
-        records.append(_event(event_id, timestamp, source, kind, summary, details))
-    return {
-        "case_id": "FL-DEMO-2026-001",
-        "title": "Possible account compromise and endpoint staging",
-        "scenario": "Synthetic training incident. All identities, hosts and indicators are fictional.",
-        "status": "investigating",
-        "severity": "high",
-        "created_at": start.isoformat(),
-        "events": records,
-    }
 
 
 def seal_evidence(event: dict[str, Any]) -> dict[str, Any]:
@@ -504,11 +469,6 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
         gaps.append("Network destination reputation was not independently verified by this workflow.")
 
     evidence_priorities = prioritize_evidence(evidence)
-    response_proposals = [
-        {"action_id": "ACT-001", "title": f"Preserve evidence for case {case_id}", "impact": "Would mark evidence-preservation as approved in the simulator only; no files are changed.", "risk": "low", "status": "pending"},
-        {"action_id": "ACT-002", "title": "Review and contain affected assets", "impact": "Analyst must identify and confirm an exact target before any real response; this prototype only records a simulated decision.", "risk": "high", "status": "pending"},
-        {"action_id": "ACT-003", "title": "Review identity sessions and access", "impact": "Analyst must verify the account and business impact; this prototype does not revoke real sessions.", "risk": "high", "status": "pending"},
-    ]
     matched_findings = [
         item for item in findings
         if item.get("title") != "No rule matched — analyst review required"
@@ -569,16 +529,6 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
             "evidence_ids": referenced_ids,
             "summary": f"Checked evidence references and recorded {len(gaps)} explicit evidence gap(s); unsupported claims remain unverified.",
         },
-        {
-            "agent_id": "response_planning",
-            "name": "Response Planning Agent",
-            "mode": "deterministic",
-            "status": "completed",
-            "inputs": len(findings),
-            "outputs": len(response_proposals),
-            "evidence_ids": referenced_ids,
-            "summary": "Prepared reviewable proposals only. Approval records a simulation and never executes a real response action.",
-        },
     ]
     return {
         "schema_version": "1.1",
@@ -586,7 +536,7 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
         "orchestrator": {
             "status": "completed",
             "mode": "bounded_deterministic",
-            "strategy": "Preserve → triage → detect/correlate → reconstruct → verify → propose response",
+            "strategy": "Preserve → triage → detect/correlate → reconstruct → verify",
             "agent_count": len(agent_trace),
             "model_agents_enabled": False,
             "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
@@ -597,35 +547,5 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
         "evidence_priorities": evidence_priorities,
         "timeline": timeline,
         "gaps": gaps,
-        "response_proposals": response_proposals,
     }
 
-
-def apply_simulated_response(proposals: list[dict[str, Any]], action_id: str, approved: bool, approver: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Enforce explicit approval and simulate, never execute real response actions."""
-    if not isinstance(proposals, list):
-        raise ValueError("Response proposals must be a list.")
-    updated = deepcopy(proposals)
-    target = next(
-        (item for item in updated if isinstance(item, dict) and item.get("action_id") == action_id),
-        None,
-    )
-    if target is None:
-        raise ValueError("Unknown response action.")
-    safe_approver = str(approver or "unknown")[:128]
-    if approved is not True:
-        target["status"] = "rejected"
-        return updated, {
-            "action_id": action_id,
-            "status": "rejected",
-            "approver": safe_approver,
-            "simulated": True,
-        }
-    target["status"] = "approved_simulated"
-    return updated, {
-        "action_id": action_id,
-        "status": "simulated_success",
-        "approver": safe_approver,
-        "simulated": True,
-        "message": "No real host, account, network or process was changed.",
-    }
