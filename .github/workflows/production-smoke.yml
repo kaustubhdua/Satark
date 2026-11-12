@@ -244,20 +244,20 @@ jobs:
           trap 'rm -f "$jar" "$body"' EXIT
 
           login_payload="$(jq -n --arg email "$SATARK_SMOKE_EMAIL" --arg password "$SATARK_SMOKE_PASSWORD" '{email:$email,password:$password}')"
-          login_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie-jar "$jar" --cookie "$jar" --write-out '%{http_code}' -H 'Content-Type: application/json' --data "$login_payload" "$base/api/auth/login")"
+          login_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie-jar "$jar" --cookie "$jar" --write-out '%{http_code}' -H 'Content-Type: application/json' --data "$login_payload" -H "Origin: $base" "$base/api/auth/login")"
           if [[ "$login_status" != "200" ]]; then
             echo "::error::Dedicated production smoke account authentication failed with HTTP $login_status."
             exit 1
           fi
 
           session_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base/api/auth/session")"
-          if [[ "$session_status" != "200" ]] || ! jq -e '.user.id | type == "string" and length > 0' "$body" >/dev/null; then
+          if [[ "$session_status" != "200" ]] || ! jq -e '(.user.id | type) == "string" and (.user.id | length) > 0' "$body" >/dev/null; then
             echo "::error::Authenticated production session could not be verified."
             exit 1
           fi
 
           workspaces_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base/api/workspaces")"
-          if [[ "$workspaces_status" != "200" ]] || ! jq -e '.workspaces | type == "array" and length > 0' "$body" >/dev/null; then
+          if [[ "$workspaces_status" != "200" ]] || ! jq -e '(.workspaces | type) == "array" and (.workspaces | length) > 0' "$body" >/dev/null; then
             echo "::error::Authenticated production account has no readable test workspace."
             exit 1
           fi
@@ -267,15 +267,17 @@ jobs:
             exit 1
           fi
 
-          for route in "/api/cases?tenant_id=$tenant_id" "/api/findings?tenant_id=$tenant_id" "/api/reports?tenant_id=$tenant_id"; do
+          for spec in "cases|/api/cases?tenant_id=$tenant_id" "findings|/api/findings?tenant_id=$tenant_id" "reports|/api/reports?tenant_id=$tenant_id"; do
+            key="${spec%%|*}"
+            route="${spec#*|}"
             status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --write-out '%{http_code}' "$base$route")"
-            if [[ "$status" != "200" ]]; then
-              echo "::error::Authenticated production read failed for $route (HTTP $status)."
+            if [[ "$status" != "200" ]] || ! jq -e --arg key "$key" '(.[$key] | type) == "array"' "$body" >/dev/null; then
+              echo "::error::Authenticated production read failed or returned an invalid $key payload (HTTP $status)."
               exit 1
             fi
           done
 
-          logout_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --cookie-jar "$jar" --write-out '%{http_code}' -X POST "$base/api/auth/logout")"
+          logout_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --cookie "$jar" --cookie-jar "$jar" --write-out '%{http_code}' -H "Origin: $base" -X POST "$base/api/auth/logout")"
           if [[ "$logout_status" != "200" ]]; then
             echo "::error::Production smoke account logout failed with HTTP $logout_status."
             exit 1
