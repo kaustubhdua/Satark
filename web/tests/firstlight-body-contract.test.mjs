@@ -56,3 +56,8 @@ test('FIRSTLIGHT never presents a locally derived import key as a source event I
   assert.match(page, /Unknown source/);
   assert.match(page, /Unknown event type/);
 });
+
+test('FIRSTLIGHT does not label a newly captured digest as already verified', () => {
+  assert.match(page, /item\.tampered === true\?'risk-chip':item\.tampered === false\?'safe-chip':'review-chip'/);
+  assert.match(page, /item\.tampered === false\?'MATCH':'DIGEST STORED'/);
+});
