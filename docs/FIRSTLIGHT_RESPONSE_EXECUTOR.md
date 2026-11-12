@@ -4,10 +4,10 @@
 
 The current implementation uses Wazuh Manager API Active Response only:
 
-- `wazuh.block_ip` — invokes the fixed Wazuh 4.x built-in `firewall-drop` command with one validated IPv4 address.
-- `wazuh.disable_account` — invokes the fixed Wazuh 4.x built-in `disable-account` command with one validated local account name.
+- `wazuh.block_ip` — invokes the fixed Wazuh 4.x built-in `firewall-drop` command for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the Manager timeout (60–900 seconds) and endpoint reversal have been independently verified and explicitly attested.
+- `wazuh.disable_account` is deliberately unavailable because the 4.x manual Active Response API does not carry a per-request timeout; account locking could become persistent without a verified reversal path.
 
-There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, custom script names, all-agent broadcasts and free-form command arguments are not supported.
+There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, all-agent broadcasts and free-form command arguments are not supported.
 
 ## Approval lifecycle
 
@@ -25,7 +25,10 @@ The live-response feature flag is disabled by default. The API never chooses tar
 - `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private HTTPS Manager API URL.
 - `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity with Active Response execution permission and read access to the explicitly allowlisted agent inventory; FIRSTLIGHT verifies exact agent identity, active status and supported OS before submission.
 - `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional trusted private CA file.
-- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable-agent allowlist.
+- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable Linux-agent allowlist.
+- `FIRSTLIGHT_WAZUH_PROTECTED_IPS` — mandatory CIDR denylist for Manager, API, VPN, DNS and other protected infrastructure.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — exact Manager-configured timeout, 60–900 seconds.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED=true` — manual acceptance attestation after a real disposable-agent add/reversal test; this flag is not automatic proof.
 
 The Manager API should be reachable only from the private FIRSTLIGHT API network. Do not expose port 55000 publicly. TLS verification is mandatory for network endpoints. HTTP is accepted only for explicit localhost tests.
 
