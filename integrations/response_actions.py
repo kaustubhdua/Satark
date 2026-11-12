@@ -242,7 +242,9 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     reason = reason.strip()
     if not reason or len(reason) > 1000:
         raise ResponseIntegrationError("A reason of 1–1000 characters is required.")
-    command, args = "firewall-drop", _validate_payload(action, payload)
+    ttl = _verified_response_ttl()
+    ip_args = _validate_payload(action, payload)
+    command, args = "!satark-firewall-drop", [ip_args[0], str(ttl)]
     token = _token()
     manager_version = _verify_manager_compatibility(token)
     _verify_agent_target(token, agent_id, action)
@@ -251,7 +253,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
         _base_url() + "/active-response?" + query,
         method="PUT",
         headers={"Authorization": f"Bearer {token}"},
-        body={"command": command, "arguments": args, "custom": False},
+        body={"command": command, "arguments": args, "custom": True},
     )
     if status not in {200, 201, 202} or not isinstance(response, dict) or response.get("error") not in {0, None}:
         raise ResponseIntegrationError("Wazuh did not confirm that the Active Response command was accepted.")
