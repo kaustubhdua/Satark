@@ -1453,3 +1453,10 @@ button[kind="primary"],[data-testid="stButton"]>button[kind="primary"]{
 .ih-console-brand b{color:#e8f5eb!important}
 .ih-console-divider{background:linear-gradient(90deg,rgba(140,255,176,.24),rgba(255,255,255,.04))!important}
 .ih-signal-heading{color:#8cffb0!important}
+
+:root{
+  --ih-lilac:#b6ff5c;
+  --ih-cyan:#8cffb0;
+  --ih-mint:#8cffb0;
+  --ih-ink:#070b09;
+}
