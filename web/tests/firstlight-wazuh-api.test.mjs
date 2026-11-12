@@ -24,3 +24,11 @@ test('FIRSTLIGHT UI retains read-only Wazuh source provenance', () => {
   assert.match(panel, /browser_event_timestamp/);
   assert.match(panel, /persisted_by_worker/);
 });
+
+test('production FIRSTLIGHT workspace has no seeded scenarios or simulated approvals', () => {
+  assert.doesNotMatch(page, /synthetic|training|SIMULATED|FL-WEB-DEMO/i);
+  assert.doesNotMatch(panel, /simulation\.mark_case_contained|Simulation-only response approvals|Approve simulation/i);
+  assert.match(page, /authenticatedFetch\('\/api\/firstlight\/wazuh\/alerts/);
+  assert.doesNotMatch(page, /Authorization:\s*'Bearer '\s*\+\s*session\.access_token/);
+  assert.match(page, /No sample events are loaded/);
+});
