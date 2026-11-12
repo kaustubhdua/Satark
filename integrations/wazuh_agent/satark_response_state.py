@@ -140,6 +140,9 @@ def add_block(ip_value: str, ttl_value: str | int, *, now: float | None = None) 
             state[ip] = expiry
             _save(state_path, state)
             return {"status": "extended", "ip_address": ip, "expires_at": expiry}
+        orphaned = _run_iptables("-C", "INPUT", *_owned_rule(ip))
+        if orphaned.returncode == 0:
+            raise ResponseStateError("A SATARK-tagged firewall rule exists without its ownership record; manual recovery is required.")
         existing = _run_iptables("-C", "INPUT", "-s", ip, "-j", "DROP")
         if existing.returncode == 0:
             return {"status": "already_blocked_unowned", "ip_address": ip}
