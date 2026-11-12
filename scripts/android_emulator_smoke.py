@@ -69,7 +69,7 @@ def is_satark_foreground(snapshot: str) -> bool:
     for index, line in enumerate(lines):
         lowered = line.lower()
         if "activity " in lowered and PACKAGE in lowered and "mainactivity" in lowered:
-            block = "\\n".join(lines[index:index + 5]).lower()
+            block = "\n".join(lines[index:index + 5]).lower()
             if "state=resumed" in block or "state: resumed" in block:
                 return True
     return False
