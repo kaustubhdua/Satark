@@ -246,7 +246,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     token = _token()
     manager_version = _verify_manager_compatibility(token)
     _verify_agent_target(token, agent_id, action)
-    query = urllib.parse.urlencode({"agents_list": agent_id, "wait_for_complete": "true"})
+    query = urllib.parse.urlencode({"agents_list": agent_id})
     status, response = _request(
         _base_url() + "/active-response?" + query,
         method="PUT",
