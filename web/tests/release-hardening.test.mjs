@@ -210,6 +210,6 @@ test('local analysis rate limits include a standards-based retry hint without en
 
 const approvalsBackend = readFileSync(new URL('../../satark_backend.py', import.meta.url), 'utf8');
 test('simulation-only approval endpoints are retired from the production API', () => {
-  assert.doesNotMatch(approvalsBackend, /firstlight\\/approvals/);
+  assert.doesNotMatch(approvalsBackend, /firstlight\/approvals/);
   assert.match(approvalsBackend, /guarded Wazuh response routes/);
 });
