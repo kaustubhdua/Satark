@@ -12,10 +12,10 @@ ARTIFACTS.mkdir(parents=True,exist_ok=True)
 
 
 def assert_layout(page, name):
-    page.locator("#satark-intro-overlay").wait_for(state="detached", timeout=10_000)
+    page.locator("#satark-intro-overlay").wait_for(state="hidden", timeout=10_000)
     body=page.locator("body").inner_text()
     assert "Pause the panic." in body, f"{name}: home copy missing"
-    assert page.locator("#satark-intro-overlay").count() == 0, f"{name}: intro overlay did not dismiss"
+    assert page.locator("#satark-intro-overlay").count() == 1 and not page.locator("#satark-intro-overlay").is_visible(), f"{name}: intro overlay did not dismiss"
     metrics=page.evaluate("""() => ({
         viewport: window.innerWidth,
         scrollWidth: document.documentElement.scrollWidth,
