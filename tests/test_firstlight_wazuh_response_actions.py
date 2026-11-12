@@ -60,6 +60,12 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_linux_agent(monkey
     assert captured["body"] == {"command": "firewall-drop", "arguments": ["8.8.8.8"], "custom": False}
 
 
+def test_live_response_controls_are_hidden_when_feature_flag_is_off(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setenv("SATARK_ENABLE_LIVE_RESPONSE", "false")
+    assert actions.available_response_actions() == []
+
+
 def test_live_response_is_hidden_until_ttl_verification(monkeypatch):
     configure(monkeypatch)
     monkeypatch.delenv("FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED")
