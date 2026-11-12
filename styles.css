@@ -1471,3 +1471,9 @@ button[kind="primary"],[data-testid="stButton"]>button[kind="primary"]{
   color:#10170f!important;
   box-shadow:0 10px 28px rgba(140,255,176,.13)!important;
 }
+
+[data-testid="stSidebar"] [data-testid="stButton"]>button[kind="primary"],
+[data-testid="stSidebar"] [data-testid="stButton"]>button[kind="primary"] *{
+  color:#e8f5eb!important;
+  -webkit-text-fill-color:#e8f5eb!important;
+}
