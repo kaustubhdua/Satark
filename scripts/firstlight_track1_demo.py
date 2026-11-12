@@ -4,8 +4,9 @@ Run from the repository root:
     python scripts/firstlight_track1_demo.py
     python scripts/firstlight_track1_demo.py --output artifacts/firstlight-demo-report.json
 
-All inputs are fictional. Response decisions are simulation-only; no network,
-endpoint, identity, or production action is performed.
+This script is a deterministic test fixture, not a production workflow.
+All inputs are fictional. It performs no response action and must never be
+used as operational evidence or loaded into a deployed workspace.
 """
 from __future__ import annotations
 
@@ -22,7 +23,6 @@ if str(ROOT) not in sys.path:
 
 from firstlight_engine import (  # noqa: E402
     append_audit,
-    apply_simulated_response,
     investigate_case,
     seal_evidence,
     verify_audit_chain,
@@ -102,17 +102,6 @@ def run_demo() -> dict[str, Any]:
         "finding_count": len(investigation["findings"]),
         "verified_evidence_count": sum(verify_evidence(item)["valid"] for item in evidence),
     })
-    proposal = investigation["response_proposals"][0]
-    updated_proposals, response = apply_simulated_response(
-        investigation["response_proposals"], proposal["action_id"], False, "demo-reviewer"
-    )
-    audit = append_audit(audit, "response_simulation_rejected", "demo-reviewer", {
-        "case_id": case["case_id"],
-        "action_id": response["action_id"],
-        "status": response["status"],
-        "simulated": response["simulated"],
-    })
-
     report = {
         "report_schema": "firstlight-track1-demo/v1",
         "case": case,
@@ -133,11 +122,6 @@ def run_demo() -> dict[str, Any]:
             "checked": len(evidence),
             "valid": sum(verify_evidence(item)["valid"] for item in evidence),
             "invalid_ids": [item["evidence_id"] for item in evidence if not verify_evidence(item)["valid"]],
-        },
-        "response": {
-            "mode": "simulation_only",
-            "decision": response,
-            "proposals_after_decision": updated_proposals,
         },
         "audit": {
             "entries": audit,
@@ -168,10 +152,9 @@ def main() -> int:
         "detections": report["detection"]["finding_count"],
         "investigation_findings": len(report["investigation"]["findings"]),
         "evidence_integrity": report["evidence_integrity"],
-        "response_status": report["response"]["decision"]["status"],
         "audit_chain_valid": report["audit"]["valid_hash_chain"],
         "report_path": str(args.output) if args.output else None,
-        "simulation_only": True,
+        "fixture_only": True,
     }, indent=2))
     if args.output:
         print(f"Full report written to {args.output}")

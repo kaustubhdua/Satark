@@ -1,10 +1,7 @@
 """Browser smoke and layout regression checks for the local Streamlit app."""
 from pathlib import Path
-import re
-from io import BytesIO
 import os
 from playwright.sync_api import sync_playwright
-from pypdf import PdfReader
 
 URL=os.getenv("SATARK_E2E_URL","http://127.0.0.1:8501")
 ARTIFACTS=Path(os.getenv("SATARK_E2E_ARTIFACTS","artifacts"))
@@ -12,10 +9,11 @@ ARTIFACTS.mkdir(parents=True,exist_ok=True)
 
 
 def assert_layout(page, name):
-    page.locator("#satark-intro-overlay").wait_for(state="detached", timeout=10_000)
+    # Streamlit's script rerun can finish after the server first responds.
+    # Wait for the actual page heading before reading body text or geometry.
+    page.locator(".satark-home-hero h1").wait_for(state="visible", timeout=30_000)
     body=page.locator("body").inner_text()
     assert "Pause the panic." in body, f"{name}: home copy missing"
-    assert page.locator("#satark-intro-overlay").count() == 0, f"{name}: intro overlay did not dismiss"
     metrics=page.evaluate("""() => ({
         viewport: window.innerWidth,
         scrollWidth: document.documentElement.scrollWidth,
@@ -51,32 +49,6 @@ def assert_no_overlap(page, selector, name):
             assert horizontal == 0 or vertical == 0, f"{name}: {selector} elements overlap: {left} vs {right}"
 
 
-def choose_workspace(page, steps_down):
-    """Select a visible FIRSTLIGHT workspace option and verify its content."""
-    options = ["Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"]
-    active_markers = {
-        0: "Collection priority",
-        1: "Evidence Integrity Challenge",
-        2: "Coordinated investigation",
-        3: "Human approval gate",
-        4: "Hash-chained audit trail",
-    }
-    combobox = page.get_by_role("combobox", name="Investigation workspace")
-    combobox.wait_for(state="visible", timeout=10_000)
-    combobox.click()
-    # Open the React-Aria popup, then navigate from a known first option. Using
-    # the current selection as the starting point is flaky after a prior rerun:
-    # ArrowDown can move the selection before the option click lands.
-    combobox.press("ArrowDown")
-    listbox = page.get_by_role("listbox")
-    listbox.wait_for(state="visible", timeout=10_000)
-    page.keyboard.press("Home")
-    for _ in range(steps_down):
-        page.keyboard.press("ArrowDown")
-    page.keyboard.press("Enter")
-    page.get_by_text(active_markers[steps_down], exact=False).wait_for(timeout=30_000)
-
-
 
 def main():
     with sync_playwright() as p:
@@ -84,7 +56,6 @@ def main():
         for name,width,height in (("desktop",1440,900),("mobile",390,844)):
             page=browser.new_page(viewport={"width":width,"height":height},reduced_motion="reduce")
             page.goto(URL,wait_until="domcontentloaded",timeout=60_000)
-            page.locator("#satark-intro-overlay").wait_for(state="attached", timeout=10_000)
             assert_layout(page,name)
             if name=="desktop":
                 page.get_by_role("button",name="Start an investigation →").click()
@@ -138,63 +109,19 @@ def main():
                     else:
                         page.get_by_text(marker).wait_for(timeout=30_000)
 
-                # FIRSTLIGHT is the flagship workspace; exercise its main
-                # synthetic-only investigation path without provider credentials.
+                # The legacy Streamlit FIRSTLIGHT prototype is retired; it must not
+                # seed fictional incidents or offer simulated response controls.
                 page.locator(".st-key-home-actions").get_by_role(
                     "button", name="Open FIRSTLIGHT →"
                 ).last.click()
-                page.get_by_role("button", name="Open / reset training case").click()
-                page.get_by_text("Training case loaded").wait_for(timeout=30_000)
-                choose_workspace(page, 2)
-                page.get_by_text("Coordinated investigation", exact=True).wait_for(timeout=30_000)
-                page.get_by_role("button", name="Run investigation workflow").click()
-                page.get_by_text("Coordinated investigation").wait_for(timeout=30_000)
-                page.get_by_text("Findings", exact=True).wait_for(timeout=30_000)
-                page.get_by_text("Evidence gaps", exact=True).wait_for(timeout=30_000)
-                page.get_by_role("button", name="Export FIRSTLIGHT incident report (JSON)").wait_for(state="visible", timeout=30_000)
-                with page.expect_download(timeout=30_000) as firstlight_download:
-                    page.get_by_role("button", name="Export FIRSTLIGHT incident report (JSON)").click()
-                firstlight_json = Path(firstlight_download.value.path()).read_text(encoding="utf-8")
-                assert '"case_id": "FL-DEMO-2026-001"' in firstlight_json
-                assert '"audit_chain_valid": true' in firstlight_json
-                assert "Training case only" in firstlight_json
-
-                # Approval remains explicitly simulated; verify the action log
-                # and audit trail after one approval.
-                # choose_workspace resets to Incident (index 0), so select the
-                # exact destination by absolute option index: Response Center=3,
-                # Audit Trail=4. Evidence Integrity (index 1) has no response button.
-                choose_workspace(page, 3)
-                page.get_by_role("button", name="Approve & simulate").first.click()
-                page.get_by_text("Response action log").wait_for(timeout=30_000)
-                choose_workspace(page, 4)
-                page.get_by_text("Hash-chained audit trail").wait_for(timeout=30_000)
-                page.get_by_text("Audit chain verifies against its first entry.").wait_for(timeout=30_000)
+                page.get_by_text("FIRSTLIGHT incident workspace", exact=True).wait_for(timeout=30_000)
+                page.get_by_text("legacy Streamlit incident prototype has been retired", exact=False).wait_for(timeout=30_000)
+                page.get_by_text("does not load training incidents", exact=False).wait_for(timeout=30_000)
+                assert page.get_by_role("button", name="Open / reset training case").count() == 0
+                assert page.get_by_role("button", name="Approve & simulate").count() == 0
                 page.locator('[data-testid="stSidebar"] button').filter(has_text="Overview").click()
 
-                # The offline sample must open without a provider key and expose
-                # the evidence ledger plus the deterministic coverage check.
-                page.get_by_role("button", name="View example report").click()
-                page.get_by_text("Investigation workflow").wait_for(timeout=30_000)
-                page.get_by_text("Evidence ledger").wait_for(timeout=30_000)
-                page.get_by_text("INDEPENDENT COVERAGE CHECK").wait_for(timeout=30_000)
-
-                # Validate the real browser download path as well as the PDF
-                # generator's unit-level text extraction checks.
-                with page.expect_download(timeout=30_000) as download_info:
-                    page.get_by_role("button", name="Download PDF report").click()
-                download = download_info.value
-                downloaded_pdf = Path(download.path()).read_bytes()
-                assert downloaded_pdf.startswith(b"%PDF"), "sample report download is not a PDF"
-                assert len(downloaded_pdf) > 500, "sample report PDF is unexpectedly small"
-                pdf_text = "\n".join(
-                    pdf_page.extract_text() or ""
-                    for pdf_page in PdfReader(BytesIO(downloaded_pdf)).pages
-                )
-                assert "Investigation Workflow" in pdf_text, "PDF is missing the investigation workflow"
-                assert "Evidence Coverage Review" in pdf_text, "PDF is missing evidence coverage review"
-                assert "Rule-Based Evidence Ledger" in pdf_text, "PDF is missing the evidence ledger"
-                page.screenshot(path=str(ARTIFACTS / f"{name}-pages.png"),full_page=True)
+                # PDF rendering and report integrity are covered by isolated unit tests.
             else:
                 # Exercise the main scan workflow on a narrow viewport too.
                 page.get_by_role("button",name="Start an investigation →").click()

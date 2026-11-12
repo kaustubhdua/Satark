@@ -4,8 +4,8 @@ import SiteHeader from '../site-header';
 import FirstlightReadiness from '../../components/firstlight-readiness';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getActiveTenant, getSession, type SatarkSession } from '../../lib/satark-auth';
-import { parseCsv, parseIsoTimestamp, toggleSimulatedTamper } from '../../lib/firstlight-import.mjs';
+import { authenticatedFetch, getActiveTenant, getSession, type SatarkSession } from '../../lib/satark-auth';
+import { parseCsv, parseIsoTimestamp } from '../../lib/firstlight-import.mjs';
 import { buildFirstlightFindings, getTrustedFirstlightEvidence } from '../../lib/firstlight-investigation.mjs';
 
 // Large workspace and insight views are loaded only when their section/tab is needed.
@@ -25,14 +25,6 @@ const EventTracker = dynamic(() => import('./insights').then(module => module.Ev
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
 type Audit = { time: string; action: string; detail: string };
-const starter = [
-  { id: 'EV-001', time: '2026-10-11T09:14:00+05:30', source: 'Identity provider', kind: 'sign_in', summary: 'Successful sign-in from a new browser profile.' },
-  { id: 'EV-002', time: '2026-10-11T09:17:00+05:30', source: 'Mailbox audit', kind: 'rule_change', summary: 'A new inbox forwarding rule was created.' },
-  { id: 'EV-003', time: '2026-10-11T09:19:00+05:30', source: 'Identity provider', kind: 'mfa_change', summary: 'Multi-factor authentication settings were changed.' },
-  { id: 'EV-004', time: '2026-10-11T09:23:00+05:30', source: 'Endpoint telemetry', kind: 'process', summary: 'A browser process opened a suspicious attachment path.' },
-  { id: 'EV-005', time: '2026-10-11T09:28:00+05:30', source: 'Mail gateway', kind: 'message', summary: 'A lookalike-domain message requested an urgent account review.' }
-];
-
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === "object") {
@@ -86,9 +78,7 @@ export default function FirstlightPage() {
   const [selected, setSelected] = useState('overview');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const [actions, setActions] = useState<string[]>([]);
   const [caseOpen, setCaseOpen] = useState(false);
-  const [showTamper, setShowTamper] = useState(false);
   const [importName, setImportName] = useState('');
   const [sourceFileSha256, setSourceFileSha256] = useState('');
   const [persistentCaseId, setPersistentCaseId] = useState('');
@@ -133,13 +123,17 @@ export default function FirstlightPage() {
     setServerInvestigation(null);
     setNotice('');
     try {
-      const caseId = persistentCaseId || (importName ? 'FL-IMPORT-' + sourceFileSha256.slice(0, 12) : 'FL-WEB-DEMO-001');
-      const response = await fetch('/api/firstlight/investigate', {
+      const previewFingerprint = await digest(evidence.map(item => item.id + ':' + item.digest).sort().join('\n'));
+      const caseId = persistentCaseId || 'FL-PREVIEW-' + previewFingerprint.slice(0, 16);
+      const title = persistentCaseId
+        ? 'Saved case investigation'
+        : importName === 'Wazuh alerts' ? 'Read-only Wazuh alert preview' : 'Imported evidence preview';
+      const response = await authenticatedFetch('/api/firstlight/investigate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: 'Bearer ' + session.access_token } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           case_id: caseId,
-          title: importName ? 'Imported evidence investigation' : 'Synthetic account-compromise training case',
+          title,
           evidence: evidence.map(({ id, time, source, kind, summary, digest, details }) => ({ id, time, source, kind, summary, digest, details: details || {} })),
         }),
       });
@@ -163,10 +157,7 @@ export default function FirstlightPage() {
     setBusy(true);
     setNotice('');
     try {
-      const response = await fetch('/api/firstlight/wazuh/alerts?limit=100&tenant_id=' + encodeURIComponent(tenantId), {
-        headers: { Authorization: 'Bearer ' + session.access_token },
-        cache: 'no-store',
-      });
+      const response = await authenticatedFetch('/api/firstlight/wazuh/alerts?limit=100&tenant_id=' + encodeURIComponent(tenantId));
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Wazuh alerts could not be loaded.');
       if (!Array.isArray(payload?.events)) throw new Error('Wazuh connector returned an invalid event list.');
@@ -212,7 +203,7 @@ export default function FirstlightPage() {
       setPersistentCaseId('');
       setServerInvestigation(null);
       setAudit([{ time: new Date().toISOString(), action: 'WAZUH_ALERTS_IMPORTED', detail: 'Loaded ' + next.length + ' real Wazuh Indexer alert(s) through the authenticated read-only connector. Alerts are not yet persisted until saved to a case.' }]);
-      setActions([]);
+      
       setCaseOpen(true);
       setImportName('Wazuh alerts');
       setSourceFileSha256('');
@@ -234,10 +225,7 @@ export default function FirstlightPage() {
     }
     try {
       const params = new URLSearchParams({ tenant_id: tenantId, case_id: persistentCaseId, path: objectPath });
-      const response = await fetch('/api/firstlight/evidence/source?' + params.toString(), {
-        headers: { Authorization: 'Bearer ' + session.access_token },
-        cache: 'no-store',
-      });
+      const response = await authenticatedFetch('/api/firstlight/evidence/source?' + params.toString());
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Preserved source object could not be downloaded.');
@@ -261,18 +249,6 @@ export default function FirstlightPage() {
   }
 
   function log(action: string, detail: string) { setAudit(prev => [...prev, {time:new Date().toISOString(),action,detail}]); }
-  async function loadCase() {
-    if (evidence.length > 0 && !window.confirm('Replace the current in-memory evidence with the clearly labeled synthetic training scenario? Export or save your current case first if you need it.')) return;
-    setBusy(true); setNotice('');
-    try {
-      const sealed: Evidence[] = [];
-      for (const event of starter) sealed.push({...event, digest: await digestEvidence(event)});
-      setEvidence(sealed); setPersistentCaseId(''); setServerInvestigation(null); setAudit([]); setActions([]); setCaseOpen(true); setImportName(''); setSourceFileSha256('');
-      setAudit([{time:new Date().toISOString(),action:'CASE_CREATED',detail:'Synthetic account-compromise training case loaded.'},{time:new Date().toISOString(),action:'EVIDENCE_SEALED',detail:sealed.length+' synthetic records hashed with SHA-256 in this browser session.'}]);
-      setSelected('evidence');
-    } catch { setNotice('Web Crypto is unavailable in this browser. Try a modern browser over HTTPS.'); }
-    finally { setBusy(false); }
-  }
   async function importFile(file?: File) {
     if (!file || busy) return;
     if (evidence.length > 0 && !window.confirm('Replace the current in-memory evidence with this imported file? Export or save your current case first if you need it.')) return;
@@ -301,15 +277,36 @@ export default function FirstlightPage() {
         }
         const parsedTime = parseIsoTimestamp(rawTime);
         if (!parsedTime) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use ISO 8601 date/time with an explicit timezone, e.g. 2026-10-11T10:00:00Z.');
-        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:parsedTime,source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096),details:await boundedDetails(row.details)};
-        next.push({...item,digest:await digestEvidence(item)});
+        const rawSummary = row.summary ?? row.message ?? row.description;
+        if (typeof rawSummary !== 'string' || !rawSummary.trim()) {
+          throw new Error('Missing summary in event ' + (i + 1) + '. Include summary/message/description; SATARK will not invent event content.');
+        }
+        const rawId = row.id ?? row.evidence_id ?? row.event_id;
+        const hasSourceId = typeof rawId === 'string' && rawId.trim().length > 0;
+        // This deterministic local key is derived from the uploaded bytes and row
+        // position. It is never represented as an ID issued by the source system.
+        const eventId = hasSourceId
+          ? rawId.trim()
+          : 'LOCAL-' + sourceDigest.slice(0, 16) + '-' + String(i + 1).padStart(5, '0');
+        const rawSource = row.source ?? row.provider ?? row.source_system;
+        const rawKind = row.kind ?? row.event_type ?? row.category;
+        const item = {
+          id: eventId.slice(0, 100),
+          time: parsedTime,
+          source: typeof rawSource === 'string' && rawSource.trim() ? rawSource.trim().slice(0, 160) : 'Unknown source',
+          kind: typeof rawKind === 'string' && rawKind.trim() ? rawKind.trim().slice(0, 100) : 'Unknown event type',
+          summary: rawSummary.trim().slice(0, 4096),
+          details: await boundedDetails(row.details),
+          metadata: { identity_origin: hasSourceId ? 'source_record' : 'local_import_digest' },
+        };
+        next.push({ ...item, digest: await digestEvidence(item) });
       }
       const ids = new Set<string>();
       for (const item of next) {
         if (ids.has(item.id)) throw new Error('Duplicate evidence ID after normalization: ' + item.id + '. Each event must have a unique ID.');
         ids.add(item.id);
       }
-      setEvidence(next); setPersistentCaseId(''); setServerInvestigation(null); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' normalized records · original file SHA-256: '+sourceDigest+' · file bytes hashed locally; no external anchor or custody log.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSourceFileSha256(sourceDigest); setSelected('evidence'); setNotice('Imported locally. Original file bytes and normalized event records were hashed in this browser; nothing was sent to an AI provider.');
+      setEvidence(next); setPersistentCaseId(''); setServerInvestigation(null); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' normalized records · original file SHA-256: '+sourceDigest+' · IDs without source IDs are local digest-derived row keys, not source event IDs; no external anchor or custody log.'}]); setCaseOpen(true); setImportName(file.name); setSourceFileSha256(sourceDigest); setSelected('evidence'); setNotice('Imported locally. Original file bytes and normalized event records were hashed in this browser; nothing was sent to an AI provider.');
     } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not parse this artifact.'); }
     finally { setBusy(false); }
   }
@@ -330,21 +327,11 @@ export default function FirstlightPage() {
       ? 'Integrity check found ' + mismatches.length + ' mismatch(es). Review the marked records; this check does not prove original-source authenticity.'
       : 'Integrity check complete: all ' + verified.length + ' current records match their stored digests. This does not independently prove original-source authenticity.');
   }
-  async function tamper(item: Evidence) {
-    const changed = evidence.map(e => {
-      if (e.id !== item.id) return e;
-      return { ...e, summary: toggleSimulatedTamper(e.summary, Boolean(e.tampered)) };
-    });
-    await verifyIntegrity(changed);
-  }
-  function responseAction(action: string, decision: 'Approved'|'Rejected') {
-    setActions(prev=>[...prev,decision+' · '+action]); log('SIMULATED_RESPONSE_'+decision.toUpperCase(),action+' · training only; no real system action executed.');
-  }
   function exportEvidence() {
     const payload = {
       schema_version: 1,
       exported_at: new Date().toISOString(),
-      case_type: persistentCaseId ? 'persisted-case' : importName ? 'imported-events' : 'synthetic-training',
+      case_type: persistentCaseId ? 'persisted-case' : importName === 'Wazuh alerts' ? 'wazuh-preview' : 'imported-events',
       import_name: importName || null,
       source_file_sha256: sourceFileSha256 || null,
       evidence: evidence.map(item => ({
@@ -356,15 +343,15 @@ export default function FirstlightPage() {
         normalized_record_sha256: item.digest,
         details: item.details || {},
         source_metadata: item.metadata || {},
-        simulated_tamper: Boolean(item.tampered),
+        integrity_mismatch: Boolean(item.tampered),
       })),
-      audit_trail: audit,
-      simulated_response_decisions: actions,
+      activity_log: audit,
       limitations: [
         'This export is a local review bundle, not a certified forensic report or chain-of-custody record.',
-        'The original source file bytes are not retained in this bundle; only their SHA-256 is included when available.',
-        'Hashes and audit events are not independently anchored, signed, access-controlled, or durably stored by SATARK.',
-        'Response decisions are simulations only; no real endpoint, identity provider, or network control was changed.',
+        'The original source file bytes are not included in this bundle; only their SHA-256 is included when available.',
+        'Browser-side hashes bind normalized records but are not independently anchored or proof of original-source authenticity.',
+        'A direct Wazuh preview is not durable source preservation; use the configured persistent ingestion worker for full source snapshots.',
+        'Live response approvals, execution and verification are recorded in the separate server response ledger; this export does not represent a response action.',
       ],
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -383,27 +370,27 @@ export default function FirstlightPage() {
 
   return <main className="shell"><SiteHeader />
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
-      <div className="firstlight-hero"><div><div className="eyebrow">Primary workspace</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Reconstruct incidents from connected Wazuh telemetry or permitted evidence files, verify integrity, and review findings. A clearly labeled training scenario is available separately; it never changes real accounts or endpoints.</p><div className="actions"><button className="btn btn-primary" disabled={busy || !session} onClick={()=>void loadWazuhAlerts()}>Load real Wazuh alerts</button><label className="btn btn-secondary upload-trigger">Import evidence JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';void importFile(file);}}/></label><button className="btn btn-secondary" disabled={busy} onClick={loadCase}>{busy?'Preparing training data…':'Open synthetic training scenario'}</button></div></div>
-      <div className="incident-brief"><div className="brief-top"><span>Incident brief</span><span className="live-chip"><i/> {persistentCaseId?'PERSISTED':importName==='Wazuh alerts'?'WAZUH PREVIEW':importName?'IMPORTED':caseOpen?'TRAINING':'NO CASE'}</span></div><div className="brief-id">{persistentCaseId || (caseOpen ? (importName==='Wazuh alerts' ? 'WAZUH ALERT PREVIEW' : importName ? 'IMPORTED EVIDENCE' : 'TRAINING CASE') : 'FL / READY')}</div><p>{persistentCaseId?'Saved case loaded from the workspace database.':importName==='Wazuh alerts'?'Bounded Wazuh alert preview. It is not persisted, and this UI path does not retain the full indexed source object.':importName?'Evidence imported from '+importName:caseOpen?'Synthetic account-compromise training scenario · no real system actions':'Connect telemetry, import evidence, or open a labeled training scenario.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
+      <div className="firstlight-hero"><div><div className="eyebrow">Primary workspace</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Investigate actual Wazuh alerts or permitted source evidence. FIRSTLIGHT keeps provenance, integrity checks, case activity and guarded response separate; it does not seed sample incidents or treat missing integrations as healthy.</p><div className="actions"><button className="btn btn-primary" disabled={busy || !session} onClick={()=>void loadWazuhAlerts()}>{busy?'Loading Wazuh alerts…':'Load Wazuh alert preview'}</button><label className="btn btn-secondary upload-trigger">Import evidence JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';void importFile(file);}}/></label></div></div>
+      <div className="incident-brief"><div className="brief-top"><span>Incident brief</span><span className="live-chip"><i/> {persistentCaseId?'PERSISTED':importName==='Wazuh alerts'?'WAZUH PREVIEW':importName?'IMPORTED':'NO CASE'}</span></div><div className="brief-id">{persistentCaseId || (caseOpen ? (importName==='Wazuh alerts' ? 'WAZUH ALERT PREVIEW' : importName ? 'IMPORTED EVIDENCE' : 'UNSAVED EVIDENCE') : 'FL / READY')}</div><p>{persistentCaseId?'Saved case loaded from the workspace database.':importName==='Wazuh alerts'?'Bounded Wazuh alert preview. It is not persisted, and this UI path does not retain the full indexed source object.':importName?'Evidence imported from '+importName:caseOpen?'Evidence is loaded but not yet saved to a persistent case.':'Create or load a saved case, then collect source evidence.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
       <FirstlightReadiness />
       <div className="boundary-banner"><span className="boundary-icon">◇</span><div><strong>Evidence-first, not verdict-first</strong><p>Hashes prove only whether these in-session records changed relative to their captured digest. This is not independently anchored chain-of-custody evidence.</p></div></div>
       {notice&&<div className="notice-panel" role="status">{notice}</div>}
       <div id="persistent-workspace" ref={persistentPanelRef} style={{ minHeight: 120 }}>
         {persistentPanelVisible
-          ? <PersistentCasePanel evidence={evidence} findings={findings} audit={audit} actions={actions} currentCaseId={persistentCaseId} importName={importName}
-              onLoaded={(caseId, rows, events) => { setPersistentCaseId(caseId); setEvidence(rows); setAudit(events); setActions([]); setCaseOpen(true); setSelected('evidence'); setNotice('Persistent case loaded from the workspace database.'); }}
+          ? <PersistentCasePanel evidence={evidence} findings={findings} audit={audit} currentCaseId={persistentCaseId} importName={importName}
+              onLoaded={(caseId, rows, events) => { setPersistentCaseId(caseId); setEvidence(rows); setAudit(events); setCaseOpen(true); setSelected('evidence'); setNotice('Persistent case loaded from the workspace database.'); }}
               onSaved={(caseId, message) => { setPersistentCaseId(caseId); setNotice(message); }} />
           : <div className="panel" role="status"><div className="panel-kicker">Persistent workspace</div><p className="muted">Workspace controls load when this section is near the viewport.</p></div>}
       </div>
-      <div className="firstlight-layout"><aside className="incident-nav"><div className="eyebrow">Investigation flow</div>{[['overview','Overview'],['evidence','Evidence ledger'],['findings','Findings & gaps'],['timeline','Event timeline'],['response','Response review'],['audit','Audit trail']].map(([key,label])=><button key={key} className={selected===key?'selected':''} onClick={()=>setSelected(key)}>{label}<span>{key==='evidence'?evidence.length:key==='findings'?findings.length:key==='audit'?audit.length:''}</span></button>)}<div className="side-boundary">Training decisions are session-only<br/>Guarded Wazuh response lives in saved cases</div></aside>
+      <div className="firstlight-layout"><aside className="incident-nav"><div className="eyebrow">Investigation flow</div>{[['overview','Overview'],['evidence','Evidence ledger'],['findings','Findings & gaps'],['timeline','Event timeline'],['response','Response review'],['audit','Audit trail']].map(([key,label])=><button key={key} className={selected===key?'selected':''} onClick={()=>setSelected(key)}>{label}<span>{key==='evidence'?evidence.length:key==='findings'?findings.length:key==='audit'?audit.length:''}</span></button>)}<div className="side-boundary">Live response requires an authorized Wazuh lab<br/>No response action is taken automatically</div></aside>
       <section className="incident-content">
-        {selected==='overview'&&<div className="panel"><div className="panel-kicker">Case overview</div><h2>Establish the timeline before deciding.</h2><p>Connect real Wazuh telemetry or import a permitted JSON/CSV artifact. Records are normalized and hashed locally; this hash is not an external timestamp or proof of source authenticity. Synthetic training data is optional.</p><div className="overview-steps">{[['01','Collect','Connect Wazuh or import source events.'],['02','Validate','Inspect digests and source context.'],['03','Correlate','Review rules-based findings and gaps.'],['04','Decide','Use a saved case for guarded Wazuh approval and verification.']].map(x=><div key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]}</small></div>)}</div>{!caseOpen&&<button className="btn btn-secondary" onClick={loadCase}>Open synthetic training scenario →</button>}</div>}
-        {selected==='evidence'&&<div className="panel"><div className="panel-heading"><div><div className="panel-kicker">Evidence ledger</div><h2>Artifacts & integrity</h2></div><div className="actions"><button className="mini-btn" onClick={() => { void verifyIntegrity(); }} disabled={!evidence.length || busy}>Verify integrity</button><button className="mini-btn" onClick={exportEvidence} disabled={!evidence.length}>Export evidence JSON ↓</button><span className="pill">{persistentCaseId?'SAVED CASE':importName||'SYNTHETIC TRAINING DATA'}</span></div></div>{!evidence.length?<p className="empty-state">No evidence loaded. Connect Wazuh, import a JSON/CSV event file, or open the optional synthetic training scenario.</p>:<><div className="table-wrap"><table className="evidence-table"><thead><tr><th>Artifact</th><th>Source / time</th><th>Observation</th><th>Integrity</th><th/></tr></thead><tbody>{evidence.map(item=><tr key={item.id}><td><strong>{item.id}</strong><small>{item.kind}</small></td><td>{item.source}<small title={item.time}>{new Date(item.time).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</small></td><td>{item.summary}<small className="digest">{item.digest}</small></td><td><span className={item.tampered?'risk-chip':'safe-chip'}>{item.tampered?'MISMATCH':'HASHED'}</span></td><td>{caseOpen && !importName && !persistentCaseId && <button className="mini-btn" onClick={()=>tamper(item)}>{item.tampered?'Restore training record':'Simulate tamper (training only)'}</button>}{typeof item.metadata?.source_object_path === 'string' && <button className="mini-btn" disabled={!persistentCaseId} onClick={()=>void downloadWazuhSource(item)}>Download source</button>}</td></tr>)}</tbody></table></div><p className="hint">Simulation note: a tamper toggle modifies the record while preserving its original digest so the mismatch can be demonstrated.</p></>}</div>}
+        {selected==='overview'&&<div className="panel"><div className="panel-kicker">Case overview</div><h2>Establish the timeline before deciding.</h2><p>Connect real Wazuh telemetry or import a permitted JSON/CSV artifact. Records are normalized and hashed locally; this hash is not an external timestamp or proof of source authenticity. No sample data is loaded. Missing source fields remain unknown.</p><div className="overview-steps">{[['01','Collect','Connect Wazuh or import source events.'],['02','Validate','Inspect digests and source context.'],['03','Correlate','Review rules-based findings and gaps.'],['04','Decide','Use a saved case for guarded Wazuh approval and verification.']].map(x=><div key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]}</small></div>)}</div></div>}
+        {selected==='evidence'&&<div className="panel"><div className="panel-heading"><div><div className="panel-kicker">Evidence ledger</div><h2>Artifacts & integrity</h2></div><div className="actions"><button className="mini-btn" onClick={() => { void verifyIntegrity(); }} disabled={!evidence.length || busy}>Verify integrity</button><button className="mini-btn" onClick={exportEvidence} disabled={!evidence.length}>Export evidence JSON ↓</button><span className="pill">{persistentCaseId?'SAVED CASE':importName||'UNSAVED EVIDENCE'}</span></div></div>{!evidence.length?<p className="empty-state">No evidence loaded. Fetch a configured Wazuh alert page or import a JSON/CSV file with source timestamps and summaries. No sample events are loaded.</p>:<><div className="table-wrap"><table className="evidence-table"><thead><tr><th>Artifact</th><th>Source / time</th><th>Observation</th><th>Integrity</th><th/></tr></thead><tbody>{evidence.map(item=><tr key={item.id}><td><strong>{item.id}</strong><small>{item.metadata?.identity_origin === 'local_import_digest' ? 'Local import identifier · ' : ''}{item.kind}</small></td><td>{item.source}<small title={item.time}>{new Date(item.time).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</small></td><td>{item.summary}<small className="digest">{item.digest}</small></td><td><span className={item.tampered === true?'risk-chip':item.tampered === false?'safe-chip':'review-chip'}>{item.tampered === true?'MISMATCH':item.tampered === false?'MATCH':'DIGEST STORED'}</span></td><td>{typeof item.metadata?.source_object_path === 'string' && <button className="mini-btn" disabled={!persistentCaseId} onClick={()=>void downloadWazuhSource(item)}>Download source</button>}</td></tr>)}</tbody></table></div></>}</div>}
         {selected==='findings'&&<div className="panel"><div className="panel-kicker">Deterministic correlation</div><h2>Findings & evidence gaps</h2><p>Run the canonical Python investigation engine through the shared API. If that service is not configured, the local rule view is only a fallback.</p>{caseOpen&&evidence.length>0&&<FindingsInsights findings={findings} evidence={evidence}/>}{!caseOpen?<p className="empty-state">Load a case to generate findings.</p>:<button className="btn btn-primary" onClick={runSharedInvestigation} disabled={serverBusy}>{serverBusy?'Running shared investigation…':'Run shared Python investigation'}</button>}{notice&&<div className="notice-panel" role="status">{notice}</div>}{quarantinedEvidenceCount>0&&<div className="notice-panel" role="alert">{quarantinedEvidenceCount} evidence record(s) have a hash mismatch and are quarantined from local findings.</div>}{serverInvestigation&&<><div className="gap-card"><strong>Shared engine integrity result</strong><p>{serverInvestigation.integrity_summary.verified} verified · {serverInvestigation.integrity_summary.mismatched} mismatched · {serverInvestigation.integrity_summary.total} total records</p><p>Engine mode: {serverInvestigation.investigation.orchestrator.mode}. Independent model agents are not enabled.</p></div>{serverInvestigation.investigation.findings.map((f:any,i:number)=><article className="finding-card" key={f.finding_id}><div className="finding-number">{String(i+1).padStart(2,'0')}</div><div><div className="finding-title-row"><h3>{f.title}</h3><span className={f.severity==='high'?'risk-chip':'review-chip'}>{f.severity}</span></div><p>{f.explanation}</p><div className="reference-list">Evidence references: {f.evidence_ids.length?f.evidence_ids.join(', '):'No integrity-verified references'}</div><small>State: {f.state} · Confidence: {f.confidence}</small></div></article>)}<div className="gap-card"><strong>Investigation stage trace</strong>{serverInvestigation.investigation.agent_trace.map((agent:any)=><p key={agent.agent_id}><b>{agent.name}</b> · {agent.status} · {agent.inputs} input(s) → {agent.outputs} output(s)<br/><small>{agent.summary}</small></p>)}</div><div className="gap-card"><strong>Evidence gaps</strong><ul>{serverInvestigation.investigation.gaps.map((gap:string)=><li key={gap}>{gap}</li>)}</ul></div></>}{!serverInvestigation&&caseOpen&&trustedEvidence.length>0&&(findings.length?findings.map((f,i)=><article className="finding-card" key={f.title}><div className="finding-number">{String(i+1).padStart(2,'0')}</div><div><div className="finding-title-row"><h3>{f.title}</h3><span className={f.severity==='High'?'risk-chip':'review-chip'}>{f.severity}</span></div><p>{f.detail}</p><div className="reference-list">Evidence references: {f.refs.length?f.refs.join(', '):'No direct references'}</div></div></article>):<p className="empty-state">No local pattern matched. This does not prove the incident is benign.</p>)}{!serverInvestigation&&caseOpen&&trustedEvidence.length===0&&<p className="empty-state">No integrity-verified evidence is available. Findings are withheld until evidence is restored or re-collected.</p>}<div className="gap-card"><strong>Evidence gaps to resolve</strong><ul><li>Confirm the source system and collection time for each artifact.</li><li>Independently validate sign-in IP, device, and user context.</li><li>Verify any destination domain through a trusted channel.</li><li>Preserve originals and document external corroboration.</li></ul></div></div>}
-        {selected==='timeline'&&<div className="panel"><div className="panel-kicker">Event reconstruction</div><h2>Put observations in context.</h2>{timeline.length>0&&<EventTracker timeline={timeline} findings={findings}/>}{!timeline.length?<p className="empty-state">No timeline yet. Load or import evidence first.</p>:<div className="timeline-list">{timeline.map((item,i)=><div className={'timeline-item'+(item.tampered?' is-tampered':'')} key={item.id}><div className="timeline-rail"><span/></div><div className="timeline-time">{new Date(item.time).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div><strong>{item.kind.replaceAll('_',' ')}</strong><p>{item.summary}</p><small>{item.source} · {item.id}</small></div>)}</div>}</div>}
-        {selected==='response'&&<div className="panel"><div className="panel-kicker">Human decision gate</div><h2>Review before you respond.</h2><p>Real endpoint response is available from a saved case in the persistent workspace. It requires a configured private Wazuh Manager, an allowlisted lab agent, a separate requester, approver and executor, exact-target confirmation, and independent verification. It remains disabled when the server feature flag or lab credentials are absent.</p><div className="actions"><a className="btn btn-primary" href="#persistent-workspace">{persistentCaseId?'Open saved case response controls':'Save or load a case to access guarded response'} →</a></div><div className="gap-card"><strong>Training-only decision examples</strong><p>These examples help rehearse analyst judgement. They do not approve, execute, or record a real endpoint action.</p>{[['Preserve relevant logs','Export and retain original evidence under your organization’s policy.'],['Verify the account owner','Use a trusted out-of-band channel before making account changes.'],['Escalate for incident review','Ask an authorized responder to confirm scope and severity.']].map(([action,detail])=><div className="response-row" key={action}><div><strong>{action}</strong><p>{detail}</p></div><div className="response-buttons"><button className="mini-btn approve" onClick={()=>responseAction(action,'Approved')}>Record training decision</button><button className="mini-btn" onClick={()=>responseAction(action,'Rejected')}>Reject training proposal</button></div></div>)}{actions.length>0&&<div className="gap-card"><strong>Training decisions in this session</strong>{actions.map((a,i)=><p key={i}>{a}</p>)}</div>}</div></div>}
-        {selected==='audit'&&<div className="panel"><div className="panel-kicker">Session audit</div><h2>Decision trail</h2><p>Readable session events for this training run. This log is not externally anchored or tamper-proof.</p>{!audit.length?<p className="empty-state">No audit events yet. Load evidence or record a response decision.</p>:<div className="audit-list">{audit.map((item,i)=><div key={i} className="audit-row"><span className="audit-dot"/><div><strong>{item.action}</strong><p>{item.detail}</p><small>{new Date(item.time).toLocaleString('en-IN')}</small></div></div>)}</div>}</div>}
+        {selected==='timeline'&&<div className="panel"><div className="panel-kicker">Event reconstruction</div><h2>Put observations in context.</h2>{timeline.length>0&&<EventTracker timeline={timeline} findings={findings}/>}{!timeline.length?<p className="empty-state">No timeline yet. Load real source events or import a permitted artifact.</p>:<div className="timeline-list">{timeline.map((item,i)=><div className={'timeline-item'+(item.tampered?' is-tampered':'')} key={item.id}><div className="timeline-rail"><span/></div><div className="timeline-time">{new Date(item.time).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</div><strong>{item.kind.replaceAll('_',' ')}</strong><p>{item.summary}</p><small>{item.source} · {item.id}</small></div>)}</div>}</div>}
+        {selected==='response'&&<div className="panel"><div className="panel-kicker">Human decision gate</div><h2>Review before you respond.</h2><p>Real endpoint response is available from a saved case in the persistent workspace. It requires a configured private Wazuh Manager, an allowlisted lab agent, a separate requester, approver and executor, exact-target confirmation, and independent verification. It remains disabled when the server feature flag or lab credentials are absent.</p><div className="actions"><a className="btn btn-primary" href="#persistent-workspace">{persistentCaseId?'Open saved case response controls':'Save or load a case to access guarded response'} →</a></div><div className="gap-card"><strong>Response execution boundary</strong><p>Only the guarded live-response workflow in a saved case can request or execute an action. It requires a private Wazuh Manager, an explicit agent allowlist, distinct requester, approver and executor identities, exact-target confirmation, and independent verification. If the lab is not configured, response controls remain unavailable.</p></div></div>}
+        {selected==='audit'&&<div className="panel"><div className="panel-kicker">Session activity</div><h2>Activity log</h2><p>This view is not the authoritative server audit ledger. Use the saved-case workspace to verify durable audit history and response records.</p>{!audit.length?<p className="empty-state">No activity recorded in this browser session yet.</p>:<div className="audit-list">{audit.map((item,i)=><div key={i} className="audit-row"><span className="audit-dot"/><div><strong>{item.action}</strong><p>{item.detail}</p><small>{new Date(item.time).toLocaleString('en-IN')}</small></div></div>)}</div>}</div>}
       </section></div>
-      <section className="more-tools"><div><div className="eyebrow">Supporting workspace</div><h2>Need a content-level triage?</h2><p className="lead">Use SATARK's separate suspicious-content workflow for messages and URLs, or open the existing full Streamlit application for its additional scanners and learning tools.</p></div><div className="actions"><a className="btn btn-primary" href="/investigate">Open SATARK analysis →</a><a className="btn btn-secondary" href="https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/" target="_blank" rel="noreferrer">Open full SATARK app ↗</a></div></section>
+      <section className="more-tools"><div><div className="eyebrow">Supporting workflow</div><h2>Analyze suspicious content</h2><p className="lead">Use SATARK's active same-site analysis workflow for messages and URLs. The separate legacy Streamlit deployment is not linked here because it is currently inactive.</p></div><div className="actions"><a className="btn btn-primary" href="/investigate">Open SATARK analysis →</a></div></section>
     </div></main>;
 }

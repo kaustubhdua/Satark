@@ -404,6 +404,6 @@ async def run_investigation(
             "Only client-supplied bounded event summaries and structured details were reviewed; no live endpoint collection occurred.",
             "Browser-computed hashes detect changes relative to the submitted digest but do not prove source authenticity or establish an independently protected chain of custody.",
             ("Optional local model agents are advisory; deterministic findings remain authoritative." if agent_analysis.get("enabled") else "Independent LLM agents were not enabled for this run."),
-            "Response proposals are simulation-only.",
+            "This investigation endpoint performs analysis only; live response is separate, explicitly approved, and never invoked by the investigation engine.",
         ],
     }

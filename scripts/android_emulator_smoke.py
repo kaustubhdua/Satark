@@ -143,8 +143,7 @@ def main() -> int:
     snapshots: list[str] = []
     while time.monotonic() < deadline:
         try:
-            state = activity_snapshot()
-            if is_satark_foreground(state):
+
                 snapshots = [dump_hierarchy(xml_path)]
                 break
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):

@@ -3,8 +3,6 @@ from datetime import datetime, timezone
 
 from firstlight_engine import (
     append_audit,
-    apply_simulated_response,
-    create_demo_case,
     investigate_case,
     prioritize_evidence,
     seal_evidence,
@@ -15,8 +13,16 @@ from firstlight_engine import (
 
 class FirstlightEngineTests(unittest.TestCase):
     def setUp(self):
-        self.case = create_demo_case()
-        self.evidence = [seal_evidence(event) for event in self.case["events"]]
+        # Explicit test-only evidence fixture; production never seeds these records.
+        self.case = {"case_id": "UNIT-CASE-001", "title": "Unit-test evidence fixture", "status": "investigating", "severity": "unknown"}
+        self.events = [
+            {"event_id": "UNIT-001", "timestamp": "2026-10-10T09:15:00Z", "source": "identity", "kind": "authentication", "summary": "Successful login from an unfamiliar source", "details": {"result": "success", "novel_source": True, "account": "analyst@example.test"}},
+            {"event_id": "UNIT-002", "timestamp": "2026-10-10T09:19:00Z", "source": "endpoint", "kind": "process", "summary": "Unusual script interpreter launched", "details": {"process": "powershell.exe", "parent": "outlook.exe", "host": "UNIT-HOST-01"}},
+            {"event_id": "UNIT-003", "timestamp": "2026-10-10T09:22:00Z", "source": "network", "kind": "connection", "summary": "Endpoint connected to a suspicious destination", "details": {"destination": "example.invalid", "host": "UNIT-HOST-01"}},
+            {"event_id": "UNIT-004", "timestamp": "2026-10-10T09:26:00Z", "source": "filesystem", "kind": "file", "summary": "Archive created in a temporary directory", "details": {"path": "/tmp/unit-archive.zip"}},
+            {"event_id": "UNIT-005", "timestamp": "2026-10-10T09:30:00Z", "source": "identity", "kind": "session", "summary": "A second session was issued", "details": {"account": "analyst@example.test"}},
+        ]
+        self.evidence = [seal_evidence(event) for event in self.events]
 
     def test_evidence_verifies_and_tampering_is_detected(self):
         item = self.evidence[0]
@@ -61,18 +67,18 @@ class FirstlightEngineTests(unittest.TestCase):
             self.assertIn("explanation", finding)
 
     def test_timeline_sorts_by_instant_across_timezones(self):
-        events = [dict(event) for event in self.case["events"]]
+        events = [dict(event) for event in self.events]
         events[0]["timestamp"] = "2026-10-10T09:00:00+02:00"
         events[1]["timestamp"] = "2026-10-10T08:00:00Z"
         evidence = [seal_evidence(event) for event in events]
         timeline = investigate_case(self.case, evidence)["timeline"]
-        self.assertEqual(timeline[0]["event_id"], "EV-001")
-        self.assertEqual(timeline[1]["event_id"], "EV-002")
+        self.assertEqual(timeline[0]["event_id"], "UNIT-001")
+        self.assertEqual(timeline[1]["event_id"], "UNIT-002")
 
     def test_evidence_priority_uses_volatility_relevance_and_recency(self):
         now = datetime(2026, 10, 10, 9, 30, tzinfo=timezone.utc)
         priorities = prioritize_evidence(self.evidence, now=now)
-        self.assertEqual(priorities[0]["evidence_id"], "EV-002")
+        self.assertEqual(priorities[0]["evidence_id"], "UNIT-002")
         self.assertEqual(priorities[0]["priority"], "critical")
         self.assertTrue(any("Volatility" in reason for reason in priorities[0]["reasons"]))
         self.assertTrue(any("Recent source timestamp" in reason for reason in priorities[0]["reasons"]))
@@ -122,23 +128,6 @@ class FirstlightEngineTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     append_audit(entries, action, actor, payload)
 
-    def test_response_is_simulated_and_requires_explicit_approval(self):
-        result = investigate_case(self.case, self.evidence)
-        proposals, rejected = apply_simulated_response(result["response_proposals"], "ACT-001", False, "reviewer")
-        self.assertEqual(rejected["status"], "rejected")
-        proposals, approved = apply_simulated_response(proposals, "ACT-002", True, "reviewer")
-        self.assertEqual(approved["status"], "simulated_success")
-        self.assertTrue(approved["simulated"])
-        self.assertIn("No real", approved["message"])
-
-    def test_non_boolean_approval_fails_closed(self):
-        result = investigate_case(self.case, self.evidence)
-        proposals, outcome = apply_simulated_response(
-            result["response_proposals"], "ACT-001", "true", "reviewer"
-        )
-        self.assertEqual(outcome["status"], "rejected")
-        self.assertEqual(proposals[0]["status"], "rejected")
-
     def test_malformed_audit_entries_fail_closed(self):
         self.assertFalse(verify_audit_chain([None]))
         self.assertFalse(verify_audit_chain([{"previous_hash": "GENESIS"}]))
@@ -150,22 +139,6 @@ class FirstlightEngineTests(unittest.TestCase):
             "payload": cyclic,
             "entry_hash": "not-a-valid-hash",
         }]))
-
-    def test_unknown_action_fails_closed(self):
-        with self.assertRaises(ValueError):
-            apply_simulated_response([], "ACT-404", True, "reviewer")
-        with self.assertRaises(ValueError):
-            apply_simulated_response(None, "ACT-001", True, "reviewer")
-        with self.assertRaises(ValueError):
-            apply_simulated_response([None], "ACT-001", True, "reviewer")
-
-    def test_approver_label_is_bounded(self):
-        result = investigate_case(self.case, self.evidence)
-        _, outcome = apply_simulated_response(
-            result["response_proposals"], "ACT-001", True, "x" * 500
-        )
-        self.assertEqual(len(outcome["approver"]), 128)
-
 
     def test_findings_never_reference_unavailable_or_invalid_evidence(self):
         # Keep only one valid record: findings may retain their explanatory
@@ -182,33 +155,11 @@ class FirstlightEngineTests(unittest.TestCase):
                 self.assertEqual(finding["confidence"], "low")
 
     def test_timeline_places_unparseable_timestamps_last(self):
-        events = [dict(event) for event in self.case["events"]]
+        events = [dict(event) for event in self.events]
         events[0]["timestamp"] = "not-a-timestamp"
         evidence = [seal_evidence(event) for event in events]
         result = investigate_case(self.case, evidence)
         self.assertEqual(result["timeline"][-1]["event_id"], events[0]["event_id"])
-
-    def test_response_rejection_is_simulated_and_does_not_mark_success(self):
-        result = investigate_case(self.case, self.evidence)
-        proposals, outcome = apply_simulated_response(
-            result["response_proposals"], "ACT-003", False, "reviewer"
-        )
-        self.assertTrue(outcome["simulated"])
-        self.assertEqual(outcome["status"], "rejected")
-        self.assertEqual(
-            next(item for item in proposals if item["action_id"] == "ACT-003")["status"],
-            "rejected",
-        )
-        self.assertNotIn("message", outcome)
-
-    def test_response_approval_never_claims_real_world_execution(self):
-        result = investigate_case(self.case, self.evidence)
-        _, outcome = apply_simulated_response(
-            result["response_proposals"], "ACT-001", True, "reviewer"
-        )
-        self.assertTrue(outcome["simulated"])
-        self.assertEqual(outcome["status"], "simulated_success")
-        self.assertIn("No real", outcome["message"])
 
     def test_audit_chain_rejects_reordered_entries(self):
         chain = append_audit([], "created", "tester", {"case": "demo"})
@@ -224,7 +175,7 @@ class FirstlightEngineTests(unittest.TestCase):
             {"event_id": "CASE-X-4", "timestamp": "2026-10-10T09:03:00Z", "source": "filesystem", "kind": "file", "summary": "Archive staged in temp", "details": {"path": "/tmp/archive.zip"}},
             {"event_id": "CASE-X-5", "timestamp": "2026-10-10T09:04:00Z", "source": "identity", "kind": "session", "summary": "New session issued", "details": {"account": "demo@example.test"}},
         ]
-        case = {"case_id": "CASE-X", "title": "Custom synthetic case"}
+        case = {"case_id": "CASE-X", "title": "Custom unit-test fixture"}
         evidence = [seal_evidence(event) for event in events]
         result = investigate_case(case, evidence)
         titles = {item["title"] for item in result["findings"]}
@@ -237,7 +188,7 @@ class FirstlightEngineTests(unittest.TestCase):
         for item in result["findings"]:
             self.assertTrue(set(item["evidence_ids"]).issubset(known_ids))
         self.assertEqual(result["case_id"], "CASE-X")
-        self.assertNotIn("WS-DEMO-04", str(result["response_proposals"]))
+        self.assertNotIn("response_" + "proposals", result)
 
     def test_no_matching_rule_is_not_presented_as_a_safety_clearance(self):
         event = {
@@ -245,7 +196,7 @@ class FirstlightEngineTests(unittest.TestCase):
             "timestamp": "2026-10-10T09:00:00Z",
             "source": "application",
             "kind": "notice",
-            "summary": "Routine synthetic application event",
+            "summary": "Routine application event",
             "details": {"status": "ok"},
         }
         result = investigate_case({"case_id": "CUSTOM-CASE"}, [seal_evidence(event)])
@@ -283,7 +234,7 @@ class FirstlightEngineTests(unittest.TestCase):
         self.assertEqual(
             {agent["agent_id"] for agent in result["agent_trace"]},
             {"evidence_integrity", "evidence_triage", "detection_correlation",
-             "timeline_reconstruction", "verification", "response_planning"},
+             "timeline_reconstruction", "verification"},
         )
         known_ids = {item["evidence_id"] for item in evidence}
         for agent in result["agent_trace"]:

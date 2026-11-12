@@ -11,7 +11,6 @@ const routes = [
   '../src/app/api/evidence/records/route.ts',
   '../src/app/api/evidence/route.ts',
   '../src/app/api/findings/route.ts',
-  '../src/app/api/firstlight/approvals/route.ts',
   '../src/app/api/firstlight/evidence/source/route.ts',
   '../src/app/api/firstlight/investigate/route.ts',
   '../src/app/api/firstlight/jobs/route.ts',

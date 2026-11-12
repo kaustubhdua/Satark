@@ -20,6 +20,9 @@ class WazuhResponseGuardrailTests(unittest.TestCase):
             "FIRSTLIGHT_WAZUH_MANAGER_USERNAME": "lab-user",
             "FIRSTLIGHT_WAZUH_MANAGER_PASSWORD": "lab-password",
             "FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS": "001",
+            "FIRSTLIGHT_WAZUH_PROTECTED_IPS": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8",
+            "FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED": "true",
+            "FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS": "300",
         }, clear=True)
 
     def test_live_actions_disabled_by_default(self):
@@ -48,7 +51,7 @@ class WazuhResponseGuardrailTests(unittest.TestCase):
             _validate_payload("wazuh.block_ip", {"ip_address": "not-an-ip"})
 
     def test_protected_account_fails_before_authentication(self):
-        with self.assertRaisesRegex(ResponseIntegrationError, "invalid or protected"):
+        with self.assertRaisesRegex(ResponseIntegrationError, "not allowlisted"):
             _validate_payload("wazuh.disable_account", {"username": "root"})
 
 

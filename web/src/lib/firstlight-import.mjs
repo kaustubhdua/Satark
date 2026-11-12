@@ -46,7 +46,7 @@ export function parseIsoTimestamp(value) {
 
 const MAX_CSV_RECORDS = 10_000;
 
-/** Parse bounded RFC-4180-style CSV for the synthetic FIRSTLIGHT workspace. */
+/** Parse bounded RFC-4180-style CSV without inventing event identity or content. */
 export function parseCsv(text) {
   if (typeof text !== 'string') throw new Error('CSV input must be text.');
   const rows = [];
@@ -92,8 +92,11 @@ export function parseCsv(text) {
   );
   if (headers.some(header => !header)) throw new Error('CSV headers cannot be empty.');
   if (new Set(headers).size !== headers.length) throw new Error('CSV contains duplicate column headers.');
-  if (!headers.some(header => ['id', 'timestamp', 'time', 'source', 'kind', 'summary', 'message', 'description', 'evidence_id'].includes(header))) {
-    throw new Error('CSV header must include event fields such as timestamp, source, kind, or summary.');
+  if (!headers.includes('timestamp') && !headers.includes('time')) {
+    throw new Error('CSV header must include a source timestamp/time column.');
+  }
+  if (!headers.some(header => ['summary', 'message', 'description'].includes(header))) {
+    throw new Error('CSV header must include a summary/message/description column; SATARK will not invent event summaries.');
   }
   const records = rows.slice(1);
   if (records.length > MAX_CSV_RECORDS) throw new Error('Import exceeds 10,000 event records.');
@@ -105,38 +108,22 @@ export function parseCsv(text) {
     headers.forEach((header, columnIndex) => { record[header] = (columns[columnIndex] || '').trim(); });
     const timestamp = record.timestamp || record.time;
     if (!timestamp) throw new Error('CSV event row ' + (index + 2) + ' is missing a timestamp/time value.');
+    const summary = record.summary || record.message || record.description;
+    if (!summary) throw new Error('CSV event row ' + (index + 2) + ' is missing a summary/message/description; SATARK will not invent one.');
     return {
-      id: record.id || record.evidence_id || 'IMP-' + String(index + 1).padStart(3, '0'),
+      id: record.id || record.evidence_id || record.event_id || '',
       timestamp,
-      source: record.source || 'Imported source',
-      kind: record.kind || 'observation',
-      summary: record.summary || record.message || record.description || 'Imported event',
+      source: record.source || record.provider || record.source_system || '',
+      kind: record.kind || record.event_type || record.category || '',
+      summary,
     };
   });
   const ids = new Set();
   for (const event of events) {
+    if (!event.id) continue;
     if (ids.has(event.id)) throw new Error('CSV contains duplicate evidence IDs.');
     ids.add(event.id);
   }
   return events;
 }
 
-export const SIMULATED_TAMPER_MARKER = ' [SIMULATED TAMPER]';
-
-/**
- * Toggle the visible simulated-tamper marker on an evidence summary.
- * Restoring must remove exactly the marker that tampering appended, so the
- * canonical record hashes back to its original digest.
- *
- * @param {string} summary
- * @param {boolean} currentlyTampered
- * @returns {string}
- */
-export function toggleSimulatedTamper(summary, currentlyTampered) {
-  if (currentlyTampered) {
-    return summary.endsWith(SIMULATED_TAMPER_MARKER)
-      ? summary.slice(0, -SIMULATED_TAMPER_MARKER.length)
-      : summary;
-  }
-  return summary.endsWith(SIMULATED_TAMPER_MARKER) ? summary : summary + SIMULATED_TAMPER_MARKER;
-}

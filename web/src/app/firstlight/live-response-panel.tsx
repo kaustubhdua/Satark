@@ -35,7 +35,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   const [rows, setRows] = useState<LiveApproval[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [chainValid, setChainValid] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'verified' | 'failed' | 'unknown'>('verified');
+  const [verificationStatus, setVerificationStatus] = useState<'verified' | 'failed' | 'unknown'>('unknown');
   const [action, setAction] = useState('wazuh.block_ip');
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('');
@@ -148,7 +148,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
       }),
     });
     await readJson(response);
-    setVerifyReference(''); setVerifyDetail(''); setVerificationStatus('verified');
+    setVerifyReference(''); setVerifyDetail(''); setVerificationStatus('unknown');
     setNotice('Independent operator attestation recorded. SATARK does not independently query or certify the provider state.');
   }
 
@@ -161,7 +161,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     </div>
     <p className="hint">Optional Wazuh Manager API response using two fixed built-in commands. The manager must be private and the target agent must be explicitly allowlisted. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
     <p className={enabled && configured ? 'success-message' : 'hint'} role="status">
-      {enabled && configured ? 'Server feature flag enabled · credentials present' : 'Live response disabled or not configured · simulation and investigation remain available'}
+      {enabled && configured ? 'Feature flag enabled · credentials configured; Manager reachability is checked during action preflight' : 'Live response disabled or not configured · no endpoint action has run'}
     </p>
     {canRequest && <>
       <label className="field-label" htmlFor="live-response-action">Response action</label>
@@ -209,14 +209,14 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     <div className="private-upload">
       <strong>Response audit trail</strong>
       <p className={chainValid ? 'success-message' : 'error-message'} role="status">
-        {chainValid ? 'Local response audit chain verifies.' : 'Response audit chain could not be verified.'}
+        {chainValid ? 'Stored response audit chain verifies on this backend.' : 'Response audit chain could not be verified.'}
       </p>
       {auditEvents.length === 0 ? <p className="hint">No response audit events have been recorded for this case.</p> :
         <div className="case-notes-list">{auditEvents.slice().reverse().map(event=><p className="case-note" key={event.sequence}>
           <strong>#{event.sequence} · {event.event_type}</strong>
           <small>{event.occurred_at ? new Date(event.occurred_at).toLocaleString() : 'Timestamp unavailable'} · actor {String(event.actor_id || '').slice(0,8)}</small>
         </p>)}</div>}
-      <p className="hint">The chain is stored locally. It is tamper-evident against ordinary application edits, not an external signature or proof against a privileged database administrator.</p>
+      <p className="hint">The chain is stored in the configured response ledger. It is tamper-evident against ordinary application edits, not an external signature or proof against a privileged database administrator.</p>
     </div>
     {notice && <p className="success-message" role="status">{notice}</p>}
     {error && <p className="error-message" role="alert">{error}</p>}

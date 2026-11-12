@@ -66,17 +66,25 @@ class UIContractTests(unittest.TestCase):
 
     def test_home_prioritizes_the_core_product_without_vanity_metrics(self):
         self.assertIn("Pause the panic.", HOME)
-        self.assertIn("View example report", HOME)
+        self.assertNotIn("View example report", HOME)
+        self.assertNotIn("get_demo_result", HOME)
         self.assertNotIn("guided sample report", HOME)
-        self.assertIn("OBSERVABLE SIGNALS", HOME)
+        self.assertIn("REAL DATA ONLY", HOME)
+        self.assertIn("No sample alerts, fabricated telemetry or preloaded incidents.", HOME)
+        self.assertNotIn("OBSERVABLE SIGNALS", HOME)
+        self.assertNotIn("EXAMPLE VIEW", HOME)
+        self.assertIn("SOURCE REQUIRED", HOME)
+        self.assertIn("No sample incidents are preloaded", HOME)
+        self.assertNotIn("TRAINING CASE", HOME)
+        self.assertNotIn("guided case", HOME.lower())
         self.assertNotIn("home-stats", HOME)
 
     def test_native_streamlit_theme_matches_custom_design_system(self):
         config = (ROOT / ".streamlit/config.toml").read_text(encoding="utf-8")
-        self.assertIn('primaryColor = "#a9a6ff"', config)
-        self.assertIn('backgroundColor = "#080b12"', config)
-        self.assertIn('secondaryBackgroundColor = "#0e1421"', config)
-        self.assertIn('textColor = "#f2f6ff"', config)
+        self.assertIn('primaryColor = "#b6ff5c"', config)
+        self.assertIn('backgroundColor = "#070b09"', config)
+        self.assertIn('secondaryBackgroundColor = "#111d18"', config)
+        self.assertIn('textColor = "#e8f5eb"', config)
         self.assertIn('showErrorDetails = "none"', config)
         self.assertIn("maxUploadSize = 50", config)
 
@@ -121,49 +129,35 @@ class UIContractTests(unittest.TestCase):
         self.assertIn("mask-image:", POLISH_CSS)
         self.assertNotIn("https://", POLISH_CSS)
 
-    def test_firstlight_import_tables_and_report_generation_are_opt_in(self):
-        self.assertIn("Show normalized event inventory", FIRSTLIGHT)
-        self.assertIn("Show rejected records", FIRSTLIGHT)
-        self.assertIn("Prepare import report", FIRSTLIGHT)
-        self.assertIn("firstlight_import_report_json", FIRSTLIGHT)
-        self.assertIn("Download prepared import report (JSON)", FIRSTLIGHT)
-
-    def test_firstlight_renders_only_the_selected_workspace(self):
-        self.assertIn('active_workspace = st.selectbox(', FIRSTLIGHT)
-        for section in ("Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"):
-            self.assertIn(section, FIRSTLIGHT)
-        self.assertNotIn("st.tabs(", FIRSTLIGHT)
+    def test_legacy_firstlight_route_is_retired_without_synthetic_workflows(self):
+        self.assertIn("legacy Streamlit incident prototype has been retired", FIRSTLIGHT)
+        self.assertIn("does not load training incidents", FIRSTLIGHT)
+        self.assertIn("Persistent cases and evidence require the self-hosted API", FIRSTLIGHT)
+        self.assertNotIn("create_demo_case", FIRSTLIGHT)
+        self.assertNotIn("apply_simulated_response", FIRSTLIGHT)
+        self.assertNotIn("response_proposals", FIRSTLIGHT)
 
     def test_intro_loading_screen_is_branded_accessible_and_nonblocking(self):
         self.assertIn("from ui.loading import render_intro_loader", APP)
         self.assertLess(APP.index("render_intro_loader()"), APP.index("_, role = render_sidebar("))
         for expected in (
             "SATARK",
-            "FIRSTLIGHT",
-            "satark-arcade-shell",
-            "satark-pixel-mascot",
-            "satark-progress-segment",
-            "satark-tip-card",
-            "Pause before you click. Verify the sender and destination first.",
-            "hostWindow.setInterval(() => {",
-            "st.iframe(",
-            "const hostWindow = window.parent;",
-            "const doc = hostWindow.document;",
-            'setAttribute("role", "dialog")',
-            'setAttribute("aria-modal", "true")',
-            "aria-live",
-            "prefers-reduced-motion: reduce",
-            "Skip intro",
-            "overlay.remove()",
-            "hostWindow.setTimeout(dismiss, reducedMotion ? 900 : 2600)",
-            'event.key === "Escape"',
-            'skipButton.focus({preventScroll: true})',
-            "previousFocus.focus({preventScroll: true})",
+            "Pause · Inspect · Verify",
+            "SECURE WORKSPACE · READY",
+            'role="status"',
+            'aria-label="SATARK readying workspace"',
+            "pointer-events:none",
+            "@keyframes satark-intro-dismiss",
+            "prefers-reduced-motion:reduce",
+            "animation-duration:.01ms",
         ):
             self.assertIn(expected, LOADING)
         self.assertIn('st.session_state.get("_satark_intro_seen", False)', LOADING)
         self.assertIn('st.session_state["_satark_intro_seen"] = True', LOADING)
         self.assertNotIn("components.html", LOADING)
+        self.assertNotIn("st.iframe(", LOADING)
+        self.assertNotIn("FIRSTLIGHT", LOADING)
+        self.assertNotIn("arcade", LOADING.lower())
         self.assertNotIn("https://", LOADING)
 
     def test_app_does_not_reference_missing_analysis_constants(self):

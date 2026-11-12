@@ -1,0 +1,9 @@
+<!--
+  SATARK Wazuh 4.x custom response command.
+  TTL is enforced by the installed agent-side SATARK watchdog, not by Wazuh execd.
+-->
+<command>
+  <name>satark-firewall-drop</name>
+  <executable>satark-firewall-drop</executable>
+  <timeout_allowed>no</timeout_allowed>
+</command>

@@ -1,4 +1,4 @@
-# SATARK / FIRSTLIGHT implementation status — 2026-11-11
+# SATARK / FIRSTLIGHT implementation status — 2026-11-12
 
 ## Current architecture
 
@@ -19,9 +19,9 @@ FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integ
 ## Current validation
 
 - Android Python engine tests and native APK compilation have passed on recent candidate revisions.
-- Web type-check/build and browser/accessibility checks have passed on recent candidate revisions; the latest candidate is being revalidated after the arcade-theme and homepage changes.
+- The SATARK command-centre visual refresh is merged to `main` in PR #245. The evidence-first FIRSTLIGHT workspace is under review in PR #246; its exact-head API, web, container, CodeQL and general CI checks must finish successfully before merge.
 - CodeQL and Phase 0 inventory have passed on recent candidate revisions.
-- FIRSTLIGHT API, PostgreSQL integration, container and Android emulator jobs are still subject to exact-head completion. A cancelled or superseded run is not a pass.
+- FIRSTLIGHT API, PostgreSQL integration, container and Android emulator jobs are still subject to exact-head completion. A cancelled or superseded run is not a pass. CI uses explicit unit-test fixtures only; the production FIRSTLIGHT workspace does not preload sample incidents.
 - The CI PostgreSQL backup test uses a temporary database and a real `pg_dump` / `pg_restore` round trip. It is not a restore drill against the eventual production database.
 
 ## Release gates still open
@@ -38,7 +38,7 @@ FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integ
 
 ## Current release decision
 
-**NO-GO for production readiness.** The candidate contains the intended self-hosted Wazuh-only architecture and implementation, but real lab, device, tenant, backup and production acceptance evidence has not been supplied or independently verified. Keep live response disabled and do not merge or enable it in production until the applicable gates above are complete.
+**NO-GO for production readiness.** The code contains the intended self-hosted Wazuh-only architecture, evidence-first workspace and guarded response path, but real lab, device, tenant, backup and production acceptance evidence has not been supplied or independently verified. The response feature flag must remain disabled until the applicable lab gates above are complete. A green CI run alone is not production acceptance.
 
 ## Operator references
 

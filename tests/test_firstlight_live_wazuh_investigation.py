@@ -37,7 +37,7 @@ def alert(doc_id: str = "doc-1", level: int = 12) -> dict:
     }
 
 
-def test_live_report_preserves_real_source_provenance_and_proposes_only():
+def test_live_report_preserves_real_source_provenance_without_creating_response_proposals():
     report = build_live_report(
         [alert()],
         since="2026-10-20T00:00:00.000Z",
@@ -49,8 +49,9 @@ def test_live_report_preserves_real_source_provenance_and_proposes_only():
     assert report["collection"]["evidence_integrity_valid"] == 1
     assert report["collection"]["source_records"][0]["document_id"] == "doc-1"
     assert report["case"]["source"] == "wazuh-indexer"
-    assert report["response"]["mode"] == "proposal_only"
+    assert report["response"]["mode"] == "not_configured"
     assert report["response"]["live_action_executed"] is False
+    assert report["response"]["proposals"] == []
     assert report["investigation"]["findings"]
     assert all(item["evidence_ids"] for item in report["investigation"]["findings"] if item["state"] == "supported")
 

@@ -50,31 +50,40 @@ def _agent_allowlist() -> set[str]:
     return values
 
 
-def _account_disable_allowlist() -> set[str]:
-    values = {item.strip() for item in os.getenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "").split(",") if item.strip()}
-    if any(not re.fullmatch(r"\d{3,}", item) for item in values):
-        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS must contain numeric Linux/macOS lab agent IDs.")
-    return values
+def _protected_networks() -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    raw = _required_env("FIRSTLIGHT_WAZUH_PROTECTED_IPS")
+    try:
+        networks = [ipaddress.ip_network(item.strip(), strict=False) for item in raw.split(",") if item.strip()]
+    except ValueError:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_PROTECTED_IPS must contain valid IP addresses or CIDRs.") from None
+    if not networks:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_PROTECTED_IPS must include the Manager, API and protected infrastructure networks.")
+    return networks
+
+
+def _verified_response_ttl() -> int:
+    if os.getenv("FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED", "").lower() != "true":
+        raise ResponseIntegrationError("Live IP response is unavailable until the Wazuh lab proves automatic timeout and reversal.")
+    raw = _required_env("FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS")
+    if not raw.isdigit() or not 60 <= int(raw) <= 900:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS must be between 60 and 900 seconds.")
+    return int(raw)
 
 
 def available_response_actions() -> list[str]:
-    """Return actions with their required static configuration present."""
+    """Expose only the lab-verified, time-bounded Linux IP block action."""
+    if not live_response_enabled():
+        return []
     try:
         _agent_allowlist()
+        _protected_networks()
+        _verified_response_ttl()
         _base_url()
         _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
         _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
     except ResponseIntegrationError:
         return []
-    actions = ["wazuh.block_ip"]
-    try:
-        if _agent_allowlist() & _account_disable_allowlist():
-            actions.append("wazuh.disable_account")
-    except ResponseIntegrationError:
-        # A malformed OS-specific allowlist disables this action without
-        # making the entire status endpoint unavailable.
-        pass
-    return actions
+    return ["wazuh.block_ip"]
 
 
 def _base_url() -> str:
@@ -160,22 +169,47 @@ def _verify_manager_compatibility(token: str) -> str:
     return version.removeprefix("v")
 
 
+def _verify_agent_target(token: str, agent_id: str, action: str) -> None:
+    """Require one exact, connected Wazuh agent before submitting a response."""
+    query = urllib.parse.urlencode({"agents_list": agent_id})
+    status, payload = _request(
+        _base_url() + "/agents?" + query,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+    items = data.get("affected_items", []) if isinstance(data, dict) else []
+    if status != 200 or not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
+        raise ResponseIntegrationError("Wazuh did not return exactly one matching agent; no response was submitted.")
+    agent = items[0]
+    returned_id = str(agent.get("id", agent.get("agent_id", "")))
+    if returned_id != agent_id or str(agent.get("status", "")).lower() != "active":
+        raise ResponseIntegrationError("The selected Wazuh agent is missing, mismatched, or not active; no response was submitted.")
+    os_info = agent.get("os") if isinstance(agent.get("os"), dict) else {}
+    platform = str(os_info.get("platform", "")).strip().lower()
+    name = str(os_info.get("name", "")).strip().lower()
+    if not (platform == "linux" or any(name.startswith(prefix) for prefix in (
+        "ubuntu", "debian", "centos", "red hat", "rhel", "fedora",
+        "rocky", "almalinux", "amazon linux", "opensuse", "suse",
+        "arch", "gentoo",
+    ))):
+        raise ResponseIntegrationError(
+            "Wazuh firewall-drop is restricted to verified Linux agents; no response was submitted."
+        )
+
+
 def preflight_live_response(action: str, target: str, confirmation: str) -> None:
     """Check explicit opt-in, action allowlist, target allowlist and credentials."""
-    expected = {
-        "wazuh.block_ip": "BLOCK_IP",
-        "wazuh.disable_account": "DISABLE_ACCOUNT",
-    }.get(action)
+    expected = "BLOCK_IP" if action == "wazuh.block_ip" else None
     if not expected:
-        raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
+        raise ResponseIntegrationError("Action is not allowlisted; only the lab-verified Wazuh IP block action is supported, and account disable is not supported.")
     if not live_response_enabled():
         raise ResponseIntegrationError("Live response is disabled. Enable it only in an authorized isolated lab.")
+    _verified_response_ttl()
+    _protected_networks()
     if confirmation != f"CONFIRM {expected} {target}":
         raise ResponseIntegrationError(f"Explicit confirmation required: CONFIRM {expected} {target}")
     if target not in _agent_allowlist():
         raise ResponseIntegrationError("Target agent is not in FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS.")
-    if action == "wazuh.disable_account" and target not in _account_disable_allowlist():
-        raise ResponseIntegrationError("Account disable is restricted to FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS (Linux/macOS lab agents only).")
     _base_url()
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
     _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
@@ -191,16 +225,12 @@ def _validate_payload(action: str, payload: Mapping[str, Any]) -> list[str]:
             address = ipaddress.ip_address(str(payload["ip_address"]))
         except ValueError:
             raise ResponseIntegrationError("ip_address must be a valid IPv4 address.") from None
-        if address.version != 4 or address.is_unspecified or address.is_multicast:
-            raise ResponseIntegrationError("Only unicast IPv4 addresses are supported by this response action.")
+        protected_networks = _protected_networks()
+        if any(address.version == network.version and address in network for network in protected_networks):
+            raise ResponseIntegrationError("The target IP is inside a protected infrastructure network.")
+        if address.version != 4 or not address.is_global:
+            raise ResponseIntegrationError("Only globally routable unicast IPv4 addresses can be blocked.")
         return [str(address)]
-    if action == "wazuh.disable_account":
-        if set(payload) != {"username"}:
-            raise ResponseIntegrationError("Account-disable payload must contain only username.")
-        username = str(payload["username"]).strip()
-        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", username) or username.startswith("-") or username == "root":
-            raise ResponseIntegrationError("username is invalid or protected.")
-        return [username]
     raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
 
 
@@ -211,18 +241,18 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     reason = reason.strip()
     if not reason or len(reason) > 1000:
         raise ResponseIntegrationError("A reason of 1–1000 characters is required.")
-    command, args = {
-        "wazuh.block_ip": ("firewall-drop", _validate_payload(action, payload)),
-        "wazuh.disable_account": ("disable-account", _validate_payload(action, payload)),
-    }[action]
+    ttl = _verified_response_ttl()
+    ip_args = _validate_payload(action, payload)
+    command, args = "!satark-firewall-drop", [ip_args[0], str(ttl)]
     token = _token()
     manager_version = _verify_manager_compatibility(token)
-    query = urllib.parse.urlencode({"agents_list": agent_id, "wait_for_complete": "true"})
+    _verify_agent_target(token, agent_id, action)
+    query = urllib.parse.urlencode({"agents_list": agent_id})
     status, response = _request(
         _base_url() + "/active-response?" + query,
         method="PUT",
         headers={"Authorization": f"Bearer {token}"},
-        body={"command": command, "arguments": args, "custom": False},
+        body={"command": command, "arguments": args, "custom": True},
     )
     if status not in {200, 201, 202} or not isinstance(response, dict) or response.get("error") not in {0, None}:
         raise ResponseIntegrationError("Wazuh did not confirm that the Active Response command was accepted.")

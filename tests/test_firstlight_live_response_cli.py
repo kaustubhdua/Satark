@@ -5,11 +5,12 @@ import json
 import scripts.firstlight_live_response as cli
 
 
-def test_wazuh_response_cli_is_preview_only(capsys):
+def test_wazuh_response_cli_is_preview_only(capsys, monkeypatch):
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_PROTECTED_IPS", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8")
     code = cli.main([
         "--action", "block-ip",
         "--agent-id", "001",
-        "--ip-address", "203.0.113.9",
+        "--ip-address", "8.8.8.8",
         "--reason", "case FL-1",
     ])
     assert code == 0
@@ -17,7 +18,7 @@ def test_wazuh_response_cli_is_preview_only(capsys):
     assert output["provider"] == "Wazuh Active Response"
     assert output["action"] == "wazuh.block_ip"
     assert output["agent_id"] == "001"
-    assert output["ip_address"] == "203.0.113.9"
+    assert output["ip_address"] == "8.8.8.8"
     assert output["live_execution"] is False
     assert "third executor" in output["execution_route"]
 
@@ -36,13 +37,10 @@ def test_wazuh_response_cli_rejects_invalid_agent_and_payload(capsys):
     assert "valid IPv4" in capsys.readouterr().err
 
 
-def test_disable_account_preview_uses_local_account_payload(capsys):
+def test_disable_account_preview_is_rejected_until_supported(capsys):
     code = cli.main([
         "--action", "disable-account", "--agent-id", "001",
         "--username", "lab-user", "--reason", "case FL-2",
     ])
-    assert code == 0
-    output = json.loads(capsys.readouterr().out)
-    assert output["action"] == "wazuh.disable_account"
-    assert output["username"] == "lab-user"
-    assert output["live_execution"] is False
+    assert code == 2
+    assert "not allowlisted" in capsys.readouterr().err

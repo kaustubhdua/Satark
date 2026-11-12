@@ -11,8 +11,8 @@ test('FIRSTLIGHT response review points operators to the saved-case guarded work
   assert.match(page, /href="#persistent-workspace"/);
   assert.match(page, /Real endpoint response is available from a saved case/);
   assert.match(page, /configured private Wazuh Manager/);
-  assert.match(page, /Training-only decision examples/);
-  assert.match(page, /They do not approve, execute, or record a real endpoint action/);
+  assert.match(page, /Response execution boundary/);
+  assert.match(page, /Only the guarded live-response workflow/);
 });
 
 test('the persistent case workspace mounts the real Wazuh response panel only for a saved case', () => {

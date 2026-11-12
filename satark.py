@@ -611,7 +611,7 @@ def init_state():
         "mode":"Text","result":None,"history":[],"page":"Home",
         "challenge_index":0,"challenge_score":0,"challenge_answered":False,
         "available_models":set(),"text_model":None,"vision_model":None,
-        "last_input_fingerprint":"","analysis_request_id":"","demo_mode":False,"scroll_to_scanners":False,
+        "last_input_fingerprint":"","analysis_request_id":"","scroll_to_scanners":False,
     }
     for k,v in defaults.items():
         if k not in st.session_state: st.session_state[k]=v

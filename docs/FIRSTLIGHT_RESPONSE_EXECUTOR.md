@@ -4,10 +4,10 @@
 
 The current implementation uses Wazuh Manager API Active Response only:
 
-- `wazuh.block_ip` — invokes the fixed Wazuh 4.x built-in `firewall-drop` command with one validated IPv4 address.
-- `wazuh.disable_account` — invokes the fixed Wazuh 4.x built-in `disable-account` command with one validated local account name.
+- `wazuh.block_ip` — invokes the fixed custom `!satark-firewall-drop` command; the agent-side watchdog owns expiry for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the agent-side SATARK watchdog TTL (60–900 seconds), expiry, and endpoint reversal have been independently verified and explicitly attested.
+- `wazuh.disable_account` is deliberately unavailable because the 4.x manual Active Response API does not carry a per-request timeout; account locking could become persistent without a verified reversal path.
 
-There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, custom script names, all-agent broadcasts and free-form command arguments are not supported.
+There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, all-agent broadcasts and free-form command arguments are not supported.
 
 ## Approval lifecycle
 
@@ -23,9 +23,12 @@ The live-response feature flag is disabled by default. The API never chooses tar
 
 - `SATARK_ENABLE_LIVE_RESPONSE=true` — only after a lab review.
 - `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private HTTPS Manager API URL.
-- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity.
+- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity with Active Response execution permission and read access to the explicitly allowlisted agent inventory; FIRSTLIGHT verifies exact agent identity, active status and supported OS before submission.
 - `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional trusted private CA file.
-- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable-agent allowlist.
+- `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable Linux-agent allowlist.
+- `FIRSTLIGHT_WAZUH_PROTECTED_IPS` — mandatory CIDR denylist for Manager, API, VPN, DNS and other protected infrastructure.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — exact agent-side watchdog timeout, 60–900 seconds.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED=true` — manual acceptance attestation after a real disposable-agent add/reversal test; this flag is not automatic proof.
 
 The Manager API should be reachable only from the private FIRSTLIGHT API network. Do not expose port 55000 publicly. TLS verification is mandatory for network endpoints. HTTP is accepted only for explicit localhost tests.
 
@@ -35,6 +38,7 @@ The Manager API should be reachable only from the private FIRSTLIGHT API network
 - Idempotency keys prevent duplicate requests.
 - Requester, approver, executor and verifier identities are separated.
 - An interrupted or ambiguous provider call becomes `unknown`; the executor never retries it automatically.
+- The Wazuh API request deliberately omits `wait_for_complete=true`; that option disables the API's normal timeout and can turn a stale/disconnected-agent race into an unbounded wait. The client retains a bounded request timeout and records ambiguous outcomes as `unknown`.
 - A provider submission is not endpoint verification.
 - The audit hash chain detects ordinary record mutation but is not tamper-proof against a privileged host administrator. Export/anchor audit records independently for stronger evidence integrity.
 

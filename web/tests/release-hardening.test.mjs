@@ -70,10 +70,13 @@ test('reports exports notes with an optional validated session analysis snapshot
   assert.match(investigatePage, /satark:last-analysis:v1/);
 });
 
-test('FIRSTLIGHT explicitly marks response actions as simulation only', () => {
-  assert.match(firstlight, /SYNTHETIC/);
-  assert.match(firstlight, /no real system action executed/);
+test('FIRSTLIGHT production workspace uses real evidence and keeps response separate', () => {
+  assert.doesNotMatch(firstlight, /SYNTHETIC|training scenario|SIMULATED/);
+  assert.match(firstlight, /No sample data is loaded/);
   assert.match(firstlight, /does not inspect the endpoint or file/);
+  const liveResponse = readFileSync(new URL('../src/app/firstlight/live-response-panel.tsx', import.meta.url), 'utf8');
+  assert.match(liveResponse, /Request live-response approval/);
+  assert.match(liveResponse, /Execute approved action once/);
 });
 
 
@@ -206,10 +209,21 @@ test('local analysis rate limits include a standards-based retry hint without en
 });
 
 const approvalsBackend = readFileSync(new URL('../../satark_backend.py', import.meta.url), 'utf8');
-test('response approvals remain simulation-only and require a second reviewer', () => {
-  assert.ok(approvalsBackend.includes('simulation'));
-  assert.ok(approvalsBackend.includes('simulation'));
-  assert.match(approvalsBackend, /approval requester cannot approve their own request/);
-  assert.match(approvalsBackend, /row\.status != "pending"/);
-  assert.match(approvalsBackend, /approval\.decided/);
+test('simulation-only approval endpoints are retired from the production API', () => {
+  assert.doesNotMatch(approvalsBackend, /firstlight\/approvals/);
+  assert.match(approvalsBackend, /guarded Wazuh response routes/);
+});
+
+test('homepage describes the actual deterministic stages and guarded response boundary', () => {
+  assert.match(homePage, /Five investigation stages, one decision for you/);
+  assert.doesNotMatch(homePage, /Response planning|response actions stay simulations|six independent AI agents/i);
+  assert.match(homePage, /Live response is a separate saved-case Wazuh workflow/);
+  assert.match(homePage, /private allowlisted lab is configured/);
+});
+
+test('homepage stage count matches the deterministic FIRSTLIGHT engine contract', () => {
+  const stages = homePage.match(/const stages = \[([\s\S]*?)\];/);
+  assert.ok(stages, 'homepage must declare the investigation stages');
+  assert.equal((stages[1].match(/\{ icon:/g) || []).length, 5);
+  assert.doesNotMatch(stages[1], /Response planning/);
 });

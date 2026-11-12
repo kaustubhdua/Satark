@@ -25,6 +25,9 @@ def response_app(monkeypatch, tmp_path):
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_USERNAME", "test-user")
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD", "test-password")
     monkeypatch.setenv("FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS", "001")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_PROTECTED_IPS", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED", "true")
+    monkeypatch.setenv("FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS", "300")
 
     db = backend.SessionLocal()
     users = []
@@ -80,13 +83,17 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
     assert status.status_code == 200
     assert status.json()["enabled"] is False
 
+    # Approval requests are available only after the lab provider's action
+    # configuration has been explicitly enabled. Execution remains disabled
+    # until the third-operator step below enables it again.
+    monkeypatch.setenv("SATARK_ENABLE_LIVE_RESPONSE", "true")
     created = client.post("/api/firstlight/live-response/approvals", json={
         "tenant_id": tenant_id,
         "case_id": case_id,
         "action": "wazuh.block_ip",
         "target": "001",
         "reason": "Contain a confirmed test endpoint during the authorized lab exercise.",
-        "payload": {"ip_address": "203.0.113.42"},
+        "payload": {"ip_address": "8.8.8.8"},
         "idempotency_key": "response-test-00000001",
         "expires_in_seconds": 600,
     })
@@ -103,6 +110,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
 
     # A requester cannot approve their own action; and an approved action cannot run
     # while the global live-response feature flag is disabled.
+    monkeypatch.setenv("SATARK_ENABLE_LIVE_RESPONSE", "false")
     active_user[0] = SimpleNamespace(id=executor)
     blocked = client.post("/api/firstlight/live-response/execute", json={
         "tenant_id": tenant_id, "case_id": case_id, "approval_id": approval_id,

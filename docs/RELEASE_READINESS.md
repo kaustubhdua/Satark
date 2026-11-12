@@ -2,11 +2,11 @@
 
 > Scope: this runbook covers the current SATARK platform: offline Android File Guard, the Next.js operations interface, the self-hosted FIRSTLIGHT API/workers, PostgreSQL persistence, Wazuh-only endpoint telemetry and guarded response. Android File Guard remains independently usable offline; see [LOCAL_OFFLINE_ACCEPTANCE.md](LOCAL_OFFLINE_ACCEPTANCE.md).
 
-This document separates a working hackathon demonstration from a service that is safe for public or sensitive use. Passing CI is necessary, but it is not proof of production readiness.
+This document is retained for legacy Streamlit-specific checks. For the current Next.js + self-hosted SATARK/FIRSTLIGHT product, use [Product completion audit](PRODUCT_COMPLETION_AUDIT.md) as the authoritative release checklist. Passing CI is necessary, but it is not proof of production readiness.
 
 ## Current release posture
 
-- **Hackathon demonstration with synthetic/non-sensitive inputs:** suitable only after the exact deployed revision passes the checks below.
+- **Production web workspace:** NO-GO at the observed production revision until the self-hosted API, durable database/evidence storage and Wazuh integration are configured and exercised. Test-only synthetic fixtures must never be loaded into a production workspace.
 - **Small supervised pilot with non-sensitive content:** conditional on provider, deployment, abuse-control and recovery checks.
 - **Public anonymous service using a shared provider key:** **not ready by default**. A shared per-process sliding-window limiter is defense in depth, not a distributed/global quota: multiple workers, replicas or restarts can bypass its aggregate ceiling. A public service still needs gateway/provider-side global quotas, rate limiting, concurrency limits and cost controls.
 - **Confidential, regulated or multi-tenant incident evidence:** **not ready** without authenticated access, authorization/tenant isolation, retention and deletion controls, approved provider data handling, durable case storage, and an independently reviewed operational design.
@@ -42,9 +42,7 @@ This snapshot is evidence of the repository and connected deployment state check
 ## Security and privacy boundaries
 
 - SATARK is a triage aid; scores are not calibrated probabilities, and results do not prove that content is safe or malicious.
-- FIRSTLIGHT supports two fixed Wazuh 4.14.x actions (validated-IP firewall drop and validated local-account disable) behind an explicit feature flag that defaults off. Execution requires the authenticated case approval workflow, distinct requester/approver/executor identities, exact target confirmation, an at-most-once response ledger and independent verification. CI uses mocked Wazuh APIs; live provider execution and reversal remain unverified until an authorized disposable-agent drill. The response ledger is backed up, but this is not a certified or independently anchored chain of custody.
-- FIRSTLIGHT now has authenticated server-managed sessions, workspace/case authorization, tenant-scoped persistence and PostgreSQL role/RLS integration tests. These are code/CI capabilities, not proof of a configured production database. The self-hosted web process uses process-local rate limiting by default; do not scale it horizontally without a shared limiter or enforce equivalent global limits at the edge.
-- Browser access/refresh bearer tokens are not stored in localStorage: the current web client uses same-origin HttpOnly cookie sessions and keeps only non-secret session metadata in memory. `localStorage` stores the active workspace identifier, not an authentication credential. Continue to treat XSS as a security risk and retain CSP, output encoding and dependency review.
+
 - URL fetching uses validated public DNS results, pinned connections and redirect revalidation, but public URL retrieval still requires outbound network restrictions at the hosting layer.
 - Upload limits bound input size, but do not guarantee a fixed memory/CPU budget under concurrent workloads.
 - Content submitted for AI analysis may leave the host and be processed by the configured provider. Do not submit credentials, OTPs, private keys or sensitive incident data unless the provider and legal basis have been reviewed.
@@ -85,7 +83,7 @@ This section records official-source findings relevant to the outstanding deploy
 
 ### URL retrieval / SSRF
 
-- The current `url_security.py` implements several useful controls: HTTP(S)-only parsing, rejection of URL credentials, resolution checks against non-global/reserved addresses, IP-pinned connections, TLS hostname verification, redirect revalidation, HTTPS-to-HTTP downgrade rejection, accepted content-type restrictions, response byte limits, and timeouts.
+- The legacy Streamlit URL path in `url_security.py` implements several useful controls: HTTP(S)-only parsing, rejection of URL credentials, resolution checks against non-global/reserved addresses, IP-pinned connections, TLS hostname verification, redirect revalidation, HTTPS-to-HTTP downgrade rejection, accepted content-type restrictions, response byte limits, and timeouts.
 - Existing tests cover mixed public/private DNS answers, private redirect destinations, DNS failures, IPv4-mapped IPv6, non-unicast addresses, and redirect limits. These are meaningful unit-level protections but do not prove the hosted network boundary is safe.
 - OWASP recommends disabling automatic redirect following or revalidating each redirect, and recommends allowlists where feasible. SATARK manually follows redirects and revalidates them; hosting-level egress restrictions remain a separate defense-in-depth requirement.
 - Official reference: [OWASP SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
