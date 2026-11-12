@@ -61,6 +61,15 @@ def test_repeated_block_extends_expiry_without_duplicate_rule(firewall):
     assert len([call for call in fake.calls if call[0] == "-I"]) == 1
 
 
+def test_orphaned_satark_rule_fails_closed_without_duplicate_insert(firewall):
+    fake, state_file = firewall
+    fake.rules.add(" ".join(state._owned_rule("8.8.8.8")))
+    with pytest.raises(state.ResponseStateError, match="ownership record"):
+        state.add_block("8.8.8.8", "60", now=1000)
+    assert not state_file.exists()
+    assert len([call for call in fake.calls if call[0] == "-I"]) == 0
+
+
 def test_preexisting_unowned_firewall_rule_is_never_removed(firewall):
     fake, state_file = firewall
     fake.rules.add("-s 8.8.8.8 -j DROP")
