@@ -46,7 +46,6 @@ def render_home():
             if st.button("Start an investigation →", width="stretch", key="goto_analyze"):
                 st.session_state.page = "Analyze"
                 st.session_state.scroll_to_scanners = True
-                st.session_state.demo_mode = False
                 st.rerun()
 
 
