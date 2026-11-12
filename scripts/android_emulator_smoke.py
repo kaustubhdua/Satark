@@ -88,6 +88,14 @@ def failure_diagnostics(start_output: str, artifact_dir: Path) -> None:
         "=== foreground activity snapshot ===",
         snapshot,
     ]
+    for label, command in (
+        ("CPU usage", ("adb", "shell", "dumpsys", "cpuinfo")),
+        ("SATARK memory", ("adb", "shell", "dumpsys", "meminfo", PACKAGE)),
+    ):
+        try:
+            diagnostics.extend((f"=== {label} ===", run(*command, timeout=45, check=False)))
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+            diagnostics.append(f"=== {label} unavailable: {error} ===")
     try:
         logs = run("adb", "logcat", "-d", "-t", "12000", timeout=60, check=False)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
