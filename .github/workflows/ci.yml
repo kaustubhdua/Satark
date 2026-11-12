@@ -108,6 +108,9 @@ jobs:
             grep -Fq "$trigger_path" "$android_workflow"
           done
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
+          grep -Fq '"Android File Guard" "Production smoke check"' "$release_gate"
+          grep -Fq 'android_device_qa_verified' "$release_gate"
+          grep -Fq 'physical Android device QA' "$release_gate"
           grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
           grep -Fq 'tests/test_satark_postgres.py' "$api_workflow"
           grep -Fq 'def test_workspace_case_and_tenant_isolation' tests/test_satark_backend.py
