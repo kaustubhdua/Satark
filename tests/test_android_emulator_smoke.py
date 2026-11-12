@@ -29,6 +29,13 @@ class ForegroundActivityTests(unittest.TestCase):
         )
         self.assertFalse(is_satark_foreground(snapshot))
 
+    def test_rejects_anr_overlay_even_when_app_is_top_resumed(self):
+        snapshot = (
+            "topResumedActivity=ActivityRecord{ab12 u0 com.satark.mobile/.MainActivity t42}\\n"
+            "mCurrentFocus=Window{ab12 u0 Application Not Responding: system}"
+        )
+        self.assertFalse(is_satark_foreground(snapshot))
+
     def test_rejects_unrelated_foreground_application(self):
         self.assertFalse(is_satark_foreground(
             "mCurrentFocus=Window{ab12 u0 com.android.settings/.Settings}"
