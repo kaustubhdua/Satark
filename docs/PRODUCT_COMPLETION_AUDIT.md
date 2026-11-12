@@ -55,7 +55,7 @@ The current production Vercel deployment was queried directly, not inferred from
 - Missing source names and event types remain explicitly unknown.
 - Wazuh preview records are previews, not saved evidence. The UI preview path does not claim to preserve the complete original Indexer document; the persistent worker is the source-preserving ingestion path.
 - Unit tests necessarily use isolated test fixtures. Those fixtures are not production telemetry and must never be copied into deployment data.
-- The legacy Streamlit FIRSTLIGHT route is retired: it no longer seeds a fictional incident, generates a session-only investigation, or offers simulated response controls. The home-page synthetic example-report action is removed; the remaining visual preview is explicitly labelled `EXAMPLE` and is not presented as live telemetry.
+- The legacy Streamlit FIRSTLIGHT route is retired: it no longer seeds a fictional incident, generates a session-only investigation, or offers simulated response controls. The home page no longer renders sample alerts or illustrative telemetry; it states the evidence policy and explicitly says no sample alerts or preloaded incidents are present.
 - The Android EMBER2024 hash subset is a research/training indicator dataset, not live telemetry, a full malware corpus or a guarantee that an unflagged file is safe.
 - Hash matching proves equality with a referenced digest only. It does not prove who collected a record, when it existed or whether the original source was truthful.
 
