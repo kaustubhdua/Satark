@@ -245,3 +245,15 @@ jobs:
             mkdir -p artifacts
             adb install -r artifacts/apk/app-debug.apk
             python3 scripts/android_emulator_smoke.py --artifact-dir artifacts
+
+      - name: Upload Android emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: satark-android-emulator-diagnostics
+          path: |
+            artifacts/satark-emulator-logcat.txt
+            artifacts/satark-screen.png
+            artifacts/satark-window.xml
+          if-no-files-found: ignore
+          retention-days: 7
