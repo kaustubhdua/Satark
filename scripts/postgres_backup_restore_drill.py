@@ -108,7 +108,7 @@ def main() -> int:
 
         manifest = create_backup(
             archive,
-            str(source_url),
+            source_url.render_as_string(hide_password=False),
             evidence_source,
             response_ledger_path=ledger_source,
         )
@@ -120,7 +120,7 @@ def main() -> int:
 
         restored_manifest = restore_backup(
             archive,
-            str(restore_url),
+            restore_url.render_as_string(hide_password=False),
             evidence_restore,
             ledger_restore,
         )
