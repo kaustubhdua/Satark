@@ -81,10 +81,10 @@ class UIContractTests(unittest.TestCase):
 
     def test_native_streamlit_theme_matches_custom_design_system(self):
         config = (ROOT / ".streamlit/config.toml").read_text(encoding="utf-8")
-        self.assertIn('primaryColor = "#a9a6ff"', config)
-        self.assertIn('backgroundColor = "#080b12"', config)
-        self.assertIn('secondaryBackgroundColor = "#0e1421"', config)
-        self.assertIn('textColor = "#f2f6ff"', config)
+        self.assertIn('primaryColor = "#b6ff5c"', config)
+        self.assertIn('backgroundColor = "#070b09"', config)
+        self.assertIn('secondaryBackgroundColor = "#111d18"', config)
+        self.assertIn('textColor = "#e8f5eb"', config)
         self.assertIn('showErrorDetails = "none"', config)
         self.assertIn("maxUploadSize = 50", config)
 
