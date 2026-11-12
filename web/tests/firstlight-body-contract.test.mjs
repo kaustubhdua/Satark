@@ -36,10 +36,10 @@ test('saved FIRSTLIGHT evidence reload preserves its original browser digest', (
   assert.ok(panel.includes('never substitute a different hash'));
 });
 
-test('saved FIRSTLIGHT reports include visible session audit and simulated decisions', () => {
-  assert.ok(panel.includes('audit_events_visible_in_session: audit.map(event => ({ ...event }))'));
-  assert.ok(panel.includes('simulated_response_decisions: [...actions]'));
-  assert.ok(panel.includes('Database-triggered audit events are separate from this session log'));
+test('saved FIRSTLIGHT reports distinguish browser activity from durable server audit events', () => {
+  assert.ok(panel.includes('activity_log: audit.map(event => ({ ...event }))'));
+  assert.ok(panel.includes('Durable database audit events are recorded separately from this browser activity view'));
+  assert.doesNotMatch(panel, /simulated_response_decisions|simulation\.mark_case_contained/);
 });
 
 test('independent FIRSTLIGHT model agent implementation remains opt-in and read-only', async () => {
