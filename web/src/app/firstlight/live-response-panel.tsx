@@ -92,9 +92,9 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     return () => { active = false; };
   }, [tenantId, caseId]);
 
-  async function run(operation: () => Promise<void>) {
+  async function run(operation: () => Promise<void>, refreshAfter = true) {
     setBusy(true); setError(''); setNotice('');
-    try { await operation(); await refresh(); }
+    try { await operation(); if (refreshAfter) await refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : 'The response operation failed.'); }
     finally { setBusy(false); }
   }
@@ -153,7 +153,12 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
   }
 
   return <section className="private-upload" aria-labelledby="firstlight-live-response-heading">
-    <strong id="firstlight-live-response-heading">Guarded live response integrations</strong>
+    <div className="panel-heading">
+      <strong id="firstlight-live-response-heading">Guarded live response integrations</strong>
+      <button className="mini-btn" type="button" disabled={busy} onClick={()=>void run(refresh, false)}>
+        {busy ? 'Refreshing…' : 'Refresh response status'}
+      </button>
+    </div>
     <p className="hint">Optional Wazuh Manager API response using two fixed built-in commands. The manager must be private and the target agent must be explicitly allowlisted. Live actions are disabled by default, never triggered by AI, and require a case-bound approval plus a separate executor and exact target confirmation.</p>
     <p className={enabled && configured ? 'success-message' : 'hint'} role="status">
       {enabled && configured ? 'Server feature flag enabled · credentials present' : 'Live response disabled or not configured · simulation and investigation remain available'}
