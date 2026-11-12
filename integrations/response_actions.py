@@ -50,31 +50,38 @@ def _agent_allowlist() -> set[str]:
     return values
 
 
-def _account_disable_allowlist() -> set[str]:
-    values = {item.strip() for item in os.getenv("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS", "").split(",") if item.strip()}
-    if any(not re.fullmatch(r"\d{3,}", item) for item in values):
-        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS must contain numeric Linux/macOS lab agent IDs.")
-    return values
+def _protected_networks() -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    raw = _required_env("FIRSTLIGHT_WAZUH_PROTECTED_IPS")
+    try:
+        networks = [ipaddress.ip_network(item.strip(), strict=False) for item in raw.split(",") if item.strip()]
+    except ValueError:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_PROTECTED_IPS must contain valid IP addresses or CIDRs.") from None
+    if not networks:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_PROTECTED_IPS must include the Manager, API and protected infrastructure networks.")
+    return networks
+
+
+def _verified_response_ttl() -> int:
+    if os.getenv("FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED", "").lower() != "true":
+        raise ResponseIntegrationError("Live IP response is unavailable until the Wazuh lab proves automatic timeout and reversal.")
+    raw = _required_env("FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS")
+    if not raw.isdigit() or not 60 <= int(raw) <= 900:
+        raise ResponseIntegrationError("FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS must be between 60 and 900 seconds.")
+    return int(raw)
 
 
 def available_response_actions() -> list[str]:
-    """Return actions with their required static configuration present."""
+    """Expose only the lab-verified, time-bounded Linux IP block action."""
     try:
         _agent_allowlist()
+        _protected_networks()
+        _verified_response_ttl()
         _base_url()
         _required_env("FIRSTLIGHT_WAZUH_MANAGER_USERNAME")
         _required_env("FIRSTLIGHT_WAZUH_MANAGER_PASSWORD")
     except ResponseIntegrationError:
         return []
-    actions = ["wazuh.block_ip"]
-    try:
-        if _agent_allowlist() & _account_disable_allowlist():
-            actions.append("wazuh.disable_account")
-    except ResponseIntegrationError:
-        # A malformed OS-specific allowlist disables this action without
-        # making the entire status endpoint unavailable.
-        pass
-    return actions
+    return ["wazuh.block_ip"]
 
 
 def _base_url() -> str:
