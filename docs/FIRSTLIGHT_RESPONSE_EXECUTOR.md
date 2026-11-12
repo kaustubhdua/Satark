@@ -23,7 +23,7 @@ The live-response feature flag is disabled by default. The API never chooses tar
 
 - `SATARK_ENABLE_LIVE_RESPONSE=true` — only after a lab review.
 - `FIRSTLIGHT_WAZUH_MANAGER_API_URL` — private HTTPS Manager API URL.
-- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity.
+- `FIRSTLIGHT_WAZUH_MANAGER_USERNAME` / `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD` — least-privilege API identity with Active Response execution permission and read access to the explicitly allowlisted agent inventory; FIRSTLIGHT verifies exact agent identity, active status and supported OS before submission.
 - `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional trusted private CA file.
 - `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable-agent allowlist.
 
