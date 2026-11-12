@@ -8,6 +8,7 @@ in the first dump. This is a launch/UI smoke test, not physical-device QA.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -43,7 +44,15 @@ def main() -> int:
     while time.monotonic() < deadline:
         try:
             activities = run("adb", "shell", "dumpsys", "activity", "activities")
-            if "com.satark.mobile/.MainActivity" in activities:
+            resumed = re.search(
+                r"(?:mResumedActivity|topResumedActivity)=.*"
+                r"com\.satark\.mobile/.*MainActivity",
+                activities,
+            )
+            # Android 15 can show a system-owned ANR dialog over the app.
+            # The activity may still be resumed while System UI owns focus;
+            # inspect ActivityTaskManager's resumed record, not the window focus.
+            if resumed:
                 snapshots = [dump_hierarchy(xml_path)]
                 break
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
