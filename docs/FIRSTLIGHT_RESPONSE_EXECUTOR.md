@@ -4,7 +4,7 @@
 
 The current implementation uses Wazuh Manager API Active Response only:
 
-- `wazuh.block_ip` — invokes the fixed Wazuh 4.x built-in `firewall-drop` command for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the Manager timeout (60–900 seconds) and endpoint reversal have been independently verified and explicitly attested.
+- `wazuh.block_ip` — invokes the fixed custom `!satark-firewall-drop` command; the agent-side watchdog owns expiry for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the Manager timeout (60–900 seconds) and endpoint reversal have been independently verified and explicitly attested.
 - `wazuh.disable_account` is deliberately unavailable because the 4.x manual Active Response API does not carry a per-request timeout; account locking could become persistent without a verified reversal path.
 
 There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, all-agent broadcasts and free-form command arguments are not supported.
@@ -27,7 +27,7 @@ The live-response feature flag is disabled by default. The API never chooses tar
 - `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional trusted private CA file.
 - `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — explicit numeric disposable Linux-agent allowlist.
 - `FIRSTLIGHT_WAZUH_PROTECTED_IPS` — mandatory CIDR denylist for Manager, API, VPN, DNS and other protected infrastructure.
-- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — exact Manager-configured timeout, 60–900 seconds.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — exact agent-side watchdog timeout, 60–900 seconds.
 - `FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED=true` — manual acceptance attestation after a real disposable-agent add/reversal test; this flag is not automatic proof.
 
 The Manager API should be reachable only from the private FIRSTLIGHT API network. Do not expose port 55000 publicly. TLS verification is mandatory for network endpoints. HTTP is accepted only for explicit localhost tests.
