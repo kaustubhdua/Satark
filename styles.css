@@ -1460,3 +1460,14 @@ button[kind="primary"],[data-testid="stButton"]>button[kind="primary"]{
   --ih-mint:#8cffb0;
   --ih-ink:#070b09;
 }
+
+.satark-home-hero .satark-spotlight-card{
+  border-color:rgba(140,255,176,.26)!important;
+  background:linear-gradient(155deg,rgba(140,255,176,.075),rgba(9,16,12,.98) 60%,rgba(255,198,110,.035))!important;
+}
+.st-key-home-actions [data-testid="stButton"]>button[kind="primary"]{
+  border-color:rgba(182,255,92,.55)!important;
+  background:linear-gradient(90deg,#b6ff5c,#8cffb0)!important;
+  color:#10170f!important;
+  box-shadow:0 10px 28px rgba(140,255,176,.13)!important;
+}
