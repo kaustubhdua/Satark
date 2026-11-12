@@ -62,6 +62,29 @@ jobs:
       - name: Check dependency consistency
         run: python -m pip check
 
+      - name: Validate release gate references current FIRSTLIGHT CI evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_workflow=".github/workflows/firstlight-api-ci.yml"
+          release_gate=".github/workflows/release-gate.yml"
+          grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
+          grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
+          grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
+          for step_name in \
+            "Run FIRSTLIGHT engine, API, response and worker tests" \
+            "Perform isolated PostgreSQL backup and restore drill" \
+            "Enforce Supabase-free application runtime" \
+            "Enforce Microsoft-free runtime provider boundary" \
+            "Validate Wazuh and backup shell scripts" \
+            "Validate PostgreSQL role bootstrap shell" \
+            "Validate local self-hosted Compose configuration" \
+            "Validate production PostgreSQL and TLS Compose stack" \
+            "Build API and worker images"; do
+            grep -Fq "$step_name" "$api_workflow"
+            grep -Fq "$step_name" "$release_gate"
+          done
+
       - name: Compile Python source
         run: |
           python -m compileall -q \
