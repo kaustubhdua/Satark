@@ -192,12 +192,18 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn('archive.optString("sha256").matches', source)
         self.assertIn('exported_rows', source)
 
-    def test_android_snapshot_installation_runs_off_the_ui_thread(self):
+    def test_android_python_and_snapshot_initialization_are_lazy(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         on_create = source.split("override fun onCreate", 1)[1].split("override fun onNewIntent", 1)[0]
-        self.assertLess(on_create.index("executor.execute"), on_create.index("installBundledSnapshotIfMissing()"))
-        self.assertIn("ensurePython()", on_create)
-        self.assertIn("mainHandler.post", on_create)
+        bridge = source.split("private fun bridge()", 1)[1].split("private fun buildScreen", 1)[0]
+        self.assertNotIn("installBundledSnapshotIfMissing()", on_create)
+        self.assertNotIn("ensurePython()", on_create)
+        self.assertNotIn("Python.getInstance()", on_create)
+        self.assertIn("installBundledSnapshotIfMissing()", bridge)
+        self.assertIn("ensurePython()", bridge)
+        self.assertIn("Python.getInstance()", bridge)
+        self.assertIn("READY · OFFLINE ENGINE STARTS ON FIRST USE", on_create)
+        self.assertIn("private fun ensurePython()", source)
 
     def test_android_installs_only_checksum_verified_bundled_historical_database(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
