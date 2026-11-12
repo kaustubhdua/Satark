@@ -9,7 +9,7 @@ def test_wazuh_response_cli_is_preview_only(capsys):
     code = cli.main([
         "--action", "block-ip",
         "--agent-id", "001",
-        "--ip-address", "203.0.113.9",
+        "--ip-address", "8.8.8.8",
         "--reason", "case FL-1",
     ])
     assert code == 0
@@ -17,7 +17,7 @@ def test_wazuh_response_cli_is_preview_only(capsys):
     assert output["provider"] == "Wazuh Active Response"
     assert output["action"] == "wazuh.block_ip"
     assert output["agent_id"] == "001"
-    assert output["ip_address"] == "203.0.113.9"
+    assert output["ip_address"] == "8.8.8.8"
     assert output["live_execution"] is False
     assert "third executor" in output["execution_route"]
 
