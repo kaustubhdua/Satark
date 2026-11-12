@@ -1,6 +1,6 @@
 # SATARK — remaining release actions
 
-**Snapshot:** 2026-11-09  
+**Snapshot:** 2026-11-12  
 **Decision:** no-go for production use with sensitive or multi-tenant incident evidence.
 
 This file records the external actions that cannot be completed safely from repository-only access. It is intentionally explicit: a green build is not a substitute for tenant-isolation or deployment acceptance.
@@ -49,4 +49,4 @@ Do not use real incident evidence until all of the following have been verified 
 
 ## Safe operating boundary
 
-Until the above gates pass, use synthetic or public non-sensitive inputs only. FIRSTLIGHT response actions remain simulated; session audit chains are not independently anchored chain-of-custody evidence. SATARK is a triage aid, not a certified forensic product or malware verdict engine.
+Until the above gates pass, do not submit sensitive or production incident evidence. The production FIRSTLIGHT workspace must load only real Wazuh records or explicitly imported source artifacts; no sample incident is preloaded. Unit-test fixtures are isolated to tests and are not operational telemetry. The guarded Wazuh response implementation is present in code, but its live execution, recovery and independent verification have not been accepted in an authorized lab; keep `SATARK_ENABLE_LIVE_RESPONSE=false`. Browser activity is not a durable external chain-of-custody anchor. SATARK is a triage aid, not a certified forensic product or malware verdict engine.
