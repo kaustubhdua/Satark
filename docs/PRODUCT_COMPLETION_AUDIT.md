@@ -14,6 +14,21 @@ SATARK is an offline Android file-inspection application and a self-hosted secur
 
 The website should present the working operations product, not a hackathon pitch. The command-centre visual refresh was merged in PR #245. The evidence-first FIRSTLIGHT workspace changes in PR #246 remove the seeded training incident and session-only simulated response decisions from the main investigation workflow.
 
+## Production deployment observed on 2026-11-12
+
+The current production Vercel deployment was queried directly, not inferred from a preview:
+
+- Production deployment: `dpl_GnsYvPmnkg1sGPPedaBJed9ZUbP4`, state `READY`, source `main`.
+- Deployed revision: `b9ac20e07c7360803d93fe111c795f405b1b15fd`.
+- `/api/version` returned the same revision.
+- `/api/health` returned `configuration-only`, not a live dependency probe.
+- The snapshot reported FIRSTLIGHT investigation proxy and Wazuh proxy as **not configured**, and persistent storage as **not configured**.
+- Shared Upstash rate limiting was configured but its live connectivity was explicitly unverified.
+- The production Vercel environment-variable inventory did not include `SATARK_API_INTERNAL_URL`; no self-hosted API upstream is currently wired to this deployment.
+- The unauthenticated `/firstlight` request returned the secure-session loading shell. An authenticated case workflow has not been exercised against production.
+
+**Consequence:** production currently serves the Next.js website and local deterministic analysis surfaces, but FIRSTLIGHT persistence, Wazuh preview/ingestion and guarded response are not live through the public deployment. The health endpoint correctly discloses this. Do not describe the whole product as live or production-ready until the private API, durable database/evidence storage, and authorized Wazuh lab are connected and verified.
+
 ## Implementation vs acceptance
 
 | Area | Implemented in repository | Still required before production acceptance |
