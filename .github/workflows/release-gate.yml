@@ -79,7 +79,7 @@ jobs:
             echo "::error::General CI validation job is missing or did not pass."
             exit 1
           fi
-          for step_name in "Run unit tests" "Run FIRSTLIGHT, self-hosted migration, PostgreSQL and engine regression tests" "Run browser smoke and layout checks" "Validate required project assets"; do
+          for step_name in "Run unit tests" "Run FIRSTLIGHT, self-hosted migration, PostgreSQL and engine regression tests" "Run browser smoke and layout checks" "Validate required project assets" "Validate Docker Compose environment template" "Validate self-hosted Docker Compose stack" "Build SATARK and FIRSTLIGHT container images" "Smoke-test imports inside self-hosted container images" "Check source whitespace and accidental empty lines"; do
             step="$(jq -c --arg name "$step_name" '[.steps[] | select(.name == $name)] | first // empty' <<< "$ci_job")"
             if [[ -z "$step" || "$step" == "null" || "$(jq -r '.conclusion' <<< "$step")" != "success" ]]; then
               echo "::error::Required CI step is missing, skipped or failed: $step_name"
