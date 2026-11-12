@@ -238,11 +238,15 @@ jobs:
           arch: x86_64
           profile: pixel_2
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -cores 4 -memory 3072
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -cores 2 -memory 4096
           disable-animations: true
           script: |
             set -eu
             mkdir -p artifacts
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+            # Let Android's system UI, package manager and permission controller settle
+            # before measuring the first app launch on a CPU-constrained CI runner.
+            sleep 30
             adb install -r artifacts/apk/app-debug.apk
             python3 scripts/android_emulator_smoke.py --artifact-dir artifacts
 
