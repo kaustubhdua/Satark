@@ -72,8 +72,8 @@ class FirstlightEngineTests(unittest.TestCase):
         events[1]["timestamp"] = "2026-10-10T08:00:00Z"
         evidence = [seal_evidence(event) for event in events]
         timeline = investigate_case(self.case, evidence)["timeline"]
-        self.assertEqual(timeline[0]["event_id"], "EV-001")
-        self.assertEqual(timeline[1]["event_id"], "EV-002")
+        self.assertEqual(timeline[0]["event_id"], "UNIT-001")
+        self.assertEqual(timeline[1]["event_id"], "UNIT-002")
 
     def test_evidence_priority_uses_volatility_relevance_and_recency(self):
         now = datetime(2026, 10, 10, 9, 30, tzinfo=timezone.utc)
@@ -155,7 +155,7 @@ class FirstlightEngineTests(unittest.TestCase):
                 self.assertEqual(finding["confidence"], "low")
 
     def test_timeline_places_unparseable_timestamps_last(self):
-        events = [dict(event) for event in self.case["events"]]
+        events = [dict(event) for event in self.events]
         events[0]["timestamp"] = "not-a-timestamp"
         evidence = [seal_evidence(event) for event in events]
         result = investigate_case(self.case, evidence)
