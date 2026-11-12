@@ -30,9 +30,9 @@ def render_home():
         '<section class="ih-focus satark-firstlight-spotlight">'
         '<div class="ih-focus-index">INCIDENT WORKSPACE</div>'
         '<div class="ih-focus-main"><div class="ih-focus-title">FIRSTLIGHT <span>Incident Command</span></div>'
-        '<p>Reconstruct an incident, verify evidence integrity, trace findings to records and review proposed response actions — without performing real-world changes.</p>'
+        '<p>Investigate source-backed alerts, preserve evidence integrity and review response approvals. Live response remains disabled until an authorized Wazuh lab is verified.</p>'
         '<div class="spotlight-feature-row"><span>◈ Evidence integrity</span><span>↗ Investigation timeline</span><span>✓ Auditable decisions</span></div></div>'
-        '<div class="ih-focus-aside"><span class="ih-status-pill"><span></span> TRAINING CASE</span><div>Start with a guided case.<br>Explore each stage when you need it.</div></div>'
+        '<div class="ih-focus-aside"><span class="ih-status-pill"><span></span> SOURCE REQUIRED</span><div>Connect a real alert source to begin.<br>No sample incidents are preloaded.</div></div>'
         '</section>',
         unsafe_allow_html=True,
     )
