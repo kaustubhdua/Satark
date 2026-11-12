@@ -199,7 +199,7 @@ def preflight_live_response(action: str, target: str, confirmation: str) -> None
     """Check explicit opt-in, action allowlist, target allowlist and credentials."""
     expected = "BLOCK_IP" if action == "wazuh.block_ip" else None
     if not expected:
-        raise ResponseIntegrationError("Only the lab-verified Wazuh IP block action is allowlisted; account disable is not supported.")
+        raise ResponseIntegrationError("Action is not allowlisted; only the lab-verified Wazuh IP block action is supported, and account disable is not supported.")
     if not live_response_enabled():
         raise ResponseIntegrationError("Live response is disabled. Enable it only in an authorized isolated lab.")
     _verified_response_ttl()
