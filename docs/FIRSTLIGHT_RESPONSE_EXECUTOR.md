@@ -38,6 +38,7 @@ The Manager API should be reachable only from the private FIRSTLIGHT API network
 - Idempotency keys prevent duplicate requests.
 - Requester, approver, executor and verifier identities are separated.
 - An interrupted or ambiguous provider call becomes `unknown`; the executor never retries it automatically.
+- The Wazuh API request deliberately omits `wait_for_complete=true`; that option disables the API's normal timeout and can turn a stale/disconnected-agent race into an unbounded wait. The client retains a bounded request timeout and records ambiguous outcomes as `unknown`.
 - A provider submission is not endpoint verification.
 - The audit hash chain detects ordinary record mutation but is not tamper-proof against a privileged host administrator. Export/anchor audit records independently for stronger evidence integrity.
 
