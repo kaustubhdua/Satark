@@ -227,10 +227,11 @@ def _validate_payload(action: str, payload: Mapping[str, Any]) -> list[str]:
             address = ipaddress.ip_address(str(payload["ip_address"]))
         except ValueError:
             raise ResponseIntegrationError("ip_address must be a valid IPv4 address.") from None
+        protected_networks = _protected_networks()
+        if any(address.version == network.version and address in network for network in protected_networks):
+            raise ResponseIntegrationError("The target IP is inside a protected infrastructure network.")
         if address.version != 4 or not address.is_global:
             raise ResponseIntegrationError("Only globally routable unicast IPv4 addresses can be blocked.")
-        if any(address in network for network in _protected_networks()):
-            raise ResponseIntegrationError("The target IP is inside a protected infrastructure network.")
         return [str(address)]
     raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
 
