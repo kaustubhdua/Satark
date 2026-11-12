@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - "web/**"
+      - "android/**"
+      - "file_guard/**"
+      - "scripts/android_emulator_smoke.py"
+      - "tests/test_android*.py"
+      - "web/**"
       - ".github/workflows/web-ci.yml"
       - "release-gate/EXACT_SHA.md"
       - ".github/workflows/ci.yml"
@@ -13,6 +18,11 @@ on:
       - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
   pull_request:
     paths:
+      - "web/**"
+      - "android/**"
+      - "file_guard/**"
+      - "scripts/android_emulator_smoke.py"
+      - "tests/test_android*.py"
       - "web/**"
       - ".github/workflows/web-ci.yml"
       - "release-gate/EXACT_SHA.md"
