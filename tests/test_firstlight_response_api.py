@@ -86,7 +86,7 @@ def test_response_workflow_is_persistent_four_eyes_and_disabled_by_default(respo
         "action": "wazuh.block_ip",
         "target": "001",
         "reason": "Contain a confirmed test endpoint during the authorized lab exercise.",
-        "payload": {"ip_address": "203.0.113.42"},
+        "payload": {"ip_address": "8.8.8.8"},
         "idempotency_key": "response-test-00000001",
         "expires_in_seconds": 600,
     })
