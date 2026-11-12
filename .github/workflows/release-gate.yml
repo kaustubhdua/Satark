@@ -76,6 +76,7 @@ jobs:
           api_run="$(require_run "FIRSTLIGHT API CI")"
           android_run="$(require_run "Android File Guard")"
           inventory_run="$(require_run "Phase 0 inventory")"
+          production_smoke_run="$(require_run "Production smoke check")"
 
           ci_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run}/jobs?per_page=100")"
           ci_job="$(jq -c '[.jobs[] | select(.name == "validate")] | first // empty' <<< "$ci_jobs")"
@@ -114,6 +115,33 @@ jobs:
             fi
           done
 
+          web_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${web_run}/jobs?per_page=100")"
+          web_job="$(jq -c '[.jobs[] | select(.name == "frontend")] | first // empty' <<< "$web_jobs")"
+          if [[ -z "$web_job" || "$web_job" == "null" || "$(jq -r '.conclusion' <<< "$web_job")" != "success" ]]; then
+            echo "::error::Web production build/browser validation job is missing or did not pass."
+            exit 1
+          fi
+
+          codeql_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${codeql_run}/jobs?per_page=100")"
+          codeql_job="$(jq -c '[.jobs[] | select(.name == "Analyze Python and JavaScript/TypeScript")] | first // empty' <<< "$codeql_jobs")"
+          if [[ -z "$codeql_job" || "$codeql_job" == "null" || "$(jq -r '.conclusion' <<< "$codeql_job")" != "success" ]]; then
+            echo "::error::CodeQL analysis job is missing or did not pass."
+            exit 1
+          fi
+
+          production_smoke_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${production_smoke_run}/jobs?per_page=100")"
+          production_smoke_job="$(jq -c '[.jobs[] | select(.name == "smoke")] | first // empty' <<< "$production_smoke_jobs")"
+          if [[ -z "$production_smoke_job" || "$production_smoke_job" == "null" || "$(jq -r '.conclusion' <<< "$production_smoke_job")" != "success" ]]; then
+            echo "::error::Production smoke job is missing, skipped or failed."
+            exit 1
+          fi
+          auth_smoke_step="$(jq -c '[.steps[] | select(.name == "Authenticate a dedicated production smoke account and read tenant data")] | first // empty' <<< "$production_smoke_job")"
+          if [[ -z "$auth_smoke_step" || "$auth_smoke_step" == "null" || "$(jq -r '.conclusion' <<< "$auth_smoke_step")" != "success" ]]; then
+            echo "::error::Authenticated production session and tenant readback smoke did not pass."
+            exit 1
+          fi
+
+          echo "Exact-SHA CI, web, CodeQL, FIRSTLIGHT/PostgreSQL, Android emulator, inventory and authenticated production smoke gates passed for $WORKFLOW_SHA."
 
       - name: Require exact deployed revision and all evidence gates
         env:
