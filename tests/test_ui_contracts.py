@@ -70,6 +70,10 @@ class UIContractTests(unittest.TestCase):
         self.assertNotIn("get_demo_result", HOME)
         self.assertNotIn("guided sample report", HOME)
         self.assertIn("OBSERVABLE SIGNALS", HOME)
+        self.assertIn("SOURCE REQUIRED", HOME)
+        self.assertIn("No sample incidents are preloaded", HOME)
+        self.assertNotIn("TRAINING CASE", HOME)
+        self.assertNotIn("guided case", HOME.lower())
         self.assertNotIn("home-stats", HOME)
 
     def test_native_streamlit_theme_matches_custom_design_system(self):
