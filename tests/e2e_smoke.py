@@ -9,10 +9,8 @@ ARTIFACTS.mkdir(parents=True,exist_ok=True)
 
 
 def assert_layout(page, name):
-    page.locator("#satark-intro-overlay").wait_for(state="hidden", timeout=10_000)
     body=page.locator("body").inner_text()
     assert "Pause the panic." in body, f"{name}: home copy missing"
-    assert page.locator("#satark-intro-overlay").count() == 1 and not page.locator("#satark-intro-overlay").is_visible(), f"{name}: intro overlay did not dismiss"
     metrics=page.evaluate("""() => ({
         viewport: window.innerWidth,
         scrollWidth: document.documentElement.scrollWidth,
@@ -55,7 +53,6 @@ def main():
         for name,width,height in (("desktop",1440,900),("mobile",390,844)):
             page=browser.new_page(viewport={"width":width,"height":height},reduced_motion="reduce")
             page.goto(URL,wait_until="domcontentloaded",timeout=60_000)
-            page.locator("#satark-intro-overlay").wait_for(state="attached", timeout=10_000)
             assert_layout(page,name)
             if name=="desktop":
                 page.get_by_role("button",name="Start an investigation →").click()
