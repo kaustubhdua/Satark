@@ -1901,66 +1901,8 @@ def get_report(report_id: str, tenant_id: str, user: User = Depends(current_user
             "actual_sha256": actual, "matched": matched}}, status_code=200 if matched else 409)
 
 
-@router.get("/firstlight/approvals")
-def list_approvals(tenant_id: str, case_id: str, user: User = Depends(current_user), db: Session = Depends(db_session)):
-    require_membership(db, user, tenant_id)
-    rows = db.scalars(select(Approval).where(Approval.tenant_id == tenant_id, Approval.case_id == case_id).order_by(Approval.created_at.desc()).limit(100)).all()
-    return {"approvals": [{"id": r.id, "tenant_id": r.tenant_id, "case_id": r.case_id, "action_key": r.action_key,
-        "action_payload": r.action_payload, "payload_sha256": r.payload_sha256, "status": r.status,
-        "requested_by": r.requested_by, "decided_by": r.decided_by, "decision_reason": r.decision_reason,
-        "decided_at": r.decided_at.isoformat() if r.decided_at else None, "expires_at": r.expires_at.isoformat(),
-        "consumed_at": r.consumed_at.isoformat() if r.consumed_at else None, "created_at": r.created_at.isoformat()} for r in rows]}
-
-
-@router.post("/firstlight/approvals", status_code=201)
-def request_approval(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
-    tenant_id, case_id = body.get("tenant_id"), body.get("case_id")
-    action_key, payload = body.get("action_key"), body.get("action_payload")
-    require_membership(db, user, str(tenant_id), {"owner", "responder", "analyst"})
-    if not isinstance(case_id, str) or not db.scalar(select(Case.id).where(Case.id == case_id, Case.tenant_id == tenant_id)):
-        raise HTTPException(404, "Case not found.")
-    if not isinstance(action_key, str) or not re.fullmatch(r"simulation\.[a-z0-9][a-z0-9._-]{0,110}", action_key):
-        raise HTTPException(400, "Only named simulation actions can be approved.")
-    if not isinstance(payload, dict) or payload.get("mode") != "simulation":
-        raise HTTPException(400, "Response approvals are simulation-only.")
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
-    if len(encoded.encode()) > 16 * 1024:
-        raise HTTPException(413, "Action payload exceeds 16 KiB.")
-    digest = hashlib.sha256(encoded.encode()).hexdigest()
-    row = Approval(tenant_id=tenant_id, case_id=case_id, action_key=action_key, action_payload=payload,
-                   payload_sha256=digest, requested_by=user.id, expires_at=utcnow() + timedelta(hours=24))
-    db.add(row)
-    db.flush()
-    audit(db, tenant_id, user.id, "approval.requested", {"approval_id": row.id, "case_id": case_id, "payload_sha256": digest})
-    db.commit()
-    return {"approval": {"id": row.id, "tenant_id": tenant_id, "case_id": case_id, "action_key": action_key,
-        "action_payload": payload, "payload_sha256": digest, "status": row.status, "requested_by": user.id,
-        "expires_at": row.expires_at.isoformat(), "created_at": row.created_at.isoformat()}}
-
-
-@router.patch("/firstlight/approvals")
-def decide_approval(body: dict, user: User = Depends(current_user), db: Session = Depends(db_session)):
-    approval_id = body.get("approval_id")
-    decision, reason = body.get("decision"), body.get("reason")
-    if not isinstance(approval_id, str) or not UUID_RE.fullmatch(approval_id) or decision not in {"approved", "rejected"}:
-        raise HTTPException(400, "A valid approval_id and approved/rejected decision are required.")
-    row = db.get(Approval, approval_id)
-    if not row:
-        raise HTTPException(404, "Approval not found.")
-    require_membership(db, user, row.tenant_id, {"owner", "responder"})
-    if row.requested_by == user.id:
-        raise HTTPException(403, "An approval requester cannot approve their own request.")
-    expiry = row.expires_at.replace(tzinfo=timezone.utc) if row.expires_at.tzinfo is None else row.expires_at
-    if row.status != "pending" or row.consumed_at is not None or expiry <= utcnow():
-        raise HTTPException(409, "Approval is expired, already decided, or already consumed.")
-    row.status = decision
-    row.decided_by = user.id
-    row.decision_reason = str(reason or "")[:1000] or None
-    row.decided_at = utcnow()
-    audit(db, row.tenant_id, user.id, "approval.decided", {"approval_id": row.id, "decision": decision})
-    db.commit()
-    return {"approval": {"id": row.id, "status": row.status, "decided_by": row.decided_by,
-        "decision_reason": row.decision_reason, "decided_at": row.decided_at.isoformat()}}
+# Legacy simulation-only approval endpoints were retired. Real endpoint actions
+# are exposed only by firstlight_response_api.py's guarded Wazuh response routes.
 
 
 @router.get("/firstlight/jobs")
