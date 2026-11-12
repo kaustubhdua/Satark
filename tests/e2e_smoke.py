@@ -1,10 +1,7 @@
 """Browser smoke and layout regression checks for the local Streamlit app."""
 from pathlib import Path
-import re
-from io import BytesIO
 import os
 from playwright.sync_api import sync_playwright
-from pypdf import PdfReader
 
 URL=os.getenv("SATARK_E2E_URL","http://127.0.0.1:8501")
 ARTIFACTS=Path(os.getenv("SATARK_E2E_ARTIFACTS","artifacts"))
