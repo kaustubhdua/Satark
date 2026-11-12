@@ -121,18 +121,13 @@ class UIContractTests(unittest.TestCase):
         self.assertIn("mask-image:", POLISH_CSS)
         self.assertNotIn("https://", POLISH_CSS)
 
-    def test_firstlight_import_tables_and_report_generation_are_opt_in(self):
-        self.assertIn("Show normalized event inventory", FIRSTLIGHT)
-        self.assertIn("Show rejected records", FIRSTLIGHT)
-        self.assertIn("Prepare import report", FIRSTLIGHT)
-        self.assertIn("firstlight_import_report_json", FIRSTLIGHT)
-        self.assertIn("Download prepared import report (JSON)", FIRSTLIGHT)
-
-    def test_firstlight_renders_only_the_selected_workspace(self):
-        self.assertIn('active_workspace = st.selectbox(', FIRSTLIGHT)
-        for section in ("Incident", "Evidence Integrity", "Investigation", "Response Center", "Audit Trail"):
-            self.assertIn(section, FIRSTLIGHT)
-        self.assertNotIn("st.tabs(", FIRSTLIGHT)
+    def test_legacy_firstlight_route_is_retired_without_synthetic_workflows(self):
+        self.assertIn("legacy Streamlit incident prototype has been retired", FIRSTLIGHT)
+        self.assertIn("does not load training incidents", FIRSTLIGHT)
+        self.assertIn("Persistent cases and evidence require the self-hosted API", FIRSTLIGHT)
+        self.assertNotIn("create_demo_case", FIRSTLIGHT)
+        self.assertNotIn("apply_simulated_response", FIRSTLIGHT)
+        self.assertNotIn("response_proposals", FIRSTLIGHT)
 
     def test_intro_loading_screen_is_branded_accessible_and_nonblocking(self):
         self.assertIn("from ui.loading import render_intro_loader", APP)
