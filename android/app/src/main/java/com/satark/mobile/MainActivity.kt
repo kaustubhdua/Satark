@@ -54,24 +54,15 @@ class MainActivity : Activity() {
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
         buildScreen()
-        status.text = "INITIALIZING LOCAL OFFLINE ENGINE"
-        executor.execute {
-            try {
-                try {
-                    installBundledSnapshotIfMissing()
-                } catch (error: Exception) {
-                    starterSnapshotError = error.javaClass.simpleName
-                }
-                ensurePython()
-                mainHandler.post {
-                    if (starterSnapshotError != null) {
-                        status.text = "STARTER SNAPSHOT INSTALL FAILED · " + starterSnapshotError
-                    }
-                    refreshDatasetStats()
-                }
-            } catch (error: Exception) {
-                mainHandler.post { status.text = "OFFLINE ENGINE STARTUP FAILED · " + error.javaClass.simpleName }
-            }
+        status.text = "READY · OFFLINE ENGINE STARTS ON FIRST USE"
+        // Keep the first frame interactive. Chaquopy startup and the 50 MB
+        // historical snapshot verification are deferred until the first
+        // engine-backed action, where progress can be shown without ANR risk.
+        val localSnapshot = File(filesDir, "file_guard_intelligence.sqlite3")
+        datasetStatus.text = if (localSnapshot.isFile) {
+            "LOCAL HISTORICAL SNAPSHOT PRESENT · ENGINE STARTS ON FIRST USE"
+        } else {
+            "HISTORICAL SNAPSHOT INSTALLED AND VERIFIED ON FIRST ENGINE USE"
         }
         handleIncomingIntent(intent)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -89,6 +80,35 @@ class MainActivity : Activity() {
 
     private fun ensurePython() {
         if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
+    }
+
+    /**
+     * Initialize the expensive offline runtime only on a worker thread when a
+     * user invokes an engine-backed action. Snapshot copying is checksum-verified
+     * before the Python bridge opens it; a missing snapshot does not disable the
+     * deterministic byte/structure checks.
+     */
+    private fun bridge() = run {
+        try {
+            installBundledSnapshotIfMissing()
+        } catch (error: Exception) {
+            starterSnapshotError = error.javaClass.simpleName
+            mainHandler.post {
+                datasetStatus.text = "STARTER SNAPSHOT UNAVAILABLE · " + starterSnapshotError
+            }
+        }
+        ensurePython()
+        val snapshotPresent = File(filesDir, "file_guard_intelligence.sqlite3").isFile
+        mainHandler.post {
+            if (starterSnapshotError == null) {
+                datasetStatus.text = if (snapshotPresent) {
+                    "LOCAL HISTORICAL SNAPSHOT PRESENT · COVERAGE AVAILABLE ON REQUEST"
+                } else {
+                    "NO HISTORICAL SNAPSHOT · BYTE AND STRUCTURE CHECKS REMAIN AVAILABLE"
+                }
+            }
+        }
+        Python.getInstance().getModule("android_bridge")
     }
 
     private fun buildScreen() {
@@ -172,7 +192,7 @@ class MainActivity : Activity() {
         intelligencePanel.addView(datasetSource, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(8) })
-        datasetStatus = text("HISTORICAL DATASET · CHECKING LOCAL DATABASE…", 12f, 0xFF78E0C1.toInt(), true)
+        datasetStatus = text("HISTORICAL SNAPSHOT · INSTALLED AND VERIFIED ON FIRST ENGINE USE", 12f, 0xFF78E0C1.toInt(), true)
         intelligencePanel.addView(datasetStatus)
         intelligencePanel.addView(primaryActionButton("Import snapshot CSV + manifests") { chooseDataset() })
         intelligencePanel.addView(actionButton("View dataset coverage") { showDatasetStats() })
@@ -445,7 +465,7 @@ class MainActivity : Activity() {
                         }
                         val bytes = readBounded(uri)
                         val sourceId = (source + ":" + name).take(160)
-                        val response = Python.getInstance().getModule("android_bridge")
+                        val response = bridge()
                             .callAttr("import_csv_snapshot", bytes, sourceId, filesDir.absolutePath, expected).toString()
                         val payload = JSONObject(response)
                         val counts = payload.getJSONObject("import")
@@ -465,7 +485,7 @@ class MainActivity : Activity() {
                 }
             }
             val stats = try {
-                JSONObject(Python.getInstance().getModule("android_bridge")
+                JSONObject(bridge()
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
             } catch (_: Exception) {
                 JSONObject()
@@ -488,7 +508,7 @@ class MainActivity : Activity() {
     private fun showHistory() {
         executor.execute {
             try {
-                val json = Python.getInstance().getModule("android_bridge")
+                val json = bridge()
                     .callAttr("scan_history", filesDir.absolutePath).toString()
                 val array = org.json.JSONArray(json)
                 val lines = (0 until array.length()).map { index ->
@@ -524,7 +544,7 @@ class MainActivity : Activity() {
         executor.execute {
             try {
                 val history = org.json.JSONArray(
-                    Python.getInstance().getModule("android_bridge")
+                    bridge()
                         .callAttr("scan_history", filesDir.absolutePath).toString()
                 )
                 if (history.length() == 0) {
@@ -558,7 +578,7 @@ class MainActivity : Activity() {
         executor.execute {
             try {
                 val payload = JSONObject(
-                    Python.getInstance().getModule("android_bridge")
+                    bridge()
                         .callAttr("verify_scan_audit", filesDir.absolutePath).toString()
                 )
                 val valid = payload.optBoolean("valid")
@@ -687,7 +707,7 @@ class MainActivity : Activity() {
                         prefs.edit().putString("bundled_snapshot_id", sourceId).apply()
                         starterSnapshotError = null
                         val stats = JSONObject(
-                            Python.getInstance().getModule("android_bridge")
+                            bridge()
                                 .callAttr("scan_stats", filesDir.absolutePath).toString()
                         )
                         mainHandler.post {
@@ -710,7 +730,7 @@ class MainActivity : Activity() {
     private fun refreshDatasetStats() {
         executor.execute {
             try {
-                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
+                val stats = JSONObject(bridge()
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 mainHandler.post {
                     val bundledSource = prefs.getString("bundled_snapshot_id", null)
@@ -739,7 +759,7 @@ class MainActivity : Activity() {
     private fun showDatasetStats() {
         executor.execute {
             try {
-                val stats = JSONObject(Python.getInstance().getModule("android_bridge")
+                val stats = JSONObject(bridge()
                     .callAttr("scan_stats", filesDir.absolutePath).toString())
                 val total = stats.optInt("total")
                 val coverage = stats.optJSONObject("by_file_type")?.keys()?.asSequence()
@@ -777,7 +797,7 @@ class MainActivity : Activity() {
     private fun clearDataset() {
         executor.execute {
             try {
-                Python.getInstance().getModule("android_bridge")
+                bridge()
                     .callAttr("clear_intelligence", filesDir.absolutePath)
                 prefs.edit().remove("bundled_snapshot_id").apply()
                 mainHandler.post {
@@ -815,7 +835,7 @@ class MainActivity : Activity() {
     private fun clearHistory() {
         executor.execute {
             try {
-                Python.getInstance().getModule("android_bridge")
+                bridge()
                     .callAttr("clear_scan_history", filesDir.absolutePath)
                 mainHandler.post {
                     results.text = "Local scan history cleared. The historical threat-intelligence database was not changed."
@@ -914,7 +934,7 @@ class MainActivity : Activity() {
                     val name = displayName(uri)
                     val temp = copyUriToTemp(uri)
                     val json = try {
-                        Python.getInstance().getModule("android_bridge")
+                        bridge()
                             .callAttr("scan_shared_file_path", temp.absolutePath, name, filesDir.absolutePath).toString()
                     } finally {
                         temp.delete()
