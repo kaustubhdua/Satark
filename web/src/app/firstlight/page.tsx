@@ -277,8 +277,25 @@ export default function FirstlightPage() {
         }
         const parsedTime = parseIsoTimestamp(rawTime);
         if (!parsedTime) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use ISO 8601 date/time with an explicit timezone, e.g. 2026-10-11T10:00:00Z.');
-        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:parsedTime,source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096),details:await boundedDetails(row.details)};
-        next.push({...item,digest:await digestEvidence(item)});
+        const rawSummary = row.summary ?? row.message ?? row.description;
+        if (typeof rawSummary !== 'string' || !rawSummary.trim()) {
+          throw new Error('Missing summary in event ' + (i + 1) + '. Include summary/message/description; SATARK will not invent event content.');
+        }
+        const rawId = row.id ?? row.evidence_id ?? row.event_id;
+        const eventId = typeof rawId === 'string' && rawId.trim()
+          ? rawId.trim()
+          : 'IMP-' + sourceDigest.slice(0, 12) + '-' + String(i + 1).padStart(5, '0');
+        const rawSource = row.source ?? row.provider ?? row.source_system;
+        const rawKind = row.kind ?? row.event_type ?? row.category;
+        const item = {
+          id: eventId.slice(0, 100),
+          time: parsedTime,
+          source: typeof rawSource === 'string' && rawSource.trim() ? rawSource.trim().slice(0, 160) : 'Unspecified source',
+          kind: typeof rawKind === 'string' && rawKind.trim() ? rawKind.trim().slice(0, 100) : 'unspecified',
+          summary: rawSummary.trim().slice(0, 4096),
+          details: await boundedDetails(row.details),
+        };
+        next.push({ ...item, digest: await digestEvidence(item) });
       }
       const ids = new Set<string>();
       for (const item of next) {
