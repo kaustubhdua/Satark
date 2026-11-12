@@ -222,7 +222,7 @@ test('homepage describes the actual deterministic stages and guarded response bo
 });
 
 test('homepage stage count matches the deterministic FIRSTLIGHT engine contract', () => {
-  const stages = homePage.match(/const stages = \[([\\s\\S]*?)\];/);
+  const stages = homePage.match(/const stages = \[([\s\S]*?)\];/);
   assert.ok(stages, 'homepage must declare the investigation stages');
   assert.equal((stages[1].match(/\{ icon:/g) || []).length, 5);
   assert.doesNotMatch(stages[1], /Response planning/);
