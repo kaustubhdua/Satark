@@ -1,6 +1,5 @@
 """SATARK home workspace."""
 import streamlit as st
-from ui.demo import get_demo_result
 
 
 def render_home():
@@ -38,7 +37,7 @@ def render_home():
         unsafe_allow_html=True,
     )
     with st.container(key="home-actions"):
-        col_primary, col_secondary, col_tertiary = st.columns([1.1, 1, .9], gap="small")
+        col_primary, col_secondary = st.columns([1.1, 1], gap="small")
         with col_primary:
             if st.button("Open FIRSTLIGHT →", width="stretch", type="primary", key="goto_firstlight"):
                 st.session_state.page = "FIRSTLIGHT"
@@ -49,13 +48,7 @@ def render_home():
                 st.session_state.scroll_to_scanners = True
                 st.session_state.demo_mode = False
                 st.rerun()
-        with col_tertiary:
-            if st.button("View example report", width="stretch", key="demo_result"):
-                st.session_state.result = get_demo_result()
-                st.session_state.mode = "Text"
-                st.session_state.demo_mode = True
-                st.session_state.page = "Analyze"
-                st.rerun()
+
 
     st.markdown(
         '<section class="ih-toolkit">'
