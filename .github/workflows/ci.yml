@@ -111,7 +111,7 @@ jobs:
             grep -Fq "$trigger_path" "$android_workflow"
           done
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
-          grep -Fq '"Android File Guard" "Production smoke check"' "$release_gate"
+          grep -Fq '"Android File Guard" "Phase 0 inventory"' "$release_gate"
           grep -Fq 'android_device_qa_verified' "$release_gate"
           grep -Fq 'physical Android device QA' "$release_gate"
           grep -Fq 'name: Production smoke check' "$production_smoke"
