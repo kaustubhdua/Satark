@@ -1423,3 +1423,40 @@ body {
 }
 
 body::after { display: none; }
+
+
+/* Bind the arcade palette to the actual First Light token names. */
+:root {
+  --bg: #070b09;
+  --surface: #0b1210;
+  --surface-2: #111d18;
+  --surface-inset: #070d0b;
+  --border: #23372c;
+  --border-strong: #385642;
+  --text: #e8f5eb;
+  --text-2: #a8c0ae;
+  --text-3: #78917f;
+  --dawn-1: #8cffb0;
+  --dawn-2: #b6ff5c;
+  --dawn-3: #ffc66e;
+  --accent: #8cffb0;
+  --accent-strong: #c5ffd5;
+  --accent-soft: rgba(140,255,176,.10);
+  --accent-line: rgba(140,255,176,.34);
+  --primary: #b6ff5c;
+  --primary-hover: #c9ff86;
+  --primary-ink: #10170f;
+  --radius-sm: 3px;
+  --radius: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --shadow: 0 1px 0 rgba(140,255,176,.035) inset, 0 14px 36px -18px rgba(0,0,0,.82);
+}
+
+.shell::before {
+  background:
+    radial-gradient(60% 120% at 50% -40%, rgba(140,255,176,.13), transparent 70%),
+    radial-gradient(40% 80% at 85% -30%, rgba(255,198,110,.07), transparent 70%);
+}
+
+::selection { background: rgba(182,255,92,.34); color: #07110a; }
