@@ -6,11 +6,21 @@ on:
       - "web/**"
       - ".github/workflows/web-ci.yml"
       - "release-gate/EXACT_SHA.md"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/firstlight-api-ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
   pull_request:
     paths:
       - "web/**"
       - ".github/workflows/web-ci.yml"
       - "release-gate/EXACT_SHA.md"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/firstlight-api-ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
   workflow_dispatch:
 
 permissions:
