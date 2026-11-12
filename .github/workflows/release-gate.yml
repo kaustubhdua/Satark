@@ -77,7 +77,11 @@ jobs:
           for step_name in \
             "Run FIRSTLIGHT engine, API, response and worker tests" \
             "Perform isolated PostgreSQL backup and restore drill" \
+            "Enforce Supabase-free application runtime" \
             "Enforce Microsoft-free runtime provider boundary" \
+            "Validate Wazuh and backup shell scripts" \
+            "Validate PostgreSQL role bootstrap shell" \
+            "Validate local self-hosted Compose configuration" \
             "Validate production PostgreSQL and TLS Compose stack" \
             "Build API and worker images"; do
             step="$(jq -c --arg name "$step_name" '[.steps[] | select(.name == $name)] | first // empty' <<< "$api_job")"
