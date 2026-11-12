@@ -2,11 +2,11 @@
 
 > Scope: this runbook covers the optional legacy web/FIRSTLIGHT deployment. It is not a gate for local Android file scanning. The primary Android File Guard is Supabase-free and has its own acceptance checklist in [LOCAL_OFFLINE_ACCEPTANCE.md](LOCAL_OFFLINE_ACCEPTANCE.md).
 
-This document separates a working hackathon demonstration from a service that is safe for public or sensitive use. Passing CI is necessary, but it is not proof of production readiness.
+This document is retained for legacy Streamlit-specific checks. For the current Next.js + self-hosted SATARK/FIRSTLIGHT product, use [Product completion audit](PRODUCT_COMPLETION_AUDIT.md) as the authoritative release checklist. Passing CI is necessary, but it is not proof of production readiness.
 
 ## Current release posture
 
-- **Hackathon demonstration with synthetic/non-sensitive inputs:** suitable only after the exact deployed revision passes the checks below.
+- **Production web workspace:** NO-GO at the observed production revision until the self-hosted API, durable database/evidence storage and Wazuh integration are configured and exercised. Test-only synthetic fixtures must never be loaded into a production workspace.
 - **Small supervised pilot with non-sensitive content:** conditional on provider, deployment, abuse-control and recovery checks.
 - **Public anonymous service using a shared provider key:** **not ready by default**. A shared per-process sliding-window limiter is defense in depth, not a distributed/global quota: multiple workers, replicas or restarts can bypass its aggregate ceiling. A public service still needs gateway/provider-side global quotas, rate limiting, concurrency limits and cost controls.
 - **Confidential, regulated or multi-tenant incident evidence:** **not ready** without authenticated access, authorization/tenant isolation, retention and deletion controls, approved provider data handling, durable case storage, and an independently reviewed operational design.
@@ -74,7 +74,7 @@ This section records official-source findings relevant to the outstanding deploy
 
 ### URL retrieval / SSRF
 
-- The current `url_security.py` implements several useful controls: HTTP(S)-only parsing, rejection of URL credentials, resolution checks against non-global/reserved addresses, IP-pinned connections, TLS hostname verification, redirect revalidation, HTTPS-to-HTTP downgrade rejection, accepted content-type restrictions, response byte limits, and timeouts.
+- The legacy Streamlit URL path in `url_security.py` implements several useful controls: HTTP(S)-only parsing, rejection of URL credentials, resolution checks against non-global/reserved addresses, IP-pinned connections, TLS hostname verification, redirect revalidation, HTTPS-to-HTTP downgrade rejection, accepted content-type restrictions, response byte limits, and timeouts.
 - Existing tests cover mixed public/private DNS answers, private redirect destinations, DNS failures, IPv4-mapped IPv6, non-unicast addresses, and redirect limits. These are meaningful unit-level protections but do not prove the hosted network boundary is safe.
 - OWASP recommends disabling automatic redirect following or revalidating each redirect, and recommends allowlists where feasible. SATARK manually follows redirects and revalidates them; hosting-level egress restrictions remain a separate defense-in-depth requirement.
 - Official reference: [OWASP SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
