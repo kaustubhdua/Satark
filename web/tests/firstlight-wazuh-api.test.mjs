@@ -6,6 +6,7 @@ const route = await readFile(new URL('../src/app/api/firstlight/wazuh/alerts/rou
 const backend = await readFile(new URL('../../satark_backend.py', import.meta.url), 'utf8');
 const page = await readFile(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
+const liveResponse = await readFile(new URL('../src/app/firstlight/live-response-panel.tsx', import.meta.url), 'utf8');
 
 test('Wazuh route uses the same-origin self-hosted API proxy', () => {
   assert.match(route, /proxySatarkApi/);
