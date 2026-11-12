@@ -100,12 +100,13 @@ Official upstream deployment guide: https://documentation.wazuh.com/4.14/deploym
 
 ## Guarded endpoint response
 
-FIRSTLIGHT can submit two fixed Wazuh built-in Active Response commands through the Manager API:
+FIRSTLIGHT currently supports one fixed Wazuh built-in Active Response command through the Manager API:
 
-- `firewall-drop` for a validated IPv4 address.
-- `disable-account` for a validated local account name.
+- `firewall-drop` for a validated, globally routable IPv4 address that is not in a protected infrastructure network.
 
-Configure `FIRSTLIGHT_WAZUH_MANAGER_API_URL`, `FIRSTLIGHT_WAZUH_MANAGER_USERNAME`, `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD`, optional `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE`, and `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` in the private API environment. The response agent list is a separate explicit allowlist and must contain only disposable lab agent IDs. The disable-account action additionally requires FIRSTLIGHT_WAZUH_ACCOUNT_DISABLE_AGENT_IDS, a separate list of disposable Linux/macOS agents only; the executable is not available on Windows. The account must be restricted to the minimum Wazuh API permission required to call Active Response. TLS verification is mandatory for network endpoints.
+Account disable is intentionally not allowlisted or exposed by the current adapter. Do not treat a CLI preview or a unit-test mock as evidence that account disable is implemented. Add it only after a separate, reviewed reversible implementation and disposable-agent acceptance test.
+
+Configure `FIRSTLIGHT_WAZUH_MANAGER_API_URL`, `FIRSTLIGHT_WAZUH_MANAGER_USERNAME`, `FIRSTLIGHT_WAZUH_MANAGER_PASSWORD`, optional `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE`, and `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` in the private API environment. The response agent list is a separate explicit allowlist and must contain only disposable lab agent IDs. Configure `FIRSTLIGHT_WAZUH_PROTECTED_IPS` with the Manager, Indexer, API, gateway and other protected infrastructure networks. The response command additionally requires a verified 60–900 second TTL configuration. The current environment flag is an operator gate, not proof that reversal has been tested; keep live response disabled until the disposable-agent timeout and recovery drill is independently recorded. The account must be restricted to the minimum Wazuh API permission required to call Active Response. TLS verification is mandatory for network endpoints.
 
 Live response remains disabled unless `SATARK_ENABLE_LIVE_RESPONSE=true` is set in the trusted API runtime. The UI/API requires a requester, a distinct approver, a third executor, an exact confirmation phrase, and an independent verification attestation. Do not enable this in a production environment before lab verification and a reviewed reversal procedure.
 
