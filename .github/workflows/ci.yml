@@ -69,7 +69,10 @@ jobs:
           api_workflow=".github/workflows/firstlight-api-ci.yml"
           release_gate=".github/workflows/release-gate.yml"
           web_workflow=".github/workflows/web-ci.yml"
+          android_workflow=".github/workflows/android-file-guard.yml"
           grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
+          grep -Fq 'name: Android File Guard' "$android_workflow"
+          grep -Fq 'name: Install and launch APK on Android emulator' "$android_workflow"
           grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
           for trigger_path in \
             ".github/workflows/ci.yml" \
@@ -95,6 +98,14 @@ jobs:
             "scripts/android_emulator_smoke.py" \
             "tests/test_android*.py"; do
             grep -Fq "$trigger_path" "$web_workflow"
+            grep -Fq "$trigger_path" "$android_workflow"
+          done
+          for trigger_path in \
+            "firstlight_api.py" \
+            "satark_backend.py" \
+            "integrations/**" \
+            "migrations/**"; do
+            grep -Fq "$trigger_path" "$android_workflow"
           done
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
           grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
