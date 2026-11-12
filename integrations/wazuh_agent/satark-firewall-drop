@@ -1,0 +1,39 @@
+#!/usr/bin/python3
+"""Wazuh 4.x custom Active Response entrypoint for SATARK firewall blocks."""
+from __future__ import annotations
+
+import json
+import sys
+
+from satark_response_state import ResponseStateError, add_block, remove_block
+
+
+def main() -> int:
+    raw = sys.stdin.readline(1_000_001)
+    if len(raw) > 1_000_000:
+        return 2
+    try:
+        message = json.loads(raw)
+        command = message.get("command")
+        parameters = message.get("parameters") or {}
+        extra_args = parameters.get("extra_args") or []
+        if not isinstance(extra_args, list):
+            raise ResponseStateError("Wazuh extra_args must be a list.")
+        if command == "add":
+            if len(extra_args) != 2:
+                raise ResponseStateError("Expected IP address and TTL arguments.")
+            add_block(str(extra_args[0]), str(extra_args[1]))
+            return 0
+        if command == "delete":
+            if len(extra_args) < 1:
+                raise ResponseStateError("Expected IP address for reversal.")
+            remove_block(str(extra_args[0]))
+            return 0
+        # No Wazuh-managed timeout is used. The local watchdog owns expiry.
+        return 0
+    except (json.JSONDecodeError, AttributeError, ResponseStateError, OSError, ValueError):
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
