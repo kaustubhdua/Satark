@@ -4,7 +4,7 @@
 
 The current implementation uses Wazuh Manager API Active Response only:
 
-- `wazuh.block_ip` — invokes the fixed custom `!satark-firewall-drop` command; the agent-side watchdog owns expiry for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the Manager timeout (60–900 seconds) and endpoint reversal have been independently verified and explicitly attested.
+- `wazuh.block_ip` — invokes the fixed custom `!satark-firewall-drop` command; the agent-side watchdog owns expiry for one globally routable IPv4 address on one active allowlisted Linux lab agent. It is not exposed until the agent-side SATARK watchdog TTL (60–900 seconds), expiry, and endpoint reversal have been independently verified and explicitly attested.
 - `wazuh.disable_account` is deliberately unavailable because the 4.x manual Active Response API does not carry a per-request timeout; account locking could become persistent without a verified reversal path.
 
 There is no Microsoft Defender, Entra, Graph API, OAuth app registration or Microsoft tenant dependency. Arbitrary shell commands, all-agent broadcasts and free-form command arguments are not supported.
