@@ -75,7 +75,12 @@ jobs:
             ".github/workflows/ci.yml" \
             ".github/workflows/release-gate.yml" \
             "docs/RELEASE_READINESS.md" \
-            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"; do
+            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md" \
+            "web/**" \
+            "android/**" \
+            "file_guard/**" \
+            "scripts/android_emulator_smoke.py" \
+            "tests/test_android*.py"; do
             grep -Fq "$trigger_path" "$api_workflow"
           done
           for trigger_path in \
@@ -83,7 +88,12 @@ jobs:
             ".github/workflows/firstlight-api-ci.yml" \
             ".github/workflows/release-gate.yml" \
             "docs/RELEASE_READINESS.md" \
-            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"; do
+            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md" \
+            "web/**" \
+            "android/**" \
+            "file_guard/**" \
+            "scripts/android_emulator_smoke.py" \
+            "tests/test_android*.py"; do
             grep -Fq "$trigger_path" "$web_workflow"
           done
           grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
