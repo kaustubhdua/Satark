@@ -4,7 +4,7 @@
 
 FIRSTLIGHT uses Wazuh 4.14.x as its only endpoint-response provider. The lab bootstrap pins 4.14.10. There is no Microsoft Defender or Entra integration, SDK, tenant configuration, or runtime dependency.
 
-The authenticated case workspace is backed by the durable SQLite response ledger. It exposes only one guarded action: `wazuh.block_ip` → Wazuh 4.14.x `firewall-drop`, restricted to one active, explicitly allowlisted Linux agent and one globally routable IPv4 address outside protected networks. It is hidden unless an operator has completed and attested to a disposable-lab timeout/reversal test. `wazuh.disable_account` is deliberately unavailable: the 4.x manual Active Response API request does not carry a per-request timeout, and a local account lock must not be exposed until a reversible, independently verified TTL workflow exists.
+The authenticated case workspace is backed by the durable SQLite response ledger. It exposes only one guarded action: `wazuh.block_ip` → SATARK's custom Wazuh 4.14.x `!satark-firewall-drop` agent script with a persistent local TTL watchdog, restricted to one active, explicitly allowlisted Linux agent and one globally routable IPv4 address outside protected networks. It is hidden unless an operator has completed and attested to a disposable-lab timeout/reversal test. `wazuh.disable_account` is deliberately unavailable: the 4.x manual Active Response API request does not carry a per-request timeout, and a local account lock must not be exposed until a reversible, independently verified TTL workflow exists.
 
 The API never accepts arbitrary shell commands, agent discovery, or all-agent execution. Before submission, the adapter reads `/manager/info` and the exact agent record, and refuses to send commands unless the Manager reports version 4.14.x and the agent is active Linux. Wazuh 5.x is not supported by this adapter because its Active Response architecture removed the 4.x `PUT /active-response` endpoint. The API also rejects non-global IPv4 addresses and any address inside the required protected-network denylist.
 
@@ -18,7 +18,7 @@ Set these only in the trusted FIRSTLIGHT API runtime:
 - `FIRSTLIGHT_WAZUH_MANAGER_CA_BUNDLE` — optional path to the private CA certificate; TLS verification remains enabled.
 - `FIRSTLIGHT_WAZUH_RESPONSE_AGENT_IDS` — comma-separated numeric IDs of disposable Linux lab agents only.
 - `FIRSTLIGHT_WAZUH_PROTECTED_IPS` — required comma-separated IP/CIDR denylist containing the Manager, API, VPN, DNS and other critical infrastructure networks.
-- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — the Manager-configured timeout that was independently verified in the lab; must be 60–900 seconds.
+- `FIRSTLIGHT_WAZUH_RESPONSE_TTL_SECONDS` — the agent-side watchdog timeout that was independently verified in the lab; must be 60–900 seconds.
 - `FIRSTLIGHT_WAZUH_RESPONSE_TTL_VERIFIED=true` — operator attestation that the configured Manager timeout and endpoint-side reversal were tested successfully with a disposable agent. This flag is not an automatic proof and must not be set before that test.
 - `FIRSTLIGHT_WAZUH_MANAGER_ALLOW_HTTP=true` — accepted only for localhost development; never use it for a network endpoint.
 
