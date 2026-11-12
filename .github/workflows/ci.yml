@@ -73,6 +73,8 @@ jobs:
           grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
           grep -Fq 'name: Android File Guard' "$android_workflow"
           grep -Fq 'name: Install and launch APK on Android emulator' "$android_workflow"
+          grep -Fq 'tests/test_android_emulator_smoke.py' "$android_workflow"
+          grep -Fq 'Test Android emulator foreground-activity recognition' "$android_workflow"
           grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
           for trigger_path in \
             ".github/workflows/ci.yml" \
