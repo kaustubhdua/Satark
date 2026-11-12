@@ -8,6 +8,7 @@ in the first dump. This is a launch/UI smoke test, not physical-device QA.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -46,6 +47,10 @@ def activity_snapshot() -> str:
 def is_satark_foreground(snapshot: str) -> bool:
     """Check the actual foreground surface, not merely a live background app task."""
     lines = snapshot.splitlines()
+    # topResumedActivity can still name SATARK while Android overlays an ANR
+    # dialog. Treat the focused window as authoritative for actual interactivity.
+    if any("application not responding" in line.lower() for line in lines):
+        return False
     # Prefer the strongest foreground signal available. Do not combine
     # top-resumed, focused-window and legacy resumed records: on some Android
     # images a background app remains in mResumedActivity while the system
@@ -76,11 +81,12 @@ def is_satark_foreground(snapshot: str) -> bool:
 
 def failure_diagnostics(start_output: str, artifact_dir: Path) -> None:
     """Persist useful failure context instead of reporting only a timeout."""
+    snapshot = activity_snapshot()
     diagnostics = [
         "=== am start -W output ===",
         start_output,
         "=== foreground activity snapshot ===",
-        activity_snapshot(),
+        snapshot,
     ]
     try:
         logs = run("adb", "logcat", "-d", "-t", "12000", timeout=60, check=False)
@@ -88,6 +94,11 @@ def failure_diagnostics(start_output: str, artifact_dir: Path) -> None:
         logs = f"Unable to collect logcat: {error}"
     log_path = artifact_dir / "satark-emulator-logcat.txt"
     log_path.write_text(logs, encoding="utf-8")
+    try:
+        run("adb", "shell", "screencap", "-p", "/sdcard/satark-screen.png", timeout=30)
+        run("adb", "pull", "/sdcard/satark-screen.png", str(artifact_dir / "satark-screen.png"), timeout=30)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        pass
     diagnostics.extend(("=== recent app/system errors (full logcat saved) ===", "\n".join(
         line for line in logs.splitlines()
         if PACKAGE in line or any(marker in line.lower() for marker in (
@@ -136,12 +147,19 @@ def main() -> int:
         failure_diagnostics(start_output, args.artifact_dir)
         raise SystemExit("SATARK MainActivity did not become the foreground activity on the emulator")
 
-    # Scroll through the long, intentionally single-screen app so that
-    # off-viewport accessibility nodes are checked as well.
-    for _ in range(4):
+    # Scroll through the long single-screen app using the emulator's actual
+    # display dimensions; fixed pixel coordinates are brittle across AVDs.
+    size_output = run("adb", "shell", "wm", "size", timeout=20)
+    match = re.search(r"(\d+)x(\d+)", size_output)
+    if not match:
+        raise SystemExit("Unable to determine emulator display dimensions")
+    width, height = int(match.group(1)), int(match.group(2))
+    x = width // 2
+    for _ in range(6):
         try:
-            run("adb", "shell", "input", "swipe", "540", "1700", "540", "650", "450")
-            time.sleep(1)
+            run("adb", "shell", "input", "swipe", str(x), str(int(height * 0.88)),
+                str(x), str(int(height * 0.28)), "450")
+            time.sleep(0.7)
             snapshots.append(dump_hierarchy(xml_path))
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             break
