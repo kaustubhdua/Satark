@@ -89,6 +89,11 @@ def main() -> int:
 
     args.artifact_dir.mkdir(parents=True, exist_ok=True)
     print(run("adb", "install", "-r", str(apk), timeout=180))
+    # Android 13+ otherwise opens the notification permission dialog on first
+    # launch, making the app's activity look backgrounded to the smoke check.
+    # Pre-grant only this non-sensitive notification permission in the disposable
+    # CI emulator; physical-device consent behavior remains a manual QA item.
+    run("adb", "shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS", check=False)
     run("adb", "shell", "am", "force-stop", PACKAGE)
     start_output = run("adb", "shell", "am", "start", "-W", "-n", ACTIVITY, timeout=90, check=False)
     if "Error:" in start_output or "Exception" in start_output:
