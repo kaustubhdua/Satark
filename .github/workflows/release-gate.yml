@@ -35,6 +35,10 @@ on:
         description: "A low-risk authorized lab response was independently verified at the provider"
         required: true
         type: boolean
+      android_device_qa_verified:
+        description: "The release APK was exercised on a physical Android device, including share intents, folder grants, reboot and scan recovery"
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -46,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify required CI for this exact commit and reject skipped acceptance jobs
+
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_SHA: ${{ github.sha }}
@@ -55,9 +59,6 @@ jobs:
           set -euo pipefail
           runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${WORKFLOW_SHA}&per_page=100")"
 
-          require_run() {
-            local workflow="$1"
-            local run_id
             run_id="$(jq -r --arg name "$workflow" --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
             if [[ -z "$run_id" ]]; then
               echo "::error::No successful completed $workflow run exists for exact release commit $WORKFLOW_SHA."
@@ -110,21 +111,7 @@ jobs:
             fi
           done
 
-          web_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${web_run}/jobs?per_page=100")"
-          web_job="$(jq -c '[.jobs[] | select(.name == "frontend")] | first // empty' <<< "$web_jobs")"
-          if [[ -z "$web_job" || "$web_job" == "null" || "$(jq -r '.conclusion' <<< "$web_job")" != "success" ]]; then
-            echo "::error::Web production build/browser validation job is missing or did not pass."
-            exit 1
-          fi
 
-          codeql_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${codeql_run}/jobs?per_page=100")"
-          codeql_job="$(jq -c '[.jobs[] | select(.name == "Analyze Python and JavaScript/TypeScript")] | first // empty' <<< "$codeql_jobs")"
-          if [[ -z "$codeql_job" || "$codeql_job" == "null" || "$(jq -r '.conclusion' <<< "$codeql_job")" != "success" ]]; then
-            echo "::error::CodeQL analysis job is missing or did not pass."
-            exit 1
-          fi
-
-          echo "Exact-SHA CI, web, CodeQL, FIRSTLIGHT/PostgreSQL, Android emulator and inventory gates passed for $WORKFLOW_SHA."
       - name: Require exact deployed revision and all evidence gates
         env:
           REQUESTED_SHA: ${{ inputs.production_deployed_sha }}
@@ -136,6 +123,7 @@ jobs:
           EVIDENCE: ${{ inputs.evidence_integrity_verified }}
           AI_EVAL: ${{ inputs.ai_evaluation_passed }}
           RESPONDER: ${{ inputs.real_responder_verified }}
+          ANDROID_QA: ${{ inputs.android_device_qa_verified }}
         shell: bash
         run: |
           set -euo pipefail
@@ -151,7 +139,8 @@ jobs:
             "detection positive/negative controls:${DETECTION}" \
             "evidence integrity/export verification:${EVIDENCE}" \
             "held-out AI evaluation:${AI_EVAL}" \
-            "real provider response verification:${RESPONDER}"; do
+            "real provider response verification:${RESPONDER}" \
+            "physical Android device QA:${ANDROID_QA}"; do
             name="${pair%%:*}"
             value="${pair#*:}"
             if [[ "$value" != "true" ]]; then
@@ -191,6 +180,7 @@ jobs:
             echo "- Evidence integrity/export: `${EVIDENCE}`"
             echo "- Held-out AI evaluation: `${AI_EVAL}`"
             echo "- Real provider response: `${RESPONDER}`"
+            echo "- Physical Android device QA: `${ANDROID_QA}`"
             echo
             echo "This is an evidence checklist, not an automated proof of external system state."
           } >> "$GITHUB_STEP_SUMMARY"

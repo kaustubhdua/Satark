@@ -1258,3 +1258,205 @@ body {
     transform: none;
   }
 }
+
+
+/* 22 · Arcade operations-console skin ------------------------------------
+   A restrained retro-terminal treatment: phosphor accents and instrument
+   readouts, without sacrificing legibility or behaving like a game UI.
+   All motion remains decorative and is disabled for reduced-motion users.
+   ----------------------------------------------------------------------- */
+:root {
+  --dawn-1: #8cffb0;
+  --dawn-2: #b6ff5c;
+  --dawn-3: #ffc66e;
+  --dawn: linear-gradient(90deg, var(--dawn-1), var(--dawn-2) 58%, var(--dawn-3));
+  --accent: #8cffb0;
+  --accent-strong: #c5ffd5;
+  --accent-soft: rgba(140, 255, 176, .10);
+  --accent-line: rgba(140, 255, 176, .34);
+  --primary: #b6ff5c;
+  --primary-hover: #c9ff86;
+  --primary-ink: #10170f;
+  --surface: #0b1210;
+  --surface-2: #111d18;
+  --surface-inset: #070d0b;
+  --border: #23372c;
+  --border-strong: #385642;
+  --radius-sm: 3px;
+  --radius: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --shadow: 0 1px 0 rgba(140,255,176,.035) inset, 0 14px 36px -18px rgba(0,0,0,.82);
+}
+
+body {
+  background-color: #070b09;
+  background-image:
+    linear-gradient(rgba(140,255,176,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,255,176,.025) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% -18%, rgba(65,145,91,.18), transparent 58%);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: .12;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, .32) 4px
+  );
+}
+
+h1, h2, h3, h4,
+.hero h1,
+.subpage > h1 {
+  font-family: var(--mono);
+  letter-spacing: -.045em;
+}
+
+h1::selection, h2::selection, h3::selection {
+  background: rgba(182,255,92,.34);
+}
+
+.hero h1,
+.subpage > h1 {
+  text-shadow: 0 0 28px rgba(140,255,176,.12);
+}
+
+.eyebrow,
+.section-kicker,
+.status-label,
+.metric-label {
+  font-family: var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.card,
+.panel,
+.tool-card,
+.workspace-card,
+.metric-card,
+.result-card {
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.card:hover,
+.panel:hover,
+.tool-card:hover,
+.workspace-card:hover {
+  border-color: var(--border-strong);
+}
+
+button,
+.button,
+a.button,
+.nav-links a.nav-cta {
+  border-radius: var(--radius-sm);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(140,255,176,.13);
+}
+
+.brand-mark {
+  border-radius: 4px;
+  background: var(--dawn);
+  box-shadow: 0 0 18px rgba(140,255,176,.20);
+}
+
+.topbar {
+  background: rgba(7, 11, 9, .88);
+  border-bottom-color: var(--border);
+}
+
+.topbar::after {
+  opacity: .58;
+}
+
+.nav-links a.active {
+  color: var(--accent-strong);
+  background: rgba(140,255,176,.075);
+  box-shadow: 0 0 0 1px var(--accent-line) inset;
+}
+
+:where(.badge, .pill, .tag, .status-badge) {
+  font-family: var(--mono);
+  letter-spacing: .035em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card:hover,
+  .panel:hover,
+  .tool-card:hover,
+  .workspace-card:hover {
+    box-shadow: 0 0 0 1px rgba(140,255,176,.10), 0 16px 40px -22px rgba(140,255,176,.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { display: none; }
+  html { scroll-behavior: auto; }
+}
+
+
+/* Keep the CRT texture in the paint background, never above interactive UI. */
+body {
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,.22) 4px),
+    linear-gradient(rgba(140,255,176,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,255,176,.025) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% -18%, rgba(65,145,91,.18), transparent 58%);
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+
+body::after { display: none; }
+
+
+/* Bind the arcade palette to the actual First Light token names. */
+:root {
+  --bg: #070b09;
+  --surface: #0b1210;
+  --surface-2: #111d18;
+  --surface-inset: #070d0b;
+  --border: #23372c;
+  --border-strong: #385642;
+  --text: #e8f5eb;
+  --text-2: #a8c0ae;
+  --text-3: #78917f;
+  --dawn-1: #8cffb0;
+  --dawn-2: #b6ff5c;
+  --dawn-3: #ffc66e;
+  --accent: #8cffb0;
+  --accent-strong: #c5ffd5;
+  --accent-soft: rgba(140,255,176,.10);
+  --accent-line: rgba(140,255,176,.34);
+  --primary: #b6ff5c;
+  --primary-hover: #c9ff86;
+  --primary-ink: #10170f;
+  --radius-sm: 3px;
+  --radius: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --shadow: 0 1px 0 rgba(140,255,176,.035) inset, 0 14px 36px -18px rgba(0,0,0,.82);
+}
+
+.shell::before {
+  background:
+    radial-gradient(60% 120% at 50% -40%, rgba(140,255,176,.13), transparent 70%),
+    radial-gradient(40% 80% at 85% -30%, rgba(255,198,110,.07), transparent 70%);
+}
+
+::selection { background: rgba(182,255,92,.34); color: #07110a; }

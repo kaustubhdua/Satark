@@ -1,6 +1,6 @@
 # Release readiness and deployment runbook
 
-> Scope: this runbook covers the optional legacy web/FIRSTLIGHT deployment. It is not a gate for local Android file scanning. The primary Android File Guard is Supabase-free and has its own acceptance checklist in [LOCAL_OFFLINE_ACCEPTANCE.md](LOCAL_OFFLINE_ACCEPTANCE.md).
+> Scope: this runbook covers the current SATARK platform: offline Android File Guard, the Next.js operations interface, the self-hosted FIRSTLIGHT API/workers, PostgreSQL persistence, Wazuh-only endpoint telemetry and guarded response. Android File Guard remains independently usable offline; see [LOCAL_OFFLINE_ACCEPTANCE.md](LOCAL_OFFLINE_ACCEPTANCE.md).
 
 This document is retained for legacy Streamlit-specific checks. For the current Next.js + self-hosted SATARK/FIRSTLIGHT product, use [Product completion audit](PRODUCT_COMPLETION_AUDIT.md) as the authoritative release checklist. Passing CI is necessary, but it is not proof of production readiness.
 
@@ -11,6 +11,17 @@ This document is retained for legacy Streamlit-specific checks. For the current 
 - **Public anonymous service using a shared provider key:** **not ready by default**. A shared per-process sliding-window limiter is defense in depth, not a distributed/global quota: multiple workers, replicas or restarts can bypass its aggregate ceiling. A public service still needs gateway/provider-side global quotas, rate limiting, concurrency limits and cost controls.
 - **Confidential, regulated or multi-tenant incident evidence:** **not ready** without authenticated access, authorization/tenant isolation, retention and deletion controls, approved provider data handling, durable case storage, and an independently reviewed operational design.
 - **Production / high availability:** requires a separate threat model, security review, monitoring, incident response, backup/restore and rollback exercises.
+
+## Current architecture and deployment snapshot — 2026-11-12
+
+- Microsoft Defender and Entra are not runtime providers. Wazuh 4.14.x is the supported endpoint telemetry and guarded response integration; the Microsoft-free source/configuration boundary is enforced in FIRSTLIGHT API CI.
+- PR #241 (Wazuh-only integration, PostgreSQL production stack, Restic backup runner and arcade website redesign) is merged into `main` at `fcfbb2e60827c38586d183c62a4feb383f65323e`.
+- The Vercel frontend has a READY production deployment for main commit `ac5169c27851c8e2e9bf1918e0d90f8d78e3f02f` (PR #244); the exact-commit build completed successfully and the deployment is READY. Neither deployment is the complete production platform: the Vercel project still lacks `SATARK_API_INTERNAL_URL`, FIRSTLIGHT backend tokens and a configured shared Redis limiter. Production API routes return 503 when the self-hosted backend is absent, and analysis correctly fails closed without shared rate limiting.
+- Main commit `ac5169c27851c8e2e9bf1918e0d90f8d78e3f02f` includes the FIRSTLIGHT response-navigation correction: the primary response tab now points to the saved-case Wazuh workflow, training decisions are explicitly labelled, and the live-response status can be refreshed. The Android emulator foreground smoke and production API smoke remain release blockers until their exact-main and production checks pass. The PR #243 candidate now includes the Android diagnostic/parser repair and regression tests originally developed in PR #242: the smoke check prioritizes the top-resumed Activity so a background app task cannot override the Android permission controller. PR #242 is now a duplicate review branch; do not merge it separately if the integrated PR #243 candidate lands. PR #243 also updates the exact-SHA release gate, cross-platform CI triggers, and Android/production acceptance requirements; its latest checks are still running.
+- No SATARK Render service or Render PostgreSQL instance is currently provisioned in the connected workspace. The production Compose stack, Wazuh bootstrap helper and Restic backup runner are source-controlled, but there is no accepted production host, private Wazuh Manager/Indexer/agent fleet, SMTP configuration, independent Restic repository or recovery host recorded here.
+- A production release remains blocked until the exact deployed SHA passes all required checks and an authorized live Wazuh ingestion/response drill, real external backup/isolated restore, persistent self-hosted deployment, tenant-isolation smoke, and physical Android device QA are evidenced. Do not substitute mocks, local Compose validation or a Vercel frontend deployment for these gates.
+
+This snapshot is evidence of the repository and connected deployment state checked on the date above. Refresh it after every release-candidate change.
 
 ## Before every deployment
 
@@ -26,14 +37,12 @@ This document is retained for legacy Streamlit-specific checks. For the current 
 10. Verify the deployed UI, not only local CI: home, FIRSTLIGHT, every scanner mode, session history, PDF export, mobile layout, refresh/restart behavior, logs and resource use.
 11. Confirm the privacy notice, acceptable-use language, contact/security-reporting route, data retention/deletion behavior, incident response owner and rollback procedure are current.
 12. Record the result, unresolved risks, owner and go/no-go decision. Do not mark a deployment verified unless you actually tested the deployed URL and revision.
-13. Keep the legacy web backend self-hosted and independent: use the SATARK-owned SQLAlchemy/Alembic persistence described in [SELF_HOSTED_BACKEND.md](SELF_HOSTED_BACKEND.md). Do not reintroduce a hosted database SDK, hosted auth service, remote object-storage dependency or cloud API into the Android File Guard runtime.
+13. Keep the FIRSTLIGHT backend self-hosted and independent: use SATARK-owned SQLAlchemy/Alembic persistence, the PostgreSQL production stack and private evidence storage. Do not reintroduce Supabase, Microsoft Defender/Entra, a hosted auth service or remote object-storage dependency into the runtime. Android File Guard remains offline.
 
 ## Security and privacy boundaries
 
 - SATARK is a triage aid; scores are not calibrated probabilities, and results do not prove that content is safe or malicious.
-- FIRSTLIGHT now has a separate guarded Wazuh response workflow; the implementation is not considered operational until it is exercised against disposable allowlisted lab agents and independently verified. Keep live response disabled until then. Browser activity is not an independently anchored chain-of-custody record.
-- FIRSTLIGHT persistent cases use the self-hosted API and tenant-scoped database authorization. A browser-only preview/import is not a saved case. The analysis limiter remains process-local and is not a durable or distributed abuse-control boundary.
-- The current Next.js workspace uses same-origin API proxying and server-managed session cookies. Continue to validate cookie flags, CSRF origin enforcement, session rotation/revocation and XSS defenses against the exact deployed configuration; do not infer production security solely from source-level tests.
+
 - URL fetching uses validated public DNS results, pinned connections and redirect revalidation, but public URL retrieval still requires outbound network restrictions at the hosting layer.
 - Upload limits bound input size, but do not guarantee a fixed memory/CPU budget under concurrent workloads.
 - Content submitted for AI analysis may leave the host and be processed by the configured provider. Do not submit credentials, OTPs, private keys or sensitive incident data unless the provider and legal basis have been reviewed.

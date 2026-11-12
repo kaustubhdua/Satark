@@ -14,7 +14,7 @@ SATARK and FIRSTLIGHT are a self-hosted, open-source-first security product. SAT
 
 ## Wazuh-only provider boundary
 
-FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integration. The product has no proprietary endpoint-security SDK, external tenant registration, third-party identity dependency, response adapter or credential requirement. The API, web UI, CLI preview and documentation all describe the same Wazuh-only action model.
+FIRSTLIGHT uses Wazuh as its only endpoint telemetry and endpoint-response integration. Microsoft Defender and Entra are not required: there is no Microsoft endpoint-security SDK, Microsoft tenant registration, Microsoft identity dependency or Microsoft credential requirement. Wazuh remains an explicit external integration and requires private read-only Indexer credentials plus a separately scoped Manager API identity for guarded Active Response. The API, web UI, CLI preview and documentation all describe the same Wazuh-only action model.
 
 ## Current validation
 
