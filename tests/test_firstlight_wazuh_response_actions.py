@@ -58,7 +58,7 @@ def test_block_ip_sends_only_fixed_command_to_one_allowlisted_linux_agent(monkey
     assert "wait_for_complete" not in captured["url"]
     assert captured["method"] == "PUT"
     assert captured["headers"]["Authorization"] == "Bearer fake-jwt"
-    assert captured["body"] == {"command": "firewall-drop", "arguments": ["8.8.8.8"], "custom": False}
+    assert captured["body"] == {"command": "!satark-firewall-drop", "arguments": ["8.8.8.8", "300"], "custom": True}
 
 
 def test_live_response_controls_are_hidden_when_feature_flag_is_off(monkeypatch):
