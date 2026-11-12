@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - "web/**"
+      - "styles.css"
+      - ".streamlit/config.toml"
       - "firstlight_api.py"
       - "satark_backend.py"
       - "integrations/**"
