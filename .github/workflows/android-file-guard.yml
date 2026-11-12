@@ -17,6 +17,7 @@ on:
       - "scripts/download_ember2024.py"
       - "scripts/build_ember2024_android_db.py"
       - "scripts/android_emulator_smoke.py"
+      - "tests/test_android_emulator_smoke.py"
       - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
       - "release-gate/EXACT_SHA.md"
@@ -35,6 +36,7 @@ on:
       - "scripts/download_ember2024.py"
       - "scripts/build_ember2024_android_db.py"
       - "scripts/android_emulator_smoke.py"
+      - "tests/test_android_emulator_smoke.py"
       - "tests/test_ember_import.py"
       - "tests/test_ember_download.py"
       - "tests/test_ember_android_db.py"
@@ -73,6 +75,8 @@ jobs:
         run: python -m compileall -q file_guard android/app/src/main/python scripts/evaluate_file_guard.py
       - name: Run deterministic File Guard tests
         run: python -m unittest discover -s tests -p "test_file_guard.py" -v
+      - name: Test Android emulator foreground-activity recognition
+        run: python -m unittest discover -s tests -p "test_android_emulator_smoke.py" -v
       - name: Run PE, ELF and DEX structural tests
         run: python -m unittest discover -s tests -p "test_file_guard_structure.py" -v
       - name: Run evidence report and evaluation tests
