@@ -139,31 +139,22 @@ class UIContractTests(unittest.TestCase):
         self.assertLess(APP.index("render_intro_loader()"), APP.index("_, role = render_sidebar("))
         for expected in (
             "SATARK",
-            "FIRSTLIGHT",
-            "satark-arcade-shell",
-            "satark-pixel-mascot",
-            "satark-progress-segment",
-            "satark-tip-card",
-            "Pause before you click. Verify the sender and destination first.",
-            "hostWindow.setInterval(() => {",
-            "st.iframe(",
-            "const hostWindow = window.parent;",
-            "const doc = hostWindow.document;",
-            'setAttribute("role", "dialog")',
-            'setAttribute("aria-modal", "true")',
-            "aria-live",
-            "prefers-reduced-motion: reduce",
-            "Skip intro",
-            "overlay.remove()",
-            "hostWindow.setTimeout(dismiss, reducedMotion ? 900 : 2600)",
-            'event.key === "Escape"',
-            'skipButton.focus({preventScroll: true})',
-            "previousFocus.focus({preventScroll: true})",
+            "Pause · Inspect · Verify",
+            "SECURE WORKSPACE · READY",
+            'role="status"',
+            'aria-label="SATARK readying workspace"',
+            "pointer-events:none",
+            "@keyframes satark-intro-dismiss",
+            "prefers-reduced-motion:reduce",
+            "animation-duration:.01ms",
         ):
             self.assertIn(expected, LOADING)
         self.assertIn('st.session_state.get("_satark_intro_seen", False)', LOADING)
         self.assertIn('st.session_state["_satark_intro_seen"] = True', LOADING)
         self.assertNotIn("components.html", LOADING)
+        self.assertNotIn("st.iframe(", LOADING)
+        self.assertNotIn("FIRSTLIGHT", LOADING)
+        self.assertNotIn("arcade", LOADING.lower())
         self.assertNotIn("https://", LOADING)
 
     def test_app_does_not_reference_missing_analysis_constants(self):
