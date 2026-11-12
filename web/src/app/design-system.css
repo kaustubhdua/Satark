@@ -987,3 +987,274 @@ body {
   .sentinel-hero, .ledger { animation: none !important; }
   .shiny-text, .pipeline::after, .border-beam::before { animation: none !important; }
 }
+
+
+/* 23 · Command-centre visual refinement -----------------------------------
+   A quieter, more deliberate motion language for the existing SATARK UI.
+   Inspired by shadcn/ui interaction states, Magic UI restraint and modern
+   open-source operations dashboards. No new runtime dependency is required.
+   ------------------------------------------------------------------------- */
+:root {
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 420ms;
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --surface-glass: rgba(8, 18, 27, .82);
+  --glow-teal: 0 0 0 1px rgba(94, 234, 212, .12), 0 18px 44px -28px rgba(94, 234, 212, .3);
+}
+
+/* Keep the grid atmospheric rather than competing with the content. */
+body {
+  background-attachment: fixed;
+  background-position: center top;
+}
+.container { isolation: isolate; }
+.topbar {
+  min-height: 64px;
+  border-bottom-color: rgba(94, 234, 212, .2);
+  backdrop-filter: blur(18px) saturate(165%);
+}
+.brand { gap: 11px; letter-spacing: .055em; }
+.brand-mark { transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) ease; }
+.nav-links { gap: 4px; }
+.nav-links a {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 7px;
+  transition: color var(--motion-fast) ease, background var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease);
+}
+.nav-links a:not(.nav-cta)::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--accent);
+  opacity: .8;
+  transition: transform var(--motion-base) var(--motion-ease);
+}
+.nav-links a:not(.nav-cta):hover::after,
+.nav-links a:not(.nav-cta).active::after { transform: scaleX(1); }
+.nav-links a:not(.nav-cta):hover { transform: translateY(-1px); }
+.nav-links a.nav-cta {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  padding-inline: 16px;
+}
+
+/* A consistent interactive language across cards, controls and disclosures. */
+.btn, .sentinel-primary, .sentinel-secondary, .mini-btn, .workspace-choice,
+.incident-nav button, .tools-disclosure > summary, .tool-card, .principle-row,
+.fl-capability, .case-register-card, .panel, .form-panel, .persistent-case-panel {
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    border-color var(--motion-base) ease,
+    background-color var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
+}
+.btn:not(:disabled):hover,
+.sentinel-primary:hover,
+.sentinel-secondary:hover { transform: translateY(-1px); }
+.btn:not(:disabled):active,
+.sentinel-primary:active,
+.sentinel-secondary:active { transform: translateY(0) scale(.985); }
+.mini-btn:not(:disabled):hover { transform: translateY(-1px); }
+.tool-card:hover, .fl-capability:hover, .case-register-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(94, 234, 212, .38);
+  box-shadow: 0 12px 30px -24px rgba(94, 234, 212, .34);
+}
+.workspace-choice:hover:not(:disabled) { transform: translateX(2px); }
+.tools-disclosure > summary { transition: background-color var(--motion-base) ease; }
+.tools-disclosure > summary:hover { background: rgba(94, 234, 212, .045); }
+.panel, .form-panel, .persistent-case-panel { box-shadow: 0 1px 0 rgba(255,255,255,.025) inset, 0 16px 40px -34px rgba(0,0,0,.9); }
+
+/* Homepage: stronger focal point, calmer cards and readable hierarchy. */
+.sentinel-hero {
+  gap: clamp(28px, 4.5vw, 58px);
+  padding-top: clamp(20px, 3vw, 34px);
+}
+.sentinel-hero-copy { min-width: 0; }
+.sentinel-hero h1 { max-width: 13ch; line-height: 1.01; }
+.sentinel-lede { max-width: 58ch; font-size: clamp(15.5px, 1.25vw, 17px); }
+.sentinel-primary {
+  min-height: 46px;
+  padding-inline: 20px;
+  border-radius: 7px;
+  box-shadow: 0 8px 24px -14px rgba(163, 230, 53, .65);
+}
+.sentinel-secondary { min-height: 46px; border-radius: 7px; }
+.sentinel-trust-line { gap: 10px 20px; }
+.ledger {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(94, 234, 212, .32);
+  background: linear-gradient(150deg, rgba(12, 29, 41, .98), rgba(7, 15, 24, .98));
+  box-shadow: 0 26px 70px -42px rgba(94, 234, 212, .32), 0 1px 0 rgba(255,255,255,.04) inset;
+}
+.ledger::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(94,234,212,.85), transparent);
+  pointer-events: none;
+}
+.ledger-row { min-height: 62px; }
+.ledger-row:hover { background: rgba(94, 234, 212, .055); }
+.pipeline-card { border-color: rgba(94, 234, 212, .24); }
+.pipeline-node { transition: transform var(--motion-base) var(--motion-ease); }
+.pipeline-node:hover { transform: translateY(-3px); }
+.pipeline-icon { transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) ease; }
+.pipeline-node:hover .pipeline-icon { transform: translateY(-2px) scale(1.04); box-shadow: 0 0 24px rgba(94,234,212,.16); }
+.bento { gap: 14px; }
+.bento-card {
+  min-height: 210px;
+  border-radius: 12px;
+  padding: clamp(18px, 2.3vw, 24px);
+  transition: transform var(--motion-base) var(--motion-ease), border-color var(--motion-base) ease, box-shadow var(--motion-base) ease, background var(--motion-base) ease;
+}
+.bento-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(115deg, transparent 25%, rgba(94,234,212,.07) 48%, transparent 70%);
+  transform: translateX(-35%);
+  transition: opacity var(--motion-base) ease, transform 560ms var(--motion-ease);
+}
+.bento-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(94,234,212,.55);
+  box-shadow: 0 18px 44px -30px rgba(94,234,212,.5), 0 0 0 1px rgba(94,234,212,.08);
+}
+.bento-card:hover::after { opacity: 1; transform: translateX(25%); }
+.bento-icon { transition: transform var(--motion-base) var(--motion-ease), color var(--motion-base) ease; }
+.bento-card:hover .bento-icon { transform: translateY(-3px) rotate(-3deg); }
+.bento-cta { display: inline-flex; align-items: center; gap: 7px; }
+.bento-cta svg { transition: transform var(--motion-base) var(--motion-ease); }
+.bento-card:hover .bento-cta svg { transform: translateX(4px); }
+.sentinel-section-heading { gap: 14px 36px; }
+.sentinel-section-heading > p { max-width: 52ch; }
+.sentinel-method { padding-block: 4px; }
+.principle-row { border-radius: 8px; padding-inline: 10px; }
+.principle-row:hover { background: rgba(94,234,212,.035); }
+.principle-icon { transition: transform var(--motion-base) var(--motion-ease), border-color var(--motion-base) ease; }
+.principle-row:hover .principle-icon { transform: scale(1.05); border-color: rgba(94,234,212,.4); }
+
+/* FIRSTLIGHT: make the case workflow feel like one coherent workspace. */
+.firstlight-hero {
+  border-color: rgba(94,234,212,.28);
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(94,234,212,.10), transparent 48%),
+    linear-gradient(145deg, rgba(11,26,37,.98), rgba(7,13,21,.98));
+  box-shadow: 0 20px 54px -42px rgba(94,234,212,.3), 0 1px 0 rgba(255,255,255,.035) inset;
+}
+.incident-brief {
+  border-color: rgba(94,234,212,.24);
+  background: rgba(4, 12, 19, .78);
+  box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
+}
+.brief-stats > div { transition: transform var(--motion-base) var(--motion-ease), border-color var(--motion-base) ease; }
+.brief-stats > div:hover { transform: translateY(-2px); border-color: rgba(94,234,212,.4); }
+.incident-nav {
+  border-color: rgba(94,234,212,.22);
+  background: rgba(8,18,27,.92);
+  backdrop-filter: blur(12px);
+}
+.incident-nav button { min-height: 38px; }
+.incident-nav button.selected { background: rgba(94,234,212,.09); }
+.incident-content .panel { border-color: rgba(94,234,212,.22); }
+.overview-steps > div { min-height: 124px; transition: transform var(--motion-base) var(--motion-ease), border-color var(--motion-base) ease; }
+.overview-steps > div:hover { transform: translateY(-2px); border-color: rgba(94,234,212,.38); }
+.evidence-table tbody tr { transition: background-color var(--motion-fast) ease; }
+.evidence-table tbody tr:hover td { background: rgba(94,234,212,.045); }
+.finding-card { transition: background-color var(--motion-base) ease; }
+.finding-card:hover { background: rgba(94,234,212,.025); }
+.timeline-item { transition: border-color var(--motion-base) ease; }
+.timeline-item:hover { border-left-color: var(--accent); }
+.fl-capability { background: rgba(7, 16, 25, .76); }
+
+/* Page transitions and restrained entrance choreography. */
+@keyframes satark-enter {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes satark-soft-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94,234,212,0); }
+  50% { box-shadow: 0 0 0 5px rgba(94,234,212,.045); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .subpage > .eyebrow { animation: satark-enter 420ms var(--motion-ease) both; }
+  .subpage > h1 { animation: satark-enter 500ms 35ms var(--motion-ease) both; }
+  .subpage > .lead { animation: satark-enter 520ms 70ms var(--motion-ease) both; }
+  .sentinel-hero-copy { animation: satark-enter 620ms 40ms var(--motion-ease) both; }
+  .ledger { animation: satark-enter 720ms 110ms var(--motion-ease) both; }
+  .sentinel-workflows .bento-card { animation: satark-enter 520ms var(--motion-ease) both; }
+  .sentinel-workflows .bento-card:nth-child(2) { animation-delay: 45ms; }
+  .sentinel-workflows .bento-card:nth-child(3) { animation-delay: 80ms; }
+  .sentinel-workflows .bento-card:nth-child(4) { animation-delay: 115ms; }
+  .sentinel-workflows .bento-card:nth-child(5) { animation-delay: 150ms; }
+  .sentinel-workflows .bento-card:nth-child(6) { animation-delay: 185ms; }
+  .sentinel-workflows .bento-card:nth-child(7) { animation-delay: 220ms; }
+  .sentinel-workflows .bento-card:nth-child(8) { animation-delay: 255ms; }
+  .firstlight-hero { animation: satark-enter 560ms var(--motion-ease) both; }
+  .incident-brief { animation: satark-enter 620ms 70ms var(--motion-ease) both; }
+}
+
+/* Small-screen ergonomics: keep navigation and action controls comfortable. */
+@media (max-width: 920px) {
+  .topbar { gap: 8px 12px; }
+  .nav-links { gap: 4px; }
+  .nav-links a { min-height: 42px; display: flex; align-items: center; }
+  .nav-links a:not(.nav-cta)::after { display: none; }
+  .sentinel-hero { padding-top: 18px; }
+  .firstlight-layout { gap: 12px; }
+  .incident-nav { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  .incident-nav button { min-height: 42px; padding-inline: 12px; }
+}
+@media (max-width: 640px) {
+  .container { padding-top: 26px; }
+  .sentinel-hero h1 { max-width: 12ch; font-size: clamp(36px, 10vw, 48px); }
+  .sentinel-lede { font-size: 15.5px; }
+  .sentinel-trust-line { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .sentinel-hero-actions { display: grid; grid-template-columns: 1fr; }
+  .sentinel-hero-actions > a { width: 100%; }
+  .bento-card { min-height: 190px; }
+  .sentinel-section-heading { margin-bottom: 18px; }
+  .sentinel-section-heading h2 { font-size: 25px; }
+  .firstlight-hero { padding: 20px 16px; }
+  .brief-stats > div { padding: 10px 8px; }
+  .overview-steps { gap: 8px; }
+  .overview-steps > div { min-height: 116px; padding: 11px; }
+  .incident-nav { margin-inline: -2px; }
+  .incident-nav button { font-size: 13px; }
+  .site-footer-inner { gap: 24px 18px; }
+}
+@media (hover: none) {
+  .bento-card:hover, .tool-card:hover, .fl-capability:hover,
+  .case-register-card:hover, .workspace-choice:hover:not(:disabled) {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentinel-hero-copy, .ledger, .sentinel-workflows .bento-card,
+  .firstlight-hero, .incident-brief, .subpage > .eyebrow,
+  .subpage > h1, .subpage > .lead {
+    animation: none !important;
+  }
+  .bento-card::after { display: none; }
+  .bento-card:hover, .tool-card:hover, .fl-capability:hover,
+  .case-register-card:hover, .workspace-choice:hover:not(:disabled),
+  .btn:not(:disabled):hover, .sentinel-primary:hover, .sentinel-secondary:hover {
+    transform: none;
+  }
+}
