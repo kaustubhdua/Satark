@@ -79,6 +79,6 @@ test('CSV import does not invent an event ID, source or category', () => {
 test('CSV import rejects rows without a source-backed summary', () => {
   assert.throws(
     () => parseCsv('timestamp,source,summary\n2026-10-10T10:00:00Z,identity provider,'),
-    /will not invent event summaries/i
+    /will not invent one/i
   );
 });
