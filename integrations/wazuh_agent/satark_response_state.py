@@ -102,14 +102,22 @@ def _save(path: Path, state: dict[str, float]) -> None:
         raise
 
 
+def _owned_rule(ip: str) -> tuple[str, ...]:
+    # A unique iptables comment distinguishes SATARK-owned rules from an
+    # operator-created DROP rule for the same address.
+    return ("-s", ip, "-m", "comment", "--comment", f"SATARK:{ip}", "-j", "DROP")
+
+
 def _delete_owned_rule(ip: str) -> None:
-    # Remove only rules SATARK recorded as its own; never delete an operator's
-    # pre-existing firewall rule. Bound the loop in case the host is unhealthy.
+    # Remove only the exact rule carrying SATARK's ownership marker; never
+    # delete an operator's pre-existing or subsequently-added firewall rule.
+    # Bound the loop in case a damaged host contains duplicate SATARK rules.
+    rule = _owned_rule(ip)
     for _ in range(16):
-        check = _run_iptables("-C", "INPUT", "-s", ip, "-j", "DROP")
+        check = _run_iptables("-C", "INPUT", *rule)
         if check.returncode != 0:
             return
-        delete = _run_iptables("-D", "INPUT", "-s", ip, "-j", "DROP")
+        delete = _run_iptables("-D", "INPUT", *rule)
         if delete.returncode != 0:
             raise ResponseStateError("Could not remove the SATARK firewall rule.")
 
@@ -126,6 +134,9 @@ def add_block(ip_value: str, ttl_value: str | int, *, now: float | None = None) 
         state = _load(state_path)
         expiry = current_time + ttl
         if ip in state:
+            owned = _run_iptables("-C", "INPUT", *_owned_rule(ip))
+            if owned.returncode != 0:
+                raise ResponseStateError("SATARK recorded a block but its owned firewall rule is missing.")
             state[ip] = expiry
             _save(state_path, state)
             return {"status": "extended", "ip_address": ip, "expires_at": expiry}
@@ -136,7 +147,7 @@ def add_block(ip_value: str, ttl_value: str | int, *, now: float | None = None) 
         # after insertion, the watchdog still knows the expiry and can reverse it.
         state[ip] = expiry
         _save(state_path, state)
-        inserted = _run_iptables("-I", "INPUT", "1", "-s", ip, "-j", "DROP")
+        inserted = _run_iptables("-I", "INPUT", "1", *_owned_rule(ip))
         if inserted.returncode != 0:
             state.pop(ip, None)
             _save(state_path, state)
