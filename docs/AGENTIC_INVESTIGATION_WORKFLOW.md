@@ -1,17 +1,17 @@
 # Agentic investigation workflow for SATARK / FIRSTLIGHT
 
-**Status:** design proposal for incremental implementation  
+**Status:** historical design note; current production behavior is governed by `docs/PRODUCT_COMPLETION_AUDIT.md`  
 **Scope:** adapt useful agent-engineering patterns to SATARK's security-investigation workflow; do not transplant a tutorial framework wholesale.
 
 ## What SATARK already has
 
 Inspection of the current `main` code shows that the project already implements several of the patterns people often add an agent framework to obtain:
 
-- `firstlight_engine.py` provides a deterministic investigation workflow (`investigate_case`) with evidence integrity checks, prioritized evidence, a chronological timeline, evidence-linked findings, explicit gaps, and response proposals.
+- `firstlight_engine.py` provides a deterministic investigation workflow (`investigate_case`) with evidence integrity checks, prioritized evidence, a chronological timeline, evidence-linked findings and explicit gaps. It does not manufacture response proposals.
 - `append_audit` / `verify_audit_chain` provide a hash-chained audit trail for the current in-memory workflow.
-- `apply_simulated_response` requires an explicit approve/reject decision and clearly marks the result as simulated; it does not perform a real endpoint/account action.
+- The old simulated-response helper has been removed from the production engine. Real Wazuh response is a separate guarded workflow, disabled by default and not accepted until it passes authorized lab validation.
 - `review_engine.py` separates local deterministic observations from AI interpretation and avoids describing heuristic evidence as proof.
-- Existing unit tests cover evidence tampering, finding references, malformed inputs, audit-chain integrity, and simulated responses.
+- Unit tests cover evidence tampering, finding references, malformed inputs, audit-chain integrity and the response boundary. Test fixtures are not operational evidence.
 
 **Important distinction:** the named “Evidence Agent”, “Detection Agent”, “Correlation Agent”, and “Verification Agent” currently describe deterministic stages in the workflow. They are not independent LLM agents. That is a sensible baseline for a security investigation product; do not replace it with an autonomous multi-agent framework without a measured reason.
 
@@ -31,7 +31,7 @@ The first code pass closes one concrete correctness gap in FIRSTLIGHT:
 - The current rules look for unfamiliar successful logins, unusual process ancestry, suspicious network signals, archive/staging-like artifacts, and follow-on sessions. Each remains a heuristic and is worded as a lead, not a verdict.
 - Correlation uses evidence IDs from the current case only. A record with a failed integrity check cannot support a finding.
 - A case that matches no current rule receives an explicit “no rule matched” / analyst-review finding rather than an implied clean bill of health.
-- Response proposals no longer hard-code the demo host name. They remain simulator-only and make clear that the prototype does not change real systems.
+- The investigation engine no longer emits simulated response proposals. Response is deliberately separated from investigation and exposed only through the guarded Wazuh workflow.
 - Regression tests cover custom evidence IDs, custom event records, finding references, and abstention when no rule matches.
 
 These rules are deliberately small and explainable. They are not a replacement for a proper detection engine or analyst validation.
@@ -46,7 +46,7 @@ These rules are deliberately small and explainable. They are not a replacement f
 4. **Credential and permission isolation:** use least-privilege credentials, explicit opt-in, bounded scopes, and visible connection state; never expose provider tokens to the model or browser.
 5. **Tool capability allowlists:** the model should only see approved read-only tools by default. Consequential response actions stay behind explicit human approval.
 
-**Decision for the hackathon:** do not add Corsair as a runtime dependency yet. SATARK currently spans Python/Streamlit and a separate web workspace; adopting a broad TypeScript integration platform now would add setup and authentication complexity before a single live connector is proven. Implement a thin SATARK-owned adapter contract first, then evaluate Corsair if multiple real integrations are needed and its supported auth/deployment model fits the app. Do not claim any connector is live until credentials, permissions, error paths, and end-to-end tests are validated.
+**Architecture decision:** do not add Corsair as a runtime dependency yet. SATARK currently spans Python/Streamlit and a separate web workspace; adopting a broad TypeScript integration platform now would add setup and authentication complexity before a single live connector is proven. Implement a thin SATARK-owned adapter contract first, then evaluate Corsair if multiple real integrations are needed and its supported auth/deployment model fits the app. Do not claim any connector is live until credentials, permissions, error paths, and end-to-end tests are validated.
 
 ## Recommended workflow
 
@@ -123,7 +123,7 @@ A model-generated claim without a valid evidence reference should be marked as u
 
 The model can recommend a next step, but the workflow must not execute a real account, identity, endpoint, or tenant response action without explicit human approval tied to the exact target and action. Approval should expire if the target or action changes. Rejection must be a valid terminal decision, not an error.
 
-Keep the current synthetic FIRSTLIGHT scenario safe to demonstrate without live credentials. Any future real-response adapter needs separate opt-in configuration, target-bound authorization, audit logging, and integration tests before it is described as connected.
+Keep all synthetic fixtures inside automated tests. The production workspace must not load canned incidents. The guarded Wazuh response adapter is implemented separately and must remain disabled until target-bound authorization, audit logging, independent verification and disposable-lab acceptance are complete.
 
 ### 5. Use case-scoped memory, not open-ended memory
 
