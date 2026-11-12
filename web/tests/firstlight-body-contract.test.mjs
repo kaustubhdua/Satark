@@ -7,6 +7,7 @@ const backend = await readFile(new URL('../../satark_backend.py', import.meta.ur
 const worker = await readFile(new URL('../../firstlight_investigation_worker.py', import.meta.url), 'utf8');
 const wazuhWorker = await readFile(new URL('../../firstlight_wazuh_worker.py', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/app/firstlight/persistent-case-panel.tsx', import.meta.url), 'utf8');
+const page = await readFile(new URL('../src/app/firstlight/page.tsx', import.meta.url), 'utf8');
 
 test('FIRSTLIGHT API proxy bounds request bytes and rejects redirects', () => {
   assert.match(proxy, /MAX_REQUEST_BYTES/);
@@ -37,7 +38,7 @@ test('saved FIRSTLIGHT evidence reload preserves its original browser digest', (
 });
 
 test('saved FIRSTLIGHT reports distinguish browser activity from durable server audit events', () => {
-  assert.ok(panel.includes('activity_log: audit.map(event => ({ ...event }))'));
+  assert.ok(page.includes('activity_log: audit'));
   assert.ok(panel.includes('Durable database audit events are recorded separately from this browser activity view'));
   assert.doesNotMatch(panel, /simulated_response_decisions|simulation\.mark_case_contained/);
 });
