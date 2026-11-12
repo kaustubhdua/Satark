@@ -18,7 +18,7 @@ test('Wazuh route uses the same-origin self-hosted API proxy', () => {
 });
 
 test('FIRSTLIGHT UI retains read-only Wazuh source provenance', () => {
-  assert.match(page, /Load real Wazuh alerts/);
+  assert.match(page, /Load Wazuh alert preview/);
   assert.match(page, /WAZUH_ALERTS_IMPORTED/);
   assert.match(page, /source_record_sha256/);
   assert.match(page, /source_document_id/);
