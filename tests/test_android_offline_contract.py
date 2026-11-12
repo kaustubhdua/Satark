@@ -194,8 +194,12 @@ class AndroidOfflineContractTests(unittest.TestCase):
 
     def test_android_python_and_snapshot_initialization_are_lazy(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
+        manifest = ET.parse(ANDROID / "app/src/main/AndroidManifest.xml").getroot()
+        application = manifest.find("./application")
         on_create = source.split("override fun onCreate", 1)[1].split("override fun onNewIntent", 1)[0]
         bridge = source.split("private fun bridge()", 1)[1].split("private fun buildScreen", 1)[0]
+        self.assertNotEqual(application.attrib.get(ANDROID_NS + "name"), "com.chaquo.python.android.PyApplication",
+                            "PyApplication starts Python in Application.onCreate and blocks the first frame")
         self.assertNotIn("installBundledSnapshotIfMissing()", on_create)
         self.assertNotIn("ensurePython()", on_create)
         self.assertNotIn("Python.getInstance()", on_create)
