@@ -112,3 +112,16 @@ def test_corrupt_state_fails_closed(firewall):
     state_file.write_text("{not-json")
     with pytest.raises(state.ResponseStateError, match="unreadable"):
         state.expire_due(now=5000)
+
+
+def test_watchdog_service_keeps_required_runtime_lock_and_minimal_capabilities():
+    service = (
+        Path(__file__).resolve().parents[1]
+        / "integrations/wazuh_agent/satark-response-watchdog.service"
+    ).read_text(encoding="utf-8")
+    assert "ProtectSystem=strict" in service
+    assert "ReadWritePaths=/var/lib/satark-response /run" in service
+    assert "CapabilityBoundingSet=CAP_NET_ADMIN" in service
+    assert "AmbientCapabilities=CAP_NET_ADMIN" in service
+    assert "NoNewPrivileges=true" in service
+    assert "Restart=always" in service
