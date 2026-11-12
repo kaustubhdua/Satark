@@ -120,6 +120,7 @@ export function parseCsv(text) {
   });
   const ids = new Set();
   for (const event of events) {
+    if (!event.id) continue;
     if (ids.has(event.id)) throw new Error('CSV contains duplicate evidence IDs.');
     ids.add(event.id);
   }
