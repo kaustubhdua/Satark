@@ -160,6 +160,39 @@ def _verify_manager_compatibility(token: str) -> str:
     return version.removeprefix("v")
 
 
+def _verify_agent_target(token: str, agent_id: str, action: str) -> None:
+    """Require one exact, connected Wazuh agent before submitting a response."""
+    query = urllib.parse.urlencode({"agents_list": agent_id})
+    status, payload = _request(
+        _base_url() + "/agents?" + query,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+    items = data.get("affected_items", []) if isinstance(data, dict) else []
+    if status != 200 or not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
+        raise ResponseIntegrationError("Wazuh did not return exactly one matching agent; no response was submitted.")
+    agent = items[0]
+    returned_id = str(agent.get("id", agent.get("agent_id", "")))
+    if returned_id != agent_id or str(agent.get("status", "")).lower() != "active":
+        raise ResponseIntegrationError("The selected Wazuh agent is missing, mismatched, or not active; no response was submitted.")
+    if action == "wazuh.disable_account":
+        os_info = agent.get("os") if isinstance(agent.get("os"), dict) else {}
+        platform = str(os_info.get("platform", "")).strip().lower()
+        name = str(os_info.get("name", "")).strip().lower()
+        supported = (
+            platform in {"linux", "darwin", "macos", "mac os", "mac os x"}
+            or any(name.startswith(prefix) for prefix in (
+                "ubuntu", "debian", "centos", "red hat", "rhel", "fedora",
+                "rocky", "almalinux", "amazon linux", "opensuse", "suse",
+                "arch", "gentoo", "macos", "mac os",
+            ))
+        )
+        if not supported:
+            raise ResponseIntegrationError(
+                "Wazuh disable-account is limited to verified Linux/macOS agents; no response was submitted."
+            )
+
+
 def preflight_live_response(action: str, target: str, confirmation: str) -> None:
     """Check explicit opt-in, action allowlist, target allowlist and credentials."""
     expected = {
@@ -217,6 +250,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     }[action]
     token = _token()
     manager_version = _verify_manager_compatibility(token)
+    _verify_agent_target(token, agent_id, action)
     query = urllib.parse.urlencode({"agents_list": agent_id, "wait_for_complete": "true"})
     status, response = _request(
         _base_url() + "/active-response?" + query,
