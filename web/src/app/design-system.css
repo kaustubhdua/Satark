@@ -1410,3 +1410,16 @@ textarea:focus-visible {
   body::after { display: none; }
   html { scroll-behavior: auto; }
 }
+
+
+/* Keep the CRT texture in the paint background, never above interactive UI. */
+body {
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,.22) 4px),
+    linear-gradient(rgba(140,255,176,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,255,176,.025) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% -18%, rgba(65,145,91,.18), transparent 58%);
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+
+body::after { display: none; }
