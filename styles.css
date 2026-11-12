@@ -1418,3 +1418,38 @@ button[kind="primary"],[data-testid="stButton"]>button[kind="primary"]{
 @media(prefers-reduced-motion:reduce){
   .hero,.home-intro--editorial,.satark-home-hero,.satark-firstlight-spotlight{transition:none!important}
 }
+
+
+/* Override legacy editorial accents so the native Streamlit workspace matches
+   the same phosphor-green/amber arcade system as the Next.js command center. */
+.ih-hero-glow{background:rgba(140,255,176,.14)!important}
+.ih-hero h1 span,.ih-section-head h2 span,.ih-method h2 span,
+.satark-home-hero .ih-hero-copy h1 span{
+  background:linear-gradient(95deg,#b6ff5c 4%,#8cffb0 58%,#ffc66e 100%)!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  color:transparent!important;
+  -webkit-text-fill-color:transparent!important;
+}
+.satark-home-hero .ih-proof{border-color:rgba(140,255,176,.18)!important;color:#b8cbbd!important}
+.satark-home-hero .ih-proof b{color:#b6ff5c!important}
+.satark-home-hero .ih-check{color:#8cffb0!important}
+.satark-spotlight-card:before{
+  background:radial-gradient(ellipse at 72% 12%,rgba(140,255,176,.17),transparent 44%),radial-gradient(ellipse at 20% 88%,rgba(255,198,110,.07),transparent 46%)!important;
+}
+.satark-spotlight-card:after{
+  background:radial-gradient(360px circle at 50% 0%,rgba(140,255,176,.12),transparent 70%)!important;
+}
+.satark-spotlight-card:hover{
+  border-color:rgba(140,255,176,.42)!important;
+  box-shadow:0 30px 85px rgba(0,0,0,.4),0 0 35px rgba(140,255,176,.08)!important;
+}
+.ih-console-mark{
+  border-color:rgba(140,255,176,.32)!important;
+  background:rgba(140,255,176,.10)!important;
+  color:#b6ff5c!important;
+  border-radius:4px!important;
+}
+.ih-console-brand b{color:#e8f5eb!important}
+.ih-console-divider{background:linear-gradient(90deg,rgba(140,255,176,.24),rgba(255,255,255,.04))!important}
+.ih-signal-heading{color:#8cffb0!important}
