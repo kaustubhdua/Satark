@@ -86,9 +86,14 @@ def test_rejects_out_of_range_ttl(value, firewall):
 def test_manual_delete_only_removes_satark_owned_rule(firewall):
     fake, state_file = firewall
     state.add_block("8.8.8.8", "300", now=1000)
+    # An operator may add an independent rule for the same address after
+    # SATARK's action. Reversal must remove only the tagged SATARK rule.
+    fake.rules.add("-s 8.8.8.8 -j DROP")
     result = state.remove_block("8.8.8.8")
     assert result["status"] == "removed"
     assert json.loads(state_file.read_text()) == {}
+    assert "-s 8.8.8.8 -j DROP" in fake.rules
+    assert not any(rule.startswith("-s 8.8.8.8 -m comment") for rule in fake.rules)
     assert any(call[0] == "-D" for call in fake.calls)
 
 
