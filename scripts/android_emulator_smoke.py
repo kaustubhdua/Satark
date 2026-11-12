@@ -46,23 +46,22 @@ def activity_snapshot() -> str:
 def is_satark_foreground(snapshot: str) -> bool:
     """Check the actual foreground surface, not merely a live background app task."""
     lines = snapshot.splitlines()
-    foreground_markers = (
-        "topresumedactivity",
-        "mresumedactivity",
-        "resumedactivity",
-        "mcurrentfocus",
-        "mfocusedwindow",
+    # Prefer the strongest foreground signal available. Do not combine
+    # top-resumed, focused-window and legacy resumed records: on some Android
+    # images a background app remains in mResumedActivity while the system
+    # permission controller owns topResumedActivity.
+    priority_groups = (
+        ("topresumedactivity",),
+        ("mcurrentfocus", "mfocusedwindow"),
+        ("mresumedactivity", "resumedactivity"),
     )
-    authoritative = [
-        line.lower() for line in lines
-        if any(marker in line.lower() for marker in foreground_markers)
-    ]
-    if authoritative:
-        # A background Activity can remain RESUMED in dumpsys while a system
-        # permission controller owns the top-resumed surface. Prefer the
-        # explicit foreground/focus records and never let mFocusedApp override
-        # a different top-resumed Activity.
-        return any(PACKAGE in line and "mainactivity" in line for line in authoritative)
+    for markers in priority_groups:
+        authoritative = [
+            line.lower() for line in lines
+            if any(marker in line.lower() for marker in markers)
+        ]
+        if authoritative:
+            return any(PACKAGE in line and "mainactivity" in line for line in authoritative)
 
     # Some emulator images expose only the compact "ACTIVITY ... state=RESUMED"
     # form. Accept that fallback only when no explicit foreground record exists.
