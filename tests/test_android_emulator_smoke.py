@@ -24,7 +24,8 @@ class ForegroundActivityTests(unittest.TestCase):
         snapshot = (
             "topResumedActivity=ActivityRecord{ab12 u0 "
             "com.android.permissioncontroller/.GrantPermissionsActivity t42}\n"
-            "mFocusedApp=ActivityRecord{cd34 u0 com.satark.mobile/.MainActivity t41}"
+            "mResumedActivity=ActivityRecord{cd34 u0 com.satark.mobile/.MainActivity t41}\n"
+            "mFocusedApp=ActivityRecord{ef56 u0 com.satark.mobile/.MainActivity t40}"
         )
         self.assertFalse(is_satark_foreground(snapshot))
 
