@@ -2,6 +2,17 @@ name: Android File Guard
 on:
   push:
     paths:
+      - "web/**"
+      - "firstlight_api.py"
+      - "satark_backend.py"
+      - "integrations/**"
+      - "migrations/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/firstlight-api-ci.yml"
+      - ".github/workflows/web-ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
       - "android/**"
       - "file_guard/**"
       - "scripts/check_no_supabase_runtime.py"
@@ -22,6 +33,17 @@ on:
       - "release-gate/EXACT_SHA.md"
   pull_request:
     paths:
+      - "web/**"
+      - "firstlight_api.py"
+      - "satark_backend.py"
+      - "integrations/**"
+      - "migrations/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/firstlight-api-ci.yml"
+      - ".github/workflows/web-ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
       - "android/**"
       - "file_guard/**"
       - "scripts/check_no_supabase_runtime.py"
