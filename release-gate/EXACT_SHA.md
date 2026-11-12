@@ -26,7 +26,7 @@ The dedicated backup role is NOINHERIT and BYPASSRLS. It has explicit read privi
 
 ## Agent allowlist intersection
 
-The account-disable action is advertised only when its OS-specific agent IDs intersect the general live-response allowlist. The API rechecks both lists at execution time.
+Account disable is not currently supported or advertised. The current adapter allowlists only the time-bounded Linux firewall-drop action; do not add account disable until a separate reversible implementation and disposable-agent acceptance test pass.
 
 
 ## Regression cleanup
