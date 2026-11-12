@@ -129,7 +129,7 @@ def test_response_requires_exact_active_agent_before_submission(monkeypatch):
         raise AssertionError("Active Response must not run for a mismatched agent")
 
     monkeypatch.setattr(actions, "_request", fake_request)
-    with pytest.raises(actions.ResponseIntegrationError, match="exactly one matching agent"):
+    with pytest.raises(actions.ResponseIntegrationError, match="missing, mismatched, or not active"):
         actions.execute_wazuh_response(
             "wazuh.block_ip", "001", {"ip_address": "203.0.113.9"},
             confirmation="CONFIRM BLOCK_IP 001", reason="Authorized disposable lab exercise",
