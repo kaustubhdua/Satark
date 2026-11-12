@@ -10,7 +10,7 @@ FIRSTLIGHT is SATARK's incident-response workspace. It turns authorized telemetr
 4. Verify evidence hashes and source metadata. Integrity mismatch evidence is quarantined from trusted finding references.
 5. Run the deterministic Python investigation, review the event timeline, rule IDs, evidence references, severity rationale, uncertainty and evidence gaps.
 6. Save evidence, findings and a reproducible report snapshot to the self-hosted database. Queue a durable investigation job when the case needs background processing.
-7. Record immutable analyst notes and simulation decisions. The audit history is stored by the self-hosted backend.
+7. Record analyst notes and case activity. The durable audit history is stored by the self-hosted backend; browser-only activity is not presented as the authoritative ledger.
 8. If an authorized organization configures the optional Wazuh Manager API integration, request a case-bound response approval. A different operator approves it, a third operator executes it after exact target confirmation, and a fourth distinct operator records independent provider-console verification.
 
 ## Components
@@ -48,7 +48,7 @@ The API and durable investigation worker use the internal Ollama service URL. If
 
 ## Safety and limits
 
-- Synthetic training data is fictional and is always labelled.
+- No sample incident is preloaded into the production FIRSTLIGHT workspace. Unit-test fixtures are isolated to tests and are never operational telemetry.
 - Hashes establish byte consistency against a stored digest, not original source authenticity or truthfulness.
 - Rule matches and optional model findings are triage leads, not proof of compromise or calibrated probabilities.
 - No shell command, malware execution, network block, or automatic endpoint action is inferred from AI output.
