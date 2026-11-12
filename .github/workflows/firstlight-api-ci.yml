@@ -147,6 +147,7 @@ jobs:
             tests/test_firstlight_live_wazuh_investigation.py \
             tests/test_firstlight_wazuh_live_acceptance.py \
             tests/test_firstlight_worker_live_acceptance.py \
+            tests/test_wazuh_agent_response.py \
             tests/test_satark_backend.py \
             tests/test_satark_migrations.py \
             tests/test_satark_backup.py \
