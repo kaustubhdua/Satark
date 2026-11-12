@@ -182,34 +182,28 @@ def _verify_agent_target(token: str, agent_id: str, action: str) -> None:
     returned_id = str(agent.get("id", agent.get("agent_id", "")))
     if returned_id != agent_id or str(agent.get("status", "")).lower() != "active":
         raise ResponseIntegrationError("The selected Wazuh agent is missing, mismatched, or not active; no response was submitted.")
-    if action == "wazuh.disable_account":
-        os_info = agent.get("os") if isinstance(agent.get("os"), dict) else {}
-        platform = str(os_info.get("platform", "")).strip().lower()
-        name = str(os_info.get("name", "")).strip().lower()
-        supported = (
-            platform in {"linux", "darwin", "macos", "mac os", "mac os x"}
-            or any(name.startswith(prefix) for prefix in (
-                "ubuntu", "debian", "centos", "red hat", "rhel", "fedora",
-                "rocky", "almalinux", "amazon linux", "opensuse", "suse",
-                "arch", "gentoo", "macos", "mac os",
-            ))
+    os_info = agent.get("os") if isinstance(agent.get("os"), dict) else {}
+    platform = str(os_info.get("platform", "")).strip().lower()
+    name = str(os_info.get("name", "")).strip().lower()
+    if not (platform == "linux" or any(name.startswith(prefix) for prefix in (
+        "ubuntu", "debian", "centos", "red hat", "rhel", "fedora",
+        "rocky", "almalinux", "amazon linux", "opensuse", "suse",
+        "arch", "gentoo",
+    ))):
+        raise ResponseIntegrationError(
+            "Wazuh firewall-drop is restricted to verified Linux agents; no response was submitted."
         )
-        if not supported:
-            raise ResponseIntegrationError(
-                "Wazuh disable-account is limited to verified Linux/macOS agents; no response was submitted."
-            )
 
 
 def preflight_live_response(action: str, target: str, confirmation: str) -> None:
     """Check explicit opt-in, action allowlist, target allowlist and credentials."""
-    expected = {
-        "wazuh.block_ip": "BLOCK_IP",
-        "wazuh.disable_account": "DISABLE_ACCOUNT",
-    }.get(action)
+    expected = "BLOCK_IP" if action == "wazuh.block_ip" else None
     if not expected:
-        raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
+        raise ResponseIntegrationError("Only the lab-verified Wazuh IP block action is allowlisted; account disable is not supported.")
     if not live_response_enabled():
         raise ResponseIntegrationError("Live response is disabled. Enable it only in an authorized isolated lab.")
+    _verified_response_ttl()
+    _protected_networks()
     if confirmation != f"CONFIRM {expected} {target}":
         raise ResponseIntegrationError(f"Explicit confirmation required: CONFIRM {expected} {target}")
     if target not in _agent_allowlist():
@@ -231,16 +225,11 @@ def _validate_payload(action: str, payload: Mapping[str, Any]) -> list[str]:
             address = ipaddress.ip_address(str(payload["ip_address"]))
         except ValueError:
             raise ResponseIntegrationError("ip_address must be a valid IPv4 address.") from None
-        if address.version != 4 or address.is_unspecified or address.is_multicast:
-            raise ResponseIntegrationError("Only unicast IPv4 addresses are supported by this response action.")
+        if address.version != 4 or not address.is_global:
+            raise ResponseIntegrationError("Only globally routable unicast IPv4 addresses can be blocked.")
+        if any(address in network for network in _protected_networks()):
+            raise ResponseIntegrationError("The target IP is inside a protected infrastructure network.")
         return [str(address)]
-    if action == "wazuh.disable_account":
-        if set(payload) != {"username"}:
-            raise ResponseIntegrationError("Account-disable payload must contain only username.")
-        username = str(payload["username"]).strip()
-        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", username) or username.startswith("-") or username == "root":
-            raise ResponseIntegrationError("username is invalid or protected.")
-        return [username]
     raise ResponseIntegrationError("Action is not allowlisted for Wazuh live response.")
 
 
@@ -251,10 +240,7 @@ def execute_wazuh_response(action: str, agent_id: str, payload: Mapping[str, Any
     reason = reason.strip()
     if not reason or len(reason) > 1000:
         raise ResponseIntegrationError("A reason of 1–1000 characters is required.")
-    command, args = {
-        "wazuh.block_ip": ("firewall-drop", _validate_payload(action, payload)),
-        "wazuh.disable_account": ("disable-account", _validate_payload(action, payload)),
-    }[action]
+    command, args = "firewall-drop", _validate_payload(action, payload)
     token = _token()
     manager_version = _verify_manager_compatibility(token)
     _verify_agent_target(token, agent_id, action)
