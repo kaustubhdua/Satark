@@ -3,6 +3,11 @@ name: FIRSTLIGHT API CI
 on:
   push:
     paths:
+      - "web/**"
+      - "android/**"
+      - "file_guard/**"
+      - "scripts/android_emulator_smoke.py"
+      - "tests/test_android*.py"
       - "firstlight_api.py"
       - "firstlight_response_api.py"
       - "firstlight_response_executor.py"
@@ -42,8 +47,17 @@ on:
       - "deploy/postgres-init/**"
       - ".github/workflows/firstlight-api-ci.yml"
       - "release-gate/EXACT_SHA.md"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
   pull_request:
     paths:
+      - "web/**"
+      - "android/**"
+      - "file_guard/**"
+      - "scripts/android_emulator_smoke.py"
+      - "tests/test_android*.py"
       - "firstlight_api.py"
       - "firstlight_response_api.py"
       - "firstlight_response_executor.py"
@@ -71,6 +85,10 @@ on:
       - "docker-compose.local.yml"
       - ".github/workflows/firstlight-api-ci.yml"
       - "release-gate/EXACT_SHA.md"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/release-gate.yml"
+      - "docs/RELEASE_READINESS.md"
+      - "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md"
   workflow_dispatch:
 
 permissions:

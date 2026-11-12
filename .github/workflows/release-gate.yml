@@ -35,6 +35,10 @@ on:
         description: "A low-risk authorized lab response was independently verified at the provider"
         required: true
         type: boolean
+      android_device_qa_verified:
+        description: "The release APK was exercised on a physical Android device, including share intents, folder grants, reboot and scan recovery"
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -46,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify required CI for this exact commit and reject skipped tenant tests
+      - name: Verify required CI for this exact commit and non-skipped FIRSTLIGHT isolation tests
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_SHA: ${{ github.sha }}
@@ -54,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${WORKFLOW_SHA}&per_page=100")"
-          for workflow in "CI" "Web CI" "CodeQL" "FIRSTLIGHT API CI"; do
+          for workflow in "CI" "Web CI" "CodeQL" "FIRSTLIGHT API CI" "Android File Guard" "Production smoke check"; do
             run_id="$(jq -r --arg name "$workflow" --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
             if [[ -z "$run_id" ]]; then
               echo "::error::No successful completed $workflow run exists for exact release commit $WORKFLOW_SHA."
@@ -62,19 +66,50 @@ jobs:
             fi
             echo "Verified successful $workflow run $run_id for $WORKFLOW_SHA"
           done
-          ci_run="$(jq -r --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == "CI" and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
-          jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run}/jobs?per_page=100")"
-          tenant_job="$(jq -c '[.jobs[] | select(.name == "Self-hosted SATARK auth and tenant-isolation integration")] | first // empty' <<< "$jobs")"
-          if [[ -z "$tenant_job" || "$tenant_job" == "null" || "$(jq -r '.conclusion' <<< "$tenant_job")" != "success" ]]; then
-            echo "::error::Tenant-isolation job is missing or did not pass."
+
+          # FIRSTLIGHT API CI is the authoritative PostgreSQL/RLS tenant-isolation
+          # suite. The previous gate looked for a CI job and step that no longer
+          # exist, so it could never attest the current architecture correctly.
+          api_run="$(jq -r --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == "FIRSTLIGHT API CI" and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
+          jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${api_run}/jobs?per_page=100")"
+          api_job="$(jq -c '[.jobs[] | select(.name == "FIRSTLIGHT regression, PostgreSQL and container validation")] | first // empty' <<< "$jobs")"
+          if [[ -z "$api_job" || "$api_job" == "null" || "$(jq -r '.conclusion' <<< "$api_job")" != "success" ]]; then
+            echo "::error::The FIRSTLIGHT PostgreSQL/RLS integration job is missing or did not pass."
             exit 1
           fi
-          test_step="$(jq -c '[.steps[] | select(.name == "Run SQLite identity, tenant isolation, and persistence tests")] | first // empty' <<< "$tenant_job")"
-          if [[ -z "$test_step" || "$test_step" == "null" || "$(jq -r '.conclusion' <<< "$test_step")" != "success" ]]; then
-            echo "::error::Real self-hosted tenant-isolation tests were skipped, absent, or failed. A green job with a skipped step is not sufficient."
-            exit 1
-          fi
-          echo "Real tenant-isolation test step passed on the exact release commit."
+
+          android_run="$(jq -r --arg sha "$WORKFLOW_SHA" '[.workflow_runs[] | select(.name == "Android File Guard" and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | first | .id // empty' <<< "$runs")"
+          android_jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${android_run}/jobs?per_page=100")"
+          for job_name in \
+            "Offline Python engine tests" \
+            "Build native Android APK" \
+            "Install and launch APK on Android emulator"; do
+            android_job="$(jq -c --arg name "$job_name" '[.jobs[] | select(.name == $name)] | first // empty' <<< "$android_jobs")"
+            if [[ -z "$android_job" || "$android_job" == "null" || "$(jq -r '.conclusion' <<< "$android_job")" != "success" ]]; then
+              echo "::error::Required Android release job is missing, skipped, or failed: $job_name"
+              exit 1
+            fi
+            echo "Verified Android release job: $job_name"
+          done
+
+          for step_name in \
+            "Run FIRSTLIGHT engine, API, response and worker tests" \
+            "Perform isolated PostgreSQL backup and restore drill" \
+            "Enforce Supabase-free application runtime" \
+            "Enforce Microsoft-free runtime provider boundary" \
+            "Validate Wazuh and backup shell scripts" \
+            "Validate PostgreSQL role bootstrap shell" \
+            "Validate local self-hosted Compose configuration" \
+            "Validate production PostgreSQL and TLS Compose stack" \
+            "Build API and worker images"; do
+            step="$(jq -c --arg name "$step_name" '[.steps[] | select(.name == $name)] | first // empty' <<< "$api_job")"
+            if [[ -z "$step" || "$step" == "null" || "$(jq -r '.conclusion' <<< "$step")" != "success" ]]; then
+              echo "::error::Required FIRSTLIGHT release step is missing, skipped, or failed: $step_name"
+              exit 1
+            fi
+            echo "Verified FIRSTLIGHT step: $step_name"
+          done
+
       - name: Require exact deployed revision and all evidence gates
         env:
           REQUESTED_SHA: ${{ inputs.production_deployed_sha }}
@@ -86,6 +121,7 @@ jobs:
           EVIDENCE: ${{ inputs.evidence_integrity_verified }}
           AI_EVAL: ${{ inputs.ai_evaluation_passed }}
           RESPONDER: ${{ inputs.real_responder_verified }}
+          ANDROID_QA: ${{ inputs.android_device_qa_verified }}
         shell: bash
         run: |
           set -euo pipefail
@@ -101,7 +137,8 @@ jobs:
             "detection positive/negative controls:${DETECTION}" \
             "evidence integrity/export verification:${EVIDENCE}" \
             "held-out AI evaluation:${AI_EVAL}" \
-            "real provider response verification:${RESPONDER}"; do
+            "real provider response verification:${RESPONDER}" \
+            "physical Android device QA:${ANDROID_QA}"; do
             name="${pair%%:*}"
             value="${pair#*:}"
             if [[ "$value" != "true" ]]; then
@@ -141,6 +178,7 @@ jobs:
             echo "- Evidence integrity/export: `${EVIDENCE}`"
             echo "- Held-out AI evaluation: `${AI_EVAL}`"
             echo "- Real provider response: `${RESPONDER}`"
+            echo "- Physical Android device QA: `${ANDROID_QA}`"
             echo
             echo "This is an evidence checklist, not an automated proof of external system state."
           } >> "$GITHUB_STEP_SUMMARY"

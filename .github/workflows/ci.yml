@@ -62,6 +62,82 @@ jobs:
       - name: Check dependency consistency
         run: python -m pip check
 
+      - name: Validate release gate references current FIRSTLIGHT CI evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_workflow=".github/workflows/firstlight-api-ci.yml"
+          release_gate=".github/workflows/release-gate.yml"
+          web_workflow=".github/workflows/web-ci.yml"
+          android_workflow=".github/workflows/android-file-guard.yml"
+          production_smoke=".github/workflows/production-smoke.yml"
+          grep -Fq 'name: FIRSTLIGHT API CI' "$api_workflow"
+          grep -Fq 'name: Android File Guard' "$android_workflow"
+          grep -Fq 'name: Install and launch APK on Android emulator' "$android_workflow"
+          grep -Fq 'tests/test_android_emulator_smoke.py' "$android_workflow"
+          grep -Fq 'Test Android emulator foreground-activity recognition' "$android_workflow"
+          grep -Fq 'name: FIRSTLIGHT regression, PostgreSQL and container validation' "$api_workflow"
+          for trigger_path in \
+            ".github/workflows/ci.yml" \
+            ".github/workflows/release-gate.yml" \
+            "docs/RELEASE_READINESS.md" \
+            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md" \
+            "web/**" \
+            "android/**" \
+            "file_guard/**" \
+            "scripts/android_emulator_smoke.py" \
+            "tests/test_android*.py"; do
+            grep -Fq "$trigger_path" "$api_workflow"
+          done
+          for trigger_path in \
+            ".github/workflows/ci.yml" \
+            ".github/workflows/firstlight-api-ci.yml" \
+            ".github/workflows/release-gate.yml" \
+            "docs/RELEASE_READINESS.md" \
+            "docs/FIRSTLIGHT_IMPLEMENTATION_STATUS.md" \
+            "web/**" \
+            "android/**" \
+            "file_guard/**" \
+            "scripts/android_emulator_smoke.py" \
+            "tests/test_android*.py"; do
+            grep -Fq "$trigger_path" "$web_workflow"
+            grep -Fq "$trigger_path" "$android_workflow"
+          done
+          for trigger_path in \
+            "firstlight_api.py" \
+            "satark_backend.py" \
+            "integrations/**" \
+            "migrations/**"; do
+            grep -Fq "$trigger_path" "$android_workflow"
+          done
+          grep -Fq 'FIRSTLIGHT regression, PostgreSQL and container validation' "$release_gate"
+          grep -Fq '"Android File Guard" "Production smoke check"' "$release_gate"
+          grep -Fq 'android_device_qa_verified' "$release_gate"
+          grep -Fq 'physical Android device QA' "$release_gate"
+          grep -Fq 'name: Production smoke check' "$production_smoke"
+          grep -Fq 'check_route "/firstlight"' "$production_smoke"
+          grep -Fq 'check_unauthenticated_api "/api/cases"' "$production_smoke"
+          grep -Fq 'self-hosted SATARK API is not configured' "$production_smoke"
+          grep -Fq 'shared rate limiting is not configured' "$production_smoke"
+          grep -Fq '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' "$production_smoke"
+          grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
+          grep -Fq 'tests/test_satark_postgres.py' "$api_workflow"
+          grep -Fq 'def test_workspace_case_and_tenant_isolation' tests/test_satark_backend.py
+          grep -Fq 'def test_postgres_signup_tenant_evidence_idempotent_job_and_worker' tests/test_satark_postgres.py
+          for step_name in \
+            "Run FIRSTLIGHT engine, API, response and worker tests" \
+            "Perform isolated PostgreSQL backup and restore drill" \
+            "Enforce Supabase-free application runtime" \
+            "Enforce Microsoft-free runtime provider boundary" \
+            "Validate Wazuh and backup shell scripts" \
+            "Validate PostgreSQL role bootstrap shell" \
+            "Validate local self-hosted Compose configuration" \
+            "Validate production PostgreSQL and TLS Compose stack" \
+            "Build API and worker images"; do
+            grep -Fq "$step_name" "$api_workflow"
+            grep -Fq "$step_name" "$release_gate"
+          done
+
       - name: Compile Python source
         run: |
           python -m compileall -q \
