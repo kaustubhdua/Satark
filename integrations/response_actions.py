@@ -72,6 +72,8 @@ def _verified_response_ttl() -> int:
 
 def available_response_actions() -> list[str]:
     """Expose only the lab-verified, time-bounded Linux IP block action."""
+    if not live_response_enabled():
+        return []
     try:
         _agent_allowlist()
         _protected_networks()
