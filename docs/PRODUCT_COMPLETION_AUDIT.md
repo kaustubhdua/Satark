@@ -25,6 +25,7 @@ The current production Vercel deployment was queried directly, not inferred from
 - The snapshot reported FIRSTLIGHT investigation proxy and Wazuh proxy as **not configured**, and persistent storage as **not configured**.
 - Shared Upstash rate limiting was configured but its live connectivity was explicitly unverified.
 - The production Vercel environment-variable inventory did not include `SATARK_API_INTERNAL_URL`; no self-hosted API upstream is currently wired to this deployment.
+- Public route smoke checks returned HTTP 200 for `/`, `/investigate`, `/tools`, `/firstlight`, `/url`, `/qr`, `/pdf-review`, `/image-review`, `/media-review`, `/cases`, `/reports`, `/login`, `/native-sensor`, `/learn`, `/api/version` and `/api/health`. A page returning 200 proves route rendering only, not that its authenticated workflows or backing services work.
 - `GET /api/auth/session` returned HTTP 503 with `The self-hosted SATARK API is not configured.`; `GET /api/firstlight/wazuh/alerts?limit=1` returned the same 503. Login, persistent cases and Wazuh access are therefore not operational through the current production deployment.
 - The unauthenticated `/firstlight` request returned the secure-session loading shell. An authenticated case workflow has not been exercised against production.
 
