@@ -26,6 +26,7 @@ from firstlight_agents import run_independent_agents
 from firstlight_wazuh import WazuhConfigurationError, WazuhConnectorError, fetch_configured_alerts
 
 MAX_BODY_BYTES = 2 * 1024 * 1024
+MULTIPART_OVERHEAD_BYTES = 64 * 1024
 MAX_EVIDENCE = 500
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -102,6 +103,18 @@ def _authorize(authorization: str | None) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _body_limit(request: Request) -> int:
+    """Evidence uploads may carry up to MAX_UPLOAD bytes of file plus multipart framing.
+
+    Every other route keeps the tight JSON limit. Without this exception the
+    global cap would reject files between 2 MiB and the advertised 4 MiB limit.
+    """
+    if request.method == "POST" and request.url.path == "/api/evidence":
+        from satark_backend import MAX_UPLOAD
+        return MAX_UPLOAD + MULTIPART_OVERHEAD_BYTES
+    return MAX_BODY_BYTES
+
+
 @app.middleware("http")
 async def bounded_request(request: Request, call_next):
     length = request.headers.get("content-length")
@@ -110,7 +123,7 @@ async def bounded_request(request: Request, call_next):
             declared = int(length)
             if declared < 0:
                 return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
-            if declared > MAX_BODY_BYTES:
+            if declared > _body_limit(request):
                 return JSONResponse(status_code=413, content={"detail": "Request body is too large"})
         except ValueError:
             return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
