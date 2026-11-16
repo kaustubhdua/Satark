@@ -142,10 +142,11 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ### P1.6 Migrate the legacy Streamlit feature set to local-only operation
 - [x] Remove the Groq API-key field and SDK dependency from the legacy UI; default text/image analysis to an operator-controlled Ollama endpoint.
 - [x] Add optional local faster-whisper speech-to-text for video, with model-download and hardware requirements; no hosted transcription API.
-- [ ] Migrate image, QR, PDF, video, history, classroom, and report workflows into the primary Next.js product or formally retire each unsupported feature.
+- [x] Decide, per legacy page, whether it is ported, retired or still Streamlit-only. Image, QR, PDF, video, URL and text review are ported (`/image-review`, `/qr`, `/pdf-review`, `/media-review`, `/url`, `/investigate`); FIRSTLIGHT and session History are retired in favour of persistent cases/reports. The single source of truth is `ui/legacy_notice.py`, enforced by `tests/test_legacy_notice.py`.
+- [ ] Port or retire the remaining Streamlit-only pages: File Guard (desktop), Scam Challenge, Academy and Classroom.
 - [x] Disable external reputation API lookups in the active Streamlit analysis path.
 - [ ] Build a local IOC cache and an explicit, auditable feed-update command that runs separately from analysis.
-- [ ] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete.
+- [x] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete (banner shown on every legacy page).
 
 **Acceptance:** the full declared product runs without third-party API keys, submitted evidence never leaves operator-controlled infrastructure during analysis, and every retained media feature passes fixture-based tests in an offline test environment.
 
@@ -235,7 +236,7 @@ SATARK can be called finished for its declared scope only when every advertised 
 
 ## Follow-up — local media review
 
-- The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. QR, PDF, and video analysis remain unported in the Next.js workspace.
+- The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. (Superseded: QR, PDF and video review have since been added to the Next.js workspace; see `ui/legacy_notice.py` for the current migration map.)
 
 
 ## Release status correction — 2026-10-14

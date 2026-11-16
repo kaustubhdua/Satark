@@ -58,6 +58,7 @@ from analysis_engine import (
 )
 from ui.home import render_home
 from ui.firstlight import render_firstlight
+from ui.legacy_notice import render_legacy_notice
 from ui.loading import render_intro_loader
 from ui.navigation import render_sidebar
 from ui.file_guard import render_file_guard
@@ -631,7 +632,7 @@ _, role = render_sidebar(
 # The Home page has its own editorial hero. Keep Analyze/History focused on the active task.
 
 # --------------------------- Pages -----------------------------
-# --------------------------- Pages -----------------------------
+render_legacy_notice(st.session_state.page)
 
 if st.session_state.page == "FIRSTLIGHT":
     render_firstlight()
