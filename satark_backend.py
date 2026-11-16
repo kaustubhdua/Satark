@@ -30,6 +30,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, create_engine, select, update, func, delete, text
 from sqlalchemy.exc import IntegrityError
 from firstlight_wazuh import fetch_configured_alerts, WazuhConfigurationError, WazuhConnectorError
+import evidence_store
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
 from sqlalchemy import event
 
@@ -117,6 +118,41 @@ def write_private_evidence_object(object_dir: Path, evidence_id: str, raw: bytes
         temporary.unlink(missing_ok=True)
         object_path.unlink(missing_ok=True)
         raise
+
+
+def put_evidence_object(tenant_id: str, case_id: str, evidence_id: str, raw: bytes) -> str:
+    """Persist one evidence object on the configured backend; return its object key."""
+    try:
+        if evidence_store.backend_name() == "s3":
+            return evidence_store.put_object(tenant_id, case_id, evidence_id, raw, hashlib.sha256(raw).hexdigest())
+        return str(write_private_evidence_object(evidence_directory(tenant_id, case_id), evidence_id, raw))
+    except evidence_store.EvidenceStoreError:
+        raise HTTPException(503, "Private evidence storage is unavailable.")
+    except OSError:
+        raise HTTPException(503, "Private evidence storage is unavailable.")
+
+
+def read_evidence_object(object_key: str) -> bytes:
+    """Read evidence bytes from whichever backend wrote the object key."""
+    if evidence_store.is_s3_key(object_key):
+        try:
+            return evidence_store.get_object(object_key)
+        except evidence_store.EvidenceNotFound:
+            raise HTTPException(404, "Evidence object not found.")
+        except evidence_store.EvidenceStoreError:
+            raise HTTPException(503, "Private evidence storage is unavailable.")
+    return stored_evidence_path(object_key).read_bytes()
+
+
+def discard_evidence_object(object_key: str) -> None:
+    """Remove an object that never received a database row."""
+    try:
+        if evidence_store.is_s3_key(object_key):
+            evidence_store.delete_object(object_key)
+        else:
+            Path(object_key).unlink(missing_ok=True)
+    except (evidence_store.EvidenceStoreError, OSError):
+        pass
 
 
 def valid_email_address(value: str) -> bool:
@@ -1698,28 +1734,24 @@ async def upload_evidence(
     content_type = safe_evidence_content_type(declared_content_type)
     digest = hashlib.sha256(raw).hexdigest()
     evidence_id = str(uuid.uuid4())
-    object_dir = evidence_directory(tenant_id, case_id)
-    try:
-        object_path = write_private_evidence_object(object_dir, evidence_id, raw)
-    except OSError:
-        raise HTTPException(503, "Private evidence storage is unavailable.")
+    object_key = put_evidence_object(tenant_id, case_id, evidence_id, raw)
     name = re.sub(r"[^A-Za-z0-9._-]", "_", (file.filename or "evidence.bin"))[-100:]
     try:
         when = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
         if when.tzinfo is None:
             raise ValueError()
     except ValueError:
-        object_path.unlink(missing_ok=True)
+        discard_evidence_object(object_key)
         raise HTTPException(400, "observed_at must include an explicit timezone.")
     when = when.astimezone(timezone.utc)
-    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path), source_label=source_label[:160], event_kind=event_kind[:100], observed_at=when, summary=summary[:8192], source_sha256=digest, size_bytes=len(raw), content_type=content_type, original_filename=name, metadata_json={}, created_by=user.id)
+    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=object_key, source_label=source_label[:160], event_kind=event_kind[:100], observed_at=when, summary=summary[:8192], source_sha256=digest, size_bytes=len(raw), content_type=content_type, original_filename=name, metadata_json={}, created_by=user.id)
     db.add(row)
     audit(db, tenant_id, user.id, "evidence.uploaded", {"evidence_id": evidence_id, "sha256": digest, "size_bytes": len(raw)})
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        object_path.unlink(missing_ok=True)
+        discard_evidence_object(object_key)
         raise HTTPException(409, "Identical evidence already exists in this case.")
     except Exception:
         db.rollback()
@@ -1754,21 +1786,9 @@ def create_evidence_record(body: dict, user: User = Depends(current_user), db: S
     if len(raw) > MAX_UPLOAD:
         raise HTTPException(413, "Evidence metadata exceeds 4 MiB.")
     evidence_id = str(uuid.uuid4())
-    object_dir = evidence_directory(tenant_id, case_id)
-    object_dir.mkdir(parents=True, exist_ok=True)
-    object_path = object_dir / evidence_id
-    temporary = object_dir / (evidence_id + ".part")
-    try:
-        with temporary.open("xb") as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, object_path)
-    except OSError:
-        temporary.unlink(missing_ok=True)
-        raise HTTPException(503, "Private evidence storage is unavailable.")
+    object_key = put_evidence_object(str(tenant_id), case_id, evidence_id, raw)
     digest = hashlib.sha256(raw).hexdigest()
-    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
+    row = Evidence(id=evidence_id, tenant_id=tenant_id, case_id=case_id, object_key=object_key,
         source_label=source, event_kind=kind, observed_at=observed, summary=summary,
         source_sha256=digest, size_bytes=len(raw), content_type="application/json",
         original_filename="evidence.json", metadata_json=metadata, created_by=user.id)
@@ -1805,8 +1825,7 @@ def download_wazuh_source(tenant_id: str, case_id: str, path: str, user: User = 
         Evidence.content_type == "application/json"))
     if not row:
         raise HTTPException(404, "The preserved source object was not found.")
-    object_path = stored_evidence_path(row.object_key)
-    raw = object_path.read_bytes()
+    raw = read_evidence_object(row.object_key)
     if not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), row.source_sha256):
         raise HTTPException(409, "Source-object integrity verification failed.")
     return Response(content=raw, media_type="application/json",
@@ -1826,10 +1845,13 @@ def download_evidence(evidence_id: str, tenant_id: str, user: User = Depends(cur
     if not row or row.tenant_id != tenant_id:
         raise HTTPException(404, "Evidence not found.")
     require_membership(db, user, tenant_id)
-    path = stored_evidence_path(row.object_key)
-    if hashlib.sha256(path.read_bytes()).hexdigest() != row.source_sha256:
+    raw = read_evidence_object(row.object_key)
+    if not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), row.source_sha256):
         raise HTTPException(409, "Evidence integrity verification failed.")
-    return FileResponse(path, media_type=safe_evidence_content_type(row.content_type), filename=row.original_filename, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
+    filename = re.sub(r'[^A-Za-z0-9._-]', "_", row.original_filename or "evidence.bin")[-100:] or "evidence.bin"
+    return Response(content=raw, media_type=safe_evidence_content_type(row.content_type), headers={
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
 
 
 
@@ -1875,8 +1897,7 @@ def verify_evidence(evidence_id: str, tenant_id: str, user: User = Depends(curre
     if not row or row.tenant_id != tenant_id:
         raise HTTPException(404, "Evidence not found.")
     require_membership(db, user, tenant_id)
-    path = stored_evidence_path(row.object_key)
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    actual = hashlib.sha256(read_evidence_object(row.object_key)).hexdigest()
     matched = hmac.compare_digest(actual, row.source_sha256)
     return {"evidence_id": row.id, "algorithm": "SHA-256", "expected_sha256": row.source_sha256,
             "actual_sha256": actual, "matched": matched, "verified_at": utcnow().isoformat(),
@@ -1975,8 +1996,7 @@ def investigate_persisted_case(body: dict, user: User = Depends(current_user), d
     envelopes = []
     integrity = []
     for row in rows:
-        path = stored_evidence_path(row.object_key)
-        raw = path.read_bytes()
+        raw = read_evidence_object(row.object_key)
         actual = hashlib.sha256(raw).hexdigest()
         valid = hmac.compare_digest(actual, row.source_sha256)
         try:
