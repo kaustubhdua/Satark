@@ -14,6 +14,7 @@ import json
 import os
 import re
 import time
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -26,19 +27,23 @@ from firstlight_wazuh import WazuhConfigurationError, WazuhConnectorError, fetch
 
 MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_EVIDENCE = 500
-app = FastAPI(title="FIRSTLIGHT Investigation API", version="1.0.0", docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Startup work formerly registered through the deprecated on_event hooks.
+    from satark_backend import initialize_self_hosted_backend
+    initialize_self_hosted_backend()
+    # An interrupted provider call is ambiguous. Mark it unknown and never retry it.
+    recover_interrupted_executions()
+    yield
+
+
+app = FastAPI(title="FIRSTLIGHT Investigation API", version="1.0.0", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 # SATARK application persistence and identity are provided by the self-hosted API.
 from satark_backend import router as satark_router
 from firstlight_response_api import router as response_router, recover_interrupted_executions
 app.include_router(satark_router)
 app.include_router(response_router)
-
-
-@app.on_event("startup")
-def recover_response_actions_after_restart() -> None:
-    # An interrupted provider call is ambiguous. Mark it unknown and never retry it.
-    recover_interrupted_executions()
 
 
 class EvidenceInput(BaseModel):

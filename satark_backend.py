@@ -761,7 +761,6 @@ def case_json(row: Case) -> dict:
             "updated_at": row.updated_at.isoformat(), "metadata": row.metadata_json}
 
 
-@router.on_event("startup")
 def initialize_self_hosted_backend():
     # create_all is a bootstrap for local mode only. Production schema changes
     # must be applied by reviewed Alembic migrations before deployment.
