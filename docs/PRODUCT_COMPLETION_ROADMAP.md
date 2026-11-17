@@ -49,7 +49,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 **Acceptance:** latest main commit has green Web CI, Python CI, and CodeQL; production SHA is verified; root, /firstlight, /investigate, /reports, /learn, /login, /api/version, and /api/health are smoke-tested. Unavailable integrations are visibly degraded.
 
 ### P0.2 Identity, authorization, and tenant isolation
-- [ ] Write a route-by-route authorization matrix for cases, evidence, findings, reports, audit verification, uploads, and integrations.
+- [x] Route-by-route authorization matrix: `docs/AUTHORIZATION_MATRIX.md`, enforced by `tests/test_authorization_matrix.py`.
 - [ ] Test that user A cannot read, mutate, export, or verify user B's tenant/case data by changing IDs.
 - [ ] Test self-hosted PostgreSQL row-level security and server-side authorization with distinct test identities; do not infer isolation solely from RLS being enabled.
 - [ ] Confirm service-role credentials are server-only and never bundled to clients.
@@ -142,10 +142,12 @@ P0 means SATARK must not be described as production-ready until applicable gates
 ### P1.6 Migrate the legacy Streamlit feature set to local-only operation
 - [x] Remove the Groq API-key field and SDK dependency from the legacy UI; default text/image analysis to an operator-controlled Ollama endpoint.
 - [x] Add optional local faster-whisper speech-to-text for video, with model-download and hardware requirements; no hosted transcription API.
-- [ ] Migrate image, QR, PDF, video, history, classroom, and report workflows into the primary Next.js product or formally retire each unsupported feature.
+- [x] Decide, per legacy page, whether it is ported, retired or still Streamlit-only. Image, QR, PDF, video, URL and text review are ported (`/image-review`, `/qr`, `/pdf-review`, `/media-review`, `/url`, `/investigate`); FIRSTLIGHT and session History are retired in favour of persistent cases/reports. The single source of truth is `ui/legacy_notice.py`, enforced by `tests/test_legacy_notice.py`.
+- [x] Port Scam Challenge, Academy and Classroom to the web app (`/challenge`, `/learn`, `/classroom`) from a single Python source of truth with drift tests.
+- [ ] File Guard (desktop file scanning) remains Streamlit-only by design; the Android app covers offline mobile scanning.
 - [x] Disable external reputation API lookups in the active Streamlit analysis path.
 - [ ] Build a local IOC cache and an explicit, auditable feed-update command that runs separately from analysis.
-- [ ] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete.
+- [x] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete (banner shown on every legacy page).
 
 **Acceptance:** the full declared product runs without third-party API keys, submitted evidence never leaves operator-controlled infrastructure during analysis, and every retained media feature passes fixture-based tests in an offline test environment.
 
@@ -235,7 +237,7 @@ SATARK can be called finished for its declared scope only when every advertised 
 
 ## Follow-up — local media review
 
-- The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. QR, PDF, and video analysis remain unported in the Next.js workspace.
+- The image-review follow-up adds browser-only image decoding, header dimension checks before decode, metadata-marker hints, and a SHA-256 fingerprint. It does not claim to detect deepfakes or prove authenticity. (Superseded: QR, PDF and video review have since been added to the Next.js workspace; see `ui/legacy_notice.py` for the current migration map.)
 
 
 ## Release status correction — 2026-10-14

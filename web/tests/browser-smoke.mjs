@@ -4,11 +4,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve('axe-core/axe.min.js');
 const baseURL = process.env.SATARK_WEB_URL || 'http://127.0.0.1:3000';
+const learningDataDir = process.env.SATARK_WEB_LEARNING_DATA || fileURLToPath(new URL('../src/data/learning/', import.meta.url));
 const artifactDir = process.env.SATARK_WEB_ARTIFACTS || 'artifacts/web';
 await fs.mkdir(artifactDir, { recursive: true });
 
@@ -53,6 +55,8 @@ const routes = [
   { path: '/media-review', heading: /inspect the frames|media review/i },
   { path: '/cases', heading: /manage saved cases|case management/i },
   { path: '/learn', heading: /learn|safety|social-engineering|pause\. verify\. then act/i },
+  { path: '/challenge', heading: /spot the scam|welcome back/i },
+  { path: '/classroom', heading: /teach from a live session/i },
   { path: '/login', heading: /investigations that|welcome back/i },
   { path: '/reset-password', heading: /secure access|restored/i },
   { path: '/accept-invitation', heading: /work together|workspace invitation/i },
@@ -343,15 +347,75 @@ async function inspectViewport(viewport, label) {
       await page.getByRole('button', { name: /reset quiz/i }).click();
       assert.equal(await page.locator('input[type="radio"]:checked').count(), 0);
       assert.equal(await page.getByRole('button', { name: /check answers/i }).isDisabled(), true);
-      const demoInput = page.getByRole('textbox', { name: /demo code entry/i });
-      await demoInput.fill('123456');
-      await page.getByText(/demo interaction complete/i).waitFor();
-      await page.getByRole('button', { name: /reset code demo/i }).click();
-      assert.equal(await demoInput.inputValue(), '', 'reset should clear the code demo input');
-      await demoInput.fill('654321');
-      await page.getByText(/demo interaction complete/i).waitFor();
+      const lessonCards = page.locator('.lesson-card');
+      assert.equal(await lessonCards.count(), 6, 'Academy should list the six lessons');
+      await lessonCards.first().locator('summary').click();
+      assert.equal(await lessonCards.first().evaluate(element => element.open), true, 'a lesson should expand on click');
+      assert.ok(await lessonCards.first().locator('.lesson-steps li').count() >= 3, 'an open lesson should show its guidance');
+      assert.equal(await page.getByText(/demo code entry|code demo/i).count(), 0, 'no simulated controls should remain on the Academy page');
+      await page.getByRole('link', { name: /play scam challenge/i }).waitFor();
     }
 
+    if (route.path === '/challenge') {
+      const bank = JSON.parse(await fs.readFile(path.join(learningDataDir, 'scam-challenge-tier-1.json'), 'utf8')).levels['1'];
+      await page.evaluate(() => window.localStorage.removeItem('satark:challenge:v1'));
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('heading', { name: /spot the scam/i }).waitFor();
+      await page.getByRole('button', { name: /start level 1/i }).click();
+      for (let index = 0; index < 10; index += 1) {
+        const heading = page.locator('#sc-q');
+        await heading.waitFor();
+        const headingText = ((await heading.textContent()) || '').trim();
+        const question = bank.find(item => item.question === headingText);
+        assert.ok(question, `${label}: displayed question must come from the exported bank`);
+        const options = page.locator('.sc-option');
+        assert.equal(await options.count(), 4);
+        if (index === 0) await page.keyboard.press(String(question.answer + 1));
+        else await options.nth(question.answer).click();
+        await page.getByRole('status').filter({ hasText: /^Correct!/ }).waitFor();
+        assert.equal(await page.locator('.sc-option.is-right').count(), 1, 'exactly one correct answer is marked');
+        assert.equal(await page.locator('.sc-option:not(:disabled)').count(), 0, 'options lock after answering');
+        await page.getByRole('button', { name: index < 9 ? /next question/i : /finish level/i }).click();
+      }
+      await page.getByRole('heading', { name: /level cleared/i }).waitFor();
+      assert.match((await page.locator('.sc-stats').textContent()) || '', /10 \/ 10/, 'perfect run should report 10 / 10');
+      await page.getByRole('button', { name: /next: level 2/i }).waitFor();
+      // Progress persists across a reload and the map locks what is not yet earned.
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('heading', { name: /welcome back/i }).waitFor();
+      assert.match((await page.locator('.sc-stats').textContent()) || '', /Frontier level\s*2/);
+      await page.getByRole('button', { name: /^level map$/i }).click();
+      assert.equal(await page.getByRole('button', { name: /^Level 3, locked/ }).isDisabled(), true, 'level 3 must stay locked');
+      assert.equal(await page.getByRole('button', { name: /^Level 2, next up/ }).isEnabled(), true, 'level 2 must be open');
+      // Tampered storage must never grant progress.
+      await page.evaluate(() => window.localStorage.setItem('satark:challenge:v1', JSON.stringify({ version: 1, highestUnlocked: 99, completed: [1], perfect: [1], scores: { 1: 1 }, bestCorrect: { 1: 3 } })));
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /^level map$/i }).click();
+      assert.equal(await page.getByRole('button', { name: /^Level 50, locked/ }).isDisabled(), true, 'a forged frontier must not unlock level 50');
+      await page.evaluate(() => window.localStorage.removeItem('satark:challenge:v1'));
+    }
+    if (route.path === '/classroom') {
+      await page.evaluate(() => window.sessionStorage.removeItem('satark:session-analyses:v1'));
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByText(/no analyses yet/i).waitFor();
+      assert.equal(await page.getByRole('button', { name: /export session summary/i }).isDisabled(), true, 'nothing to export yet');
+      const submitted = 'Synthetic training example: urgent password verification at example.invalid';
+      await page.goto(baseURL + '/investigate', { waitUntil: 'networkidle' });
+      await page.getByLabel('Suspicious URL or message').fill(submitted);
+      await page.getByRole('button', { name: /analyze content/i }).click();
+      await page.locator('#analysis-result-title').waitFor();
+      await page.goto(baseURL + '/classroom', { waitUntil: 'networkidle' });
+      assert.equal(((await page.locator('.sc-stats dd').first().textContent()) || '').trim(), '1', 'one real analysis should be counted');
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: /export session summary/i }).click(),
+      ]);
+      const exported = await fs.readFile(await download.path(), 'utf8');
+      assert.match(exported, /Analyses: 1/);
+      assert.ok(!exported.includes('example.invalid') && !exported.includes('password verification'), 'export must not contain analysed content');
+      await page.getByRole('button', { name: /clear session/i }).click();
+      await page.getByText(/no analyses yet/i).waitFor();
+    }
     if (route.path === '/pdf-review') {
       await page.locator('#document-file').setInputFiles({
         name: 'synthetic-training-document.pdf',

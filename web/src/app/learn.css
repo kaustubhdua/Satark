@@ -1,0 +1,46 @@
+/* Shared styles for the learning section: Academy, Scam Challenge and Classroom. */
+
+.learn-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 28px; }
+.learn-tab {
+  display: flex; flex-direction: column; gap: 2px; min-width: 150px; padding: 10px 16px;
+  border: 3px solid var(--border-strong, #3f3f46); background: var(--surface-inset, #0c0c0e);
+  color: var(--text-2, #d4d4d8); text-decoration: none; box-shadow: 4px 4px 0 0 #000;
+}
+.learn-tab-label { font-family: var(--pixel, inherit); font-size: 21px; line-height: 1.1; letter-spacing: .05em; text-transform: uppercase; }
+.learn-tab-hint { font-size: 13px; color: var(--text-3, #a1a1aa); }
+.learn-tab:hover { border-color: var(--neon-cyan, #67e8f9); color: var(--text, #fff); }
+.learn-tab.is-current { border-color: var(--neon-yellow, #fde047); background: var(--surface-2, #18181b); color: var(--neon-yellow, #fde047); }
+.learn-tab.is-current .learn-tab-label::before { content: "\25B6\00a0"; content: "\25B6\00a0" / ""; color: var(--neon-magenta, #f472b6); }
+
+.academy-lessons { margin: 28px 0 8px; }
+.academy-lessons > h2 { margin-bottom: 16px; }
+.lesson-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.lesson-card { border: 3px solid var(--border-strong, #3f3f46); background: var(--surface, #111113); box-shadow: 5px 5px 0 0 #000; }
+.lesson-card[open] { border-color: var(--neon-cyan, #67e8f9); }
+.lesson-card summary { display: flex; gap: 14px; padding: 16px; cursor: pointer; list-style: none; }
+.lesson-card summary::-webkit-details-marker { display: none; }
+.lesson-card summary::after { content: "+"; margin-left: auto; font-family: var(--display, inherit); color: var(--neon-cyan, #67e8f9); }
+.lesson-card[open] summary::after { content: "\2212"; }
+.lesson-index { font-family: var(--display, inherit); font-size: 12px; color: var(--neon-magenta, #f472b6); padding-top: 4px; }
+.lesson-head { display: flex; flex-direction: column; gap: 6px; }
+.lesson-head strong { font-family: var(--display, inherit); font-size: 12px; line-height: 1.5; font-weight: 400; }
+.lesson-head span { color: var(--text-2, #d4d4d8); font-size: 14.5px; line-height: 1.5; }
+.lesson-steps { margin: 0; padding: 0 18px 18px 52px; display: grid; gap: 8px; color: var(--text-2, #d4d4d8); }
+.satark-rule { margin-top: 16px; }
+.challenge-cta { margin-top: 28px; }
+.challenge-cta .btn { margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+.class-patterns { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+.class-patterns li { display: grid; grid-template-columns: minmax(120px, 220px) 1fr auto; gap: 12px; align-items: center; }
+.class-pattern-name { font-weight: 600; }
+.class-pattern-bar { height: 14px; border: 2px solid #000; background: var(--surface-inset, #0c0c0e); }
+.class-pattern-bar > span { display: block; height: 100%; background: var(--neon-cyan, #67e8f9); }
+.class-pattern-count { font-size: 14px; color: var(--text-2, #d4d4d8); white-space: nowrap; }
+.class-flow { margin: 10px 0; padding-left: 22px; display: grid; gap: 8px; color: var(--text-2, #d4d4d8); }
+
+@media (max-width: 720px) {
+  .lesson-grid { grid-template-columns: 1fr; }
+  .learn-tab { min-width: 0; flex: 1 1 130px; }
+  .class-patterns li { grid-template-columns: 1fr auto; }
+  .class-pattern-bar { grid-column: 1 / -1; order: 3; }
+}

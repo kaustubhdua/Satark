@@ -48,3 +48,6 @@ secrets/
 *.pem
 *.key
 .env.production
+
+# Runtime evidence objects (written by the app and by some tests); never commit
+data/evidence/

@@ -40,6 +40,8 @@ export default function SiteHeader() {
   }
   // Tool-detail routes belong to the Tools section even though each has its own URL.
   const toolDetailRoutes = new Set(['/url', '/image-review', '/qr', '/pdf-review', '/media-review']);
+  // The Scam Challenge and Classroom pages belong to the Academy section.
+  const learningRoutes = new Set(['/challenge', '/classroom']);
 
   return (
     <>
@@ -60,7 +62,8 @@ export default function SiteHeader() {
           {links.map(link => {
             const active = pathname === link.href
               || (link.href === '/firstlight' && pathname.startsWith('/firstlight/'))
-              || (link.href === '/tools' && toolDetailRoutes.has(pathname));
+              || (link.href === '/tools' && toolDetailRoutes.has(pathname))
+              || (link.href === '/learn' && learningRoutes.has(pathname));
             return (
               <Link key={link.href} href={link.href} className={active ? 'active' : undefined}
                 aria-current={active ? 'page' : undefined} onClick={() => setMobileOpen(false)}>
