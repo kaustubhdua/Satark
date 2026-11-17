@@ -17,6 +17,8 @@
     "prestart": "node scripts/prepare-standalone.mjs"
   },
   "dependencies": {
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
     "@tailwindcss/postcss": "^4.1.14",
     "geist": "^1.4.2",
     "jsqr": "^1.4.0",

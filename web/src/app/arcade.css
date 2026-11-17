@@ -1,0 +1,323 @@
+/* ==========================================================================
+   SATARK arcade cabinet theme
+   Layered over design-system.css. Everything is scoped under `.arcade` (set on
+   <html> in layout.tsx), so removing that class restores the previous skin.
+
+   Open-source ingredients (all self-hosted, no runtime CDN):
+   · Press Start 2P (SIL OFL 1.1, CodeMan38) via @fontsource/press-start-2p
+   · VT323 (SIL OFL 1.1, Peter Hull) via @fontsource/vt323
+   · Hard-offset "pixel" borders and press-down buttons in the spirit of
+     NES.css (MIT) and 8bitcn, written from scratch here.
+
+   Guard rails: body copy stays in Geist for legibility; text/background pairs
+   keep WCAG AA contrast; no clip-path on interactive elements; all motion lives
+   inside prefers-reduced-motion: no-preference; scanlines never intercept input;
+   no fake scores, credits or progress anywhere.
+   ========================================================================== */
+
+.arcade {
+  color-scheme: dark;
+
+  /* cabinet palette */
+  --bg: #0a0420;
+  --surface: #140a33;
+  --surface-2: #1e1150;
+  --surface-inset: #070215;
+  --border: #3a2a86;
+  --border-strong: #6a4dff;
+
+  --text: #fff8ff;
+  --text-2: #d3c8ff;
+  --text-3: #aa9ee0;
+
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff2bd6;
+  --neon-yellow: #ffe600;
+  --neon-lime: #39ff14;
+  --neon-orange: #ff9d00;
+  --ink: #12062f;
+
+  --dawn-1: var(--neon-cyan);
+  --dawn-2: var(--neon-magenta);
+  --dawn-3: var(--neon-yellow);
+  --dawn: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta) 55%, var(--neon-yellow));
+
+  --accent: var(--neon-cyan);
+  --accent-strong: #8ffaff;
+  --accent-soft: rgba(0, 240, 255, .10);
+  --accent-line: rgba(0, 240, 255, .5);
+
+  --primary: var(--neon-yellow);
+  --primary-hover: #fff35c;
+  --primary-ink: var(--ink);
+
+  --ok: var(--neon-lime);
+  --ok-soft: rgba(57, 255, 20, .10);
+  --ok-line: rgba(57, 255, 20, .55);
+  --warn: var(--neon-orange);
+  --warn-soft: rgba(255, 157, 0, .10);
+  --warn-line: rgba(255, 157, 0, .6);
+  --danger: #ff5c7a;
+  --danger-soft: rgba(255, 92, 122, .12);
+  --danger-line: rgba(255, 92, 122, .65);
+  --info: var(--neon-cyan);
+  --violet: #b49cff;
+
+  --radius-sm: 0;
+  --radius: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+
+  --display: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+  --pixel: 'VT323', ui-monospace, 'Courier New', monospace;
+  --pixel-shadow: 5px 5px 0 0 #000;
+  --shadow: 0 0 0 2px #000, 6px 6px 0 0 #000;
+}
+
+/* Base ------------------------------------------------------------------- */
+.arcade body {
+  background-color: var(--bg);
+  /* tiny static starfield: deterministic, no images */
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 52%),
+    radial-gradient(1px 1px at 78% 8%, #fff 50%, transparent 52%),
+    radial-gradient(1.5px 1.5px at 44% 62%, var(--neon-cyan) 50%, transparent 52%),
+    radial-gradient(1px 1px at 91% 47%, #fff 50%, transparent 52%),
+    radial-gradient(1.5px 1.5px at 27% 85%, var(--neon-magenta) 50%, transparent 52%),
+    radial-gradient(1px 1px at 63% 31%, #fff 50%, transparent 52%),
+    radial-gradient(ellipse at 50% -10%, rgba(106, 77, 255, .35), transparent 60%);
+  background-size: 340px 340px, 270px 270px, 410px 410px, 310px 310px, 380px 380px, 230px 230px, auto;
+  background-attachment: scroll, scroll, scroll, scroll, scroll, scroll, scroll;
+}
+
+/* synthwave floor: a perspective grid fixed to the bottom of the viewport */
+.arcade body::before {
+  content: ""; position: fixed; z-index: -1; left: -50%; right: -50%; bottom: 0; height: 42vh;
+  pointer-events: none; opacity: .5;
+  background-image:
+    linear-gradient(var(--neon-magenta) 1px, transparent 1px),
+    linear-gradient(90deg, var(--neon-magenta) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(380px) rotateX(62deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 85%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 85%);
+}
+
+/* CRT scanlines + vignette. Purely decorative, never intercepts input. */
+.arcade body::after {
+  content: ""; position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, .38) 100%);
+  mix-blend-mode: multiply;
+}
+
+.arcade ::selection { background: var(--neon-magenta); color: #fff; }
+.arcade :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--neon-yellow); outline-offset: 3px; border-radius: 0;
+  box-shadow: 0 0 0 6px #000;
+}
+
+/* Type -------------------------------------------------------------------- */
+.arcade h1, .arcade h2, .arcade h3, .arcade h4 {
+  font-family: var(--display); font-weight: 400; letter-spacing: 0; line-height: 1.45;
+  text-wrap: balance; overflow-wrap: anywhere; hyphens: manual; text-transform: none;
+}
+.arcade h1 { text-shadow: 3px 3px 0 var(--neon-magenta), 6px 6px 0 #000; }
+.arcade h2 { text-shadow: 2px 2px 0 #000; }
+.arcade h3, .arcade h4 { text-shadow: 2px 2px 0 #000; }
+
+.arcade .subpage > h1,
+.arcade .firstlight-hero h1,
+.arcade .auth-layout h1 { max-width: 20ch; font-size: clamp(20px, 3.1vw, 34px); line-height: 1.4; letter-spacing: 0; }
+.arcade .sentinel-hero h1 { max-width: 17ch; font-size: clamp(20px, 2.9vw, 36px); line-height: 1.42; letter-spacing: 0; font-weight: 400; }
+.arcade .sentinel-hero h1 .dawn-text { text-shadow: none; filter: drop-shadow(3px 3px 0 #000); }
+.arcade .sentinel-section-heading h2,
+.arcade .method-intro h2,
+.arcade .fl-readiness-heading h2 { font-size: clamp(16px, 2.2vw, 24px); line-height: 1.5; letter-spacing: 0; }
+.arcade .panel h2, .arcade .form-panel h2, .arcade .info-panel h2, .arcade .workspace-card h2,
+.arcade .more-tools h2, .arcade .sentinel-learning-strip h2 { font-size: clamp(13px, 1.5vw, 16px); line-height: 1.55; letter-spacing: 0; }
+.arcade .quiz-card h2 { font-size: 13px; line-height: 1.7; }
+.arcade .quiz-score h2 { font-size: 20px; }
+.arcade .system-screen h1, .arcade .loading-screen h1 { font-size: clamp(18px, 3vw, 26px); letter-spacing: 0; }
+.arcade .bento-card h3 { font-size: 12px; line-height: 1.6; }
+.arcade .analysis-result .info-panel h2, .arcade .analysis-result .info-panel h3, .arcade .analysis-result .info-panel h4,
+.arcade .analysis-result .panel h3, .arcade .analysis-result .panel h4 { font-size: 11px; line-height: 1.6; letter-spacing: 0; }
+.arcade .footer-col h2 { font-size: 10px; letter-spacing: 0; color: var(--neon-cyan); }
+
+.arcade .eyebrow, .arcade .panel-kicker, .arcade .sentinel-overline, .arcade .quiz-question-label,
+.arcade .loader-eyebrow, .arcade .section-kicker, .arcade .sentinel-kicker {
+  font-family: var(--pixel); font-size: 20px; font-weight: 400; line-height: 1.1;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--neon-cyan);
+}
+.arcade .section-kicker::before, .arcade .sentinel-kicker::before {
+  content: "\25B6\00a0"; content: "\25B6\00a0" / ""; color: var(--neon-magenta);
+}
+.arcade .lead, .arcade .sentinel-lede { color: var(--text-2); }
+.arcade .muted, .arcade .hint, .arcade .field-note { color: var(--text-3); }
+.arcade .mono, .arcade code, .arcade pre, .arcade kbd { color: #c9fbff; }
+.arcade a:where(.text-link, .method-link) { color: var(--neon-cyan); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+
+/* Header: the cabinet marquee ---------------------------------------------- */
+.arcade .topbar {
+  background: rgba(10, 4, 32, .94); border-bottom: 4px solid var(--neon-magenta);
+  box-shadow: 0 4px 0 0 #000, 0 12px 28px -12px rgba(255, 43, 214, .55);
+}
+.arcade .topbar::after { display: none; }
+.arcade .brand { font-family: var(--display); font-size: 14px; font-weight: 400; letter-spacing: 0; }
+.arcade .brand-mark {
+  border-radius: 0; background: var(--neon-yellow); color: var(--ink); border: 3px solid #000;
+  font-family: var(--display); font-size: 14px; box-shadow: 3px 3px 0 var(--neon-magenta);
+}
+.arcade .brand:hover .brand-mark { transform: none; box-shadow: 3px 3px 0 var(--neon-cyan); }
+.arcade .brand-period { color: var(--neon-magenta); }
+.arcade .nav-links a {
+  border-radius: 0; font-family: var(--pixel); font-size: 21px; font-weight: 400; line-height: 1;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text-2); padding: 7px 11px;
+}
+.arcade .nav-links a:hover { color: #000; background: var(--neon-cyan); }
+.arcade .nav-links a.active { color: var(--neon-yellow); background: transparent; box-shadow: none; }
+.arcade .nav-links a.active::before { content: "\25B6\00a0"; content: "\25B6\00a0" / ""; color: var(--neon-magenta); }
+.arcade .nav-links a.nav-cta {
+  margin-left: 10px; background: var(--neon-yellow); color: var(--ink); border: 3px solid #000;
+  box-shadow: 0 4px 0 0 #a08f00; font-size: 20px; padding: 6px 12px;
+}
+.arcade .nav-links a.nav-cta:hover { background: var(--primary-hover); color: var(--ink); }
+.arcade .nav-links a.nav-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 0 #a08f00; }
+.arcade .nav-links a.nav-cta.active { box-shadow: 0 4px 0 0 #a08f00, 0 0 0 3px var(--neon-cyan); color: var(--ink); }
+.arcade .nav-links a.nav-cta.active::before { content: none; }
+.arcade .mobile-nav-toggle {
+  border: 3px solid var(--neon-cyan); border-radius: 0; background: var(--surface-inset); color: var(--neon-cyan);
+  font-family: var(--pixel); font-size: 20px; text-transform: uppercase;
+}
+
+/* Buttons: chunky coin-op keys ---------------------------------------------- */
+.arcade .btn, .arcade .sentinel-primary, .arcade .sentinel-secondary, .arcade .mini-btn {
+  min-height: 44px; border-radius: 0; border: 3px solid #000;
+  font-family: var(--display); font-size: 11px; font-weight: 400; line-height: 1.5; letter-spacing: 0;
+  text-transform: uppercase; text-decoration: none;
+  transition: background .1s, color .1s;
+}
+.arcade .btn-primary, .arcade .sentinel-primary {
+  background: var(--neon-yellow); color: var(--ink); border-color: #000; box-shadow: 0 5px 0 0 #a08f00;
+}
+.arcade .btn-primary:hover, .arcade .sentinel-primary:hover { background: var(--primary-hover); border-color: #000; }
+.arcade .btn-secondary, .arcade .sentinel-secondary, .arcade .mini-btn {
+  background: var(--surface-inset); color: var(--neon-cyan); border-color: var(--neon-cyan);
+  box-shadow: 0 5px 0 0 #00707a;
+}
+.arcade .btn-secondary:hover, .arcade .sentinel-secondary:hover, .arcade .mini-btn:hover { background: var(--neon-cyan); color: #000; }
+.arcade .btn-ghost { background: transparent; color: var(--text-2); border-color: transparent; box-shadow: none; }
+.arcade .btn-ghost:hover { color: #000; background: var(--neon-cyan); }
+.arcade .btn:active, .arcade .sentinel-primary:active, .arcade .sentinel-secondary:active, .arcade .mini-btn:active {
+  transform: translateY(4px); box-shadow: 0 1px 0 0 #000;
+}
+.arcade .btn:disabled, .arcade .mini-btn:disabled {
+  opacity: 1; background: #2a2150; color: #9a8fd0; border: 3px dashed #5b4fa0; box-shadow: none; transform: none;
+}
+.arcade .mini-btn { min-height: 36px; font-size: 9px; padding: 6px 10px; }
+
+/* Chips / badges: arcade tags ---------------------------------------------- */
+.arcade .pill, .arcade .safe-chip, .arcade .risk-chip, .arcade .review-chip, .arcade .live-chip,
+.arcade .illustrative-chip, .arcade .shiny-pill {
+  border-radius: 0; border-width: 2px; font-family: var(--pixel); font-size: 18px; font-weight: 400;
+  line-height: 1; letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* Surfaces: framed screens ---------------------------------------------------- */
+.arcade :is(.card, .panel, .form-panel, .info-panel, .workspace-card, .bento-card, .result-card, .finding-card,
+  .case-register-card, .incident-brief, .pipeline-card, .quiz-card, .readiness-banner, .metric-card, .kpi,
+  .notice-panel, .gap-card, .boundary-banner, .sentinel-boundary, .sentinel-learning-strip, .auth-card,
+  .route-veil-card, .more-tools, .fl-capability, .local-review-stat, .saved-case-row, .report-history-row) {
+  border: 3px solid var(--border-strong); border-radius: 0; background: var(--surface);
+  box-shadow: 5px 5px 0 0 #000;
+}
+.arcade .bento-card { transition: transform .1s, box-shadow .1s, border-color .1s; }
+.arcade .bento-card:hover { border-color: var(--neon-cyan); background: var(--surface-2); }
+.arcade .bento-card:hover h3 { color: var(--neon-yellow); }
+.arcade .card-head, .arcade .ledger-head { border-bottom: 3px dashed var(--border); font-family: var(--pixel); font-size: 19px; letter-spacing: .06em; text-transform: uppercase; color: var(--neon-cyan); }
+.arcade .dot-pattern { opacity: .35; }
+.arcade .border-beam::before { display: none; }
+.arcade .sentinel-hero { border-radius: 0; border: 4px solid var(--neon-magenta); box-shadow: 8px 8px 0 0 #000, 0 0 40px -8px rgba(255, 43, 214, .45); }
+
+/* Forms ---------------------------------------------------------------------- */
+.arcade input:not([type="checkbox"], [type="radio"], [type="file"]), .arcade select, .arcade textarea {
+  border: 3px solid #5a45c4; border-radius: 0; background: var(--surface-inset); color: var(--text);
+  box-shadow: inset 3px 3px 0 0 rgba(0, 0, 0, .55);
+}
+.arcade input::placeholder, .arcade textarea::placeholder { color: #9a8fd0; opacity: 1; }
+.arcade input:not([type="checkbox"], [type="radio"], [type="file"]):focus, .arcade select:focus, .arcade textarea:focus { border-color: var(--neon-yellow); }
+.arcade label, .arcade .field-label { font-family: var(--pixel); font-size: 19px; letter-spacing: .04em; color: var(--text-2); }
+.arcade input[type="checkbox"], .arcade input[type="radio"] { accent-color: var(--neon-magenta); }
+
+/* Status banners / messages ------------------------------------------------------ */
+.arcade :is(.error-message, .success-message) { border-radius: 0; border-width: 3px; font-family: var(--pixel); font-size: 20px; }
+.arcade .readiness-dot { border-radius: 0; }
+
+/* Meters: segmented HP bars --------------------------------------------------------- */
+.arcade .risk-meter-track { position: relative; border-radius: 0; border: 3px solid #000; background: var(--surface-inset); }
+.arcade .risk-meter-fill { border-radius: 0; }
+.arcade .risk-meter-track::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 10px, var(--surface-inset) 10px 13px);
+}
+.arcade .category-bar, .arcade .quiz-progress-track, .arcade .loader-track, .arcade .route-veil-track { border-radius: 0; }
+
+.arcade .readiness-chips span { border: 2px solid var(--border-strong); border-radius: 0; background: var(--surface-inset); }
+
+/* Quiz: arcade menu ------------------------------------------------------------------- */
+.arcade .quiz-option { line-height: 1.25; }
+.arcade .quiz-option { position: relative; border: 3px solid var(--border-strong); border-radius: 0; background: var(--surface-inset); box-shadow: 4px 4px 0 0 #000; }
+.arcade .quiz-option:hover:not(:disabled) { border-color: var(--neon-yellow); background: var(--surface-2); }
+.arcade .quiz-option:hover:not(:disabled)::before {
+  content: "\25B6"; content: "\25B6" / ""; position: absolute; left: -22px; top: 50%; transform: translateY(-50%); color: var(--neon-yellow); font-size: 14px;
+}
+.arcade .brief-id, .arcade .case-id, .arcade .ledger-id, .arcade .ledger-hash, .arcade .hash-value { font-family: var(--mono); }
+
+/* Tables & lists keep body legibility; just reframe the borders ----------------------- */
+.arcade .table-wrap { border: 3px solid var(--border-strong); border-radius: 0; }
+.arcade th { font-family: var(--pixel); font-size: 19px; letter-spacing: .06em; text-transform: uppercase; color: var(--neon-cyan); }
+
+/* Footer ------------------------------------------------------------------------------ */
+.arcade .site-footer { border-top: 4px solid var(--neon-cyan); background: rgba(7, 2, 21, .92); }
+.arcade .footer-brand-mark { border-radius: 0; background: var(--neon-yellow); color: var(--ink); border: 3px solid #000; font-family: var(--display); }
+
+/* Small screens: smaller pixel type so nothing overflows ---------------------------- */
+@media (max-width: 640px) {
+  .arcade .sentinel-hero h1, .arcade .subpage > h1, .arcade .firstlight-hero h1, .arcade .auth-layout h1 { font-size: clamp(15px, 5.2vw, 22px); max-width: none; }
+  .arcade .sentinel-section-heading h2, .arcade .method-intro h2 { font-size: 14px; }
+  .arcade .btn, .arcade .sentinel-primary, .arcade .sentinel-secondary { font-size: 10px; }
+  .arcade body::before { height: 30vh; }
+  .arcade .sentinel-hero { box-shadow: 5px 5px 0 0 #000; }
+}
+
+/* Motion: only for people who have not asked for less ------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .arcade body::before { animation: arcade-floor 2.4s linear infinite; }
+  @keyframes arcade-floor { from { background-position: 0 0; } to { background-position: 0 64px; } }
+  .arcade .eyebrow::after, .arcade .sentinel-kicker::after {
+    content: ""; display: inline-block; width: .55em; height: 1em; margin-left: .3em; background: var(--neon-magenta);
+    animation: arcade-blink 1s steps(2, jump-none) infinite;
+  }
+  @keyframes arcade-blink { 50% { opacity: 0; } }
+  .arcade .bento-card:hover { transform: translate(-3px, -3px); box-shadow: 8px 8px 0 0 var(--neon-magenta); }
+  .arcade .nav-links a.nav-cta { animation: arcade-pulse 2.2s steps(2, jump-none) infinite; }
+  @keyframes arcade-pulse { 50% { box-shadow: 0 4px 0 0 #a08f00, 0 0 0 3px var(--neon-magenta); } }
+}
+
+/* Users who asked for stronger contrast get a quieter screen. */
+@media (prefers-contrast: more) {
+  .arcade body::after { display: none; }
+  .arcade body::before { display: none; }
+}
+
+/* Reduced motion: nothing moves, and hover does not shift layout. */
+@media (prefers-reduced-motion: reduce) {
+  .arcade *, .arcade *::before, .arcade *::after { animation: none !important; transition: none !important; }
+  html.arcade { scroll-behavior: auto; }
+}
+
+@media print {
+  .arcade body::before, .arcade body::after { display: none; }
+}
