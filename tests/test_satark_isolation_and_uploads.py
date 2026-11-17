@@ -5,6 +5,8 @@ a request was rejected.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -23,7 +25,12 @@ def origin():
 @pytest.fixture()
 def make_client(monkeypatch, tmp_path):
     monkeypatch.setenv("SATARK_EVIDENCE_DIR", str(tmp_path / "evidence"))
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    # Runs on SQLite by default; set SATARK_TEST_POSTGRES_URL to run the same assertions on PostgreSQL.
+    pg_url = os.getenv("SATARK_TEST_POSTGRES_URL")
+    if pg_url:
+        engine = create_engine(pg_url, pool_pre_ping=True)
+    else:
+        engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     backend.SessionLocal.configure(bind=engine)
     backend.Base.metadata.drop_all(engine)
     backend.Base.metadata.create_all(engine)
