@@ -16,6 +16,7 @@ COPY integrations ./integrations
 COPY ai_provider.py ./ai_provider.py
 COPY firstlight_api.py ./firstlight_api.py
 COPY satark_backend.py ./satark_backend.py
+COPY evidence_store.py ./evidence_store.py
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
 COPY scripts/satark_backup.py ./scripts/satark_backup.py

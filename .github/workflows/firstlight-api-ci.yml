@@ -22,6 +22,7 @@ on:
       - "firstlight_response_executor.py"
       - "integrations/**"
       - "satark_backend.py"
+      - "evidence_store.py"
       - "migrations/**"
       - "tests/test_firstlight*.py"
       - "tests/test_wazuh_agent_response.py"
@@ -70,6 +71,7 @@ on:
       - "firstlight_wazuh_worker.py"
       - "firstlight_investigation_worker.py"
       - "integrations/**"
+      - "evidence_store.py"
       - "satark_backend.py"
       - "migrations/**"
       - "tests/test_firstlight*.py"
@@ -142,7 +144,7 @@ jobs:
 
       - name: Compile FIRSTLIGHT and SATARK backend modules
         run: |
-          python -m compileall -q firstlight_api.py firstlight_response_api.py firstlight_response_executor.py firstlight_engine.py firstlight_rules.py firstlight_agents.py firstlight_ingest.py firstlight_wazuh.py firstlight_wazuh_worker.py firstlight_investigation_worker.py satark_backend.py integrations scripts
+          python -m compileall -q firstlight_api.py firstlight_response_api.py firstlight_response_executor.py firstlight_engine.py firstlight_rules.py firstlight_agents.py firstlight_ingest.py firstlight_wazuh.py firstlight_wazuh_worker.py firstlight_investigation_worker.py satark_backend.py evidence_store.py integrations scripts
 
       - name: Run FIRSTLIGHT engine, API, response and worker tests
         env:
