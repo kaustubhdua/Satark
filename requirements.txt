@@ -1,5 +1,5 @@
-streamlit==1.65.0
-pypdf==6.19.0
-Pillow==12.3.0
+streamlit==1.67.0
+pypdf==6.21.4
+Pillow==13.0.0
 reportlab==5.0.1
 opencv-python-headless==5.0.0.93
