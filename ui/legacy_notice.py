@@ -36,12 +36,12 @@ LEGACY_PAGES: tuple[LegacyPage, ...] = (
                "Desktop file scanning stays here; the Android app provides the offline mobile scanner."),
     LegacyPage("History", "Session history", RETIRED, ("/cases", "/reports"),
                "Session-only history is replaced by persistent, audited cases and reports."),
-    LegacyPage("Challenge", "Scam Challenge", STREAMLIT_ONLY, ("/learn",),
-               "The interactive challenge has not been ported; /learn has a short quiz."),
-    LegacyPage("Academy", "SATARK Academy", STREAMLIT_ONLY, ("/learn",),
-               "Only the Streamlit Academy has the full lesson set today."),
-    LegacyPage("Classroom", "Classroom Mode", STREAMLIT_ONLY, (),
-               "No web equivalent yet."),
+    LegacyPage("Challenge", "Scam Challenge", PORTED, ("/challenge",),
+               "The full 100-level challenge, ranks and progress run in the web app."),
+    LegacyPage("Academy", "SATARK Academy", PORTED, ("/learn",),
+               "The complete lesson set and quiz are in the web Academy."),
+    LegacyPage("Classroom", "Classroom Mode", PORTED, ("/classroom",),
+               "The session summary lives in the web Classroom; it stores counts only."),
 )
 
 _BY_PAGE = {entry.page: entry for entry in LEGACY_PAGES}

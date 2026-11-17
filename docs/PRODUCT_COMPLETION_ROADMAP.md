@@ -143,7 +143,8 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - [x] Remove the Groq API-key field and SDK dependency from the legacy UI; default text/image analysis to an operator-controlled Ollama endpoint.
 - [x] Add optional local faster-whisper speech-to-text for video, with model-download and hardware requirements; no hosted transcription API.
 - [x] Decide, per legacy page, whether it is ported, retired or still Streamlit-only. Image, QR, PDF, video, URL and text review are ported (`/image-review`, `/qr`, `/pdf-review`, `/media-review`, `/url`, `/investigate`); FIRSTLIGHT and session History are retired in favour of persistent cases/reports. The single source of truth is `ui/legacy_notice.py`, enforced by `tests/test_legacy_notice.py`.
-- [ ] Port or retire the remaining Streamlit-only pages: File Guard (desktop), Scam Challenge, Academy and Classroom.
+- [x] Port Scam Challenge, Academy and Classroom to the web app (`/challenge`, `/learn`, `/classroom`) from a single Python source of truth with drift tests.
+- [ ] File Guard (desktop file scanning) remains Streamlit-only by design; the Android app covers offline mobile scanning.
 - [x] Disable external reputation API lookups in the active Streamlit analysis path.
 - [ ] Build a local IOC cache and an explicit, auditable feed-update command that runs separately from analysis.
 - [x] Keep the legacy UI behind a clear migration/retirement notice until feature parity and tests are complete (banner shown on every legacy page).

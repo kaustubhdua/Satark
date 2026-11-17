@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import SiteHeader from '../site-header';
-import { CodeSlots } from '../../components/react-bits';
+import LearnTabs from '../learn-tabs';
 import { useState } from 'react';
+import lessons from '../../data/learning/lessons.json';
 
 const questions = [
   { q: 'A message says your account will be blocked in 10 minutes unless you log in through its link. What is the safest next step?', options: ['Click quickly before it expires', 'Open the official app/site independently and check for alerts', 'Reply with your OTP to verify identity'], correct: 1, why: 'Urgency and an unsolicited link are warning signs. Verify through a trusted channel you open independently.' },
@@ -13,8 +15,6 @@ const questions = [
 export default function LearnPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
-  const [demoCodeStatus, setDemoCodeStatus] = useState<'idle' | 'success'>('idle');
-  const [demoCode, setDemoCode] = useState('');
   const answeredCount = Object.keys(answers).length;
   const correctCount = questions.filter((question, index) => answers[index] === question.correct).length;
 
@@ -22,9 +22,28 @@ export default function LearnPage() {
     <main className="shell">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
+        <LearnTabs current="/learn" />
         <div className="eyebrow">Practice</div>
         <h1>Pause. Verify. Then act.</h1>
         <p className="lead">Practice spotting common social-engineering patterns. This short quiz is educational and does not certify a message as safe or malicious.</p>
+        <section className="academy-lessons" aria-labelledby="lessons-title">
+          <h2 id="lessons-title">Six patterns worth recognising</h2>
+          <div className="lesson-grid">
+            {lessons.map((lesson, index) => (
+              <details className="lesson-card" key={lesson.title}>
+                <summary>
+                  <span className="lesson-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="lesson-head"><strong>{lesson.title}</strong><span>{lesson.copy}</span></span>
+                </summary>
+                <ul className="lesson-steps">{lesson.steps.map((step) => <li key={step}>{step}</li>)}</ul>
+              </details>
+            ))}
+          </div>
+          <div className="notice-panel satark-rule">
+            <strong>The SATARK rule: stop, verify, act.</strong>
+            <p>Pressure, secrecy, urgency, money requests, credential requests and unexpected links are reasons to pause and verify through a channel you open yourself.</p>
+          </div>
+        </section>
         <div className="quiz-progress" aria-live="polite">
           <span><strong>{answeredCount} of {questions.length}</strong> answered</span>
           <span className="quiz-progress-track" aria-hidden="true"><span style={{ width: `${(answeredCount / questions.length) * 100}%` }} /></span>
@@ -59,13 +78,11 @@ export default function LearnPage() {
           <button className="btn btn-primary" type="button" onClick={() => setChecked(true)} disabled={answeredCount === 0}>Check answers</button>
           <button className="btn btn-secondary" type="button" onClick={() => { setAnswers({}); setChecked(false); }}>Reset quiz</button>
         </div>
-        <section className="form-panel code-demo" aria-labelledby="code-demo-title">
-          <div className="eyebrow">Interaction sandbox</div>
-          <h2 id="code-demo-title">Try the animated code entry.</h2>
-          <p>This is a visual component demo only. It does not verify identity, send a code, or protect an account.</p>
-          <CodeSlots length={6} value={demoCode} status={demoCodeStatus} onChange={(code) => { setDemoCode(code); setDemoCodeStatus('idle'); }} onComplete={() => setDemoCodeStatus('success')} accentColor="#c4b5fd" inkColor="#c4b5fd" slotColor="#18181b" digitColor="#1c1325" dangerColor="#fb7185" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
-          <div className="hint" aria-live="polite">{demoCodeStatus === 'success' ? 'Demo interaction complete — reset to try it again.' : 'Enter any six digits to preview the success state.'}</div>
-          {demoCodeStatus === 'success' && <button className="btn btn-secondary" type="button" onClick={() => { setDemoCode(''); setDemoCodeStatus('idle'); }}>Reset code demo</button>}
+        <section className="form-panel challenge-cta" aria-labelledby="challenge-cta-title">
+          <div className="eyebrow">Next level</div>
+          <h2 id="challenge-cta-title">Put the patterns under pressure.</h2>
+          <p>Scam Challenge turns these signals into 100 timed levels of practice scenarios. They are written for training and are not real messages or incidents.</p>
+          <Link className="btn btn-primary" href="/challenge">Play Scam Challenge</Link>
         </section>
       </div>
     </main>

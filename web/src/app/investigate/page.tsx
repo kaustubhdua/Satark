@@ -4,6 +4,7 @@ import SiteHeader from '../site-header';
 import { LatticeLoader, ThoughtLine } from '../../components/react-bits';
 import ServiceReadiness from '../../components/service-readiness';
 import { useState } from 'react';
+import { SESSION_LOG_KEY, appendEntry, parseLog } from '../../lib/session-log.mjs';
 
 const LAST_ANALYSIS_KEY = 'satark:last-analysis:v1';
 
@@ -113,6 +114,14 @@ export default function InvestigatePage() {
         }));
       } catch {
         // Keep the analysis usable if browser storage is blocked or full.
+      }
+      // Classroom summary input: category, score and time only, never the content.
+      try {
+        const log = parseLog(window.sessionStorage.getItem(SESSION_LOG_KEY));
+        window.sessionStorage.setItem(SESSION_LOG_KEY, JSON.stringify(
+          appendEntry(log, { category: verifiedResult.threat_category, score: verifiedResult.risk_score })));
+      } catch {
+        // The session log is optional; analysis must never depend on it.
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not complete analysis.');
