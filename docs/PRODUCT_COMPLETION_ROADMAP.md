@@ -49,7 +49,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 **Acceptance:** latest main commit has green Web CI, Python CI, and CodeQL; production SHA is verified; root, /firstlight, /investigate, /reports, /learn, /login, /api/version, and /api/health are smoke-tested. Unavailable integrations are visibly degraded.
 
 ### P0.2 Identity, authorization, and tenant isolation
-- [ ] Write a route-by-route authorization matrix for cases, evidence, findings, reports, audit verification, uploads, and integrations.
+- [x] Route-by-route authorization matrix: `docs/AUTHORIZATION_MATRIX.md`, enforced by `tests/test_authorization_matrix.py`.
 - [ ] Test that user A cannot read, mutate, export, or verify user B's tenant/case data by changing IDs.
 - [ ] Test self-hosted PostgreSQL row-level security and server-side authorization with distinct test identities; do not infer isolation solely from RLS being enabled.
 - [ ] Confirm service-role credentials are server-only and never bundled to clients.
