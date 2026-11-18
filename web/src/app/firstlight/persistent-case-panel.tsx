@@ -431,7 +431,7 @@ export default function PersistentCasePanel({
       const response = await fetch('/api/evidence', { method:'POST', body:form, cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Private evidence upload failed.');
-      setUploadedId(result.evidence.id); setMessage('Private file uploaded. Server SHA-256: ' + result.integrity.source_sha256);
+      setUploadedId(result.evidence.id); setMessage('Private file uploaded. Server SHA-256: ' + result.evidence.source_sha256);
       setFile(null);
     } catch (e) { setError(e instanceof Error ? e.message : 'Private evidence upload failed.'); }
     finally { setBusy(false); }
@@ -444,18 +444,18 @@ export default function PersistentCasePanel({
       const response = await fetch('/api/audit/verify?tenant_id=' + encodeURIComponent(tenant.id), { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Audit verification failed.');
-      setAuditVerification((result.chain_valid ? 'Audit chain valid' : 'Audit chain invalid') + ' · ' + result.event_count + ' events · verified ' + result.verified_at + (result.first_invalid_event_id ? ' · first invalid event ' + result.first_invalid_event_id : ''));
+      setAuditVerification((result.chain_valid ? 'Audit chain valid' : 'Audit chain invalid') + ' · ' + result.events_checked + ' events checked' + (result.verified_at ? ' · verified ' + result.verified_at : '') + (result.failed_event_id ? ' · first failing event ' + result.failed_event_id : ''));
     } catch (e) { setError(e instanceof Error ? e.message : 'Audit verification failed.'); }
     finally { setBusy(false); }
   }
 
   async function verifyOriginal() {
-    if (!uploadedId || !session) return;
+    if (!uploadedId || !session || !tenant) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify', { cache:'no-store' });
+      const response = await fetch('/api/evidence/' + encodeURIComponent(uploadedId) + '/verify?' + new URLSearchParams({ tenant_id: tenant.id }), { cache:'no-store' });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : 'Integrity verification failed.');
+      if (!response.ok && response.status !== 409) throw new Error(typeof result.error === 'string' ? result.error : typeof result.detail === 'string' ? result.detail : 'Integrity verification failed.');
       setMessage((result.matched ? 'Integrity match' : 'INTEGRITY MISMATCH') + ' · ' + result.actual_sha256 + ' · ' + result.note);
     } catch (e) { setError(e instanceof Error ? e.message : 'Integrity verification failed.'); }
     finally { setBusy(false); }
