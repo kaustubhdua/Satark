@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Menu, X } from 'lucide-react';
+import { getActiveTenant, getSession } from '../lib/satark-auth';
 
 const links = [
   { href: '/investigate', label: 'Investigate' },
@@ -22,6 +23,16 @@ export default function SiteHeader() {
   const [tilting, setTilting] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  // Show the account state without a request for anonymous visitors: only
+  // check the server session when this browser has previously chosen a workspace.
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (!getActiveTenant()) { setSignedIn(false); return; }
+    void getSession().then(session => { if (!cancelled) setSignedIn(Boolean(session)); });
+    return () => { cancelled = true; };
+  }, [pathname]);
 
   // The S mark tilts like a nudge, then settles and takes you home.
   function goHome(event: MouseEvent<HTMLAnchorElement>) {
@@ -73,7 +84,7 @@ export default function SiteHeader() {
           })}
           <Link href="/login" className={'nav-cta' + (pathname === '/login' ? ' active' : '')}
             aria-current={pathname === '/login' ? 'page' : undefined} onClick={() => setMobileOpen(false)}>
-            Sign in
+            {signedIn ? 'Account' : 'Sign in'}
           </Link>
         </nav>
       </header>
