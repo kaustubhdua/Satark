@@ -29,7 +29,7 @@ const bento = [
   { icon: ImageIcon, title: 'Inspect an image', text: 'Read metadata markers and fingerprint the file in your browser.', href: '/image-review', cta: 'Inspect an image', cls: 'span-2' },
   { icon: Film, title: 'Sample video frames', text: 'Pull six representative frames from a clip for a closer look. No deepfake verdicts.', href: '/media-review', cta: 'Sample a video', cls: 'span-3 wide-m' },
   { icon: FolderKanban, title: 'Cases and reports', text: 'Keep investigations, evidence and report snapshots in your team workspace once it is connected.', href: '/cases', cta: 'Open cases', cls: 'span-3 wide-m' },
-  { icon: Terminal, title: 'Native endpoint sensor', text: 'Collect bounded Linux authentication signals and file-integrity changes with SATARK-authored tooling.', href: '/native-sensor', cta: 'Explore native sensor', cls: 'span-3 wide-m' },
+  { icon: Terminal, title: 'Native endpoint sensor', text: 'Collect bounded Linux authentication signals and file-integrity changes with SATARK-authored tooling.', href: '/native-sensor', cta: 'Explore native sensor', cls: 'span-6 wide-m' },
 ];
 
 const tools: Array<[string, string, string, string]> = [
@@ -104,13 +104,15 @@ export default function Home() {
           <div className="pipeline-card">
             <div className="dot-pattern" aria-hidden="true" />
             <ol className="pipeline" aria-label="FIRSTLIGHT investigation stages">
-              {stages.map(({ icon: Icon, name, text }) => (
+              {stages.map(({ icon: Icon, name, text }, index) => (
                 <li className="pipeline-node" key={name}>
+                  <span className="pipeline-stage" aria-hidden="true">STAGE {index + 1}</span>
                   <span className="pipeline-icon"><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
                   <strong>{name}</strong><small>{text}</small>
                 </li>
               ))}
               <li className="pipeline-node is-human">
+                <span className="pipeline-stage" aria-hidden="true">YOUR MOVE</span>
                 <span className="pipeline-icon"><UserCheck size={20} strokeWidth={1.7} aria-hidden="true" /></span>
                 <strong>You approve</strong><small>Nothing runs on its own</small>
               </li>
