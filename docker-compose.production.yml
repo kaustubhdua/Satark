@@ -183,12 +183,48 @@ services:
     environment:
       NODE_ENV: production
       SATARK_API_INTERNAL_URL: http://firstlight-api:8788
+      FIRSTLIGHT_API_URL: http://firstlight-api:8788
+      FIRSTLIGHT_API_TOKEN: ${FIRSTLIGHT_API_TOKEN:?Set an independent 32+ byte random API token}
+      FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${FIRSTLIGHT_WAZUH_SYNC_TOKEN:?Set an independent 32+ byte Wazuh sync token}
+      # Shared rate limiting through the self-hosted Redis REST proxy below
+      # (same protocol as Upstash, so no hosted account is needed).
+      UPSTASH_REDIS_REST_URL: http://redis-rest:80
+      UPSTASH_REDIS_REST_TOKEN: ${REDIS_REST_TOKEN:?Set a 32+ byte REDIS_REST_TOKEN}
       SATARK_PUBLIC_ORIGIN: https://${SATARK_DOMAIN:?Set SATARK_DOMAIN}
       SATARK_PUBLIC_BASE_URL: https://${SATARK_DOMAIN:?Set SATARK_DOMAIN}
     depends_on:
       firstlight-api:
         condition: service_healthy
+      redis-rest:
+        condition: service_started
     expose: ["3000"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [backend]
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "volatile-ttl"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    networks: [backend]
+
+  # Open-source, Upstash-compatible REST front for Redis
+  # (https://github.com/hiett/serverless-redis-http, MIT).
+  redis-rest:
+    image: hiett/serverless-redis-http:latest
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${REDIS_REST_TOKEN:?Set a 32+ byte REDIS_REST_TOKEN}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

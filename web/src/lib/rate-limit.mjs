@@ -1,3 +1,4 @@
+import { isAcceptableRedisRestUrl } from './redis-rest-url.mjs';
 import { createHash } from 'node:crypto';
 import { readBoundedResponseText } from './read-bounded-response.mjs';
 
@@ -41,7 +42,7 @@ function sharedConfig(env) {
   if (!url || !token) return { mode: 'misconfigured' };
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' || !parsed.hostname) return { mode: 'misconfigured' };
+    if (!isAcceptableRedisRestUrl(url) || !parsed.hostname) return { mode: 'misconfigured' };
   } catch {
     return { mode: 'misconfigured' };
   }

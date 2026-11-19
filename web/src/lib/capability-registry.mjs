@@ -1,3 +1,4 @@
+import { isAcceptableRedisRestUrl } from './redis-rest-url.mjs';
 /**
  * Configuration-aware capability registry.
  * Configured dependencies are not healthy until a real runtime probe proves it.
@@ -26,8 +27,7 @@ export function buildCapabilityRegistry(env = {}) {
     hasValue(env.FIRSTLIGHT_WAZUH_INDEXER_USERNAME) &&
     hasValue(env.FIRSTLIGHT_WAZUH_INDEXER_PASSWORD) &&
     hasValue(env.FIRSTLIGHT_WAZUH_ALLOWED_AGENT_IDS);
-  const redisConfigured = hasValue(env.UPSTASH_REDIS_REST_URL) &&
-    /^https:\/\//i.test(env.UPSTASH_REDIS_REST_URL.trim()) && hasValue(env.UPSTASH_REDIS_REST_TOKEN);
+  const redisConfigured = isAcceptableRedisRestUrl(env.UPSTASH_REDIS_REST_URL) && hasValue(env.UPSTASH_REDIS_REST_TOKEN);
   const modelConfigured = hasValue(env.SATARK_OLLAMA_BASE_URL) && hasValue(env.SATARK_OLLAMA_MODEL);
   const capabilities = [
     capability('analysis.deterministic', 'Deterministic analysis', true, 'Analysis code is present; this endpoint does not execute analysis requests.'),
