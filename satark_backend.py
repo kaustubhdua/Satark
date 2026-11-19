@@ -181,8 +181,11 @@ def valid_email_address(value: str) -> bool:
 def database_url() -> str:
     value = os.getenv("SATARK_DATABASE_URL", "").strip()
     if value:
-        if value.startswith("postgresql://"):
-            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        # Managed hosts (Render, Heroku, Railway, Neon, ...) hand out postgres:// or
+        # postgresql:// URLs; SQLAlchemy needs the psycopg driver named explicitly.
+        for scheme in ("postgres://", "postgresql://"):
+            if value.startswith(scheme):
+                return "postgresql+psycopg://" + value[len(scheme):]
         return value
     path = Path(os.getenv("SATARK_SQLITE_PATH", "/tmp/satark/satark.db"))
     path.parent.mkdir(parents=True, exist_ok=True)
