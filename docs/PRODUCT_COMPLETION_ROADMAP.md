@@ -43,6 +43,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 - [ ] Correct live-demo links and verify the deployed release SHA against the version endpoint.
 - [ ] Confirm production deployment is built from the intended main commit; smoke-test core routes and API endpoints.
 - [ ] Keep public health output to non-sensitive status; never expose secret values.
+- [x] Release checklist template: `docs/RELEASE_CHECKLIST.md` (filled in per release).
 - [ ] Record commit SHA, CI links, deployment ID, smoke results, rollback target, and missing provider dependencies in a release checklist.
 - [ ] If shared rate limiting is unavailable, fail closed for expensive analysis while keeping basic health and invalid-request diagnostics useful.
 
@@ -100,7 +101,7 @@ P0 means SATARK must not be described as production-ready until applicable gates
 **Acceptance:** a synthetic incident can be completed in a fresh browser session; the report can be reopened and reconciled with stored case records.
 
 ### P1.2 Upload, analysis, and export
-- [ ] Document exact supported formats and limits for text, URLs, images, QR codes, PDFs, and videos; remove unsupported format promises.
+- [x] Supported formats and limits documented from code, drift-tested: `docs/SUPPORTED_FORMATS.md`.
 - [ ] Add safe parsing and timeouts; never execute uploaded content on the application server.
 - [ ] Isolate hostile parsers and malware samples in a separate sandboxed worker if detonation is ever offered.
 - [ ] Show per-file progress/errors without losing successful results.
