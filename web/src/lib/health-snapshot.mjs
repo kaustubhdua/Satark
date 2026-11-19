@@ -1,18 +1,9 @@
+import { isAcceptableRedisRestUrl } from './redis-rest-url.mjs';
 /**
  * Reports configuration only. It is not a dependency or security readiness
  * probe: model/database connectivity and actual limiter behavior are not tested.
  */
 const hasValue = value => typeof value === 'string' && value.trim().length > 0;
-
-function isHttpsUrl(value) {
-  if (!hasValue(value)) return false;
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}
 
 function isFirstlightBackendUrl(value, allowLocalHttp = true) {
   if (!hasValue(value)) return false;
@@ -35,7 +26,7 @@ export function buildHealthSnapshot(env = {}) {
   const persistentStorageConfigured = isFirstlightBackendUrl(env.SATARK_API_INTERNAL_URL, env.VERCEL !== '1');
   const redisUrlPresent = hasValue(env.UPSTASH_REDIS_REST_URL);
   const redisTokenPresent = hasValue(env.UPSTASH_REDIS_REST_TOKEN);
-  const redisUrlValid = isHttpsUrl(env.UPSTASH_REDIS_REST_URL);
+  const redisUrlValid = isAcceptableRedisRestUrl(env.UPSTASH_REDIS_REST_URL);
   const sharedLimiterConfigured = redisUrlValid && redisTokenPresent;
   const limiterMisconfigured = redisUrlPresent !== redisTokenPresent || (redisUrlPresent && !redisUrlValid);
   const sharedLimiterRequired = env.VERCEL === '1' && !sharedLimiterConfigured && !limiterMisconfigured;
