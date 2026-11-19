@@ -219,6 +219,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
           FIRSTLIGHT_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIRSTLIGHT_WAZUH_SYNC_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REDIS_REST_TOKEN: ci-only-redis-rest-token-0000000000000000
           FIRSTLIGHT_WAZUH_INDEXER_URL: https://wazuh-indexer.example.test:9200
           FIRSTLIGHT_WAZUH_INDEXER_USERNAME: ci
           FIRSTLIGHT_WAZUH_INDEXER_PASSWORD: test-only
