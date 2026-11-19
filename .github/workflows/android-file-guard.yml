@@ -222,10 +222,19 @@ jobs:
   android-emulator-smoke:
     name: Install and launch APK on Android emulator
     needs: android-build
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to Ubuntu 26.04, where the emulator fell back to software
+    # emulation ("hardware acceleration is not available") and launches timed out.
+    # Pin the image the smoke test was passing on and grant /dev/kvm access explicitly.
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Enable KVM for the Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
       - name: Download the exact APK built above
         uses: actions/download-artifact@v4
         with:
