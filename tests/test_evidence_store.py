@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import unittest
 import io
 import uuid
 
@@ -195,3 +197,26 @@ def test_invalid_backend_name_is_rejected(monkeypatch):
     monkeypatch.setenv("SATARK_EVIDENCE_BACKEND", "ftp")
     with pytest.raises(evidence_store.EvidenceStoreError):
         evidence_store.backend_name()
+
+
+class DatabaseUrlNormalisationTests(unittest.TestCase):
+    def _url(self, value):
+        import importlib
+        import satark_backend
+        old = os.environ.get("SATARK_DATABASE_URL")
+        os.environ["SATARK_DATABASE_URL"] = value
+        try:
+            return satark_backend.database_url()
+        finally:
+            if old is None:
+                os.environ.pop("SATARK_DATABASE_URL", None)
+            else:
+                os.environ["SATARK_DATABASE_URL"] = old
+
+    def test_managed_host_schemes_select_the_psycopg_driver(self):
+        self.assertEqual(self._url("postgres://u:p@h:5432/d"), "postgresql+psycopg://u:p@h:5432/d")
+        self.assertEqual(self._url("postgresql://u:p@h/d?sslmode=require"), "postgresql+psycopg://u:p@h/d?sslmode=require")
+
+    def test_explicit_driver_and_sqlite_are_untouched(self):
+        self.assertEqual(self._url("postgresql+psycopg://u:p@h/d"), "postgresql+psycopg://u:p@h/d")
+        self.assertEqual(self._url("sqlite:////tmp/x.db"), "sqlite:////tmp/x.db")

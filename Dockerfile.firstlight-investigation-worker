@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY firstlight-api-requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-s3.txt ./requirements-s3.txt
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-s3.txt
 COPY firstlight_engine.py ./firstlight_engine.py
 COPY firstlight_agents.py ./firstlight_agents.py
 COPY ai_provider.py ./ai_provider.py
