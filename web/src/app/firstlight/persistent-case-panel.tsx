@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import LiveResponsePanel from './live-response-panel';
+import { useLocalMode } from '../local-workspace-panel';
 import {
   authenticatedFetch, createCase, getActiveTenant, getSession, listCases, listMyTenants, setActiveTenant,
   type SatarkSession, type SatarkTenant,
@@ -26,6 +27,7 @@ export default function PersistentCasePanel({
   onLoaded: (caseId: string, evidence: EvidenceRow[], audit: AuditRow[]) => void;
   onSaved: (caseId: string, message: string) => void;
 }) {
+  const localMode = useLocalMode();
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenant, setTenant] = useState<SatarkTenant | null>(null);
   const [cases, setCases] = useState<CaseRow[]>([]);
@@ -462,17 +464,18 @@ export default function PersistentCasePanel({
   }
 
   return <section className="persistent-case-panel panel" aria-labelledby="persistent-case-heading">
-    <div className="panel-heading"><div><div className="panel-kicker">Persistent case workspace</div><h2 id="persistent-case-heading">Save beyond this browser session</h2></div><span className={session ? 'safe-chip' : 'review-chip'}>{session ? 'Authenticated' : 'Local mode'}</span></div>
+    <div className="panel-heading"><div><div className="panel-kicker">Persistent case workspace</div><h2 id="persistent-case-heading">Save beyond this browser session</h2></div><span className={session ? 'safe-chip' : 'review-chip'}>{localMode.active ? 'This device' : session ? 'Authenticated' : 'Local mode'}</span></div>
     {!session ? <p className="empty-state">Sign in to create saved cases, upload original evidence, and use guarded response controls. <Link href="/login">Sign in or create a workspace</Link>.</p> : !tenant ? <p className="empty-state">This account has no workspace membership. <Link href="/login">Create a workspace</Link> to begin.</p> : <>
-      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. Case and evidence access is checked by the SATARK backend against workspace membership.</p>
+      <p className="hint">Workspace: <strong>{tenant.name}</strong> · role: {tenant.role}. {localMode.active ? 'Stored in this browser only; nothing is uploaded.' : 'Case and evidence access is checked by the SATARK backend against workspace membership.'}</p>
       <div className="persistent-controls">
         <label className="field-label" htmlFor="persistent-case-title">Incident title</label>
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
         <button className="btn btn-primary" type="button" disabled={busy || !evidence.length} onClick={()=>void persistIncident()}>{busy?'Saving…':'Save case, evidence, findings & report'}</button>
-        <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
+        <button className="btn btn-secondary" type="button" disabled={localMode.active || busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
+        {localMode.active && <p className="hint">Durable background investigations need the hosted SATARK worker. The deterministic rules below still run in your browser.</p>}
       </div>
       {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
-      {tenant.role === 'owner' && <div className="private-upload" aria-labelledby="workspace-members-heading">
+      {tenant.role === 'owner' && !localMode.active && <div className="private-upload" aria-labelledby="workspace-members-heading">
         <strong id="workspace-members-heading">Workspace members & roles</strong>
         <p className="hint">Add an existing SATARK account by email. Invitations for accounts that have not registered are not enabled yet. Keep at least one owner in the workspace.</p>
         <label className="field-label" htmlFor="workspace-member-email">Account email</label>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getActiveTenant, getSession, listCases, listMyTenants, setActiveTenant, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 type CaseRow = { id:string; title:string; status:string; severity:string; updated_at:string };
-type ReportRow = { id:string; case_id:string; title:string; report_version:number; snapshot_sha256:string; created_at:string };
+type ReportRow = { id:string; tenant_id?:string; case_id:string; title:string; report_version:number; snapshot_sha256:string; created_at:string };
 function saveJson(name:string,value:unknown) {
   const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -58,7 +58,7 @@ export default function PersistentReports({notes,analysis}:{notes:string;analysi
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(typeof data.error==='string'?data.error:'Could not save report snapshot.');
       await loadReports(tenant.id,caseId,session.access_token);
-      setNotice('Saved immutable report snapshot. SHA-256: '+data.snapshot_sha256);
+      setNotice('Saved immutable report snapshot. SHA-256: '+(data.report?.snapshot_sha256||data.snapshot_sha256));
     }catch(e){setError(e instanceof Error?e.message:'Could not save report snapshot.');}
     finally{setBusy(false);}
   }
@@ -66,7 +66,7 @@ export default function PersistentReports({notes,analysis}:{notes:string;analysi
     if(!session)return;
     setBusy(true);setError('');setNotice('');
     try{
-      const response=await fetch('/api/reports/'+encodeURIComponent(item.id),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
+      const response=await fetch('/api/reports/'+encodeURIComponent(item.id)+'?tenant_id='+encodeURIComponent(item.tenant_id||tenant?.id||''),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(typeof data.error==='string'?data.error:'Report could not be retrieved or its digest did not match.');
       saveJson('satark-report-'+item.id+'.json',data);
