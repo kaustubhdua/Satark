@@ -41,6 +41,10 @@ await page.getByRole('button', { name: /verify last uploaded/i }).click();
 await page.getByText(/Integrity match/).waitFor();
 await page.getByRole('button', { name: /verify audit chain/i }).click();
 await page.getByText(/Audit chain valid · \d+ events checked/).waitFor();
+await page.getByRole('button', { name: /run full investigation/i }).click();
+await page.getByText(/Investigation completed in this browser/).waitFor({ timeout: 20000 });
+await page.getByRole('button', { name: /verify audit chain/i }).click();
+await page.getByText(/Audit chain valid · \d+ events checked/).waitFor();
 
 await page.goto(base + '/cases', { waitUntil: 'networkidle' });
 await page.getByText('Local journey case').first().waitFor({ timeout: 15000 });

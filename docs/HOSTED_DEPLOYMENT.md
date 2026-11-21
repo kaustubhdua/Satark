@@ -13,9 +13,16 @@ hash-chained audit trail are kept in the visitor's own browser (IndexedDB) and a
 SHA-256 hashed and re-verified, reports are sealed over canonical JSON, and the audit chain is verified end to end.
 Backup and restore are **Export / Import** on the Cases page.
 
+**Run full investigation** works in this mode too: the same ten deterministic FIRSTLIGHT rules run in the browser
+(`web/src/lib/firstlight-engine.mjs`, a port of `firstlight_engine.py`) over the saved evidence, after re-checking every
+stored digest, and save findings, a sealed report and audit events. `scripts/generate_firstlight_parity_fixture.py` writes a
+golden file from the Python engine that both `tests/test_firstlight_js_parity.py` and `web/tests/firstlight-parity.test.mjs`
+check, so the two engines cannot drift apart silently.
+
 Limits, stated plainly: data is only as durable as the browser profile (clearing site data erases it), there is no
-sharing between people or devices, no sign-in, invitations or MFA, no server-side durable investigation worker and no
-live endpoint response. A person with devtools can edit their own local data, so the hashes detect accidental or casual
+sharing between people or devices, no sign-in, invitations or MFA, no optional local-model agents and no
+live endpoint response (containment needs a Wazuh Manager). Whole-number floats (`1.0`) hash as `1` in the browser port and
+integers above 2^53 lose precision; rules read strings and small integers, so findings are not affected. A person with devtools can edit their own local data, so the hashes detect accidental or casual
 changes, not a determined local attacker. Set the backend variables below to get the shared, multi-user service.
 `web/tests/local-journey.mjs` exercises this mode in a real browser and runs in the web CI workflow.
 

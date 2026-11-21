@@ -21,7 +21,7 @@ test('sha256 and canonical JSON match known vectors', async () => {
 
 test('routes: only workspace endpoints are local', () => {
   for (const p of ['/api/cases', '/api/cases/notes', '/api/evidence/records', '/api/audit/verify', '/api/auth/session', '/api/reports/abc']) assert.ok(isLocalRoute(p), p);
-  for (const p of ['/api/analyze', '/api/health', '/api/firstlight/investigate', '/api/casesx']) assert.ok(!isLocalRoute(p), p);
+  for (const p of ['/api/analyze', '/api/health', '/api/firstlight/investigate', '/api/firstlight/wazuh/live', '/api/casesx']) assert.ok(!isLocalRoute(p), p);
 });
 
 test('session and workspace exist without any account', async () => {
@@ -162,4 +162,102 @@ test('unavailable features say so plainly instead of pretending', async () => {
   const invite = await call(store, 'POST', '/api/workspaces/invitations', { body: {} });
   assert.equal(invite.status, 501);
   assert.match(invite.json.error, /hosted SATARK service/);
+});
+
+async function addRecord(store, tenant, caseId, n, kind, summary, observed, sourceDetails) {
+  const res = await call(store, 'POST', '/api/evidence/records', { body: { tenant_id: tenant, case_id: caseId, source_label: 'EDR', event_kind: kind,
+    observed_at: observed, summary, metadata: { local_evidence_id: 'ev-' + n, browser_record_sha256: 'x', source_details: sourceDetails } } });
+  assert.equal(res.status, 201);
+  return res.json.evidence.id;
+}
+
+test('investigation: runs the ten-rule engine in the browser, saves findings and a sealed report, keeps the audit chain valid', async () => {
+  const { store, tenant, caseId } = await bootstrap();
+  const login = await addRecord(store, tenant, caseId, 1, 'authentication', 'Successful login from a new device', '2026-11-20T09:00:00Z', { account: 'ana', result: 'success', novel_source: true });
+  const session = await addRecord(store, tenant, caseId, 2, 'session', 'Session established', '2026-11-20T09:01:00Z', { account: 'ana' });
+  const proc = await addRecord(store, tenant, caseId, 3, 'process', 'Process started', '2026-11-20T09:05:00Z', { host: 'ws', parent: 'OUTLOOK.EXE', process: 'powershell.exe' });
+  const net = await addRecord(store, tenant, caseId, 4, 'connection', 'Outbound connection', '2026-11-20T09:06:00Z', { host: 'ws', destination: 'c2.example.invalid' });
+
+  const queued = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'run-000001' } });
+  assert.equal(queued.status, 202);
+  const jobId = queued.json.job.id;
+  const status = await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, job_id: jobId } });
+  assert.equal(status.json.job.status, 'succeeded');
+  assert.match(status.json.job.result_sha256, /^[0-9a-f]{64}$/);
+
+  const titles = status.json.job.result.investigation.findings.map(f => f.title).sort();
+  assert.deepEqual(titles, ['Follow-on identity session', 'Potentially suspicious network activity', 'Unfamiliar successful login', 'Unusual process ancestry']);
+  const network = status.json.job.result.investigation.findings.find(f => f.rule_id === 'FL-NETWORK-001');
+  assert.deepEqual(network.evidence_ids, [proc, net], 'network finding links the earlier process on the same host');
+  assert.equal(status.json.job.result.integrity_summary.verified, 4);
+
+  const saved = (await call(store, 'GET', '/api/findings', { query: { tenant_id: tenant, case_id: caseId } })).json.findings;
+  assert.equal(saved.length, 4);
+  assert.ok(saved.every(f => f.source === 'FIRSTLIGHT deterministic rules' && f.evidence_refs.length >= 1));
+  assert.ok(saved.some(f => f.evidence_refs.includes(login)) && saved.some(f => f.evidence_refs.includes(session)));
+
+  const reports = (await call(store, 'GET', '/api/reports', { query: { tenant_id: tenant, case_id: caseId } })).json.reports;
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].snapshot_sha256, status.json.job.result_sha256);
+  const fetched = await call(store, 'GET', `/api/reports/${reports[0].id}`, { query: { tenant_id: tenant } });
+  assert.equal(fetched.json.integrity.matched, true);
+
+  assert.equal((await verifyAuditChain(await store.load())).chain_valid, true);
+  const actions = (await call(store, 'GET', '/api/audit/events', { query: { tenant_id: tenant, case_id: caseId } })).json.events.map(e => e.action);
+  assert.ok(actions.includes('investigation.queued') && actions.includes('investigation.completed'));
+
+  // Same idempotency key returns the same job; a new key re-runs without duplicating findings.
+  const again = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'run-000001' } });
+  assert.equal(again.json.job.id, jobId);
+  const rerun = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'run-000002' } });
+  assert.equal(rerun.status, 202);
+  assert.equal((await call(store, 'GET', '/api/findings', { query: { tenant_id: tenant, case_id: caseId } })).json.findings.length, 4);
+  assert.equal((await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, case_id: caseId } })).json.jobs.length, 2);
+});
+
+test('investigation: evidence edited after saving is quarantined and never supports a finding', async () => {
+  const { store, tenant, caseId } = await bootstrap();
+  await addRecord(store, tenant, caseId, 1, 'email', 'Mailbox rule created: inbox forwarding to outside address', '2026-11-20T09:00:00Z', {});
+  const state = await store.load();
+  state.evidence[0].summary += ' (edited)'; // summary is not covered by the stored-byte digest, metadata is
+  state.evidence[0].metadata.source_details = { edited: true };
+  await store.save(state);
+  const queued = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'tamper-001' } });
+  const job = (await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, job_id: queued.json.job.id } })).json.job;
+  assert.equal(job.status, 'succeeded');
+  assert.equal(job.result.integrity_summary.mismatched, 1);
+  assert.equal(job.result.investigation.findings[0].title, 'No rule matched — analyst review required');
+  assert.deepEqual(job.result.investigation.findings[0].evidence_ids, []);
+});
+
+test('investigation: validation and an empty case', async () => {
+  const { store, tenant, caseId } = await bootstrap();
+  const bad = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'x' } });
+  assert.equal(bad.status, 400);
+  assert.equal((await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: 'missing', idempotency_key: 'valid-key-1' } })).status, 404);
+  assert.equal((await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant } })).status, 400);
+  const empty = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'empty-case-1' } });
+  const job = (await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, job_id: empty.json.job.id } })).json.job;
+  assert.equal(job.result.investigation.findings[0].title, 'No rule matched — analyst review required');
+});
+
+test('investigation: uploaded files are integrity-checked but contribute no event fields', async () => {
+  const { store, tenant, caseId } = await bootstrap();
+  const form = new FormData();
+  form.set('tenant_id', tenant); form.set('case_id', caseId); form.set('observed_at', '2026-11-20T10:00:00Z');
+  form.set('event_kind', 'file'); form.set('summary', 'Attachment');
+  form.set('file', new File([new Uint8Array([1, 2, 3])], 'a.bin'));
+  assert.equal((await call(store, 'POST', '/api/evidence', { form })).status, 201);
+  const queued = await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'upload-0001' } });
+  const job = (await call(store, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, job_id: queued.json.job.id } })).json.job;
+  assert.equal(job.result.integrity_summary.verified, 1);
+});
+
+test('backups keep investigation jobs and still verify', async () => {
+  const { store, tenant, caseId } = await bootstrap();
+  await call(store, 'POST', '/api/firstlight/jobs', { body: { tenant_id: tenant, case_id: caseId, idempotency_key: 'backup-0001' } });
+  const backup = await exportWorkspace(store);
+  const fresh = createMemoryStore();
+  await importWorkspace(fresh, JSON.parse(JSON.stringify(backup)));
+  assert.equal((await call(fresh, 'GET', '/api/firstlight/jobs', { query: { tenant_id: tenant, case_id: caseId } })).json.jobs.length, 1);
 });

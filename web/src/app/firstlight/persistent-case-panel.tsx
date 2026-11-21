@@ -357,7 +357,7 @@ export default function PersistentCasePanel({
         const job = statusPayload.job;
         setJobStatus('Job ' + jobId.slice(0, 8) + ' · ' + String(job.status) + ' · attempt ' + String(job.attempts || 0));
         if (job.status === 'succeeded') {
-          setMessage('Durable investigation completed. Result and report hashes are persisted; reload the case to review saved findings.');
+          setMessage((localMode.active ? 'Investigation completed in this browser. ' : 'Durable investigation completed. ') + 'Result and report hashes are persisted; reload the case to review saved findings.');
           return;
         }
         if (job.status === 'failed' || job.status === 'cancelled') {
@@ -471,8 +471,8 @@ export default function PersistentCasePanel({
         <label className="field-label" htmlFor="persistent-case-title">Incident title</label>
         <input id="persistent-case-title" maxLength={240} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe this incident" />
         <button className="btn btn-primary" type="button" disabled={busy || !evidence.length} onClick={()=>void persistIncident()}>{busy?'Saving…':'Save case, evidence, findings & report'}</button>
-        <button className="btn btn-secondary" type="button" disabled={localMode.active || busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? 'Queueing…' : 'Run durable investigation'}</button>
-        {localMode.active && <p className="hint">Durable background investigations need the hosted SATARK worker. The deterministic rules below still run in your browser.</p>}
+        <button className="btn btn-secondary" type="button" disabled={busy || !currentCaseId || !cases.some(c => c.id === currentCaseId) || !['owner','responder','analyst'].includes(tenant.role)} onClick={()=>void runDurableInvestigation()}>{busy && jobStatus.startsWith('Queueing') ? (localMode.active ? 'Investigating…' : 'Queueing…') : (localMode.active ? 'Run full investigation' : 'Run durable investigation')}</button>
+        {localMode.active && <p className="hint">Runs all ten FIRSTLIGHT rules in this browser over the saved evidence, then saves the findings and a sealed report. Nothing leaves your device.</p>}
       </div>
       {jobStatus && <p className="hint" role="status">{jobStatus}</p>}
       {tenant.role === 'owner' && !localMode.active && <div className="private-upload" aria-labelledby="workspace-members-heading">

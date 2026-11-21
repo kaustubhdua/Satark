@@ -106,6 +106,10 @@ class InvestigationJobWorker:
                     try:
                         parsed = json.loads(raw.decode("utf-8"))
                         details = item.metadata_json if isinstance(item.metadata_json, dict) and item.metadata_json else (parsed if isinstance(parsed, dict) else {})
+                        # The web app stores the original event fields under metadata.source_details
+                        # (beside its own bookkeeping keys). Rules must read the event fields.
+                        if isinstance(details.get("source_details"), dict):
+                            details = details["source_details"]
                     except (ValueError, UnicodeDecodeError):
                         details = {}
                 observed_at = item.observed_at

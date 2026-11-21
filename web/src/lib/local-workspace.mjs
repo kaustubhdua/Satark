@@ -16,10 +16,15 @@
 // edit their own local data, so the hashes detect accidental or casual
 // tampering, not a determined local attacker.
 
+import { canonicalPy as canonicalPyText, investigateCase } from './firstlight-engine.mjs';
+
 export const LOCAL_FORMAT = 'satark-local-workspace';
+
 export const LOCAL_VERSION = 1;
 export const MAX_EVIDENCE_BYTES = 4 * 1024 * 1024;
 export const MAX_SNAPSHOT_BYTES = 256 * 1024;
+export const MAX_JOB_RESULT_BYTES = 2 * 1024 * 1024;
+export const MAX_INVESTIGATION_EVIDENCE = 500;
 const GENESIS = '0'.repeat(64);
 const STATUSES = ['open', 'contained', 'resolved', 'archived'];
 const SEVERITIES = ['unknown', 'info', 'low', 'medium', 'high', 'critical'];
@@ -27,7 +32,7 @@ const SEVERITIES = ['unknown', 'info', 'low', 'medium', 'high', 'critical'];
 /** Path prefixes this module answers. Everything else goes to the network. */
 export const LOCAL_ROUTES = [
   '/api/auth/session', '/api/auth/refresh', '/api/auth/logout', '/api/auth/login', '/api/auth/signup',
-  '/api/workspaces', '/api/cases', '/api/findings', '/api/reports', '/api/evidence', '/api/audit',
+  '/api/workspaces', '/api/cases', '/api/findings', '/api/reports', '/api/evidence', '/api/audit', '/api/firstlight/jobs',
 ];
 
 export function isLocalRoute(pathname) {
@@ -75,7 +80,7 @@ export function emptyState() {
     format: LOCAL_FORMAT, version: LOCAL_VERSION, created_at: created,
     user: { id: userId, email: 'this-device@satark.local' },
     tenant: { id: tenantId, name: 'This device', role: 'owner' },
-    cases: [], notes: [], findings: [], evidence: [], reports: [], audit: [],
+    cases: [], notes: [], findings: [], evidence: [], reports: [], audit: [], jobs: [],
   };
 }
 
@@ -189,6 +194,7 @@ export async function handleLocalRequest(store, request) {
     if (path === '/api/workspaces/invitations' && method === 'GET') return wrap(ok({ invitations: [] }));
     if (path.startsWith('/api/workspaces')) return wrap(notAvailable('Inviting people'));
 
+    if (path === '/api/firstlight/jobs') return jobs();
     if (path === '/api/cases') return cases();
     if (path === '/api/cases/notes') return notes();
     if (path === '/api/findings') return findings();
@@ -271,6 +277,96 @@ export async function handleLocalRequest(store, request) {
       state.notes.push(note);
       await appendAudit(state, 'case.note.created', { case_id: found.row.id, note_id: note.id });
       return { response: ok({ note }, 201), write: true };
+    }
+    return wrap(fail(405, 'Method not allowed.'));
+  }
+
+  /** Runs the same deterministic engine the hosted worker runs, in the browser, over the case's stored evidence. */
+  async function runInvestigation(job) {
+    const rows = state.evidence.filter(e => e.case_id === job.case_id).sort((a, b) => a.observed_at.localeCompare(b.observed_at));
+    if (rows.length > MAX_INVESTIGATION_EVIDENCE) throw Object.assign(new Error('evidence_limit_exceeded'), { code: 'evidence_limit_exceeded' });
+    const envelopes = []; const integrity = [];
+    for (const row of rows) {
+      const bytes = row.blob ? await store.getBlob(row.id) : new TextEncoder().encode(canonicalJson(row.metadata ?? {}));
+      if (!bytes) throw Object.assign(new Error('evidence_object_missing'), { code: 'evidence_object_missing' });
+      const actual = await sha256Hex(bytes);
+      const valid = actual === row.source_sha256;
+      integrity.push({ evidence_id: row.id, valid, status: valid ? 'VERIFIED' : 'HASH MISMATCH' });
+      // Imported events keep their original fields under metadata.source_details; uploaded files carry no fields.
+      let details = {};
+      if (row.content_type === 'application/json' && isObject(row.metadata)) {
+        details = isObject(row.metadata.source_details) ? row.metadata.source_details : row.metadata;
+      }
+      const record = { event_id: row.id, timestamp: row.observed_at, source: row.source_label, kind: row.event_kind, summary: row.summary, details };
+      envelopes.push({ evidence_id: row.id, record, sha256: valid ? await sha256Hex(canonicalPyText(record)) : '0'.repeat(64),
+        collected_at: row.created_at, integrity_status: valid ? 'verified' : 'mismatch' });
+    }
+    const caseRow = state.cases.find(c => c.id === job.case_id);
+    const result = await investigateCase({ case_id: job.case_id, title: caseRow?.title ?? '' }, envelopes);
+    const payload = { schema_version: '1.1', case_id: job.case_id, integrity,
+      integrity_summary: { total: integrity.length, verified: integrity.filter(i => i.valid).length, mismatched: integrity.filter(i => !i.valid).length },
+      investigation: result,
+      agent_analysis: { enabled: false, mode: 'not_available_in_browser', agents: [],
+        limitations: ['Optional local model agents run only on the hosted service; deterministic findings are authoritative.'] },
+      limitations: ['Only evidence already stored in this browser-only case was analyzed.',
+        'Stored-byte digest checks do not prove original source authenticity.',
+        'Deterministic findings are leads for human review, not proof of compromise.',
+        'No live response action was executed.'] };
+    const encoded = canonicalJson(payload);
+    if (new TextEncoder().encode(encoded).length > MAX_JOB_RESULT_BYTES) throw Object.assign(new Error('result_too_large'), { code: 'result_too_large' });
+    const digest = await sha256Hex(encoded);
+    const evidenceIds = new Set(rows.map(r => r.id));
+    for (const [index, finding] of result.findings.entries()) {
+      const key = String(finding.finding_id || 'finding-' + index).slice(0, 160);
+      const row = { id: uuid(), tenant_id: state.tenant.id, case_id: job.case_id, finding_key: key,
+        title: String(finding.title || 'Untitled finding').slice(0, 240), severity: String(finding.severity || 'unknown').slice(0, 40),
+        detail: String(finding.explanation || '').slice(0, 8192), evidence_refs: (finding.evidence_ids || []).filter(id => evidenceIds.has(id)),
+        source: 'FIRSTLIGHT deterministic rules', confidence: null, created_by: state.user.id, created_at: nowIso() };
+      const existing = state.findings.findIndex(f => f.case_id === job.case_id && f.finding_key === key);
+      if (existing >= 0) { row.id = state.findings[existing].id; row.created_at = state.findings[existing].created_at; state.findings[existing] = row; }
+      else state.findings.push(row);
+    }
+    const report = { id: uuid(), tenant_id: state.tenant.id, case_id: job.case_id, title: 'FIRSTLIGHT investigation', report_version: 1,
+      snapshot: payload, snapshot_sha256: digest, created_by: state.user.id, created_at: nowIso() };
+    state.reports.push(report);
+    return { payload, digest, reportId: report.id };
+  }
+
+  async function jobs() {
+    const publicJob = (j, withResult) => ({ id: j.id, tenant_id: j.tenant_id, case_id: j.case_id, status: j.status, requested_by: j.requested_by,
+      idempotency_key: j.idempotency_key, ...(withResult ? { result: j.result ?? null } : {}), result_sha256: j.result_sha256 ?? null,
+      error_code: j.error_code ?? null, attempts: j.attempts, max_attempts: 1, created_at: j.created_at, updated_at: j.updated_at });
+    state.jobs = Array.isArray(state.jobs) ? state.jobs : [];
+    if (method === 'GET') {
+      const denied = requireTenant(state, query.get('tenant_id')); if (denied) return wrap(denied);
+      const jobId = query.get('job_id'); const caseId = query.get('case_id');
+      if (jobId) {
+        const job = state.jobs.find(j => j.id === jobId);
+        return job ? wrap(ok({ job: publicJob(job, true) })) : wrap(fail(404, 'Investigation job not found.'));
+      }
+      if (!caseId) return wrap(fail(400, 'A case_id or job_id is required.'));
+      return wrap(ok({ jobs: state.jobs.filter(j => j.case_id === caseId).slice(-100).reverse().map(j => publicJob(j, true)) }));
+    }
+    if (method === 'POST') {
+      const denied = requireTenant(state, body?.tenant_id); if (denied) return wrap(denied);
+      const found = requireCase(state, state.tenant.id, body?.case_id); if (found.error) return wrap(found.error);
+      const key = body.idempotency_key;
+      if (typeof key !== 'string' || !/^[A-Za-z0-9._:-]{8,160}$/.test(key)) return wrap(fail(400, 'A stable 8–160 character idempotency_key is required.'));
+      const existing = state.jobs.find(j => j.case_id === found.row.id && j.idempotency_key === key);
+      if (existing) return wrap(ok({ job: publicJob(existing, false) }, 202));
+      const created = nowIso();
+      const job = { id: uuid(), tenant_id: state.tenant.id, case_id: found.row.id, status: 'running', requested_by: state.user.id, idempotency_key: key,
+        result: null, result_sha256: null, error_code: null, attempts: 1, created_at: created, updated_at: created };
+      state.jobs.push(job);
+      await appendAudit(state, 'investigation.queued', { job_id: job.id, case_id: found.row.id });
+      try {
+        const done = await runInvestigation(job);
+        job.status = 'succeeded'; job.result = done.payload; job.result_sha256 = done.digest; job.updated_at = nowIso();
+        await appendAudit(state, 'investigation.completed', { job_id: job.id, case_id: found.row.id, report_id: done.reportId, result_sha256: done.digest });
+      } catch (error) {
+        job.status = 'failed'; job.error_code = error?.code ?? 'investigation_failed'; job.updated_at = nowIso();
+      }
+      return { response: ok({ job: publicJob(job, false) }, 202), write: true };
     }
     return wrap(fail(405, 'Method not allowed.'));
   }
