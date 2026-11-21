@@ -156,6 +156,33 @@ def test_worker_uses_normalized_wazuh_metadata_to_create_evidence_linked_finding
     db.close()
 
 
+def test_worker_reads_event_fields_from_source_details_saved_by_the_web_app(database):
+    tenant_id, case_id, user_id, job_id = seed_job()
+    root = Path(os.environ["SATARK_EVIDENCE_DIR"])
+    object_dir = root / tenant_id / case_id / "web"
+    object_dir.mkdir(parents=True, exist_ok=True)
+    raw = b"{}"
+    object_path = object_dir / "web-record.json"
+    object_path.write_bytes(raw)
+    db = backend.SessionLocal()
+    db.add(backend.Evidence(
+        id="55555555-5555-4555-8555-555555555555", tenant_id=tenant_id, case_id=case_id, object_key=str(object_path),
+        source_label="EDR", event_kind="process", observed_at=backend.utcnow(), summary="Process started",
+        source_sha256=hashlib.sha256(raw).hexdigest(), size_bytes=len(raw), content_type="application/json",
+        original_filename="evidence.json", created_by=user_id,
+        # Shape written by the web app: event fields nested beside its own bookkeeping keys.
+        metadata_json={"source_details": {"parent": "OUTLOOK.EXE", "process": "powershell.exe"},
+                       "local_evidence_id": "E6", "browser_record_sha256": "x"},
+    ))
+    db.commit()
+    db.close()
+    assert InvestigationJobWorker().run_once()["status"] == "succeeded"
+    db = backend.SessionLocal()
+    titles = [row.title for row in db.scalars(select(backend.Finding).where(backend.Finding.case_id == case_id)).all()]
+    db.close()
+    assert "Unusual process ancestry" in titles
+
+
 def test_worker_is_idle_when_queue_is_empty(database):
     assert InvestigationJobWorker().run_once() == {"status": "idle"}
 

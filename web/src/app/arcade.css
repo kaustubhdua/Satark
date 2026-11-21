@@ -394,3 +394,9 @@
 }
 @media (prefers-contrast: more) { .arcade body { background-image: none; } .arcade .sentinel-hero-copy::after { color: var(--text); } }
 @media print { .arcade body { background-image: none; } }
+
+/* Browser-only workspace notice */
+.local-mode-bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: center; padding: 8px 16px; font-size: 0.85rem;
+  background: rgba(46, 230, 166, 0.12); border-bottom: 1px solid rgba(46, 230, 166, 0.4); color: #bff5e1; }
+.local-mode-bar a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.device-workspace .actions { margin-top: 12px; }

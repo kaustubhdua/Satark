@@ -57,7 +57,7 @@ const routes = [
   { path: '/learn', heading: /learn|safety|social-engineering|pause\. verify\. then act/i },
   { path: '/challenge', heading: /spot the scam|welcome back/i },
   { path: '/classroom', heading: /teach from a live session/i },
-  { path: '/login', heading: /investigations that|welcome back/i },
+  { path: '/login', heading: /investigations that|welcome back|no account/i },
   { path: '/reset-password', heading: /secure access|restored/i },
   { path: '/accept-invitation', heading: /work together|workspace invitation/i },
   { path: '/verify-email', heading: /confirm your|account verification/i },
@@ -228,7 +228,10 @@ async function inspectViewport(viewport, label) {
       await input.fill('');
       assert.equal(await analyzeButton.isDisabled(), true, 'investigation should disable again when cleared');
     }
-    if (route.path === '/login') {
+    if (route.path === '/login' && await page.getByRole('heading', { name: /no account/i }).isVisible().catch(() => false)) {
+      // Browser-only mode: there is no account to sign in to; the page must say so and link onward.
+      assert.equal(await page.getByRole('link', { name: /open my cases/i }).isVisible(), true, 'browser-only login page must link to the local cases');
+    } else if (route.path === '/login') {
       assert.equal(await page.getByLabel('Email address').isVisible(), true, 'workspace sign-in email must be labelled and visible');
       assert.equal(await page.getByLabel('Password').isVisible(), true, 'workspace sign-in password must be labelled and visible');
       assert.equal(await page.getByRole('button', { name: 'Sign in securely' }).isVisible(), true, 'workspace sign-in action must be accessible');
@@ -487,6 +490,14 @@ async function inspectViewport(viewport, label) {
       // identity must verify the login redirect, never bypass the access boundary.
       if (new URL(page.url()).pathname === '/login') {
         await page.getByRole('button', { name: /sign in securely/i }).waitFor();
+        continue;
+      }
+      // No backend configured: the site runs in browser-only mode, so there is a local
+      // session and no login redirect. The full save/upload/verify/audit flow is covered
+      // by tests/local-journey.mjs; here confirm the page renders its real controls.
+      if (await page.getByText(/browser-only workspace/i).first().isVisible().catch(() => false)) {
+        await page.getByRole('heading', { name: /FIRSTLIGHT/i }).first().waitFor();
+        await page.locator('input[type=file][accept*=csv]').waitFor({ state: 'attached' });
         continue;
       }
       // The primary action now uses real telemetry. Browser smoke must explicitly

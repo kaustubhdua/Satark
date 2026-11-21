@@ -6,6 +6,26 @@ runs on a managed container host. The self-hosted alternative that needs no host
 Vercel only serves the Next.js app. The four rows on `/tools` turn green when **both** halves below are in place.
 Nothing here has been run against a live host by the maintainers; follow the verification steps at the end.
 
+## Or run with no backend at all: browser-only mode
+If `SATARK_API_INTERNAL_URL` is not set, `/api/health` reports `persistentStorage.configured: false` and the site
+switches to **browser-only mode**: cases, notes, findings, evidence files, sealed report snapshots and the
+hash-chained audit trail are kept in the visitor's own browser (IndexedDB) and are never uploaded. Evidence is
+SHA-256 hashed and re-verified, reports are sealed over canonical JSON, and the audit chain is verified end to end.
+Backup and restore are **Export / Import** on the Cases page.
+
+**Run full investigation** works in this mode too: the same ten deterministic FIRSTLIGHT rules run in the browser
+(`web/src/lib/firstlight-engine.mjs`, a port of `firstlight_engine.py`) over the saved evidence, after re-checking every
+stored digest, and save findings, a sealed report and audit events. `scripts/generate_firstlight_parity_fixture.py` writes a
+golden file from the Python engine that both `tests/test_firstlight_js_parity.py` and `web/tests/firstlight-parity.test.mjs`
+check, so the two engines cannot drift apart silently.
+
+Limits, stated plainly: data is only as durable as the browser profile (clearing site data erases it), there is no
+sharing between people or devices, no sign-in, invitations or MFA, no optional local-model agents and no
+live endpoint response (containment needs a Wazuh Manager). Whole-number floats (`1.0`) hash as `1` in the browser port and
+integers above 2^53 lose precision; rules read strings and small integers, so findings are not affected. A person with devtools can edit their own local data, so the hashes detect accidental or casual
+changes, not a determined local attacker. Set the backend variables below to get the shared, multi-user service.
+`web/tests/local-journey.mjs` exercises this mode in a real browser and runs in the web CI workflow.
+
 ## Constraints that shape a hosted setup (from the code)
 - **No shared disk.** The API and the investigation worker normally share `/data/evidence`. Managed hosts do not
   share a disk across services, so use the S3 backend (`SATARK_EVIDENCE_BACKEND=s3`). The images now include `boto3`.

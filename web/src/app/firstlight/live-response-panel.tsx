@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { authenticatedFetch } from '../../lib/satark-auth';
+import { useLocalMode } from '../local-workspace-panel';
 
 type LiveApproval = {
   approval_id: string;
@@ -29,6 +30,7 @@ async function readJson(response: Response) {
 }
 
 export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Props) {
+  const localMode = useLocalMode();
   const [enabled, setEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [availableActions, setAvailableActions] = useState<string[]>([]);
@@ -68,6 +70,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
 
   useEffect(() => {
     let active = true;
+    if (localMode.active) return;
     const load = async () => {
       try {
         const query = '?tenant_id=' + encodeURIComponent(tenantId) + '&case_id=' + encodeURIComponent(caseId);
@@ -90,7 +93,7 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     };
     void load();
     return () => { active = false; };
-  }, [tenantId, caseId]);
+  }, [tenantId, caseId, localMode.active]);
 
   async function run(operation: () => Promise<void>, refreshAfter = true) {
     setBusy(true); setError(''); setNotice('');
@@ -150,6 +153,13 @@ export default function LiveResponsePanel({ tenantId, caseId, userId, role }: Pr
     await readJson(response);
     setVerifyReference(''); setVerifyDetail(''); setVerificationStatus('unknown');
     setNotice('Independent operator attestation recorded. SATARK does not independently query or certify the provider state.');
+  }
+
+  if (localMode.active) {
+    return <section className="private-upload" aria-labelledby="firstlight-live-response-heading">
+      <div className="panel-heading"><strong id="firstlight-live-response-heading">Guarded live response integrations</strong><span className="review-chip">Needs hosted service</span></div>
+      <p className="hint">Containment through a Wazuh Manager requires the hosted SATARK service, a private Wazuh Manager and two separate approvers. None of that exists in a browser-only workspace, so no endpoint action can run here. Evidence, findings, notes, reports and the audit trail above are fully available.</p>
+    </section>;
   }
 
   return <section className="private-upload" aria-labelledby="firstlight-live-response-heading">
