@@ -6,6 +6,15 @@ runs on a managed container host. The self-hosted alternative that needs no host
 Vercel only serves the Next.js app. The four rows on `/tools` turn green when **both** halves below are in place.
 Nothing here has been run against a live host by the maintainers; follow the verification steps at the end.
 
+## Vercel build budget (Hobby plan)
+Vercel's Hobby plan allows 100 deployments per day and 100 builds per hour ([limits](https://vercel.com/docs/limits)).
+A Git-connected project builds every pushed branch by default, so a busy day of pushes can exhaust the budget and Vercel
+then refuses even production deploys ("Deployment rate limited — retry in 24 hours"). `web/vercel.json` therefore sets
+`git.deploymentEnabled` so that only `main` and branches named `preview/…` are deployed
+([docs](https://vercel.com/docs/project-configuration/git-configuration)); every other branch is still built, tested and
+browser-checked by GitHub Actions. If you are already rate limited, wait for the window to clear or upgrade the plan,
+then redeploy the latest `main` commit from the Vercel dashboard.
+
 ## Or run with no backend at all: browser-only mode
 If `SATARK_API_INTERNAL_URL` is not set, `/api/health` reports `persistentStorage.configured: false` and the site
 switches to **browser-only mode**: cases, notes, findings, evidence files, sealed report snapshots and the
