@@ -1,0 +1,5292 @@
+{
+ "cases": [
+  {
+   "case": {
+    "case_id": "case-account-takeover-chain",
+    "title": "account-takeover-chain"
+   },
+   "evidence": [
+    {
+     "evidence_id": "E1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "ana@example.org",
+       "novel_source": true,
+       "result": "success"
+      },
+      "event_id": "E1",
+      "kind": "authentication",
+      "source": "Identity provider",
+      "summary": "Successful login from a new device",
+      "timestamp": "2025-03-01T09:00:00Z"
+     },
+     "sha256": "6e4553d9682ec2db5f77b04f4c92ca2bfc6cf1da917c56c9cfd8c5b52d1d4d24"
+    },
+    {
+     "evidence_id": "E2",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "ana@example.org"
+      },
+      "event_id": "E2",
+      "kind": "session",
+      "source": "Identity provider",
+      "summary": "Session established",
+      "timestamp": "2025-03-01T09:01:00+00:00"
+     },
+     "sha256": "3a1c8a157957f3d05d5f66f18ef60ae9effb81b4c53742f374c042bc8e86a5a8"
+    },
+    {
+     "evidence_id": "E3",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "E3",
+      "kind": "message",
+      "source": "Mail gateway",
+      "summary": "URGENT: confirm your password via lookalike-bank.invalid",
+      "timestamp": "2025-03-01T08:50:00Z"
+     },
+     "sha256": "532d12401fb41d6a9ca3f09b898332d97063ead427eda3b3c852725be7e347e9"
+    },
+    {
+     "evidence_id": "E4",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "E4",
+      "kind": "email",
+      "source": "Mail gateway",
+      "summary": "Mailbox rule created: inbox forwarding to outside address",
+      "timestamp": "2025-03-01T09:05:00Z"
+     },
+     "sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e"
+    },
+    {
+     "evidence_id": "E5",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "E5",
+      "kind": "audit",
+      "source": "Identity provider",
+      "summary": "MFA method changed for the account",
+      "timestamp": "2025-03-01T09:10:00Z"
+     },
+     "sha256": "e3caed67a071a5453faf7d30b57122d7f8ccf3afb8105fdedf9b329dc7ad8b9b"
+    },
+    {
+     "evidence_id": "E6",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "host": "ws-01",
+       "parent": "OUTLOOK.EXE",
+       "process": "powershell.exe"
+      },
+      "event_id": "E6",
+      "kind": "process",
+      "source": "EDR",
+      "summary": "Process started",
+      "timestamp": "2025-03-01T09:20:00Z"
+     },
+     "sha256": "29b570e32d928e84393969b830170a0809347a73fb5e312b4cb4a55970089dbe"
+    },
+    {
+     "evidence_id": "E7",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "host": "ws-02"
+      },
+      "event_id": "E7",
+      "kind": "process",
+      "source": "EDR",
+      "summary": "suspicious process launched from attachment path",
+      "timestamp": "2025-03-01T09:21:00Z"
+     },
+     "sha256": "d330098ef5655211faaa40872647015dde82fd2cb4b497c464d253852c9cc2b4"
+    },
+    {
+     "evidence_id": "E8",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "destination": "C2.EXAMPLE.invalid",
+       "host": "ws-01"
+      },
+      "event_id": "E8",
+      "kind": "connection",
+      "source": "Firewall",
+      "summary": "Outbound connection",
+      "timestamp": "2025-03-01T09:30:00Z"
+     },
+     "sha256": "fd416beccc8b2c35ce2227313f4b030f548297fbfa9e7225b6e69dccc15e783a"
+    },
+    {
+     "evidence_id": "E9",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "path": "C:\\Users\\ana\\Temp\\q1.zip"
+      },
+      "event_id": "E9",
+      "kind": "file",
+      "source": "EDR",
+      "summary": "File created",
+      "timestamp": "2025-03-01T09:40:00Z"
+     },
+     "sha256": "1592164129da576047c3800a8f88e37455edc239e8677c1351617d98eb24f50b"
+    },
+    {
+     "evidence_id": "E10",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "E10",
+      "kind": "filesystem",
+      "source": "EDR",
+      "summary": "Archive staged for upload",
+      "timestamp": "2025-03-01T09:41:00Z"
+     },
+     "sha256": "b27f09ed67d2fabcfd86a6679ed9e5a9bdd1648df1c4cf590b9a03dd99c5856e"
+    },
+    {
+     "evidence_id": "E11",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "rule": "unusual_parent_child"
+      },
+      "event_id": "E11",
+      "kind": "process",
+      "source": "EDR",
+      "summary": "Rule hit",
+      "timestamp": "2025-03-01T09:22:00Z"
+     },
+     "sha256": "8bb515c8f4ba525ee7ee71252784c15822f919e3282e689a816a7a4c10b9b042"
+    },
+    {
+     "evidence_id": "E12",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "disposition": "suspicious"
+      },
+      "event_id": "E12",
+      "kind": "network",
+      "source": "Proxy",
+      "summary": "Request logged",
+      "timestamp": "2025-03-01T09:31:00Z"
+     },
+     "sha256": "992a71825a0847f4c47ba3d72fdac7485657cb12eec01bcb3bcbbef1c3c760b0"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "E1",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9",
+       "E10",
+       "E11",
+       "E12"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Checked 12 supplied records; 12 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "E7",
+       "E5",
+       "E11",
+       "E6",
+       "E8",
+       "E2",
+       "E1",
+       "E10",
+       "E12",
+       "E3",
+       "E4",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "E1",
+       "E10",
+       "E11",
+       "E12",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Produced 12 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "E3",
+       "E1",
+       "E2",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E11",
+       "E8",
+       "E12",
+       "E9",
+       "E10"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Ordered 12 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "E1",
+       "E10",
+       "E11",
+       "E12",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 4 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "E1",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9",
+       "E10",
+       "E11",
+       "E12"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Checked 12 supplied records; 12 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "E7",
+       "E5",
+       "E11",
+       "E6",
+       "E8",
+       "E2",
+       "E1",
+       "E10",
+       "E12",
+       "E3",
+       "E4",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "E1",
+       "E10",
+       "E11",
+       "E12",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Produced 12 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "E3",
+       "E1",
+       "E2",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E11",
+       "E8",
+       "E12",
+       "E9",
+       "E10"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Ordered 12 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "E1",
+       "E10",
+       "E11",
+       "E12",
+       "E2",
+       "E3",
+       "E4",
+       "E5",
+       "E6",
+       "E7",
+       "E8",
+       "E9"
+      ],
+      "inputs": 12,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 12,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 4 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-account-takeover-chain",
+    "evidence_priorities": [
+     {
+      "evidence_id": "E7",
+      "integrity": "VERIFIED",
+      "priority": "high",
+      "priority_score": 60,
+      "reasons": [
+       "Volatility: process (+30)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E5",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 50,
+      "reasons": [
+       "Volatility: identity (+20)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E11",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 48,
+      "reasons": [
+       "Volatility: process (+30)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E6",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 48,
+      "reasons": [
+       "Volatility: process (+30)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E8",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 46,
+      "reasons": [
+       "Volatility: connection (+28)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E2",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E1",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: authentication (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E10",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: file (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E12",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 40,
+      "reasons": [
+       "Volatility: network (+22)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E3",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 38,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E4",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 38,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "E9",
+      "integrity": "VERIFIED",
+      "priority": "low",
+      "priority_score": 30,
+      "reasons": [
+       "Volatility: file (+12)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E1"
+      ],
+      "explanation": "The source record describes a successful login in a new or unfamiliar context. This is an investigation lead, not proof of account compromise.",
+      "finding_id": "F-001",
+      "limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-001",
+      "rule_limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Unfamiliar successful login"
+     },
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E1",
+       "E2"
+      ],
+      "explanation": "A session record follows an authentication event for the same account or an unspecified account. Confirm session provenance before taking action.",
+      "finding_id": "F-002",
+      "limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "logic_type": "temporal_correlation",
+      "rule_id": "FL-IDENTITY-003",
+      "rule_limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Follow-on identity session"
+     },
+     {
+      "attack_techniques": [
+       "T1566"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E3"
+      ],
+      "explanation": "The message summary includes urgency, lookalike-domain, or credential-request language. Verify sender and destination independently; wording alone is not proof of phishing.",
+      "finding_id": "F-003",
+      "limitations": [
+       "Message wording alone does not establish phishing or user interaction."
+      ],
+      "logic_type": "keyword_heuristic",
+      "rule_id": "FL-PHISH-001",
+      "rule_limitations": [
+       "Message wording alone does not establish phishing or user interaction."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Social-engineering indicators"
+     },
+     {
+      "attack_techniques": [
+       "T1114.003"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E4"
+      ],
+      "explanation": "The supplied record describes a mailbox forwarding or rule change. Verify the rule owner, destination, and authorization independently.",
+      "finding_id": "F-004",
+      "limitations": [
+       "The rule or forwarding destination must be independently checked for authorization."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-MAIL-001",
+      "rule_limitations": [
+       "The rule or forwarding destination must be independently checked for authorization."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Mailbox forwarding or rule change"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E5"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-005",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1059"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E6"
+      ],
+      "explanation": "The source records a script-capable process with a potentially unusual parent or rule match. Correlate with endpoint telemetry before inferring intent.",
+      "finding_id": "F-006",
+      "limitations": [
+       "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+      ],
+      "logic_type": "process_relationship_heuristic",
+      "rule_id": "FL-ENDPOINT-002",
+      "rule_limitations": [
+       "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Unusual process ancestry"
+     },
+     {
+      "attack_techniques": [
+       "T1204.002"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E7"
+      ],
+      "explanation": "The supplied summary describes a potentially suspicious process or attachment path. This workflow does not inspect the actual process or file.",
+      "finding_id": "F-007",
+      "limitations": [
+       "FIRSTLIGHT has not inspected the underlying file or process in this rule."
+      ],
+      "logic_type": "keyword_heuristic",
+      "rule_id": "FL-ENDPOINT-001",
+      "rule_limitations": [
+       "FIRSTLIGHT has not inspected the underlying file or process in this rule."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Potentially suspicious endpoint activity"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E6",
+       "E8"
+      ],
+      "explanation": "The record contains a suspicious-destination signal. Any link to earlier process activity is temporal correlation, not proof of causation; verify destination context independently.",
+      "finding_id": "F-008",
+      "limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "logic_type": "network_indicator_heuristic",
+      "rule_id": "FL-NETWORK-001",
+      "rule_limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Potentially suspicious network activity"
+     },
+     {
+      "attack_techniques": [
+       "T1074"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E9"
+      ],
+      "explanation": "A file or archive-like artifact may indicate staging. The artifact alone does not establish its contents, purpose, or transfer.",
+      "finding_id": "F-009",
+      "limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "logic_type": "file_path_heuristic",
+      "rule_id": "FL-DISCOVERY-001",
+      "rule_limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Possible data staging"
+     },
+     {
+      "attack_techniques": [
+       "T1074"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E10"
+      ],
+      "explanation": "A file or archive-like artifact may indicate staging. The artifact alone does not establish its contents, purpose, or transfer.",
+      "finding_id": "F-010",
+      "limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "logic_type": "file_path_heuristic",
+      "rule_id": "FL-DISCOVERY-001",
+      "rule_limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Possible data staging"
+     },
+     {
+      "attack_techniques": [
+       "T1059"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E11"
+      ],
+      "explanation": "The source records a script-capable process with a potentially unusual parent or rule match. Correlate with endpoint telemetry before inferring intent.",
+      "finding_id": "F-011",
+      "limitations": [
+       "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+      ],
+      "logic_type": "process_relationship_heuristic",
+      "rule_id": "FL-ENDPOINT-002",
+      "rule_limitations": [
+       "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Unusual process ancestry"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E11",
+       "E12"
+      ],
+      "explanation": "The record contains a suspicious-destination signal. Any link to earlier process activity is temporal correlation, not proof of causation; verify destination context independently.",
+      "finding_id": "F-012",
+      "limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "logic_type": "network_indicator_heuristic",
+      "rule_id": "FL-NETWORK-001",
+      "rule_limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Potentially suspicious network activity"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence.",
+     "Archive contents and any successful transfer are not established by these records.",
+     "Network destination reputation was not independently verified by this workflow."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "E3",
+      "evidence_ids": [
+       "E3"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Mail gateway",
+      "summary": "URGENT: confirm your password via lookalike-bank.invalid",
+      "timestamp": "2025-03-01T08:50:00Z"
+     },
+     {
+      "event_id": "E1",
+      "evidence_ids": [
+       "E1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Identity provider",
+      "summary": "Successful login from a new device",
+      "timestamp": "2025-03-01T09:00:00Z"
+     },
+     {
+      "event_id": "E2",
+      "evidence_ids": [
+       "E2"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Identity provider",
+      "summary": "Session established",
+      "timestamp": "2025-03-01T09:01:00+00:00"
+     },
+     {
+      "event_id": "E4",
+      "evidence_ids": [
+       "E4"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Mail gateway",
+      "summary": "Mailbox rule created: inbox forwarding to outside address",
+      "timestamp": "2025-03-01T09:05:00Z"
+     },
+     {
+      "event_id": "E5",
+      "evidence_ids": [
+       "E5"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Identity provider",
+      "summary": "MFA method changed for the account",
+      "timestamp": "2025-03-01T09:10:00Z"
+     },
+     {
+      "event_id": "E6",
+      "evidence_ids": [
+       "E6"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "Process started",
+      "timestamp": "2025-03-01T09:20:00Z"
+     },
+     {
+      "event_id": "E7",
+      "evidence_ids": [
+       "E7"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "suspicious process launched from attachment path",
+      "timestamp": "2025-03-01T09:21:00Z"
+     },
+     {
+      "event_id": "E11",
+      "evidence_ids": [
+       "E11"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "Rule hit",
+      "timestamp": "2025-03-01T09:22:00Z"
+     },
+     {
+      "event_id": "E8",
+      "evidence_ids": [
+       "E8"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Firewall",
+      "summary": "Outbound connection",
+      "timestamp": "2025-03-01T09:30:00Z"
+     },
+     {
+      "event_id": "E12",
+      "evidence_ids": [
+       "E12"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Proxy",
+      "summary": "Request logged",
+      "timestamp": "2025-03-01T09:31:00Z"
+     },
+     {
+      "event_id": "E9",
+      "evidence_ids": [
+       "E9"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "File created",
+      "timestamp": "2025-03-01T09:40:00Z"
+     },
+     {
+      "event_id": "E10",
+      "evidence_ids": [
+       "E10"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "Archive staged for upload",
+      "timestamp": "2025-03-01T09:41:00Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "6e4553d9682ec2db5f77b04f4c92ca2bfc6cf1da917c56c9cfd8c5b52d1d4d24",
+     "evidence_id": "E1",
+     "expected_sha256": "6e4553d9682ec2db5f77b04f4c92ca2bfc6cf1da917c56c9cfd8c5b52d1d4d24",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "3a1c8a157957f3d05d5f66f18ef60ae9effb81b4c53742f374c042bc8e86a5a8",
+     "evidence_id": "E2",
+     "expected_sha256": "3a1c8a157957f3d05d5f66f18ef60ae9effb81b4c53742f374c042bc8e86a5a8",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "532d12401fb41d6a9ca3f09b898332d97063ead427eda3b3c852725be7e347e9",
+     "evidence_id": "E3",
+     "expected_sha256": "532d12401fb41d6a9ca3f09b898332d97063ead427eda3b3c852725be7e347e9",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e",
+     "evidence_id": "E4",
+     "expected_sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "e3caed67a071a5453faf7d30b57122d7f8ccf3afb8105fdedf9b329dc7ad8b9b",
+     "evidence_id": "E5",
+     "expected_sha256": "e3caed67a071a5453faf7d30b57122d7f8ccf3afb8105fdedf9b329dc7ad8b9b",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "29b570e32d928e84393969b830170a0809347a73fb5e312b4cb4a55970089dbe",
+     "evidence_id": "E6",
+     "expected_sha256": "29b570e32d928e84393969b830170a0809347a73fb5e312b4cb4a55970089dbe",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "d330098ef5655211faaa40872647015dde82fd2cb4b497c464d253852c9cc2b4",
+     "evidence_id": "E7",
+     "expected_sha256": "d330098ef5655211faaa40872647015dde82fd2cb4b497c464d253852c9cc2b4",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "fd416beccc8b2c35ce2227313f4b030f548297fbfa9e7225b6e69dccc15e783a",
+     "evidence_id": "E8",
+     "expected_sha256": "fd416beccc8b2c35ce2227313f4b030f548297fbfa9e7225b6e69dccc15e783a",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "1592164129da576047c3800a8f88e37455edc239e8677c1351617d98eb24f50b",
+     "evidence_id": "E9",
+     "expected_sha256": "1592164129da576047c3800a8f88e37455edc239e8677c1351617d98eb24f50b",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "b27f09ed67d2fabcfd86a6679ed9e5a9bdd1648df1c4cf590b9a03dd99c5856e",
+     "evidence_id": "E10",
+     "expected_sha256": "b27f09ed67d2fabcfd86a6679ed9e5a9bdd1648df1c4cf590b9a03dd99c5856e",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "8bb515c8f4ba525ee7ee71252784c15822f919e3282e689a816a7a4c10b9b042",
+     "evidence_id": "E11",
+     "expected_sha256": "8bb515c8f4ba525ee7ee71252784c15822f919e3282e689a816a7a4c10b9b042",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "992a71825a0847f4c47ba3d72fdac7485657cb12eec01bcb3bcbbef1c3c760b0",
+     "evidence_id": "E12",
+     "expected_sha256": "992a71825a0847f4c47ba3d72fdac7485657cb12eec01bcb3bcbbef1c3c760b0",
+     "status": "VERIFIED",
+     "valid": true
+    }
+   ],
+   "name": "account-takeover-chain"
+  },
+  {
+   "case": {
+    "case_id": "case-wazuh-levels",
+    "title": "wazuh-levels"
+   },
+   "evidence": [
+    {
+     "evidence_id": "W0",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 6
+      },
+      "event_id": "W0",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 0",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "a9f5e748ab0860fa1ba353037152592e77e0107850c0835a15501fe3d9a30b61"
+    },
+    {
+     "evidence_id": "W1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 7
+      },
+      "event_id": "W1",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 1",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "b3757d65871581e3d653f733d320fa96aad84ef98442ae9077b7dc745476d0aa"
+    },
+    {
+     "evidence_id": "W2",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 9
+      },
+      "event_id": "W2",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 2",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "44f5b087340169e39dc59392cdda3643a1e7fcea1b76170cdf8fd0a38a78bf3a"
+    },
+    {
+     "evidence_id": "W3",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 10
+      },
+      "event_id": "W3",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 3",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "476ebce13dfb2313bebd7f304fe17ee50f99ecc9453716af72d8793d4ef0890b"
+    },
+    {
+     "evidence_id": "W4",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 11
+      },
+      "event_id": "W4",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 4",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "0dabe1af0d5901e6b0d178298ece2f131efd0a29edf64282f16c096bcb6f5ea9"
+    },
+    {
+     "evidence_id": "W5",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 12
+      },
+      "event_id": "W5",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 5",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "18557d03c4eb41250c4befe08d5df07bb002016a44ad59979c40ed8ccb669231"
+    },
+    {
+     "evidence_id": "W6",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 16
+      },
+      "event_id": "W6",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 6",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "728477f21915a700537887ede61dda890dc910842a0a1a0c71f028eda8c1b44d"
+    },
+    {
+     "evidence_id": "W7",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 17
+      },
+      "event_id": "W7",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 7",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "b6a9a1ba4c43ff9ba9d07d527c5d77cc33d763051ccb61029af39af7015b6c11"
+    },
+    {
+     "evidence_id": "W8",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": "12"
+      },
+      "event_id": "W8",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 8",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "7c72525e52f9bd65651ddc0c00ab1cb9e3af39a1142f2fb4da3b91c8abd1e873"
+    },
+    {
+     "evidence_id": "W9",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": " 8 "
+      },
+      "event_id": "W9",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 9",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "587e851bd6a6e6cd680f1f175e4d94adf7eadf6c08a8b232cee5ded74e6728dc"
+    },
+    {
+     "evidence_id": "W10",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": "x"
+      },
+      "event_id": "W10",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 10",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "b69480b598db828fd6e3a0378e00d370911ce44aaf32706463815efb96bbd8c2"
+    },
+    {
+     "evidence_id": "W11",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": true
+      },
+      "event_id": "W11",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 11",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "65419892ab8057f7e9a36e0da0f8d7b16ff200d8979ef99d7a830acb7427d603"
+    },
+    {
+     "evidence_id": "W12",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 8.5
+      },
+      "event_id": "W12",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 12",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "12369e59e94cab0c8a82b900f034fc6c715f4b080943d75f8d9403411ec3ddf7"
+    },
+    {
+     "evidence_id": "W13",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": null
+      },
+      "event_id": "W13",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 13",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "0625b2ddc327a6da233e2e8ec6f638134ea412901b0641badeacac3c06ae1c54"
+    },
+    {
+     "evidence_id": "W14",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "wazuh-indexer",
+       "rule_groups": [
+        "authentication_failed",
+        5,
+        "MFA"
+       ],
+       "rule_level": 0
+      },
+      "event_id": "W14",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Alert 14",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "71993b9b6cc228b4e2ab6e423c3116cf89eb92d7347aec9cc542d68d39ea79c6"
+    },
+    {
+     "evidence_id": "W-other",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "provider": "elastic",
+       "rule_level": 14
+      },
+      "event_id": "W-other",
+      "kind": "log",
+      "source": "Wazuh",
+      "summary": "Other provider",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     "sha256": "eb955ac4e0c8d8b51f3e2c9ff017516077dd75962de61127e72cb07d96694878"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Checked 16 supplied records; 16 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "W5",
+       "W6",
+       "W8",
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W7",
+       "W9",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 23,
+      "status": "completed",
+      "summary": "Produced 23 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Ordered 16 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9"
+      ],
+      "inputs": 23,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 23,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Checked 16 supplied records; 16 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "W5",
+       "W6",
+       "W8",
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W7",
+       "W9",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 23,
+      "status": "completed",
+      "summary": "Produced 23 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W-other"
+      ],
+      "inputs": 16,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 16,
+      "status": "completed",
+      "summary": "Ordered 16 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "W0",
+       "W1",
+       "W10",
+       "W11",
+       "W12",
+       "W13",
+       "W14",
+       "W2",
+       "W3",
+       "W4",
+       "W5",
+       "W6",
+       "W7",
+       "W8",
+       "W9"
+      ],
+      "inputs": 23,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 23,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-wazuh-levels",
+    "evidence_priorities": [
+     {
+      "evidence_id": "W5",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 47,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 12 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+25)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W6",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 47,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 16 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+25)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W8",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 47,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 12 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+25)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W0",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 6 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W1",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 7 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W10",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W11",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W12",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W13",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W14",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 0 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W2",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 9 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W3",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 10 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W4",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 11 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W7",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W9",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Wazuh source rule level 8 (vendor severity context, not a probability)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "W-other",
+      "integrity": "VERIFIED",
+      "priority": "low",
+      "priority_score": 30,
+      "reasons": [
+       "Volatility: log (+12)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W0"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-001",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W1"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 7. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-002",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W1"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-003",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W2"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 9. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-004",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W2"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-005",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W3"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 10. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-006",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W3"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-007",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W4"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 11. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-008",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W4"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-009",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W5"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 12. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-010",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "critical",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W5"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-011",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W6"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 16. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-012",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "critical",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W6"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-013",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W7"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-014",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W8"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 12. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-015",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "critical",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W8"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-016",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W9"
+      ],
+      "explanation": "The Wazuh Indexer record carries source rule level 8. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+      "finding_id": "F-017",
+      "limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "logic_type": "source_severity_context",
+      "rule_id": "FL-WAZUH-001",
+      "rule_limitations": [
+       "Preserves Wazuh rule severity context; does not independently validate the source detection."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Wazuh source detection alert"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W9"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-018",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W10"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-019",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W11"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-020",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W12"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-021",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W13"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-022",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     },
+     {
+      "attack_techniques": [
+       "T1098"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "W14"
+      ],
+      "explanation": "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+      "finding_id": "F-023",
+      "limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-002",
+      "rule_limitations": [
+       "The event does not establish whether the change was unauthorized."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Authentication setting changed"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "W0",
+      "evidence_ids": [
+       "W0"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 0",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W1",
+      "evidence_ids": [
+       "W1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 1",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W2",
+      "evidence_ids": [
+       "W2"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 2",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W3",
+      "evidence_ids": [
+       "W3"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 3",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W4",
+      "evidence_ids": [
+       "W4"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 4",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W5",
+      "evidence_ids": [
+       "W5"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 5",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W6",
+      "evidence_ids": [
+       "W6"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 6",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W7",
+      "evidence_ids": [
+       "W7"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 7",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W8",
+      "evidence_ids": [
+       "W8"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 8",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W9",
+      "evidence_ids": [
+       "W9"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 9",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W10",
+      "evidence_ids": [
+       "W10"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 10",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W11",
+      "evidence_ids": [
+       "W11"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 11",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W12",
+      "evidence_ids": [
+       "W12"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 12",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W13",
+      "evidence_ids": [
+       "W13"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 13",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W14",
+      "evidence_ids": [
+       "W14"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Alert 14",
+      "timestamp": "2025-04-01T00:00:00Z"
+     },
+     {
+      "event_id": "W-other",
+      "evidence_ids": [
+       "W-other"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Wazuh",
+      "summary": "Other provider",
+      "timestamp": "2025-04-01T00:00:00Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "a9f5e748ab0860fa1ba353037152592e77e0107850c0835a15501fe3d9a30b61",
+     "evidence_id": "W0",
+     "expected_sha256": "a9f5e748ab0860fa1ba353037152592e77e0107850c0835a15501fe3d9a30b61",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "b3757d65871581e3d653f733d320fa96aad84ef98442ae9077b7dc745476d0aa",
+     "evidence_id": "W1",
+     "expected_sha256": "b3757d65871581e3d653f733d320fa96aad84ef98442ae9077b7dc745476d0aa",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "44f5b087340169e39dc59392cdda3643a1e7fcea1b76170cdf8fd0a38a78bf3a",
+     "evidence_id": "W2",
+     "expected_sha256": "44f5b087340169e39dc59392cdda3643a1e7fcea1b76170cdf8fd0a38a78bf3a",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "476ebce13dfb2313bebd7f304fe17ee50f99ecc9453716af72d8793d4ef0890b",
+     "evidence_id": "W3",
+     "expected_sha256": "476ebce13dfb2313bebd7f304fe17ee50f99ecc9453716af72d8793d4ef0890b",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "0dabe1af0d5901e6b0d178298ece2f131efd0a29edf64282f16c096bcb6f5ea9",
+     "evidence_id": "W4",
+     "expected_sha256": "0dabe1af0d5901e6b0d178298ece2f131efd0a29edf64282f16c096bcb6f5ea9",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "18557d03c4eb41250c4befe08d5df07bb002016a44ad59979c40ed8ccb669231",
+     "evidence_id": "W5",
+     "expected_sha256": "18557d03c4eb41250c4befe08d5df07bb002016a44ad59979c40ed8ccb669231",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "728477f21915a700537887ede61dda890dc910842a0a1a0c71f028eda8c1b44d",
+     "evidence_id": "W6",
+     "expected_sha256": "728477f21915a700537887ede61dda890dc910842a0a1a0c71f028eda8c1b44d",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "b6a9a1ba4c43ff9ba9d07d527c5d77cc33d763051ccb61029af39af7015b6c11",
+     "evidence_id": "W7",
+     "expected_sha256": "b6a9a1ba4c43ff9ba9d07d527c5d77cc33d763051ccb61029af39af7015b6c11",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "7c72525e52f9bd65651ddc0c00ab1cb9e3af39a1142f2fb4da3b91c8abd1e873",
+     "evidence_id": "W8",
+     "expected_sha256": "7c72525e52f9bd65651ddc0c00ab1cb9e3af39a1142f2fb4da3b91c8abd1e873",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "587e851bd6a6e6cd680f1f175e4d94adf7eadf6c08a8b232cee5ded74e6728dc",
+     "evidence_id": "W9",
+     "expected_sha256": "587e851bd6a6e6cd680f1f175e4d94adf7eadf6c08a8b232cee5ded74e6728dc",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "b69480b598db828fd6e3a0378e00d370911ce44aaf32706463815efb96bbd8c2",
+     "evidence_id": "W10",
+     "expected_sha256": "b69480b598db828fd6e3a0378e00d370911ce44aaf32706463815efb96bbd8c2",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "65419892ab8057f7e9a36e0da0f8d7b16ff200d8979ef99d7a830acb7427d603",
+     "evidence_id": "W11",
+     "expected_sha256": "65419892ab8057f7e9a36e0da0f8d7b16ff200d8979ef99d7a830acb7427d603",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "12369e59e94cab0c8a82b900f034fc6c715f4b080943d75f8d9403411ec3ddf7",
+     "evidence_id": "W12",
+     "expected_sha256": "12369e59e94cab0c8a82b900f034fc6c715f4b080943d75f8d9403411ec3ddf7",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "0625b2ddc327a6da233e2e8ec6f638134ea412901b0641badeacac3c06ae1c54",
+     "evidence_id": "W13",
+     "expected_sha256": "0625b2ddc327a6da233e2e8ec6f638134ea412901b0641badeacac3c06ae1c54",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "71993b9b6cc228b4e2ab6e423c3116cf89eb92d7347aec9cc542d68d39ea79c6",
+     "evidence_id": "W14",
+     "expected_sha256": "71993b9b6cc228b4e2ab6e423c3116cf89eb92d7347aec9cc542d68d39ea79c6",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "eb955ac4e0c8d8b51f3e2c9ff017516077dd75962de61127e72cb07d96694878",
+     "evidence_id": "W-other",
+     "expected_sha256": "eb955ac4e0c8d8b51f3e2c9ff017516077dd75962de61127e72cb07d96694878",
+     "status": "VERIFIED",
+     "valid": true
+    }
+   ],
+   "name": "wazuh-levels"
+  },
+  {
+   "case": {
+    "case_id": "case-timestamps-and-correlation",
+    "title": "timestamps-and-correlation"
+   },
+   "evidence": [
+    {
+     "evidence_id": "T1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "bo",
+       "result": "Success"
+      },
+      "event_id": "T1",
+      "kind": "authentication",
+      "source": "IdP",
+      "summary": "Successful login unfamiliar",
+      "timestamp": "2025-05-01T10:00:00"
+     },
+     "sha256": "fd9e0b92734639d184377c2933a24d25184fb31429d8e05809a3695253e309be"
+    },
+    {
+     "evidence_id": "T2",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "bo"
+      },
+      "event_id": "T2",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "Session",
+      "timestamp": "2025-05-01T12:30:00+02:00"
+     },
+     "sha256": "1f292099402ad4f245b8b24d65693888454ab5d1eabaa3156d0205f4860995e4"
+    },
+    {
+     "evidence_id": "T3",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "bo"
+      },
+      "event_id": "T3",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "Session before login",
+      "timestamp": "2025-05-01T09:59:59.999999Z"
+     },
+     "sha256": "32d8ce7a658eba08e07f474f8e919fb58fd75685fee4a3d0f3c89f3e5e07b20b"
+    },
+    {
+     "evidence_id": "T4",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "cy"
+      },
+      "event_id": "T4",
+      "kind": "login",
+      "source": "IdP",
+      "summary": "login successful new browser",
+      "timestamp": "2025-05-01"
+     },
+     "sha256": "aba2567e95f3c9065299a1871210d175d82f90253eba7d7cb7a83648e0615867"
+    },
+    {
+     "evidence_id": "T5",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "cy"
+      },
+      "event_id": "T5",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "Session invalid time",
+      "timestamp": "not-a-time"
+     },
+     "sha256": "165cad0723f7a7044e4a7d8b6c88061ca33792ef4a10b1956985098862e5b5b0"
+    },
+    {
+     "evidence_id": "T6",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "host": "h"
+      },
+      "event_id": "T6",
+      "kind": "process",
+      "source": "EDR",
+      "summary": "proc",
+      "timestamp": "2025-05-01T10:00:00.5+00:00"
+     },
+     "sha256": "e62fda1e6083b5e025696cdcf07aab15fc597755036f8f59ecf57780d47ff605"
+    },
+    {
+     "evidence_id": "T7",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "host": "h"
+      },
+      "event_id": "T7",
+      "kind": "network",
+      "source": "FW",
+      "summary": "suspicious flow",
+      "timestamp": "2025-05-01T10:00:01Z"
+     },
+     "sha256": "de2c389b640be502b6e75234126f9843533931af4e13b59b2354cff1ca638e51"
+    },
+    {
+     "evidence_id": "T8",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "host": "other"
+      },
+      "event_id": "T8",
+      "kind": "network",
+      "source": "FW",
+      "summary": "suspicious flow, other host",
+      "timestamp": "2025-05-01T10:00:02Z"
+     },
+     "sha256": "2ca614b5fc50b708797797c86d718779ee5221f98ebb091c274e75b457fb975b"
+    },
+    {
+     "evidence_id": "T9",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "T9",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "Session leap day",
+      "timestamp": "2024-02-29T10:00:00Z"
+     },
+     "sha256": "2356b2c97f3e70600f8bbfa49fe7c8099cb9079bb118ba4d5c96ee7b57a37f31"
+    },
+    {
+     "evidence_id": "T10",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "T10",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "Session bad day",
+      "timestamp": "2025-02-30T10:00:00Z"
+     },
+     "sha256": "41062004d5a22ba109b494fc947c25193c7c2e22f804dd5e3e16e3694ad6c242"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "T1",
+       "T2",
+       "T3",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8",
+       "T9",
+       "T10"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Checked 10 supplied records; 10 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "T7",
+       "T8",
+       "T6",
+       "T10",
+       "T2",
+       "T3",
+       "T5",
+       "T9",
+       "T1",
+       "T4"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "T1",
+       "T10",
+       "T2",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 7,
+      "status": "completed",
+      "summary": "Produced 7 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "T9",
+       "T4",
+       "T3",
+       "T1",
+       "T6",
+       "T7",
+       "T8",
+       "T2",
+       "T5",
+       "T10"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Ordered 10 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "T1",
+       "T10",
+       "T2",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8"
+      ],
+      "inputs": 7,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 7,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 3 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "T1",
+       "T2",
+       "T3",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8",
+       "T9",
+       "T10"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Checked 10 supplied records; 10 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "T7",
+       "T8",
+       "T6",
+       "T10",
+       "T2",
+       "T3",
+       "T5",
+       "T9",
+       "T1",
+       "T4"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "T1",
+       "T10",
+       "T2",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 7,
+      "status": "completed",
+      "summary": "Produced 7 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "T9",
+       "T4",
+       "T3",
+       "T1",
+       "T6",
+       "T7",
+       "T8",
+       "T2",
+       "T5",
+       "T10"
+      ],
+      "inputs": 10,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 10,
+      "status": "completed",
+      "summary": "Ordered 10 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "T1",
+       "T10",
+       "T2",
+       "T4",
+       "T5",
+       "T6",
+       "T7",
+       "T8"
+      ],
+      "inputs": 7,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 7,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 3 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-timestamps-and-correlation",
+    "evidence_priorities": [
+     {
+      "evidence_id": "T7",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 52,
+      "reasons": [
+       "Volatility: network (+22)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T8",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 52,
+      "reasons": [
+       "Volatility: network (+22)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T6",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 48,
+      "reasons": [
+       "Volatility: process (+30)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T10",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T2",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T3",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T5",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T9",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T1",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: authentication (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "T4",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: login (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T1"
+      ],
+      "explanation": "The source record describes a successful login in a new or unfamiliar context. This is an investigation lead, not proof of account compromise.",
+      "finding_id": "F-001",
+      "limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-001",
+      "rule_limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Unfamiliar successful login"
+     },
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T1",
+       "T2"
+      ],
+      "explanation": "A session record follows an authentication event for the same account or an unspecified account. Confirm session provenance before taking action.",
+      "finding_id": "F-002",
+      "limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "logic_type": "temporal_correlation",
+      "rule_id": "FL-IDENTITY-003",
+      "rule_limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Follow-on identity session"
+     },
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T4"
+      ],
+      "explanation": "The source record describes a successful login in a new or unfamiliar context. This is an investigation lead, not proof of account compromise.",
+      "finding_id": "F-003",
+      "limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-IDENTITY-001",
+      "rule_limitations": [
+       "A novel login context is not proof of account compromise."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Unfamiliar successful login"
+     },
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T4",
+       "T5"
+      ],
+      "explanation": "A session record follows an authentication event for the same account or an unspecified account. Confirm session provenance before taking action.",
+      "finding_id": "F-004",
+      "limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "logic_type": "temporal_correlation",
+      "rule_id": "FL-IDENTITY-003",
+      "rule_limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Follow-on identity session"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T6",
+       "T7"
+      ],
+      "explanation": "The record contains a suspicious-destination signal. Any link to earlier process activity is temporal correlation, not proof of causation; verify destination context independently.",
+      "finding_id": "F-005",
+      "limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "logic_type": "network_indicator_heuristic",
+      "rule_id": "FL-NETWORK-001",
+      "rule_limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Potentially suspicious network activity"
+     },
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T8"
+      ],
+      "explanation": "The record contains a suspicious-destination signal. Any link to earlier process activity is temporal correlation, not proof of causation; verify destination context independently.",
+      "finding_id": "F-006",
+      "limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "logic_type": "network_indicator_heuristic",
+      "rule_id": "FL-NETWORK-001",
+      "rule_limitations": [
+       "Destination reputation is not independently checked; temporal correlation does not prove causation."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Potentially suspicious network activity"
+     },
+     {
+      "attack_techniques": [
+       "T1078"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "T1",
+       "T10"
+      ],
+      "explanation": "A session record follows an authentication event for the same account or an unspecified account. Confirm session provenance before taking action.",
+      "finding_id": "F-007",
+      "limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "logic_type": "temporal_correlation",
+      "rule_id": "FL-IDENTITY-003",
+      "rule_limitations": [
+       "A session following authentication is expected in normal activity; verify account and session provenance."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Follow-on identity session"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence.",
+     "Network destination reputation was not independently verified by this workflow."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "T9",
+      "evidence_ids": [
+       "T9"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Session leap day",
+      "timestamp": "2024-02-29T10:00:00Z"
+     },
+     {
+      "event_id": "T4",
+      "evidence_ids": [
+       "T4"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "login successful new browser",
+      "timestamp": "2025-05-01"
+     },
+     {
+      "event_id": "T3",
+      "evidence_ids": [
+       "T3"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Session before login",
+      "timestamp": "2025-05-01T09:59:59.999999Z"
+     },
+     {
+      "event_id": "T1",
+      "evidence_ids": [
+       "T1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Successful login unfamiliar",
+      "timestamp": "2025-05-01T10:00:00"
+     },
+     {
+      "event_id": "T6",
+      "evidence_ids": [
+       "T6"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "proc",
+      "timestamp": "2025-05-01T10:00:00.5+00:00"
+     },
+     {
+      "event_id": "T7",
+      "evidence_ids": [
+       "T7"
+      ],
+      "integrity": "VERIFIED",
+      "source": "FW",
+      "summary": "suspicious flow",
+      "timestamp": "2025-05-01T10:00:01Z"
+     },
+     {
+      "event_id": "T8",
+      "evidence_ids": [
+       "T8"
+      ],
+      "integrity": "VERIFIED",
+      "source": "FW",
+      "summary": "suspicious flow, other host",
+      "timestamp": "2025-05-01T10:00:02Z"
+     },
+     {
+      "event_id": "T2",
+      "evidence_ids": [
+       "T2"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Session",
+      "timestamp": "2025-05-01T12:30:00+02:00"
+     },
+     {
+      "event_id": "T5",
+      "evidence_ids": [
+       "T5"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Session invalid time",
+      "timestamp": "not-a-time"
+     },
+     {
+      "event_id": "T10",
+      "evidence_ids": [
+       "T10"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "Session bad day",
+      "timestamp": "2025-02-30T10:00:00Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "fd9e0b92734639d184377c2933a24d25184fb31429d8e05809a3695253e309be",
+     "evidence_id": "T1",
+     "expected_sha256": "fd9e0b92734639d184377c2933a24d25184fb31429d8e05809a3695253e309be",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "1f292099402ad4f245b8b24d65693888454ab5d1eabaa3156d0205f4860995e4",
+     "evidence_id": "T2",
+     "expected_sha256": "1f292099402ad4f245b8b24d65693888454ab5d1eabaa3156d0205f4860995e4",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "32d8ce7a658eba08e07f474f8e919fb58fd75685fee4a3d0f3c89f3e5e07b20b",
+     "evidence_id": "T3",
+     "expected_sha256": "32d8ce7a658eba08e07f474f8e919fb58fd75685fee4a3d0f3c89f3e5e07b20b",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "aba2567e95f3c9065299a1871210d175d82f90253eba7d7cb7a83648e0615867",
+     "evidence_id": "T4",
+     "expected_sha256": "aba2567e95f3c9065299a1871210d175d82f90253eba7d7cb7a83648e0615867",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "165cad0723f7a7044e4a7d8b6c88061ca33792ef4a10b1956985098862e5b5b0",
+     "evidence_id": "T5",
+     "expected_sha256": "165cad0723f7a7044e4a7d8b6c88061ca33792ef4a10b1956985098862e5b5b0",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "e62fda1e6083b5e025696cdcf07aab15fc597755036f8f59ecf57780d47ff605",
+     "evidence_id": "T6",
+     "expected_sha256": "e62fda1e6083b5e025696cdcf07aab15fc597755036f8f59ecf57780d47ff605",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "de2c389b640be502b6e75234126f9843533931af4e13b59b2354cff1ca638e51",
+     "evidence_id": "T7",
+     "expected_sha256": "de2c389b640be502b6e75234126f9843533931af4e13b59b2354cff1ca638e51",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "2ca614b5fc50b708797797c86d718779ee5221f98ebb091c274e75b457fb975b",
+     "evidence_id": "T8",
+     "expected_sha256": "2ca614b5fc50b708797797c86d718779ee5221f98ebb091c274e75b457fb975b",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "2356b2c97f3e70600f8bbfa49fe7c8099cb9079bb118ba4d5c96ee7b57a37f31",
+     "evidence_id": "T9",
+     "expected_sha256": "2356b2c97f3e70600f8bbfa49fe7c8099cb9079bb118ba4d5c96ee7b57a37f31",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "41062004d5a22ba109b494fc947c25193c7c2e22f804dd5e3e16e3694ad6c242",
+     "evidence_id": "T10",
+     "expected_sha256": "41062004d5a22ba109b494fc947c25193c7c2e22f804dd5e3e16e3694ad6c242",
+     "status": "VERIFIED",
+     "valid": true
+    }
+   ],
+   "name": "timestamps-and-correlation"
+  },
+  {
+   "case": {
+    "case_id": "case-unicode-and-key-ordering",
+    "title": "unicode-and-key-ordering"
+   },
+   "evidence": [
+    {
+     "evidence_id": "U1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "k～": 1,
+       "k😀": 2,
+       "n": null,
+       "t": true,
+       "é": "ü"
+      },
+      "event_id": "U1",
+      "kind": "message",
+      "source": "Mail",
+      "summary": "Urgent: 名前 😀 password",
+      "timestamp": "2025-06-01T00:00:00Z"
+     },
+     "sha256": "c4d3e5d684be9e1a9078d6f8457e7ca7ae85c4d38305f084fd55c88e7061f638"
+    },
+    {
+     "evidence_id": "U2",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "path": "/TMP/Données.GZ"
+      },
+      "event_id": "U2",
+      "kind": "file",
+      "source": "EDR",
+      "summary": "Dossier ÀÉÎ",
+      "timestamp": "2025-06-01T00:00:01Z"
+     },
+     "sha256": "dee6b38591b895e034b6b7361f810c32d2940f3d1420baa1e40ae0a31d467a96"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked 2 supplied records; 2 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "U2",
+       "U1"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Produced 2 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Ordered 2 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked 2 supplied records; 2 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "U2",
+       "U1"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Produced 2 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Ordered 2 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "U1",
+       "U2"
+      ],
+      "inputs": 2,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-unicode-and-key-ordering",
+    "evidence_priorities": [
+     {
+      "evidence_id": "U2",
+      "integrity": "VERIFIED",
+      "priority": "low",
+      "priority_score": 30,
+      "reasons": [
+       "Volatility: file (+12)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "U1",
+      "integrity": "VERIFIED",
+      "priority": "low",
+      "priority_score": 26,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [
+       "T1566"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "U1"
+      ],
+      "explanation": "The message summary includes urgency, lookalike-domain, or credential-request language. Verify sender and destination independently; wording alone is not proof of phishing.",
+      "finding_id": "F-001",
+      "limitations": [
+       "Message wording alone does not establish phishing or user interaction."
+      ],
+      "logic_type": "keyword_heuristic",
+      "rule_id": "FL-PHISH-001",
+      "rule_limitations": [
+       "Message wording alone does not establish phishing or user interaction."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Social-engineering indicators"
+     },
+     {
+      "attack_techniques": [
+       "T1074"
+      ],
+      "confidence": "low",
+      "evidence_available": true,
+      "evidence_ids": [
+       "U2"
+      ],
+      "explanation": "A file or archive-like artifact may indicate staging. The artifact alone does not establish its contents, purpose, or transfer.",
+      "finding_id": "F-002",
+      "limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "logic_type": "file_path_heuristic",
+      "rule_id": "FL-DISCOVERY-001",
+      "rule_limitations": [
+       "File paths and archive names do not prove collection, staging, or exfiltration."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "medium",
+      "state": "supported",
+      "title": "Possible data staging"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "U1",
+      "evidence_ids": [
+       "U1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Mail",
+      "summary": "Urgent: 名前 😀 password",
+      "timestamp": "2025-06-01T00:00:00Z"
+     },
+     {
+      "event_id": "U2",
+      "evidence_ids": [
+       "U2"
+      ],
+      "integrity": "VERIFIED",
+      "source": "EDR",
+      "summary": "Dossier ÀÉÎ",
+      "timestamp": "2025-06-01T00:00:01Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "c4d3e5d684be9e1a9078d6f8457e7ca7ae85c4d38305f084fd55c88e7061f638",
+     "evidence_id": "U1",
+     "expected_sha256": "c4d3e5d684be9e1a9078d6f8457e7ca7ae85c4d38305f084fd55c88e7061f638",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "dee6b38591b895e034b6b7361f810c32d2940f3d1420baa1e40ae0a31d467a96",
+     "evidence_id": "U2",
+     "expected_sha256": "dee6b38591b895e034b6b7361f810c32d2940f3d1420baa1e40ae0a31d467a96",
+     "status": "VERIFIED",
+     "valid": true
+    }
+   ],
+   "name": "unicode-and-key-ordering"
+  },
+  {
+   "case": {
+    "case_id": "case-no-rule-matched",
+    "title": "no-rule-matched"
+   },
+   "evidence": [
+    {
+     "evidence_id": "N1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "N1",
+      "kind": "note",
+      "source": "Analyst",
+      "summary": "Routine maintenance window",
+      "timestamp": "2025-09-01T00:00:00Z"
+     },
+     "sha256": "ff8808e18d0ddf0143c60d86fbc2f3efcd712bdb22f637c1ee030b8498477c6f"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked 1 supplied records; 1 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Ordered 1 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked 1 supplied records; 1 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "N1"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Ordered 1 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-no-rule-matched",
+    "evidence_priorities": [
+     {
+      "evidence_id": "N1",
+      "integrity": "VERIFIED",
+      "priority": "low",
+      "priority_score": 26,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": false,
+      "evidence_ids": [],
+      "explanation": "The supplied evidence did not match the current deterministic triage rules. This is not a safety clearance; review the source records and add case-specific checks as needed.",
+      "finding_id": "F-001",
+      "logic_type": "no_rule_match",
+      "rule_id": "FL-GENERIC-000",
+      "rule_limitations": [
+       "No detection rule matched; this is not a clearance that the system or case is safe."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "info",
+      "state": "unverified",
+      "title": "No rule matched — analyst review required"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "N1",
+      "evidence_ids": [
+       "N1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Analyst",
+      "summary": "Routine maintenance window",
+      "timestamp": "2025-09-01T00:00:00Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "ff8808e18d0ddf0143c60d86fbc2f3efcd712bdb22f637c1ee030b8498477c6f",
+     "evidence_id": "N1",
+     "expected_sha256": "ff8808e18d0ddf0143c60d86fbc2f3efcd712bdb22f637c1ee030b8498477c6f",
+     "status": "VERIFIED",
+     "valid": true
+    }
+   ],
+   "name": "no-rule-matched"
+  },
+  {
+   "case": {
+    "case_id": "case-tampered-and-swapped",
+    "title": "tampered-and-swapped"
+   },
+   "evidence": [
+    {
+     "evidence_id": "E1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "ana@example.org",
+       "novel_source": true,
+       "result": "success"
+      },
+      "event_id": "E1",
+      "kind": "authentication",
+      "source": "Identity provider",
+      "summary": "Successful login from a new device [edited after sealing]",
+      "timestamp": "2025-03-01T09:00:00Z"
+     },
+     "sha256": "6e4553d9682ec2db5f77b04f4c92ca2bfc6cf1da917c56c9cfd8c5b52d1d4d24"
+    },
+    {
+     "evidence_id": "E4",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "E4",
+      "kind": "email",
+      "source": "Mail gateway",
+      "summary": "Mailbox rule created: inbox forwarding to outside address",
+      "timestamp": "2025-03-01T09:05:00Z"
+     },
+     "sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e"
+    },
+    {
+     "evidence_id": "S-other",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "novel_source": true,
+       "result": "success"
+      },
+      "event_id": "S1",
+      "kind": "authentication",
+      "source": "IdP",
+      "summary": "login new device success",
+      "timestamp": "2025-08-01T00:00:00Z"
+     },
+     "sha256": "c759ae1126f73d42374699e859b9916dab4b65d7ddd2f3b48cc2dbb18bd585d3"
+    }
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked 3 supplied records; 1 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "E1",
+       "S-other",
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 3,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Produced 1 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 3,
+      "status": "completed",
+      "summary": "Ordered 3 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked 3 supplied records; 1 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "E1",
+       "S-other",
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 3,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Produced 1 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 3,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 3,
+      "status": "completed",
+      "summary": "Ordered 3 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [
+       "E4"
+      ],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 1,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-tampered-and-swapped",
+    "evidence_priorities": [
+     {
+      "evidence_id": "E1",
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "priority": "high",
+      "priority_score": 57,
+      "reasons": [
+       "Volatility: authentication (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Integrity mismatch or malformed baseline (+25 review urgency)"
+      ],
+      "recommended_next_step": "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+     },
+     {
+      "evidence_id": "S-other",
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "priority": "high",
+      "priority_score": 57,
+      "reasons": [
+       "Volatility: authentication (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Integrity mismatch or malformed baseline (+25 review urgency)"
+      ],
+      "recommended_next_step": "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+     },
+     {
+      "evidence_id": "E4",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 38,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+20)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [
+       "T1114.003"
+      ],
+      "confidence": "medium",
+      "evidence_available": true,
+      "evidence_ids": [
+       "E4"
+      ],
+      "explanation": "The supplied record describes a mailbox forwarding or rule change. Verify the rule owner, destination, and authorization independently.",
+      "finding_id": "F-001",
+      "limitations": [
+       "The rule or forwarding destination must be independently checked for authorization."
+      ],
+      "logic_type": "single_event_heuristic",
+      "rule_id": "FL-MAIL-001",
+      "rule_limitations": [
+       "The rule or forwarding destination must be independently checked for authorization."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "high",
+      "state": "supported",
+      "title": "Mailbox forwarding or rule change"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "E1",
+      "evidence_ids": [],
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "source": "Identity provider",
+      "summary": "Successful login from a new device [edited after sealing]",
+      "timestamp": "2025-03-01T09:00:00Z"
+     },
+     {
+      "event_id": "E4",
+      "evidence_ids": [
+       "E4"
+      ],
+      "integrity": "VERIFIED",
+      "source": "Mail gateway",
+      "summary": "Mailbox rule created: inbox forwarding to outside address",
+      "timestamp": "2025-03-01T09:05:00Z"
+     },
+     {
+      "event_id": "S-other",
+      "evidence_ids": [],
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "source": "IdP",
+      "summary": "login new device success",
+      "timestamp": "2025-08-01T00:00:00Z"
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "9517d62b6b7043e142858ca439f03efa6ee53d99b0059c595a7f6ccf8c2726d0",
+     "evidence_id": "E1",
+     "expected_sha256": "6e4553d9682ec2db5f77b04f4c92ca2bfc6cf1da917c56c9cfd8c5b52d1d4d24",
+     "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "valid": false
+    },
+    {
+     "actual_sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e",
+     "evidence_id": "E4",
+     "expected_sha256": "8b2de5ebc5bc3e6325a726aedd4d1e5dcb29963bbae7d75fe2a50f538391045e",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "c759ae1126f73d42374699e859b9916dab4b65d7ddd2f3b48cc2dbb18bd585d3",
+     "evidence_id": "S-other",
+     "expected_sha256": "c759ae1126f73d42374699e859b9916dab4b65d7ddd2f3b48cc2dbb18bd585d3",
+     "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "valid": false
+    }
+   ],
+   "name": "tampered-and-swapped"
+  },
+  {
+   "case": {
+    "case_id": "case-odd-shapes",
+    "title": "odd-shapes"
+   },
+   "evidence": [
+    {
+     "evidence_id": "D1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "z",
+       "result": "success"
+      },
+      "event_id": "D1",
+      "kind": "login",
+      "source": "IdP",
+      "summary": "login successful unfamiliar",
+      "timestamp": "2025-07-01T00:00:00Z"
+     },
+     "sha256": "5b26ba9c3a44f37a8a642941109bdc4415317de6e1a3233c56fd75dc846da52e"
+    },
+    {
+     "evidence_id": "D1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {
+       "account": "z"
+      },
+      "event_id": "D1",
+      "kind": "session",
+      "source": "IdP",
+      "summary": "second record with the same id",
+      "timestamp": "2025-07-01T00:00:05Z"
+     },
+     "sha256": "623244f6eb59071eef1d67e8d9c029880683e525414fb952801cf67b963922e5"
+    },
+    {
+     "evidence_id": "D2",
+     "record": "not-a-dict",
+     "sha256": "x"
+    },
+    {
+     "evidence_id": "D3",
+     "record": {
+      "details": "text",
+      "event_id": "D3",
+      "kind": "file",
+      "summary": "x"
+     },
+     "sha256": ""
+    },
+    "not-an-envelope"
+   ],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "D1",
+       "D1"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked 4 supplied records; 2 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "D3",
+       "D1",
+       "D1",
+       "D2"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 4,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "D1",
+       "D1"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 4,
+      "status": "completed",
+      "summary": "Ordered 4 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [
+       "D1",
+       "D1"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 2,
+      "status": "completed",
+      "summary": "Checked 4 supplied records; 2 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [
+       "D3",
+       "D1",
+       "D1",
+       "D2"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 4,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [
+       "D1",
+       "D1"
+      ],
+      "inputs": 4,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 4,
+      "status": "completed",
+      "summary": "Ordered 4 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-odd-shapes",
+    "evidence_priorities": [
+     {
+      "evidence_id": "D3",
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "priority": "medium",
+      "priority_score": 45,
+      "reasons": [
+       "Volatility: file (+12)",
+       "Investigation relevance heuristic (+8)",
+       "Integrity mismatch or malformed baseline (+25 review urgency)"
+      ],
+      "recommended_next_step": "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+     },
+     {
+      "evidence_id": "D1",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 44,
+      "reasons": [
+       "Volatility: session (+26)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "D1",
+      "integrity": "VERIFIED",
+      "priority": "medium",
+      "priority_score": 42,
+      "reasons": [
+       "Volatility: login (+24)",
+       "Investigation relevance heuristic (+8)",
+       "Stored digest matches (+10)"
+      ],
+      "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+     },
+     {
+      "evidence_id": "D2",
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "priority": "medium",
+      "priority_score": 41,
+      "reasons": [
+       "Volatility: general artifact (+8)",
+       "Investigation relevance heuristic (+8)",
+       "Integrity mismatch or malformed baseline (+25 review urgency)"
+      ],
+      "recommended_next_step": "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+     }
+    ],
+    "findings": [
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": false,
+      "evidence_ids": [],
+      "explanation": "The supplied evidence did not match the current deterministic triage rules. This is not a safety clearance; review the source records and add case-specific checks as needed.",
+      "finding_id": "F-001",
+      "logic_type": "no_rule_match",
+      "rule_id": "FL-GENERIC-000",
+      "rule_limitations": [
+       "No detection rule matched; this is not a clearance that the system or case is safe."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "info",
+      "state": "unverified",
+      "title": "No rule matched — analyst review required"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": [
+     {
+      "event_id": "D1",
+      "evidence_ids": [
+       "D1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "login successful unfamiliar",
+      "timestamp": "2025-07-01T00:00:00Z"
+     },
+     {
+      "event_id": "D1",
+      "evidence_ids": [
+       "D1"
+      ],
+      "integrity": "VERIFIED",
+      "source": "IdP",
+      "summary": "second record with the same id",
+      "timestamp": "2025-07-01T00:00:05Z"
+     },
+     {
+      "event_id": "D2",
+      "evidence_ids": [],
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "source": "unknown",
+      "summary": "Unknown event",
+      "timestamp": ""
+     },
+     {
+      "event_id": "D3",
+      "evidence_ids": [],
+      "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+      "source": "unknown",
+      "summary": "x",
+      "timestamp": ""
+     }
+    ]
+   },
+   "expected_verdicts": [
+    {
+     "actual_sha256": "5b26ba9c3a44f37a8a642941109bdc4415317de6e1a3233c56fd75dc846da52e",
+     "evidence_id": "D1",
+     "expected_sha256": "5b26ba9c3a44f37a8a642941109bdc4415317de6e1a3233c56fd75dc846da52e",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "623244f6eb59071eef1d67e8d9c029880683e525414fb952801cf67b963922e5",
+     "evidence_id": "D1",
+     "expected_sha256": "623244f6eb59071eef1d67e8d9c029880683e525414fb952801cf67b963922e5",
+     "status": "VERIFIED",
+     "valid": true
+    },
+    {
+     "actual_sha256": "96d3c13cfc0c5eb6075b0346b30a9e725dcab2409f9fa811e8234ca43a6d8ba7",
+     "evidence_id": "D2",
+     "expected_sha256": "x",
+     "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "valid": false
+    },
+    {
+     "actual_sha256": "5af5fb8922da8351d12fbf448a1bf8fb9c74f62911a6616941a61636bf1622d2",
+     "evidence_id": "D3",
+     "expected_sha256": "",
+     "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "valid": false
+    },
+    {
+     "actual_sha256": "",
+     "evidence_id": "unknown",
+     "expected_sha256": "",
+     "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "valid": false
+    }
+   ],
+   "name": "odd-shapes"
+  },
+  {
+   "case": {
+    "case_id": "case-empty",
+    "title": "empty"
+   },
+   "evidence": [],
+   "expected": {
+    "agent_trace": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked 0 supplied records; 0 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Ordered 0 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "agents": [
+     {
+      "agent_id": "evidence_integrity",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Evidence Integrity Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked 0 supplied records; 0 matched their sealed hash and identity."
+     },
+     {
+      "agent_id": "evidence_triage",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Evidence Triage Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities."
+     },
+     {
+      "agent_id": "detection_correlation",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Detection & Correlation Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Produced 0 rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation."
+     },
+     {
+      "agent_id": "timeline_reconstruction",
+      "evidence_ids": [],
+      "inputs": 0,
+      "mode": "deterministic",
+      "name": "Timeline Reconstruction Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Ordered 0 supplied events by source timestamp; records with invalid integrity remain visible but untrusted."
+     },
+     {
+      "agent_id": "verification",
+      "evidence_ids": [],
+      "inputs": 1,
+      "mode": "deterministic",
+      "name": "Verification & Gap Agent",
+      "outputs": 0,
+      "status": "completed",
+      "summary": "Checked evidence references and recorded 2 explicit evidence gap(s); unsupported claims remain unverified."
+     }
+    ],
+    "case_id": "case-empty",
+    "evidence_priorities": [],
+    "findings": [
+     {
+      "attack_techniques": [],
+      "confidence": "low",
+      "evidence_available": false,
+      "evidence_ids": [],
+      "explanation": "The supplied evidence did not match the current deterministic triage rules. This is not a safety clearance; review the source records and add case-specific checks as needed.",
+      "finding_id": "F-001",
+      "logic_type": "no_rule_match",
+      "rule_id": "FL-GENERIC-000",
+      "rule_limitations": [
+       "No detection rule matched; this is not a clearance that the system or case is safe."
+      ],
+      "rule_source": "FIRSTLIGHT",
+      "rule_version": "1.0.0",
+      "severity": "info",
+      "state": "unverified",
+      "title": "No rule matched — analyst review required"
+     }
+    ],
+    "gaps": [
+     "Only supplied artifacts were reviewed; no live endpoint or identity collection was performed.",
+     "No memory image or live process snapshot is included in the supplied evidence."
+    ],
+    "orchestrator": {
+     "agent_count": 5,
+     "mode": "bounded_deterministic",
+     "model_agents_enabled": false,
+     "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+     "status": "completed",
+     "strategy": "Preserve → triage → detect/correlate → reconstruct → verify"
+    },
+    "schema_version": "1.1",
+    "timeline": []
+   },
+   "expected_verdicts": [],
+   "name": "empty"
+  }
+ ],
+ "generated_by": "scripts/generate_firstlight_parity_fixture.py",
+ "priority_cases": [
+  {
+   "evidence": [
+    {
+     "evidence_id": "R1",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R1",
+      "kind": "process",
+      "source": "EDR",
+      "summary": "suspicious activity",
+      "timestamp": "2026-11-20T11:55:00Z"
+     },
+     "sha256": "3e8308f2fc5e31bc9d767d41db1bf6959fef425cbdcbf8653cccc17af6d2c130"
+    },
+    {
+     "evidence_id": "R2",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R2",
+      "kind": "login",
+      "source": "IdP",
+      "summary": "Login",
+      "timestamp": "2026-11-20T11:20:00Z"
+     },
+     "sha256": "d435d0ba2017cbfc4af916f7b0345501bad1c165fe6d1da80a38ac4be742397f"
+    },
+    {
+     "evidence_id": "R3",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R3",
+      "kind": "log",
+      "source": "Syslog",
+      "summary": "entry",
+      "timestamp": "2026-11-20T08:00:00Z"
+     },
+     "sha256": "89690694d69220753c017e2a1af0131def5acc097318f7191fbc023705aa2ed8"
+    },
+    {
+     "evidence_id": "R4",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R4",
+      "kind": "file",
+      "source": "EDR",
+      "summary": "file",
+      "timestamp": "2026-11-19T20:00:00Z"
+     },
+     "sha256": "ef861f70c5ed004b81f38ab31b2424c0ef2a9df6ebaf6d94fb3fb79969f62ba6"
+    },
+    {
+     "evidence_id": "R5",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R5",
+      "kind": "memory",
+      "source": "EDR",
+      "summary": "dump",
+      "timestamp": "2026-11-20T12:30:00Z"
+     },
+     "sha256": "2f2efa5a638907995e0afe68bf65dafc9fa60e9d0b77459aacc68c60a1a91929"
+    },
+    {
+     "evidence_id": "R6",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R6",
+      "kind": "connection",
+      "source": "FW",
+      "summary": "x",
+      "timestamp": "2026-11-18T00:00:00Z"
+     },
+     "sha256": "d59224706b55061564a8c12bdb5093c216ee6550ab8dc81d2ccb8409a791fccb"
+    },
+    {
+     "evidence_id": "R7",
+     "integrity_status": "verified",
+     "record": {
+      "details": {},
+      "event_id": "R7",
+      "kind": "network",
+      "source": "FW",
+      "summary": "x [edited after sealing]",
+      "timestamp": "2026-11-20T11:59:00Z"
+     },
+     "sha256": "7e508badefb79c0318748e251d5dae9a2ffd5223e6741a50096c4627eefd47d0"
+    }
+   ],
+   "expected": [
+    {
+     "evidence_id": "R1",
+     "integrity": "VERIFIED",
+     "priority": "critical",
+     "priority_score": 75,
+     "reasons": [
+      "Volatility: process (+30)",
+      "Investigation relevance heuristic (+20)",
+      "Stored digest matches (+10)",
+      "Recent source timestamp (+15)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    },
+    {
+     "evidence_id": "R7",
+     "integrity": "HASH MISMATCH — POSSIBLE TAMPERING",
+     "priority": "high",
+     "priority_score": 70,
+     "reasons": [
+      "Volatility: network (+22)",
+      "Investigation relevance heuristic (+8)",
+      "Integrity mismatch or malformed baseline (+25 review urgency)",
+      "Recent source timestamp (+15)"
+     ],
+     "recommended_next_step": "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+    },
+    {
+     "evidence_id": "R2",
+     "integrity": "VERIFIED",
+     "priority": "medium",
+     "priority_score": 54,
+     "reasons": [
+      "Volatility: login (+24)",
+      "Investigation relevance heuristic (+8)",
+      "Stored digest matches (+10)",
+      "Recent source timestamp (+12)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    },
+    {
+     "evidence_id": "R5",
+     "integrity": "VERIFIED",
+     "priority": "medium",
+     "priority_score": 53,
+     "reasons": [
+      "Volatility: memory (+35)",
+      "Investigation relevance heuristic (+8)",
+      "Stored digest matches (+10)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    },
+    {
+     "evidence_id": "R6",
+     "integrity": "VERIFIED",
+     "priority": "medium",
+     "priority_score": 46,
+     "reasons": [
+      "Volatility: connection (+28)",
+      "Investigation relevance heuristic (+8)",
+      "Stored digest matches (+10)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    },
+    {
+     "evidence_id": "R3",
+     "integrity": "VERIFIED",
+     "priority": "medium",
+     "priority_score": 38,
+     "reasons": [
+      "Volatility: log (+12)",
+      "Investigation relevance heuristic (+8)",
+      "Stored digest matches (+10)",
+      "Recent source timestamp (+8)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    },
+    {
+     "evidence_id": "R4",
+     "integrity": "VERIFIED",
+     "priority": "low",
+     "priority_score": 34,
+     "reasons": [
+      "Volatility: file (+12)",
+      "Investigation relevance heuristic (+8)",
+      "Stored digest matches (+10)",
+      "Recent source timestamp (+4)"
+     ],
+     "recommended_next_step": "Preserve the source snapshot and corroborate with independent logs."
+    }
+   ],
+   "name": "recency",
+   "now": "2026-11-20T12:00:00Z"
+  }
+ ],
+ "rules": {
+  "Authentication setting changed": {
+   "attack_techniques": [
+    "T1098"
+   ],
+   "limitations": [
+    "The event does not establish whether the change was unauthorized."
+   ],
+   "logic_type": "single_event_heuristic",
+   "rule_id": "FL-IDENTITY-002",
+   "rule_limitations": [
+    "The event does not establish whether the change was unauthorized."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Follow-on identity session": {
+   "attack_techniques": [
+    "T1078"
+   ],
+   "limitations": [
+    "A session following authentication is expected in normal activity; verify account and session provenance."
+   ],
+   "logic_type": "temporal_correlation",
+   "rule_id": "FL-IDENTITY-003",
+   "rule_limitations": [
+    "A session following authentication is expected in normal activity; verify account and session provenance."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Mailbox forwarding or rule change": {
+   "attack_techniques": [
+    "T1114.003"
+   ],
+   "limitations": [
+    "The rule or forwarding destination must be independently checked for authorization."
+   ],
+   "logic_type": "single_event_heuristic",
+   "rule_id": "FL-MAIL-001",
+   "rule_limitations": [
+    "The rule or forwarding destination must be independently checked for authorization."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Possible data staging": {
+   "attack_techniques": [
+    "T1074"
+   ],
+   "limitations": [
+    "File paths and archive names do not prove collection, staging, or exfiltration."
+   ],
+   "logic_type": "file_path_heuristic",
+   "rule_id": "FL-DISCOVERY-001",
+   "rule_limitations": [
+    "File paths and archive names do not prove collection, staging, or exfiltration."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Potentially suspicious endpoint activity": {
+   "attack_techniques": [
+    "T1204.002"
+   ],
+   "limitations": [
+    "FIRSTLIGHT has not inspected the underlying file or process in this rule."
+   ],
+   "logic_type": "keyword_heuristic",
+   "rule_id": "FL-ENDPOINT-001",
+   "rule_limitations": [
+    "FIRSTLIGHT has not inspected the underlying file or process in this rule."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Potentially suspicious network activity": {
+   "attack_techniques": [],
+   "limitations": [
+    "Destination reputation is not independently checked; temporal correlation does not prove causation."
+   ],
+   "logic_type": "network_indicator_heuristic",
+   "rule_id": "FL-NETWORK-001",
+   "rule_limitations": [
+    "Destination reputation is not independently checked; temporal correlation does not prove causation."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Social-engineering indicators": {
+   "attack_techniques": [
+    "T1566"
+   ],
+   "limitations": [
+    "Message wording alone does not establish phishing or user interaction."
+   ],
+   "logic_type": "keyword_heuristic",
+   "rule_id": "FL-PHISH-001",
+   "rule_limitations": [
+    "Message wording alone does not establish phishing or user interaction."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Unfamiliar successful login": {
+   "attack_techniques": [
+    "T1078"
+   ],
+   "limitations": [
+    "A novel login context is not proof of account compromise."
+   ],
+   "logic_type": "single_event_heuristic",
+   "rule_id": "FL-IDENTITY-001",
+   "rule_limitations": [
+    "A novel login context is not proof of account compromise."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Unusual process ancestry": {
+   "attack_techniques": [
+    "T1059"
+   ],
+   "limitations": [
+    "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+   ],
+   "logic_type": "process_relationship_heuristic",
+   "rule_id": "FL-ENDPOINT-002",
+   "rule_limitations": [
+    "Parent/child process context needs endpoint corroboration; suspicious ancestry can be legitimate."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "Wazuh source detection alert": {
+   "attack_techniques": [],
+   "limitations": [
+    "Preserves Wazuh rule severity context; does not independently validate the source detection."
+   ],
+   "logic_type": "source_severity_context",
+   "rule_id": "FL-WAZUH-001",
+   "rule_limitations": [
+    "Preserves Wazuh rule severity context; does not independently validate the source detection."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  },
+  "__unmapped__": {
+   "attack_techniques": [],
+   "logic_type": "unmapped",
+   "rule_id": "FL-UNMAPPED-000",
+   "rule_limitations": [
+    "No versioned rule metadata is registered for this finding."
+   ],
+   "rule_source": "FIRSTLIGHT",
+   "rule_version": "1.0.0"
+  }
+ }
+}

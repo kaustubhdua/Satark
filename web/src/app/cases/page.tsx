@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowUpRight, RefreshCw, ShieldCheck } from 'lucide-react';
 import SiteHeader from '../site-header';
+import { DeviceWorkspacePanel, useLocalMode } from '../local-workspace-panel';
 import {
   createCase, getActiveTenant, getSession, listCases, listMyTenants, setActiveTenant,
   type SatarkSession, type SatarkTenant,
@@ -28,6 +29,7 @@ function formatDate(value: string) {
 }
 
 export default function CasesPage() {
+  const localMode = useLocalMode();
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenants, setTenants] = useState<SatarkTenant[]>([]);
   const [tenant, setTenant] = useState<SatarkTenant | null>(null);
@@ -181,7 +183,10 @@ export default function CasesPage() {
       <div className="container subpage" id="main-content" tabIndex={-1}>
         <div className="eyebrow">Case management</div>
         <h1>Manage <span>saved cases.</span></h1>
-        <p className="lead">Create and track investigations across your workspaces. Case access and changes are authorized by the server and enforced by database row-level security—not by this interface alone.</p>
+        {localMode.active
+          ? <p className="lead">Create and track investigations in a workspace that lives in this browser. Every change is recorded in a hash-chained audit trail you can verify, and nothing leaves your device.</p>
+          : <p className="lead">Create and track investigations across your workspaces. Case access and changes are authorized by the server and enforced by database row-level security—not by this interface alone.</p>}
+        <DeviceWorkspacePanel />
 
         {!session ? (
           <section className="form-panel" aria-labelledby="case-access-title">
@@ -204,7 +209,7 @@ export default function CasesPage() {
             <section className="form-panel" aria-labelledby="case-workspace-heading">
               <div className="panel-heading">
                 <div><div className="panel-kicker">Persistent workspace</div><h2 id="case-workspace-heading">Investigation overview</h2></div>
-                <span className="safe-chip"><ShieldCheck size={14} /> Server-authorized</span>
+                <span className="safe-chip"><ShieldCheck size={14} /> {localMode.active ? 'Stored on this device' : 'Server-authorized'}</span>
               </div>
               <div className="form-bottom case-toolbar">
                 <div className="case-workspace-picker">

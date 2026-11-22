@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Menu, X } from 'lucide-react';
 import { getActiveTenant, getSession } from '../lib/satark-auth';
+import { useLocalMode } from './local-workspace-panel';
 
 const links = [
   { href: '/investigate', label: 'Investigate' },
@@ -20,6 +21,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const localMode = useLocalMode();
   const [tilting, setTilting] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -82,9 +84,9 @@ export default function SiteHeader() {
               </Link>
             );
           })}
-          <Link href="/login" className={'nav-cta' + (pathname === '/login' ? ' active' : '')}
+          <Link href={localMode.active ? '/cases#device-workspace' : '/login'} className={'nav-cta' + (pathname === '/login' ? ' active' : '')}
             aria-current={pathname === '/login' ? 'page' : undefined} onClick={() => setMobileOpen(false)}>
-            {signedIn ? 'Account' : 'Sign in'}
+            {localMode.active ? 'This device' : signedIn ? 'Account' : 'Sign in'}
           </Link>
         </nav>
       </header>

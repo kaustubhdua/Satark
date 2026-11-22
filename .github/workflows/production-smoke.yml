@@ -56,6 +56,7 @@ jobs:
         with:
           ref: main
       - name: Check public production routes and security headers
+        id: public
         shell: bash
         run: |
           set -euo pipefail
@@ -140,9 +141,31 @@ jobs:
             echo "PASS $route: unauthenticated request rejected with 401 and no-store."
           }
 
-          check_unauthenticated_api "/api/cases"
-          check_unauthenticated_api "/api/findings"
-          check_unauthenticated_api "/api/reports"
+          # A deployment without a hosted SATARK API runs in browser-only mode: the server
+          # holds no data and refuses persistence routes (503); the browser answers them
+          # from its own storage. A hosted deployment must instead fail closed with 401.
+          early_health="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 "$base/api/health")"
+          if jq -e '.checks.persistentStorage.configured == false' <<<"$early_health" >/dev/null; then
+            backend_mode="browser-only"
+          else
+            backend_mode="hosted"
+          fi
+          echo "mode=$backend_mode" >> "$GITHUB_OUTPUT"
+          echo "Production backend mode: $backend_mode."
+          if [[ "$backend_mode" == "hosted" ]]; then
+            check_unauthenticated_api "/api/cases"
+            check_unauthenticated_api "/api/findings"
+            check_unauthenticated_api "/api/reports"
+          else
+            for route in /api/cases /api/findings /api/reports; do
+              status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base$route")"
+              if [[ "$status" != "503" ]] || ! grep -Eiq '^cache-control:.*no-store' "$headers"; then
+                echo "::error::Browser-only mode: $route should return 503 with no-store (server stores nothing), got HTTP $status."
+                exit 1
+              fi
+              echo "PASS $route: browser-only mode, server stores no data (503, no-store)."
+            done
+          fi
 
           api_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' "$base/api/analyze")"
           if [[ "$api_status" != "405" ]]; then
@@ -162,7 +185,7 @@ jobs:
             exit 1
           fi
           jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
-          if ! jq -e '.checks.persistentStorage.provider == "self-hosted" and .checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == false' "$body" >/dev/null; then
+          if [[ "$backend_mode" == "hosted" ]] && ! jq -e '.checks.persistentStorage.provider == "self-hosted" and .checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == false' "$body" >/dev/null; then
             echo "::error::Production self-hosted SATARK API is not configured; set SATARK_API_INTERNAL_URL to the private FastAPI service."
             exit 1
           fi
@@ -182,11 +205,13 @@ jobs:
           fi
           echo "PASS /api/version: production serves current main commit $expected_sha."
 
-          if ! jq -e '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' "$body" >/dev/null; then
-            echo "::error::Production FIRSTLIGHT proxies are not configured with a safe backend URL and strong server-side tokens."
-            exit 1
+          if [[ "$backend_mode" == "hosted" ]]; then
+            if ! jq -e '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' "$body" >/dev/null; then
+              echo "::error::Production FIRSTLIGHT proxies are not configured with a safe backend URL and strong server-side tokens."
+              exit 1
+            fi
+            echo "PASS /api/health: FIRSTLIGHT investigation and Wazuh proxy configuration is present."
           fi
-          echo "PASS /api/health: FIRSTLIGHT investigation and Wazuh proxy configuration is present."
 
           # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
           # but it is still a release blocker because the primary analysis feature is unavailable.
@@ -216,6 +241,7 @@ jobs:
 
 
       - name: Authenticate a dedicated production smoke account and read tenant data
+        if: steps.public.outputs.mode == 'hosted'
         env:
           SATARK_SMOKE_EMAIL: ${{ secrets.SATARK_SMOKE_EMAIL }}
           SATARK_SMOKE_PASSWORD: ${{ secrets.SATARK_SMOKE_PASSWORD }}

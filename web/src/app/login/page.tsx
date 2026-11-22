@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
+import { useLocalMode } from '../local-workspace-panel';
 import FirstlightReadiness from '../../components/firstlight-readiness';
 import { confirmMfaEnrollment, createTenant, disableMfa, getMfaStatus, getSession, listMyTenants, listWorkspaceInvitations, requestEmailVerification, requestPasswordReset, revokeWorkspaceInvitation, sendWorkspaceInvitation, setActiveTenant, signIn, signOut, signUp, startMfaEnrollment, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
+  const localMode = useLocalMode();
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenants, setTenants] = useState<SatarkTenant[]>([]);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -189,6 +191,28 @@ export default function LoginPage() {
     setBusy(true);
     await signOut();
     setSession(null); setTenants([]); setNotice('You have signed out.'); setBusy(false);
+  }
+
+  if (localMode.active) {
+    return (
+      <div className="shell">
+        <SiteHeader />
+        <main id="main-content" className="container subpage">
+          <div className="eyebrow">Workspace access</div>
+          <h1>No account <span>needed.</span></h1>
+          <p className="lead">This SATARK site keeps your workspace in this browser, so there is nothing to sign in to. Cases, evidence, reports and the audit trail are ready to use and never leave your device.</p>
+          <section className="form-panel" aria-labelledby="local-login-title">
+            <h2 id="local-login-title">What you can do here</h2>
+            <p className="muted">Open cases, upload and hash evidence, save sealed reports, verify the audit chain, and export a backup. Team sharing, e-mail invitations, sign-in security and live endpoint response need a hosted SATARK service.</p>
+            <div className="actions">
+              <Link className="btn btn-primary" href="/cases">Open my cases</Link>
+              <Link className="btn btn-secondary" href="/firstlight">Open FIRSTLIGHT</Link>
+              <Link className="btn btn-secondary" href="/cases#device-workspace">Back up this workspace</Link>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
   }
 
   return (

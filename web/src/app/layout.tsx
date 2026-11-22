@@ -10,6 +10,7 @@ import './design-system.css';
 import './arcade.css';
 import RouteExperience from './route-experience';
 import SiteFooter from './site-footer';
+import { LocalModeNotice } from './local-workspace-panel';
 
 export const metadata: Metadata = {
   title: 'SATARK — Digital Security Workspace',
@@ -21,7 +22,7 @@ export const viewport: Viewport = { themeColor: '#0a0420', colorScheme: 'dark' }
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={'arcade ' + GeistSans.variable + ' ' + GeistMono.variable}>
-      <body><RouteExperience />{children}<SiteFooter /></body>
+      <body><RouteExperience /><LocalModeNotice />{children}<SiteFooter /></body>
     </html>
   );
 }
