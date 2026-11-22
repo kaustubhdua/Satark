@@ -222,6 +222,20 @@ class AndroidOfflineContractTests(unittest.TestCase):
         self.assertIn("Build pinned EMBER2024 APK starter database", workflow)
         self.assertIn("Package verified historical starter database into offline app", workflow)
 
+    def test_release_publishing_is_tag_gated_validated_and_the_only_writer(self):
+        text = (ROOT / ".github/workflows/android-file-guard.yml").read_text(encoding="utf-8")
+        release = text[text.index("\n  publish-release:"):]
+        self.assertIn("needs: [android-build, android-emulator-smoke]", release, "only verified builds are published")
+        self.assertIn("refs/tags/v", release)
+        self.assertEqual(text.count("contents: write"), 1, "only the release job may hold write access")
+        self.assertLess(text.index("contents: write"), len(text))
+        self.assertGreater(text.index("contents: write"), text.index("\n  publish-release:"))
+        self.assertIn("permissions:\n  contents: read\n", text.split("jobs:")[0])
+        self.assertIn("^v[0-9]+", release, "release tag input must be validated")
+        self.assertIn("REQUESTED_TAG: ${{ inputs.release_tag }}", release)
+        self.assertEqual(text.count("inputs.release_tag"), 2, "the tag input is only read for the job condition and env")
+        self.assertRegex(text, r'tags:\n\s+- "v\*"')
+
     def test_dataset_import_has_a_historical_snapshot_id_default(self):
         source = (ANDROID / "app/src/main/java/com/satark/mobile/MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('setText("EMBER2024-2024-12-14")', source)

@@ -36,3 +36,10 @@ Leave anything unverified as **NOT VERIFIED**; do not tick it.
 - [ ] Missing provider dependencies and unresolved security findings with documented risk acceptance: ________
 
 Sign-off: ________ (name, date)
+
+## Publishing the Android evaluation APK
+The `Android File Guard` workflow can attach its CI-built, emulator-tested APK to a GitHub Release so reviewers can
+install it without building anything. Either push a tag (`git tag v0.1.0 && git push origin v0.1.0`) or run the workflow
+manually (Actions → Android File Guard → Run workflow) with `release_tag` set to `v0.1.0`. The release job runs only after
+the Python engine tests, the offline/permission contract and the emulator install test pass on that commit. The APK is
+**debug-signed** (installable for evaluation, not a Play Store build) and ships with a `.sha256` file.
