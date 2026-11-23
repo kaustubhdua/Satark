@@ -54,9 +54,9 @@ The health endpoint is configuration-only: it does not prove database, Redis, or
 
 Optional local model configuration (`SATARK_OLLAMA_BASE_URL`, `SATARK_OLLAMA_MODEL`) is not a production requirement for deterministic local analysis. Any third-party threat-intelligence credentials must remain opt-in, server-only and explicitly documented.
 
-## 3. Shared rate limiting is a release blocker
+## 3. Shared rate limiting (recommended for multi-tenant production)
 
-On Vercel, `/api/analyze` intentionally fails closed when shared Upstash rate limiting is missing or misconfigured. Do not change it to silently use an in-process limiter in production. After configuring both Upstash values:
+`/api/analyze` is deterministic, local and size-bounded, so it stays available when Upstash is missing, misconfigured or unreachable; it then applies a best-effort per-instance limit and `/api/health` reports `rateLimit.mode` as `local-fallback` or `misconfigured` (never `shared-upstash`). Per-instance limits are weaker on serverless, so configure Upstash before multi-tenant exposure. After configuring both Upstash values:
 
 1. Confirm `/api/health` reports `rateLimit.mode=shared-upstash` and `sharedAcrossInstances=true`.
 2. Verify live Redis connectivity and correct expiry/atomic behavior; the health snapshot alone does not verify connectivity.

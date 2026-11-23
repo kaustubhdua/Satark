@@ -41,8 +41,8 @@ export function buildHealthSnapshot(env = {}) {
         wazuhProxyConfigured: firstlightApiUrlValid && firstlightWazuhSyncTokenConfigured,
       },
       rateLimit: {
-        mode: sharedLimiterConfigured ? 'shared-upstash' : limiterMisconfigured ? 'misconfigured' : sharedLimiterRequired ? 'shared-required' : 'in-process',
-        configured: sharedLimiterConfigured || (!limiterMisconfigured && !sharedLimiterRequired),
+        mode: sharedLimiterConfigured ? 'shared-upstash' : limiterMisconfigured ? 'misconfigured' : sharedLimiterRequired ? 'local-fallback' : 'in-process',
+        configured: sharedLimiterConfigured || !limiterMisconfigured,
         sharedAcrossInstances: sharedLimiterConfigured,
         connectivityVerified: false,
       },
@@ -53,7 +53,7 @@ export function buildHealthSnapshot(env = {}) {
         serverClientMatch: false,
       },
     },
-    note: 'Configuration snapshot only. This endpoint does not probe model, database, Redis, or FIRSTLIGHT API connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the self-hosted database URL is configured without exposing connection details. On Vercel, analysis requires a configured shared limiter; process-local limits are for local development only. Deterministic analysis requires no third-party AI API key.',
+    note: 'Configuration snapshot only. This endpoint does not probe model, database, Redis, or FIRSTLIGHT API connectivity, prove tenant isolation, or validate rate-limit behavior. It reports whether the self-hosted database URL is configured without exposing connection details. Analysis works without any external service; without a shared limiter it is limited per server instance, which is weaker than a shared limit. Deterministic analysis requires no third-party AI API key.',
   };
 }
 
@@ -62,10 +62,10 @@ export function describeRateLimitStatus(rateLimit) {
   switch (rateLimit?.mode) {
     case 'shared-upstash':
       return 'Shared rate limiting is configured; live Redis connectivity is not verified by this configuration snapshot.';
-    case 'shared-required':
-      return 'Shared rate limiting is not configured; production analysis is disabled and fails closed until it is.';
+    case 'local-fallback':
+      return 'No shared rate limiter is configured; analysis stays available and is limited per server instance (best effort, not shared across instances).';
     case 'misconfigured':
-      return 'Shared rate limiting configuration is incomplete or unsafe; production analysis is disabled and fails closed until it is corrected.';
+      return 'Shared rate limiting configuration is incomplete or unsafe and is being ignored; analysis stays available with a per-instance limit until it is corrected.';
     case 'in-process':
       return 'Rate limiting is process-local, not shared across instances; configure shared limiting before public exposure.';
     default:

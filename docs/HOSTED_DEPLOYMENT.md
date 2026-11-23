@@ -89,7 +89,7 @@ Leave `SATARK_ENABLE_LIVE_RESPONSE` unset: live containment actions stay disable
 | `FIRSTLIGHT_API_URL` | the same URL |
 | `FIRSTLIGHT_API_TOKEN` | the same token as the API |
 | `SATARK_PUBLIC_ORIGIN` | `https://satark-rose.vercel.app` (your exact origin) |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | an Upstash database, or your own `serverless-redis-http` endpoint over `https://` |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | optional: an Upstash database, or your own `serverless-redis-http` endpoint over `https://`. Without it, analysis still works with a per-instance limit (`/api/health` → `rateLimit.mode: local-fallback`) |
 
 Redeploy after saving variables; Vercel applies them only to new deployments.
 
