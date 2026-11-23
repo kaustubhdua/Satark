@@ -33,6 +33,19 @@ SATARK is an independent cybersecurity project with two complementary products: 
 | Web command center | Operational security workspace with accessible contrast and reduced-motion support | Next.js |
 | Self-hosted operations | TLS termination, persistent volumes, separated database roles and recovery tooling | Docker Compose, PostgreSQL, Caddy |
 
+### Two ways to run the web workspace
+
+| Mode | What you need | What works |
+| --- | --- | --- |
+| **Browser-only** (default when no backend is configured) | Just the Next.js app, for example on Vercel | Scam-awareness learning, file and message analysis, cases, notes, findings, SHA-256-verified evidence, sealed reports, the hash-chained audit trail with verification, JSON export/import backup, and the full ten-rule FIRSTLIGHT investigation, all stored in your own browser and never uploaded |
+| **Hosted / self-hosted** | FastAPI backend, PostgreSQL, worker (see [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) and [docs/HOSTED_DEPLOYMENT.md](docs/HOSTED_DEPLOYMENT.md)) | Everything above plus real accounts, MFA, multi-user tenants, durable server-side investigations, optional S3 evidence storage, Wazuh telemetry and four-eyes guarded response |
+
+The Android app is built and emulator-tested by CI; an installable debug-signed evaluation APK with a SHA-256 file is published on the repository's Releases page (see [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)).
+
+Browser-only data lives in that browser profile only, so use Export on the Cases page for backups. Live endpoint
+containment needs a Wazuh Manager and is only available in hosted/self-hosted mode. The browser investigation engine is
+a port of the Python one and is checked against it with a shared golden fixture.
+
 ### Architecture and operational boundaries
 
 - **No Microsoft Defender integration is required.** Wazuh is the only endpoint telemetry/response provider in this architecture.

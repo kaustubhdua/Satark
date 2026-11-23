@@ -35,6 +35,8 @@ on:
       - "tests/test_ember_android_db.py"
       - ".github/workflows/android-file-guard.yml"
       - "release-gate/EXACT_SHA.md"
+    tags:
+      - "v*"
   pull_request:
     paths:
       - "web/**"
@@ -69,6 +71,11 @@ on:
       - ".github/workflows/android-file-guard.yml"
       - "release-gate/EXACT_SHA.md"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag such as v0.1.0. When set, the verified debug APK is published to a GitHub Release."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -272,3 +279,49 @@ jobs:
             artifacts/satark-window.xml
           if-no-files-found: ignore
           retention-days: 7
+
+  publish-release:
+    name: Publish verified APK to a GitHub Release
+    needs: [android-build, android-emulator-smoke]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Resolve and validate the release tag
+        run: |
+          tag="${REQUESTED_TAG:-$GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must look like v0.1.0, got '$tag'."
+            exit 1
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          name: satark-file-guard-debug-apk
+          path: dist
+      - name: Name the APK and write its SHA-256
+        run: |
+          cd dist
+          mv app-debug.apk "satark-file-guard-${TAG}-debug.apk"
+          sha256sum "satark-file-guard-${TAG}-debug.apk" > "satark-file-guard-${TAG}-debug.apk.sha256"
+          cat "satark-file-guard-${TAG}-debug.apk.sha256"
+      - name: Create the release
+        run: |
+          cat > notes.md <<'NOTES'
+          SATARK File Guard for Android, built and tested by this repository's CI.
+
+          **This is a debug-signed build for evaluation, not a Play Store release.** Android will ask you to allow installs
+          from this source. It has no INTERNET permission, scans only files you choose, and never uploads them.
+
+          Verify the download: `sha256sum -c satark-file-guard-*-debug.apk.sha256`.
+          Before this release was published CI ran the Python engine tests, the offline/permission contract and an Android
+          emulator install-and-launch test on the same commit.
+          NOTES
+          gh release create "$TAG" dist/*.apk dist/*.sha256 \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "SATARK File Guard $TAG (debug-signed evaluation build)" --notes-file notes.md
