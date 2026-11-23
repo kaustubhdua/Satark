@@ -43,7 +43,7 @@ test('production without a shared limiter is disabled and not ready', () => {
   const registry = buildCapabilityRegistry({ VERCEL: '1' });
   assert.equal(byId(registry, 'rate_limit.shared').status, 'disabled');
   assert.equal(registry.productionReady, false);
-  assert.match(byId(registry, 'rate_limit.shared').details, /fail closed/i);
+  assert.match(byId(registry, 'rate_limit.shared').details, /per-instance/i);
 });
 
 test('rule code is explicitly unverified for live detection', () => {

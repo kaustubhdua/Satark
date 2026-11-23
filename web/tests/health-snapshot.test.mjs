@@ -52,10 +52,10 @@ test('FIRSTLIGHT integrations require safe URLs and strong server-side tokens', 
   }
 });
 
-test('production health marks shared limiting as a hard requirement', () => {
+test('production health reports the per-instance fallback honestly', () => {
   const missing = buildHealthSnapshot({ VERCEL: '1' });
-  assert.equal(missing.checks.rateLimit.mode, 'shared-required');
-  assert.equal(missing.checks.rateLimit.configured, false);
+  assert.equal(missing.checks.rateLimit.mode, 'local-fallback');
+  assert.equal(missing.checks.rateLimit.sharedAcrossInstances, false);
   const partial = buildHealthSnapshot({ VERCEL: '1', UPSTASH_REDIS_REST_URL: 'https://redis.example.com' });
   assert.equal(partial.checks.rateLimit.mode, 'misconfigured');
   assert.equal(partial.checks.rateLimit.configured, false);
@@ -70,6 +70,6 @@ test('shared rate limit configuration is reported without claiming connectivity'
 });
 
 test('rate-limit status copy distinguishes production and local modes', () => {
-  assert.match(describeRateLimitStatus(buildHealthSnapshot({ VERCEL: '1' }).checks.rateLimit), /production analysis is disabled and fails closed/i);
+  assert.match(describeRateLimitStatus(buildHealthSnapshot({ VERCEL: '1' }).checks.rateLimit), /per server instance/i);
   assert.match(describeRateLimitStatus(buildHealthSnapshot({}).checks.rateLimit), /process-local, not shared/i);
 });

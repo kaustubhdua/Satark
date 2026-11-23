@@ -35,7 +35,7 @@ export function buildCapabilityRegistry(env = {}) {
       'Private SATARK FastAPI and database URL are configured; database connectivity, schema compatibility and tenant isolation are not probed.'),
     capability('rate_limit.shared', 'Shared rate limiting', redisConfigured,
       redisConfigured ? 'Upstash settings are present; connectivity and enforcement are not probed.'
-        : env.VERCEL === '1' ? 'Required in production; analysis must fail closed until configured.'
+        : env.VERCEL === '1' ? 'Not configured; analysis stays available with a best-effort per-instance limit.'
           : 'Not configured; process-local limiting is not shared across instances.'),
     capability('ai.local_model', 'Local model inference', modelConfigured,
       modelConfigured ? 'Endpoint and model are configured; reachability and invocation are unverified.'

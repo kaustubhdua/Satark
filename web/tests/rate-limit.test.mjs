@@ -15,9 +15,10 @@ test('local development limiter enforces per-client window without external serv
   assert.deepEqual(await limiter(request()), { limited: false, unavailable: false, mode: 'local' });
 });
 
-test('production on Vercel fails closed when no shared limiter is configured', async () => {
+test('production on Vercel stays available with a per-instance fallback when no shared limiter exists', async () => {
   const limiter = createRateLimiter({ env: { VERCEL: '1' } });
-  assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared-required' });
+  for (let i = 0; i < 8; i += 1) assert.deepEqual(await limiter(request('203.0.113.30')), { limited: false, unavailable: false, mode: 'local-fallback' });
+  assert.deepEqual(await limiter(request('203.0.113.30')), { limited: true, unavailable: false, mode: 'local-fallback' });
 });
 
 test('client keys are hashed and caller-controlled forwarded-for is ignored', async () => {
@@ -47,33 +48,28 @@ test('shared limiter uses atomic Redis script and enforces the global counter', 
   assert.equal(captured.body[4], '60000');
 });
 
-test('shared limiter fails closed on oversized upstream responses', async () => {
-  const limiter = createRateLimiter({
-    env: { UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token' },
-    fetcher: async () => new Response('x'.repeat(20 * 1024), { status: 200 }),
-  });
-  assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared' });
+const shared = { UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token' };
+const degraded = { limited: false, unavailable: false, mode: 'shared-degraded' };
+
+test('shared limiter degrades to the per-instance limit on oversized upstream responses', async () => {
+  const limiter = createRateLimiter({ env: shared, fetcher: async () => new Response('x'.repeat(20 * 1024), { status: 200 }) });
+  assert.deepEqual(await limiter(request('203.0.113.31')), degraded);
 });
 
-test('shared limiter fails closed on malformed upstream JSON', async () => {
-  const limiter = createRateLimiter({
-    env: { UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token' },
-    fetcher: async () => new Response('not-json', { status: 200 }),
-  });
-  assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared' });
+test('shared limiter degrades on malformed upstream JSON', async () => {
+  const limiter = createRateLimiter({ env: shared, fetcher: async () => new Response('not-json', { status: 200 }) });
+  assert.deepEqual(await limiter(request('203.0.113.32')), degraded);
 });
 
-test('configured shared limiter fails closed on outage and never falls back to local', async () => {
-  const limiter = createRateLimiter({
-    env: { UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test-token' },
-    fetcher: async () => { throw new Error('network unavailable'); },
-  });
-  assert.deepEqual(await limiter(request()), { limited: false, unavailable: true, mode: 'shared' });
+test('shared limiter outage still enforces a local limit instead of opening the endpoint', async () => {
+  const limiter = createRateLimiter({ env: shared, fetcher: async () => { throw new Error('network unavailable'); } });
+  for (let i = 0; i < 8; i += 1) assert.deepEqual(await limiter(request('203.0.113.33')), degraded);
+  assert.deepEqual(await limiter(request('203.0.113.33')), { ...degraded, limited: true });
 });
 
-test('partial or unsafe shared configuration fails closed', async () => {
+test('partial or unsafe shared configuration is ignored with a per-instance limit', async () => {
   const partial = createRateLimiter({ env: { UPSTASH_REDIS_REST_URL: 'https://redis.example.com' } });
-  assert.deepEqual(await partial(request()), { limited: false, unavailable: true, mode: 'misconfigured' });
+  assert.deepEqual(await partial(request('203.0.113.34')), { limited: false, unavailable: false, mode: 'misconfigured' });
   const unsafe = createRateLimiter({ env: { UPSTASH_REDIS_REST_URL: 'http://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'x' } });
-  assert.deepEqual(await unsafe(request()), { limited: false, unavailable: true, mode: 'misconfigured' });
+  assert.deepEqual(await unsafe(request('203.0.113.35')), { limited: false, unavailable: false, mode: 'misconfigured' });
 });

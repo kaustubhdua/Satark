@@ -213,32 +213,20 @@ jobs:
             echo "PASS /api/health: FIRSTLIGHT investigation and Wazuh proxy configuration is present."
           fi
 
-          # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
-          # but it is still a release blocker because the primary analysis feature is unavailable.
+          # Exercise a harmless synthetic input. Analysis is deterministic and local, so it must
+          # return 200 in every limiter mode (shared, per-instance fallback, or degraded).
           analysis_status="$(curl "${protection_args[@]}" --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
             -X POST "$base/api/analyze" -H 'Content-Type: application/json' \
             --data '{"input":"Synthetic release smoke test: an ordinary internal status update."}')"
-          if [[ "$rate_mode" == "shared-upstash" && "$shared_limiter_ok" == "true" ]]; then
-            if [[ "$analysis_status" != "200" ]]; then
-              echo "::error::Configured shared limiter did not allow the synthetic analysis smoke test (HTTP $analysis_status)."
-              exit 1
-            fi
-            jq -e 'has("threat_category") and has("summary") and has("notice") and (.summary | length > 0)' "$body" >/dev/null
-            echo "PASS /api/analyze: synthetic request returned a structured local analysis result."
-          else
-            if [[ "$analysis_status" != "503" ]]; then
-              echo "::error::Analysis must fail closed when shared rate limiting is absent; received HTTP $analysis_status."
-              exit 1
-            fi
-            if ! grep -Eiq '^retry-after:' "$headers"; then
-              echo "::error::Fail-closed /api/analyze response must include Retry-After."
-              exit 1
-            fi
-            echo "::error::Production release is degraded: shared rate limiting is not configured (mode=$rate_mode); analysis correctly fails closed with 503."
+          if [[ "$analysis_status" != "200" ]]; then
+            echo "::error::Synthetic analysis request failed (HTTP $analysis_status, rate limiter mode=$rate_mode)."
             exit 1
           fi
-
-
+          jq -e 'has("threat_category") and has("summary") and has("notice") and (.summary | length > 0)' "$body" >/dev/null
+          echo "PASS /api/analyze: synthetic request returned a structured local analysis result (rate limiter mode=$rate_mode)."
+          if [[ "$rate_mode" != "shared-upstash" ]]; then
+            echo "::notice::Rate limiting is per-instance (mode=$rate_mode). Configure Upstash for a limit shared across serverless instances."
+          fi
 
       - name: Authenticate a dedicated production smoke account and read tenant data
         if: steps.public.outputs.mode == 'hosted'

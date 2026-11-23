@@ -38,7 +38,7 @@ function localLimit(key, now) {
 function sharedConfig(env) {
   const url = env.UPSTASH_REDIS_REST_URL?.trim();
   const token = env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (!url && !token) return { mode: env.VERCEL === '1' ? 'shared-required' : 'local' };
+  if (!url && !token) return { mode: env.VERCEL === '1' ? 'local-fallback' : 'local' };
   if (!url || !token) return { mode: 'misconfigured' };
   try {
     const parsed = new URL(url);
@@ -87,22 +87,23 @@ async function sharedLimit(key, config, fetcher) {
 }
 
 /**
- * Uses atomic shared Redis counters when configured. Production on Vercel fails
- * closed if distributed limiting is missing or unavailable; process-local limits
- * are retained only for local development and isolated test deployments.
+ * Uses atomic shared Redis counters when configured. Public analysis is deterministic,
+ * local and bounded (48 KiB bodies), so it stays available when no shared limiter is
+ * configured, the configuration is unusable, or the shared store is unreachable: the
+ * request is then limited by a best-effort per-instance counter. That is weaker than a
+ * shared limit on serverless platforms (each instance counts separately) and is reported
+ * honestly by /api/health as `local-fallback` rather than presented as distributed.
  */
 export function createRateLimiter({ now = Date.now, env = process.env, fetcher = fetch } = {}) {
   const config = sharedConfig(env);
   return async function checkRateLimit(request) {
     const key = getClientKey(request);
-    if (config.mode === 'misconfigured') {
-      return { limited: false, unavailable: true, mode: 'misconfigured' };
+    if (config.mode === 'shared') {
+      const shared = await sharedLimit(key, config, fetcher);
+      if (!shared.unavailable) return shared;
+      return { limited: localLimit(key, now()), unavailable: false, mode: 'shared-degraded' };
     }
-    if (config.mode === 'shared-required') {
-      return { limited: false, unavailable: true, mode: 'shared-required' };
-    }
-    if (config.mode === 'shared') return sharedLimit(key, config, fetcher);
-    return { limited: localLimit(key, now()), unavailable: false, mode: 'local' };
+    return { limited: localLimit(key, now()), unavailable: false, mode: config.mode };
   };
 }
 

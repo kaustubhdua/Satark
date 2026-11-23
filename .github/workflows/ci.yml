@@ -126,7 +126,7 @@ jobs:
           grep -Fq 'check_route "/firstlight"' "$production_smoke"
           grep -Fq 'check_unauthenticated_api "/api/cases"' "$production_smoke"
           grep -Fq 'self-hosted SATARK API is not configured' "$production_smoke"
-          grep -Fq 'shared rate limiting is not configured' "$production_smoke"
+          grep -Fq 'Synthetic analysis request failed' "$production_smoke"
           grep -Fq '.checks.firstlight.investigationProxyConfigured == true and .checks.firstlight.wazuhProxyConfigured == true' "$production_smoke"
           grep -Fq 'tests/test_satark_backend.py' "$api_workflow"
           grep -Fq 'tests/test_satark_postgres.py' "$api_workflow"
