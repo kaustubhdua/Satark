@@ -76,7 +76,7 @@ export default function LearnPage() {
         </section>}
         <div className="button-row quiz-actions">
           <button className="btn btn-primary" type="button" onClick={() => setChecked(true)} disabled={answeredCount === 0}>Check answers</button>
-          <button className="btn btn-secondary" type="button" onClick={() => { setAnswers({}); setChecked(false); }}>Reset quiz</button>
+          <button className="btn btn-secondary" type="button" onClick={() => { setAnswers({}); setChecked(false); }} disabled={answeredCount === 0 && !checked}>Reset quiz</button>
         </div>
         <section className="form-panel challenge-cta" aria-labelledby="challenge-cta-title">
           <div className="eyebrow">Next level</div>

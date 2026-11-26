@@ -35,7 +35,7 @@ await page.fill('#persistent-case-title', 'Local journey case');
 await page.getByRole('button', { name: /save case, evidence/i }).click();
 await page.getByText(/Saved case/).first().waitFor({ timeout: 20000 });
 await page.setInputFiles('#private-evidence-file', csv);
-await page.getByRole('button', { name: /upload private file/i }).click();
+await page.getByRole('button', { name: /attach file/i }).click();
 await page.getByText(/Private file uploaded/).waitFor();
 await page.getByRole('button', { name: /verify last uploaded/i }).click();
 await page.getByText(/Integrity match/).waitFor();

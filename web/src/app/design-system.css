@@ -876,16 +876,6 @@ body {
     rgba(7, 13, 21, .72);
   box-shadow: 0 0 0 4px rgba(94,234,212,.025), 0 26px 70px -46px rgba(94,234,212,.34);
 }
-.sentinel-hero::after {
-  content: "SATARK // DEFENCE GRID";
-  position: absolute;
-  z-index: -1;
-  top: 12px;
-  right: 18px;
-  color: rgba(94,234,212,.24);
-  font: 10px/1 var(--mono);
-  letter-spacing: .16em;
-}
 .sentinel-hero h1 {
   font-weight: 720;
   letter-spacing: -.04em;
@@ -1460,3 +1450,15 @@ body::after { display: none; }
 }
 
 ::selection { background: rgba(182,255,92,.34); color: #07110a; }
+/* Endpoint sensor page */
+.sensor-steps { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.sensor-steps li { position: relative; padding: 14px 16px 14px 52px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-inset); counter-increment: step; }
+.sensor-steps li::before { content: counter(step); position: absolute; left: 16px; top: 14px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border-strong); color: var(--text-2); font-size: 12px; }
+.sensor-steps h3 { margin: 0 0 4px; }
+.sensor-steps p { margin: 0; color: var(--text-2); }
+.sensor-commands { display: grid; gap: 14px; margin-top: 16px; }
+.sensor-commands h3 { margin: 0 0 6px; font-size: 14px; color: var(--text-2); font-weight: 500; }
+.sensor-commands pre { margin: 0; padding: 12px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-inset); font-size: 12.5px; line-height: 1.6; }
+.subpage > .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+.workspace-card ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); display: grid; gap: 6px; }
+

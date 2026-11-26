@@ -331,13 +331,6 @@
 .arcade .bento-card.span-6 { grid-column: span 6; min-height: 150px; }
 @media (max-width: 960px) { .arcade .bento-card.span-6 { grid-column: span 2; } }
 @media (max-width: 600px) { .arcade .bento-card.span-6 { grid-column: span 1; } }
-.arcade .bento-card { counter-increment: slot; }
-.arcade .bento { counter-reset: slot; }
-.arcade .bento-card::before {
-  content: "P" counter(slot); content: "P" counter(slot) / ""; position: absolute; top: 12px; right: 14px; z-index: 1;
-  font-family: var(--pixel); font-size: 18px; letter-spacing: .08em; color: var(--text-3);
-}
-.arcade .bento-card:hover::before { color: var(--neon-yellow); }
 .arcade .bento-cta { font-family: var(--pixel); font-size: 20px; letter-spacing: .05em; text-transform: uppercase; color: var(--neon-cyan); opacity: 1; }
 .arcade .bento-card:hover .bento-cta::before { content: "\25B6"; content: "\25B6" / ""; color: var(--neon-yellow); margin-right: 4px; }
 .arcade .bento-icon { border: 3px solid #000; border-radius: 0; background: var(--neon-cyan); color: var(--ink); box-shadow: 3px 3px 0 0 var(--neon-magenta); }
@@ -363,13 +356,6 @@
   .arcade .pipeline-stage { grid-column: 2; }
 }
 
-/* Hero: corner brackets like a CRT bezel, and a press-start prompt line. */
-.arcade .sentinel-hero { position: relative; }
-.arcade .sentinel-hero-copy::after {
-  content: "PRESS START"; content: "PRESS START" / ""; display: block; margin-top: 18px;
-  font-family: var(--pixel); font-size: 20px; letter-spacing: .12em; color: var(--neon-yellow);
-}
-.arcade .sentinel-hero-actions { margin-bottom: 6px; }
 
 /* Parallax-free starfield: three tiled dot layers behind everything. */
 .arcade body {
@@ -388,11 +374,10 @@
 .arcade .bento-card:focus-visible { border-color: var(--neon-yellow); }
 
 @media (prefers-reduced-motion: no-preference) {
-  .arcade .sentinel-hero-copy::after { animation: arcade-blink 1.1s steps(2, jump-none) infinite; }
   .arcade .pipeline-node:hover .pipeline-icon { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 0 var(--neon-magenta); }
   .arcade .pipeline-icon { transition: transform .1s, box-shadow .1s; }
 }
-@media (prefers-contrast: more) { .arcade body { background-image: none; } .arcade .sentinel-hero-copy::after { color: var(--text); } }
+@media (prefers-contrast: more) { .arcade body { background-image: none; } }
 @media print { .arcade body { background-image: none; } }
 
 /* Browser-only workspace notice */
