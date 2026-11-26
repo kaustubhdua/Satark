@@ -8,6 +8,7 @@ type Capability = {
   status: string;
   configured: boolean;
   healthVerified: boolean;
+  fallback?: 'local' | 'optional';
   details: string;
 };
 type Snapshot = {
@@ -29,6 +30,8 @@ function statusLabel(item: Capability) {
   if (item.status === 'degraded') return 'Configuration mismatch';
   if (item.healthVerified) return 'Health verified';
   if (item.configured) return 'Configured · unverified';
+  if (item.fallback === 'local') return 'Active · built-in mode';
+  if (item.fallback === 'optional') return 'Optional · not connected';
   return 'Not configured';
 }
 
@@ -86,7 +89,7 @@ export default function IntegrityLedger() {
                 <span className="ledger-text">{item.name}</span>
                 <span className="ledger-hash">{item.details}</span>
                 <span className="ledger-state">
-                  <span className={item.status === 'degraded' || !item.configured ? 'risk-chip' : 'review-chip'}>
+                  <span className={item.status === 'degraded' || (!item.configured && !item.fallback) ? 'risk-chip' : 'review-chip'}>
                     {statusLabel(item)}
                   </span>
                 </span>

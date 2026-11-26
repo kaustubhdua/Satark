@@ -8,6 +8,7 @@ type Capability = {
   status: string;
   configured: boolean;
   healthVerified: boolean;
+  fallback?: 'local' | 'optional';
   details: string;
 };
 type Snapshot = {
@@ -26,7 +27,9 @@ const priority = [
   'response.live',
 ];
 
-function label(status: string) {
+function label(status: string, fallback?: 'local' | 'optional') {
+  if (status === 'disabled' && fallback === 'local') return 'Active · built-in mode';
+  if (status === 'disabled' && fallback === 'optional') return 'Optional · not connected';
   if (status === 'configured') return 'Configured · unverified';
   if (status === 'unverified') return 'Implemented · unverified';
   if (status === 'degraded') return 'Configuration mismatch';
@@ -79,7 +82,7 @@ export default function FirstlightReadiness() {
               <article className="fl-capability" key={item.id}>
                 <div className="fl-capability-top">
                   <strong>{item.name}</strong>
-                  <span className={'fl-capability-status ' + item.status}>{label(item.status)}</span>
+                  <span className={'fl-capability-status ' + item.status}>{label(item.status, item.fallback)}</span>
                 </div>
                 <p>{item.details}</p>
               </article>
