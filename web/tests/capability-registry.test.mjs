@@ -51,3 +51,14 @@ test('rule code is explicitly unverified for live detection', () => {
   assert.equal(byId(registry, 'detection.rules').status, 'unverified');
   assert.equal(byId(registry, 'detection.rules').healthVerified, false);
 });
+
+test('unconfigured integrations that have a built-in substitute are marked as fallbacks, not failures', () => {
+  const registry = buildCapabilityRegistry({ VERCEL: '1' });
+  assert.equal(byId(registry, 'storage.self_hosted').fallback, 'local');
+  assert.match(byId(registry, 'storage.self_hosted').details, /Browser-only mode/);
+  assert.equal(byId(registry, 'firstlight.investigation').fallback, 'local');
+  assert.equal(byId(registry, 'telemetry.wazuh').fallback, 'optional');
+  assert.equal(byId(registry, 'response.live').fallback, undefined);
+  const hosted = buildCapabilityRegistry({ VERCEL: '1', SATARK_API_INTERNAL_URL: 'https://api.example.com' });
+  assert.equal(byId(hosted, 'storage.self_hosted').fallback, undefined);
+});
