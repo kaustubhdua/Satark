@@ -53,6 +53,7 @@ a port of the Python one and is checked against it with a shared golden fixture.
 - **FIRSTLIGHT response is disabled by default.** Live response requires an explicitly configured private Wazuh Manager API, approved fixed actions, agent allowlists, distinct approver/executor identities, exact target confirmation and an independently recorded verification step. AI cannot trigger response actions.
 - **The mobile scanner is deliberately offline.** It scans files explicitly shared, selected or made available through Android's Storage Access Framework. It does not silently read WhatsApp/Telegram private databases or chat messages.
 - **Self-hosting is the production path for the API and evidence store.** The production Compose stack expects real secrets, a persistent data volume, TLS, SMTP, external backup retention and a verified restore drill.
+- **Two small trained models run locally as advisory signals** (URL host text: ROC-AUC 0.949; message wording: ROC-AUC 0.992 on held-out data). Data, metrics and limits are in [`docs/MODEL_CARDS.md`](docs/MODEL_CARDS.md); retraining steps are in `ml/README.md`. They never produce a verdict.
 - **No hosted model is required.** Optional local Ollama analysis is advisory; deterministic findings remain available without it.
 
 ### FIRSTLIGHT documentation

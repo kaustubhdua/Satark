@@ -1,0 +1,141 @@
+{
+ "hosts": [
+  {
+   "host": "google.com",
+   "score": -3.933157,
+   "band": "low"
+  },
+  {
+   "host": "paypal.com",
+   "score": -0.09712599999999982,
+   "band": "low"
+  },
+  {
+   "host": "github.com",
+   "score": -0.8617399999999997,
+   "band": "low"
+  },
+  {
+   "host": "paypa1-secure-login.000webhostapp.com",
+   "score": 12.151019,
+   "band": "high"
+  },
+  {
+   "host": "secure-update-account.xyz",
+   "score": 11.734466,
+   "band": "high"
+  },
+  {
+   "host": "login-microsoftonline.verify-id.top",
+   "score": 18.053124,
+   "band": "high"
+  },
+  {
+   "host": "192.168.1.10",
+   "score": 4.617335,
+   "band": "high"
+  },
+  {
+   "host": "203.0.113.7",
+   "score": 5.997477,
+   "band": "high"
+  },
+  {
+   "host": "a.b.c.d.e.f.g.example.org",
+   "score": 4.385182,
+   "band": "high"
+  },
+  {
+   "host": "xn--80ak6aa92e.com",
+   "score": -1.9339140000000001,
+   "band": "low"
+  },
+  {
+   "host": "x",
+   "score": 3.061106,
+   "band": "high"
+  },
+  {
+   "host": "my-bank-0000000-verify.example.co.uk",
+   "score": 9.610827,
+   "band": "high"
+  },
+  {
+   "host": "ex_ample.com",
+   "score": -3.6609529999999997,
+   "band": "low"
+  },
+  {
+   "host": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.net",
+   "score": 1.441984,
+   "band": "elevated"
+  }
+ ],
+ "messages": [
+  {
+   "text": "Hey, lunch at noon?",
+   "score": -6.223619,
+   "band": "low"
+  },
+  {
+   "text": "WINNER! You have won a £1000 prize. Call 09061701461 now to claim",
+   "score": 11.929404,
+   "band": "high"
+  },
+  {
+   "text": "Your account is suspended. Verify your password now",
+   "score": -2.71918,
+   "band": "elevated"
+  },
+  {
+   "text": "FREE entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. Text FA to 87121 to receive entry",
+   "score": 6.515915,
+   "band": "high"
+  },
+  {
+   "text": "Ok lar... Joking wif u oni...",
+   "score": -5.694931,
+   "band": "low"
+  },
+  {
+   "text": "URGENT! Your mobile No. was awarded $2000 Bonus Caller Prize",
+   "score": 2.342641,
+   "band": "high"
+  },
+  {
+   "text": "名前 😀 Prize now £50 www.claim.example",
+   "score": 1.7810549999999998,
+   "band": "high"
+  },
+  {
+   "text": "İstanbul K‌elvin ŉ test 12345 free",
+   "score": -0.15231200000000022,
+   "band": "high"
+  },
+  {
+   "text": "SHOUTING TEXT IN CAPITALS ONLY",
+   "score": -2.7097240000000005,
+   "band": "elevated"
+  },
+  {
+   "text": "",
+   "score": -4.432946,
+   "band": "low"
+  },
+  {
+   "text": "   ",
+   "score": -4.432946,
+   "band": "low"
+  },
+  {
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "score": -2.469609,
+   "band": "elevated"
+  },
+  {
+   "text": "Call now http://x.example/win 50p per min",
+   "score": 4.037717000000001,
+   "band": "high"
+  }
+ ]
+}

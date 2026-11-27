@@ -1,6 +1,7 @@
 import { isIP } from 'node:net';
 import { isPublicIpAddress } from './public-ip.mjs';
 import { lookupLocalIocs } from './local-ioc-cache.mjs';
+import { scoreHost, scoreMessage, modelSummary } from './learned-models.mjs';
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']{1,2048}/gi;
 const URGENCY = /\b(urgent|act now|immediately|last chance|account suspended|verify your account|unusual sign-in|limited time)\b/ig;
@@ -84,6 +85,12 @@ export function analyzeLocally(input) {
       signals.push({ category: 'url', label: 'Malformed or unsupported URL', severity: 'low', evidence: '[URL redacted]', explanation: 'The URL could not be parsed safely.' });
       continue;
     }
+    const learnedHost = !parsed.isIpHost ? scoreHost(parsed.hostname) : null;
+    if (learnedHost && learnedHost.band !== 'low') signals.push({
+      category: 'learned-model', label: learnedHost.band === 'high' ? 'Learned URL model: host strongly resembles known phishing hosts' : 'Learned URL model: host partly resembles known phishing hosts',
+      severity: learnedHost.band === 'high' ? 'medium' : 'low', evidence: parsed.evidence,
+      explanation: 'A small model trained on public phishing-host lists scored the hostname text. It sees only the host name, not the page, and can be wrong in both directions; verify the destination independently.',
+    });
     if (parsed.hasCredentials) signals.push({
       category: 'url', label: 'URL embeds username or password', severity: 'high', evidence: parsed.evidence,
       explanation: 'Credentials embedded in a URL can hide the true destination or expose sensitive values if the full URL is shared.',
@@ -113,6 +120,13 @@ export function analyzeLocally(input) {
       explanation: 'Verify the intended hostname to rule out lookalike-domain confusion.',
     });
   }
+
+  const learnedMessage = scoreMessage(input.replace(URL_PATTERN, ' '));
+  if (learnedMessage && learnedMessage.band !== 'low') signals.push({
+    category: 'learned-model', label: learnedMessage.band === 'high' ? 'Learned message model: wording strongly resembles spam or scam messages' : 'Learned message model: wording partly resembles spam or scam messages',
+    severity: learnedMessage.band === 'high' ? 'medium' : 'low', evidence: excerpt(input, 120),
+    explanation: 'A small model trained on a public English SMS spam corpus scored the wording. It reflects older prize and premium-rate spam more than modern targeted phishing; treat it as a hint, not a verdict.',
+  });
 
   addMatches(input, URGENCY, 'language', 'Urgency or pressure language', 'low', signals);
   addMatches(input, CREDENTIALS, 'language', 'Credential or secret-related language', 'medium', signals);
@@ -169,9 +183,11 @@ export function analyzeLocally(input) {
     limitations: [
       'No external threat-intelligence service was contacted; local cache status: ' + localIoc.status + '.',
       'These heuristics can miss threats and produce false positives.',
+      'Two small learned models run locally as advisory signals (URL host text; message wording). Their held-out accuracy is published in docs/MODEL_CARDS.md; they do not replace the rules or a verdict.',
       'A score is a triage priority, not a probability of compromise.',
     ],
     deterministic_signals: unique.map(item => item.label),
+    learned_models: modelSummary(),
     evidence: unique,
     model: 'deterministic-local-rules',
     ai_status: 'deterministic_only',
