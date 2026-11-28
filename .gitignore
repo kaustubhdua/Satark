@@ -37,6 +37,7 @@ local.properties
 data/*.sqlite3
 
 # Locally downloaded historical datasets and converted hash snapshots
+ml/.datasets/
 data/ember2024/
 data/ember2024-csv/
 # CI-generated, checksum-verified Android starter dataset assets

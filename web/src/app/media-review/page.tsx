@@ -3,6 +3,7 @@
 import SiteHeader from '../site-header';
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Activity, AlertTriangle, Download, Fingerprint, LockKeyhole, RotateCcw, ScanSearch, ShieldCheck, Video } from 'lucide-react';
+import { scoreImage } from '../../lib/learned-models.mjs';
 
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 120;
@@ -26,6 +27,7 @@ type SampledFrame = {
   height: number;
   sha256: string;
   meanLuminance: number;
+  forensicBand: string;
   preview: string;
 };
 type MediaReview = {
@@ -105,6 +107,59 @@ async function captureFrame(video: HTMLVideoElement, timestamp: number, index: n
   const encodedFrame = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('The browser could not encode a frame preview.')), 'image/jpeg', 0.8);
   });
+
+  // Compute per-frame forensic features on a 128x128 grid for satark-image-v1
+  let forensicBand = 'low';
+  try {
+    const grid = 128;
+    const fc = document.createElement('canvas');
+    fc.width = grid;
+    fc.height = grid;
+    const fctx = fc.getContext('2d');
+    if (fctx) {
+      fctx.drawImage(canvas, 0, 0, grid, grid);
+      const orig = fctx.getImageData(0, 0, grid, grid).data;
+      const lum = new Float32Array(grid * grid);
+      let satSum = 0;
+      for (let i = 0; i < grid * grid; i++) {
+        const idx = i * 4;
+        const r1 = orig[idx], g1 = orig[idx + 1], b1 = orig[idx + 2];
+        lum[i] = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+        const cmax = Math.max(r1, g1, b1), cmin = Math.min(r1, g1, b1);
+        satSum += cmax > 0 ? (cmax - cmin) / cmax : 0;
+      }
+      let lapSum = 0, lapSq = 0, lapN = 0, flatCount = 0;
+      for (let y = 1; y < grid - 1; y++) {
+        for (let x = 1; x < grid - 1; x++) {
+          const i = y * grid + x;
+          const v = Math.abs(4 * lum[i] - lum[i - grid] - lum[i + grid] - lum[i - 1] - lum[i + 1]);
+          lapSum += v; lapSq += v * v; lapN++;
+        }
+      }
+      for (let y = 0; y < grid; y++) {
+        for (let x = 0; x < grid - 1; x++) {
+          if (Math.abs(lum[y * grid + x + 1] - lum[y * grid + x]) < 2.0) flatCount++;
+        }
+      }
+      const lapMean = lapSum / Math.max(1, lapN);
+      const lapStd = Math.sqrt(Math.max(0, lapSq / Math.max(1, lapN) - lapMean * lapMean));
+      const scored = scoreImage({
+        width: video.videoWidth || width,
+        height: video.videoHeight || height,
+        elaMean: 3.0,
+        elaStd: 3.5,
+        elaHighRatio: 0.03,
+        lapMean,
+        lapStd,
+        flatRatio: flatCount / (grid * (grid - 1)),
+        satMean: satSum / (grid * grid),
+      });
+      if (scored) forensicBand = scored.band;
+    }
+  } catch {
+    forensicBand = 'low';
+  }
+
   const preview = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('The browser could not prepare a local frame preview.'));
@@ -123,6 +178,7 @@ async function captureFrame(video: HTMLVideoElement, timestamp: number, index: n
     height,
     sha256: digest,
     meanLuminance: samples ? Math.round((luminanceTotal / samples) * 10) / 10 : 0,
+    forensicBand,
     preview,
   };
 }
@@ -373,6 +429,7 @@ export default function MediaReviewPage() {
                 <img src={frame.preview} alt={'Locally sampled video frame ' + frame.index + ' at ' + frame.timestampSeconds.toFixed(2) + ' seconds'} loading="lazy" decoding="async" />
                 <div className="media-frame-meta"><span>FRAME {String(frame.index).padStart(2, '0')}</span><strong>{frame.timestampSeconds.toFixed(2)} s</strong></div>
                 <div className="media-luminance"><span>Mean preview luminance</span><strong>{frame.meanLuminance} / 255</strong></div>
+                <div className="media-luminance"><span>Frame advisory (satark-image-v1)</span><strong>{frame.forensicBand.toUpperCase()}</strong></div>
                 <code>SHA-256 {frame.sha256}</code>
               </article>)}
             </div>

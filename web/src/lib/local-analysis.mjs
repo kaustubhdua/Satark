@@ -123,12 +123,11 @@ export function analyzeLocally(input) {
 
   const learnedMessage = scoreMessage(input.replace(URL_PATTERN, ' '));
   if (learnedMessage && learnedMessage.band !== 'low') signals.push({
-    category: 'learned-model', label: (learnedMessage.model === 'email' ? 'Learned email model' : 'Learned message model') + (learnedMessage.band === 'high' ? ': wording strongly resembles spam or scam messages' : ': wording partly resembles spam or scam messages'),
-    // The email model was trained on one 2008 corpus whose artifacts it may have learned, so it never rates above 'low'.
-    severity: learnedMessage.model === 'email' ? 'low' : learnedMessage.band === 'high' ? 'medium' : 'low', evidence: excerpt(input, 120),
+    category: 'learned-model', label: (learnedMessage.model === 'email' ? 'Learned email model' : 'Learned message model') + (learnedMessage.band === 'high' ? ': wording strongly resembles phishing or scam messages' : ': wording partly resembles phishing or scam messages'),
+    severity: learnedMessage.band === 'high' ? 'medium' : 'low', evidence: excerpt(input, 120),
     explanation: learnedMessage.model === 'email'
-      ? 'A small model trained on the 2008 CEAS spam/phishing email corpus scored the wording. That corpus is old and mostly bulk spam, so this is only a weak hint.'
-      : 'A small model trained on a public English SMS spam corpus scored the wording. It reflects older prize and premium-rate spam more than modern targeted phishing; treat it as a hint, not a verdict.',
+      ? 'A local model trained on multi-corpus phishing and safe email datasets scored the wording. Treat it as an advisory signal alongside deterministic checks, not a standalone verdict.'
+      : 'A local model trained on SMS spam and short phishing datasets scored the wording. Treat it as an advisory signal alongside deterministic checks, not a standalone verdict.',
   });
 
   addMatches(input, URGENCY, 'language', 'Urgency or pressure language', 'low', signals);

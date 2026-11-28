@@ -1402,54 +1402,65 @@ textarea:focus-visible {
 }
 
 
-/* Keep the CRT texture in the paint background, never above interactive UI. */
+/* Minimalistic neutral theme across all pages (no CRT scanlines, no arcade glow, no decorative beams). */
 body {
-  background-image:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,.22) 4px),
-    linear-gradient(rgba(140,255,176,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(140,255,176,.025) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% -18%, rgba(65,145,91,.18), transparent 58%);
-  background-size: auto, 32px 32px, 32px 32px, auto;
+  background: var(--bg);
+  background-image: none;
 }
 
-body::after { display: none; }
+body::after,
+.shell::before,
+.dot-pattern {
+  display: none !important;
+}
 
-
-/* Bind the arcade palette to the actual First Light token names. */
 :root {
-  --bg: #070b09;
-  --surface: #0b1210;
-  --surface-2: #111d18;
-  --surface-inset: #070d0b;
-  --border: #23372c;
-  --border-strong: #385642;
-  --text: #e8f5eb;
-  --text-2: #a8c0ae;
-  --text-3: #78917f;
-  --dawn-1: #8cffb0;
-  --dawn-2: #b6ff5c;
-  --dawn-3: #ffc66e;
-  --accent: #8cffb0;
-  --accent-strong: #c5ffd5;
-  --accent-soft: rgba(140,255,176,.10);
-  --accent-line: rgba(140,255,176,.34);
-  --primary: #b6ff5c;
-  --primary-hover: #c9ff86;
-  --primary-ink: #10170f;
-  --radius-sm: 3px;
-  --radius: 5px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --shadow: 0 1px 0 rgba(140,255,176,.035) inset, 0 14px 36px -18px rgba(0,0,0,.82);
+  --bg: #09090b;
+  --surface: #111114;
+  --surface-2: #18181b;
+  --surface-inset: #0c0c0f;
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --text: #fafafa;
+  --text-2: #a1a1aa;
+  --text-3: #71717a;
+  --dawn-1: #fafafa;
+  --dawn-2: #d4d4d8;
+  --dawn-3: #a1a1aa;
+  --accent: #e4e4e7;
+  --accent-strong: #fafafa;
+  --accent-soft: rgba(255, 255, 255, .06);
+  --accent-line: rgba(255, 255, 255, .20);
+  --primary: #fafafa;
+  --primary-hover: #e4e4e7;
+  --primary-ink: #09090b;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --shadow: none;
 }
 
-.shell::before {
-  background:
-    radial-gradient(60% 120% at 50% -40%, rgba(140,255,176,.13), transparent 70%),
-    radial-gradient(40% 80% at 85% -30%, rgba(255,198,110,.07), transparent 70%);
+.shiny-pill,
+.sentinel-kicker {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  animation: none;
 }
 
-::selection { background: rgba(182,255,92,.34); color: #07110a; }
+.shiny-text {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  animation: none;
+}
+
+.border-beam::before,
+.border-beam::after {
+  display: none !important;
+}
+
+::selection { background: rgba(255, 255, 255, .22); color: #fff; }
 /* Endpoint sensor page */
 .sensor-steps { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; }
 .sensor-steps li { position: relative; padding: 14px 16px 14px 52px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-inset); counter-increment: step; }

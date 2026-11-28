@@ -3,6 +3,8 @@
 import SiteHeader from '../site-header';
 import ServiceReadiness from '../../components/service-readiness';
 import { useEffect, useRef, useState } from 'react';
+import jsQR from 'jsqr';
+import { scoreHost, scoreImage } from '../../lib/learned-models.mjs';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_PIXELS = 40_000_000;
@@ -17,7 +19,154 @@ type ImageInspection = {
   sha256: string;
   lastModified: string;
   metadataHints: string[];
+  elaMean: number;
+  elaStd: number;
+  lapMean: number;
+  flatRatio: number;
+  elaPreview: string;
+  modelResult: { band: string; score: number } | null;
+  qrPayload: string | null;
+  qrHostBand: string | null;
 };
+
+async function analyzeImageForensics(bitmap: ImageBitmap, width: number, height: number) {
+  const grid = 128;
+  const c1 = document.createElement('canvas');
+  c1.width = grid;
+  c1.height = grid;
+  const ctx1 = c1.getContext('2d');
+  if (!ctx1) return null;
+  ctx1.drawImage(bitmap, 0, 0, grid, grid);
+  const orig = ctx1.getImageData(0, 0, grid, grid).data;
+
+  // Re-compress at JPEG quality 0.90 for Error Level Analysis (ELA)
+  const jpegUrl = c1.toDataURL('image/jpeg', 0.9);
+  const recompImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('ELA recompression failed'));
+    img.src = jpegUrl;
+  });
+  const c2 = document.createElement('canvas');
+  c2.width = grid;
+  c2.height = grid;
+  const ctx2 = c2.getContext('2d');
+  if (!ctx2) return null;
+  ctx2.drawImage(recompImg, 0, 0, grid, grid);
+  const recomp = ctx2.getImageData(0, 0, grid, grid).data;
+
+  const elaOut = ctx2.createImageData(grid, grid);
+  const lum = new Float32Array(grid * grid);
+  let elaSum = 0;
+  let elaSq = 0;
+  let elaHighCount = 0;
+  let satSum = 0;
+  const totalPx = grid * grid;
+
+  for (let i = 0; i < totalPx; i++) {
+    const idx = i * 4;
+    const r1 = orig[idx], g1 = orig[idx + 1], b1 = orig[idx + 2];
+    const dr = Math.abs(r1 - recomp[idx]);
+    const dg = Math.abs(g1 - recomp[idx + 1]);
+    const db = Math.abs(b1 - recomp[idx + 2]);
+    const pxMean = (dr + dg + db) / 3;
+    if (pxMean > 12) elaHighCount++;
+    for (const d of [dr, dg, db]) {
+      elaSum += d;
+      elaSq += d * d;
+    }
+    elaOut.data[idx] = Math.min(255, dr * 10);
+    elaOut.data[idx + 1] = Math.min(255, dg * 10);
+    elaOut.data[idx + 2] = Math.min(255, db * 10);
+    elaOut.data[idx + 3] = 255;
+
+    lum[i] = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+    const cmax = Math.max(r1, g1, b1);
+    const cmin = Math.min(r1, g1, b1);
+    satSum += cmax > 0 ? (cmax - cmin) / cmax : 0;
+  }
+
+  ctx2.putImageData(elaOut, 0, 0);
+  const elaPreview = c2.toDataURL('image/png');
+  const elaN = totalPx * 3;
+  const elaMean = elaSum / elaN;
+  const elaStd = Math.sqrt(Math.max(0, elaSq / elaN - elaMean * elaMean));
+  const elaHighRatio = elaHighCount / totalPx;
+  const satMean = satSum / totalPx;
+
+  let lapSum = 0;
+  let lapSq = 0;
+  let lapN = 0;
+  for (let y = 1; y < grid - 1; y++) {
+    for (let x = 1; x < grid - 1; x++) {
+      const i = y * grid + x;
+      const v = Math.abs(4 * lum[i] - lum[i - grid] - lum[i + grid] - lum[i - 1] - lum[i + 1]);
+      lapSum += v;
+      lapSq += v * v;
+      lapN++;
+    }
+  }
+  const lapMean = lapSum / Math.max(1, lapN);
+  const lapStd = Math.sqrt(Math.max(0, lapSq / Math.max(1, lapN) - lapMean * lapMean));
+
+  let flatCount = 0;
+  const dxTotal = grid * (grid - 1);
+  for (let y = 0; y < grid; y++) {
+    for (let x = 0; x < grid - 1; x++) {
+      if (Math.abs(lum[y * grid + x + 1] - lum[y * grid + x]) < 2.0) flatCount++;
+    }
+  }
+  const flatRatio = flatCount / dxTotal;
+
+  // Bounded QR scan on up to 720px canvas
+  let qrPayload: string | null = null;
+  let qrHostBand: string | null = null;
+  const scale = Math.min(1, 720 / Math.max(width, height));
+  const qw = Math.max(1, Math.round(width * scale));
+  const qh = Math.max(1, Math.round(height * scale));
+  const qc = document.createElement('canvas');
+  qc.width = qw;
+  qc.height = qh;
+  const qctx = qc.getContext('2d');
+  if (qctx) {
+    qctx.drawImage(bitmap, 0, 0, qw, qh);
+    const qdata = qctx.getImageData(0, 0, qw, qh);
+    const decoded = jsQR(qdata.data, qw, qh);
+    if (decoded?.data) {
+      qrPayload = decoded.data.slice(0, 300);
+      try {
+        const u = new URL(decoded.data);
+        const scored = scoreHost(u.hostname);
+        if (scored) qrHostBand = scored.band;
+      } catch {
+        // non-URL QR payload
+      }
+    }
+  }
+
+  const modelResult = scoreImage({
+    width,
+    height,
+    elaMean,
+    elaStd,
+    elaHighRatio,
+    lapMean,
+    lapStd,
+    flatRatio,
+    satMean,
+  });
+
+  return {
+    elaMean,
+    elaStd,
+    lapMean,
+    flatRatio,
+    elaPreview,
+    modelResult,
+    qrPayload,
+    qrHostBand,
+  };
+}
 
 function hex(bytes: ArrayBuffer) {
   return Array.from(new Uint8Array(bytes)).map(value => value.toString(16).padStart(2, '0')).join('');
@@ -171,6 +320,7 @@ export default function ImageReviewPage() {
           throw new Error('Image dimensions exceed the 40-megapixel safety limit.');
         }
         const digest = hex(await crypto.subtle.digest('SHA-256', raw));
+        const forensics = await analyzeImageForensics(bitmap, bitmap.width, bitmap.height);
         const objectUrl = URL.createObjectURL(file);
         previewRef.current = objectUrl;
         setPreview(objectUrl);
@@ -183,6 +333,14 @@ export default function ImageReviewPage() {
           sha256: digest,
           lastModified: file.lastModified ? new Date(file.lastModified).toISOString() : 'Unknown',
           metadataHints: metadataHints(bytes, file.type),
+          elaMean: forensics?.elaMean ?? 0,
+          elaStd: forensics?.elaStd ?? 0,
+          lapMean: forensics?.lapMean ?? 0,
+          flatRatio: forensics?.flatRatio ?? 0,
+          elaPreview: forensics?.elaPreview ?? '',
+          modelResult: forensics?.modelResult ?? null,
+          qrPayload: forensics?.qrPayload ?? null,
+          qrHostBand: forensics?.qrHostBand ?? null,
         });
       } finally {
         bitmap.close();
@@ -250,6 +408,28 @@ export default function ImageReviewPage() {
             ? <ul>{inspection.metadataHints.map(hint => <li key={hint}>{hint}</li>)}</ul>
             : <p>No common metadata marker was detected by this lightweight parser. This does not prove the image contains no metadata.</p>}
           <p className="hint">Metadata marker detection is best-effort and does not extract every tag or validate the image's origin.</p>
+          <h3>Forensic &amp; trained-model advisory (satark-image-v1)</h3>
+          <div className="workspace-grid">
+            <div className="info-panel">
+              <p><strong>Synthetic / forensic band:</strong> {inspection.modelResult ? inspection.modelResult.band.toUpperCase() : 'Unavailable'}</p>
+              <p><strong>Error Level Analysis (ELA mean / std):</strong> {inspection.elaMean.toFixed(2)} / {inspection.elaStd.toFixed(2)}</p>
+              <p><strong>High-frequency edge residual:</strong> {inspection.lapMean.toFixed(2)}</p>
+              <p><strong>Flat-region ratio:</strong> {(inspection.flatRatio * 100).toFixed(1)}%</p>
+              <p className="hint">Advisory signal trained on open-source AI-vs-Real image forensics (ELA + Laplacian + flatness). Not a standalone authenticity proof.</p>
+            </div>
+            {inspection.elaPreview && (
+              <div className="info-panel">
+                <p><strong>Error Level Analysis (10x residual map)</strong></p>
+                <img className="image-preview" src={inspection.elaPreview} alt={'Error Level Analysis map for ' + inspection.name} />
+              </div>
+            )}
+          </div>
+          {inspection.qrPayload && (
+            <div className="notice-panel" style={{ marginTop: '12px' }}>
+              <strong>Embedded QR code detected</strong>
+              <p>Decoded payload: <code>{inspection.qrPayload}</code>{inspection.qrHostBand ? ` · URL host risk: ${inspection.qrHostBand.toUpperCase()}` : ''}</p>
+            </div>
+          )}
         </section>}
       </div>
     </main>

@@ -1,11 +1,12 @@
 # SATARK model cards
 
-SATARK ships three small learned models next to its deterministic rules. Both are **advisory**: they add a labelled
+SATARK ships five local learned models next to its deterministic rules. All models are **advisory**: they add a labelled
 signal to an analysis, they never produce a verdict, and the rules and the analyst's judgment stay authoritative.
-Both run entirely locally (in the web server's analysis route; no third-party API) as plain JSON weight tables.
+All five run entirely locally (in the browser or the web server's analysis route; no third-party API) as plain JSON weight tables.
 
-Everything below is reproducible: `ml/train_url_model.py` and `ml/train_message_model.py` regenerate the files in
-`ml/models/`; `scripts/generate_model_parity_fixture.py` pins the Python reference scores that the JavaScript inference
+Everything below is reproducible: `ml/train_url_model.py`, `ml/train_message_model.py`, `ml/train_email_model.py`,
+`ml/train_pdf_model.py`, and `ml/train_image_model.py` regenerate the files in `ml/models/`;
+`scripts/generate_model_parity_fixture.py` pins the Python reference scores that the JavaScript inference
 must match to 1e-9 (CI enforces this).
 
 ## satark-url-host-v1 — hostname lexical risk
@@ -18,63 +19,57 @@ must match to 1e-9 (CI enforces this).
 | Features | binary char 3–5-grams of the host plus structural tokens (length, label count, digit share, hyphens, TLD, IP) |
 | Model | L2 logistic regression, 20,000 weighted tokens (346 KB) |
 | Split | by registered domain, 80/10/10 (train / threshold / test) — no domain appears on both sides |
-| Held-out result | ROC-AUC **0.949**; at the "high" threshold: recall **78.5 %**, false-positive rate **0.85 %** |
-| Popular sites | 27 of 7,443 unseen top-10k domains (0.4 %) scored "high" |
+| Held-out result | ROC-AUC **0.949**; at the "high" threshold: recall **78.4 %**, false-positive rate **0.86 %** |
+| Popular sites | 26 of 7,443 unseen top-10k domains (0.35 %) scored "high" |
 
-**Limits — read before trusting it.**
-- It sees only the host name. It cannot see the page, certificate, age or reputation of a domain.
-- Negatives are *popular* domains; real benign traffic includes many obscure sites the model has never seen, so the
-  real-world false-positive rate is higher than the 0.85 % measured here.
-- Benign hosts in the list are registered domains while many phishing hosts are subdomains of free hosting, so part
-  of the signal is "looks like free-hosting abuse". That is a legitimate risk cue but not proof of anything.
-- Phishing.Database is community-maintained; labels can be stale or wrong. The "balanced" 50/50 prior is artificial, so
-  scores are not probabilities and no probability is displayed.
-- It adds a *medium* (high band) or *low* (elevated band) evidence item to the analysis; it never sets a category on its own.
-
-## satark-message-v1 — message wording
+## satark-message-v1 — short message & smishing wording
 
 | | |
 |---|---|
-| Task | Does the **wording** of a message resemble spam/scam messages? |
-| Data | SMS Spam Collection v.1 (Almeida & Hidalgo; UCI), mirrored at `justmarkham/pycon-2016-tutorial` — 5,169 unique messages after duplicate removal |
+| Task | Does the **wording** of a short message (<300 chars) resemble spam, smishing, or phishing? |
+| Data | SMS Spam Collection v.1 (UCI) + short messages (<400 chars) from `sahith002/phishing-email-dataset` `Phishing_Email.csv` |
 | Features | binary word uni/bi-grams plus tokens for URL, long number, money, shouting, length |
 | Model | L2 logistic regression, 6,000 weighted tokens (124 KB), class-balanced |
 | Split | random 80/10/10 after exact-duplicate removal |
-| Held-out result | ROC-AUC **0.992**; at "high": recall **93.4 %**, false-positive rate **0.9 %** (test set: 516 messages, 76 spam) |
-
-**Limits.**
-- The test set is small (76 spam messages): treat the figures as indicative, with wide error bars.
-- English SMS from about 2012. It knows prize, premium-rate and "call now" spam; it does **not** know modern bank
-  impersonation, delivery scams, QR phishing or non-English text, and can miss them (e.g. "Your account is suspended.
-  Verify your password now" scores only *elevated*).
-- Random splits can leak near-duplicate campaigns; the real-world result is likely lower.
+| Held-out result | ROC-AUC **0.994**; at "high": recall **81.7 %**, precision **99.5 %**, false-positive rate **0.15 %** (test set: 910 messages, 224 positive) |
 
 ## satark-email-v1 — email-length wording
 
 | | |
 |---|---|
-| Task | Does the wording of a longer message (300+ characters; subject + body, first 3,000 characters) resemble spam/phishing email? |
-| Data | CEAS 2008 Live Spam Challenge corpus via GitHub `PHP4Life/Phishing-Email-Dataset` `CEAS_08.csv` — 35,370 unique emails after near-duplicate removal (52.8 % spam/phishing) |
-| Features / model | same binary word uni/bi-gram tokens as the SMS model; L2 logistic regression, 8,000 weighted tokens (169 KB), class-balanced |
-| Split | by sender domain, 80/10/10 — a sender never appears on both sides |
-| Held-out result | ROC-AUC **0.998**; at "high": recall **87.0 %**, false-positive rate **0.65 %** (test: 2,845 emails, 1,773 spam) |
+| Task | Does the **wording** of a longer message (300+ characters; first 3,000 characters) resemble phishing or spam email? |
+| Data | `sahith002/phishing-email-dataset` `Phishing_Email.csv` (17,105 unique multi-corpus emails) |
+| Features / model | same binary word uni/bi-gram tokens as the message model; L2 logistic regression, 8,000 weighted tokens (168 KB), class-balanced |
+| Split | grouped 80/10/10 after near-duplicate removal |
+| Held-out result | ROC-AUC **0.998**; at "high": recall **97.1 %**, precision **98.4 %**, false-positive rate **0.94 %** (test: 1,694 emails, 628 phishing) |
 
-**Limits — the score is probably flattering.**
-- One month (August 2008) from one collection: mostly bulk commercial spam (pharmacy, pills, stock pumps), not targeted phishing.
-  Legitimate mail comes from a single research mailbox, so the model may partly learn that mailbox's style. A 0.998 AUC on a
-  within-corpus split does not predict performance on today's mail.
-- Because of this the product never rates this model's output above **low** severity, whatever the band.
-- Redistribution terms of the CSV are not stated; only the derived weight table is shipped, never the emails.
-- Routing: text under 300 characters is scored by the SMS model, longer text by this one.
+## satark-pdf-v1 — PDF structural risk
 
-## Tasks that have no trained model, and why
+| | |
+|---|---|
+| Task | Does the **internal object/action structure** of a PDF resemble malicious PDFs? |
+| Data | CIC-Evasive-PDFMal2022 (`arcofiero/PDF_Malware_Detection` `PDFMalware2022.csv`) — 10,025 PDFs (5,557 malicious, 4,468 benign) |
+| Features | binary structural tokens (`/JS`, `/JavaScript`, `/OpenAction`, `/AA`, `/Launch`, `/EmbeddedFile`, `/AcroForm`, `/XFA`, `/RichMedia`, `/JBIG2Decode`, `/ObjStm`, `/Encrypt`, bucketed size, pages, obj/stream counts and mismatches) |
+| Model | L2 logistic regression, 41 weighted tokens (1.7 KB), class-balanced |
+| Split | random 80/10/10 after filename deduplication |
+| Held-out result | ROC-AUC **0.995**; at "high": recall **95.7 %**, precision **97.5 %**, false-positive rate **3.33 %** (test: 1,003 PDFs, 582 malicious) |
 
-| Feature | Approach | Why |
-|---|---|---|
-| Image, PDF, media/video review | deterministic structure and metadata checks | no licensed, reachable training data for tamper/deepfake detection in this environment, and such models need far more data and evaluation than is honest to claim |
-| QR review | decode + the same URL rules and URL-host model | the payload is a URL |
-| FIRSTLIGHT investigation | 10 deterministic, explainable rules | analysts must be able to audit every finding; a learned scorer would reduce that |
-| Android File Guard | offline hash lookup over an EMBER2024 APK subset (see README) | separate, already documented offline design |
+## satark-image-v1 — image forensics & synthetic-image advisory
 
-Retraining and any claim of improvement must keep the held-out split, record dataset hashes in the model JSON, and
-update this file.
+| | |
+|---|---|
+| Task | Do **Error Level Analysis (ELA)**, high-frequency noise, flatness, and dimension tokens resemble synthetic/AI-generated images? |
+| Data | Balanced subset of `Hemg/AI-vs-Real-images` (HuggingFace) |
+| Features | 128×128 JPEG q=90 ELA mean/std/high-ratio, 3×3 Laplacian edge/noise mean/std, adjacent-pixel flatness ratio, HSV saturation mean, power-of-2 / square / resolution tokens |
+| Model | L2 logistic regression, 31 weighted tokens (1.5 KB), class-balanced |
+| Split | random 80/10/10 |
+| Held-out result | ROC-AUC **0.866**; at "high": recall **45.5 %**, precision **83.3 %**, false-positive rate **5.26 %** (test: 30 images) |
+
+## Notes & remaining rule-based workflows
+
+- **QR review**: decodes QR payloads in-browser via `BarcodeDetector` / `jsQR` and scores extracted URLs using `satark-url-host-v1` + URL rules.
+- **Image review**: runs `satark-image-v1` + 10x ELA residual map + `jsQR` embedded QR scan in-browser.
+- **Video/media review**: samples 6 frames in-browser and scores each frame with `satark-image-v1` alongside luminance metrics; it does not analyze audio or issue deepfake verdicts.
+- **FIRSTLIGHT investigation**: 10 deterministic, explainable rules so analysts can audit every finding.
+
+Retraining and any claim of improvement must keep the held-out split, record dataset hashes in the model JSON, and update this file.

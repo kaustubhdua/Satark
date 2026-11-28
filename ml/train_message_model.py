@@ -36,6 +36,7 @@ def main():
     from sklearn.metrics import roc_auc_score
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
+    ap.add_argument("--email-csv", default=None, help="Optional Phishing_Email.csv to include short modern phishing/safe messages (<400 chars)")
     ap.add_argument("--out", default="ml/models/message-v1.json")
     a = ap.parse_args()
     rows, seen = [], set()
@@ -44,6 +45,24 @@ def main():
         key = msg.strip().lower()
         if lab in ("ham", "spam") and msg and key not in seen:  # drop exact duplicates so they cannot straddle the split
             seen.add(key); rows.append((msg, 1 if lab == "spam" else 0))
+    sources = ["SMS Spam Collection v.1 (UCI; mirror justmarkham/pycon-2016-tutorial)"]
+    hashes = {"sms_tsv": hashlib.sha256(open(a.data, "rb").read()).hexdigest()}
+    if a.email_csv:
+        import csv
+        csv.field_size_limit(10**9)
+        with open(a.email_csv, encoding="utf-8", errors="ignore", newline="") as f:
+            for r in csv.DictReader(f):
+                txt = (r.get("Email Text") or "").strip()
+                etype = (r.get("Email Type") or "").strip()
+                if not txt or len(txt) >= 400 or etype not in ("Safe Email", "Phishing Email"):
+                    continue
+                key = re.sub(r"\s+", " ", txt.lower())
+                if len(key) < 10 or key in seen:
+                    continue
+                seen.add(key)
+                rows.append((txt, 1 if etype == "Phishing Email" else 0))
+        sources.append("Phishing_Email.csv (<400 chars; sahith002/phishing-email-dataset)")
+        hashes["email_csv"] = hashlib.sha256(open(a.email_csv, "rb").read()).hexdigest()
     rng = random.Random(SEED); rng.shuffle(rows)
     n = len(rows); tr, va = int(.8 * n), int(.9 * n)
     parts = {"train": rows[:tr], "val": rows[tr:va], "test": rows[va:]}
@@ -64,8 +83,8 @@ def main():
     weights = {inv[int(i)]: round(float(clf.coef_[0][i]), 6) for i in np.nonzero(clf.coef_[0])[0]}
     model = {"name": "satark-message-v1", "kind": "binary-token-logistic-regression", "bias": round(float(clf.intercept_[0]), 6),
              "thresholds": {"elevated": round(thr_elev, 6), "high": round(thr_high, 6)}, "weights": weights,
-             "training": {"source": "SMS Spam Collection v.1 (UCI; mirror justmarkham/pycon-2016-tutorial)", "examples": n, "seed": SEED,
-                          "split": "random 80/10/10 after exact-duplicate removal", "file_sha256": hashlib.sha256(open(a.data, "rb").read()).hexdigest()},
+             "training": {"source": " + ".join(sources), "examples": n, "seed": SEED,
+                          "split": "random 80/10/10 after exact-duplicate removal", "file_sha256": hashes},
              "metrics": metrics}
     json.dump(model, open(a.out, "w"), separators=(",", ":"), sort_keys=True)
     print(json.dumps(metrics, indent=1)); print("features", len(weights))

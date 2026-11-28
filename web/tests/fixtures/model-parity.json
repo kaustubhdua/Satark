@@ -2,72 +2,72 @@
  "hosts": [
   {
    "host": "google.com",
-   "score": -3.933157,
+   "score": -3.9350470000000004,
    "band": "low"
   },
   {
    "host": "paypal.com",
-   "score": -0.09712599999999982,
+   "score": -0.10916800000000038,
    "band": "low"
   },
   {
    "host": "github.com",
-   "score": -0.8617399999999997,
+   "score": -0.8669040000000003,
    "band": "low"
   },
   {
    "host": "paypa1-secure-login.000webhostapp.com",
-   "score": 12.151019,
+   "score": 12.139506,
    "band": "high"
   },
   {
    "host": "secure-update-account.xyz",
-   "score": 11.734466,
+   "score": 11.706084,
    "band": "high"
   },
   {
    "host": "login-microsoftonline.verify-id.top",
-   "score": 18.053124,
+   "score": 18.0882,
    "band": "high"
   },
   {
    "host": "192.168.1.10",
-   "score": 4.617335,
+   "score": 4.611383,
    "band": "high"
   },
   {
    "host": "203.0.113.7",
-   "score": 5.997477,
+   "score": 5.942678,
    "band": "high"
   },
   {
    "host": "a.b.c.d.e.f.g.example.org",
-   "score": 4.385182,
+   "score": 4.356217,
    "band": "high"
   },
   {
    "host": "xn--80ak6aa92e.com",
-   "score": -1.9339140000000001,
+   "score": -1.9275750000000005,
    "band": "low"
   },
   {
    "host": "x",
-   "score": 3.061106,
+   "score": 3.058632,
    "band": "high"
   },
   {
    "host": "my-bank-0000000-verify.example.co.uk",
-   "score": 9.610827,
+   "score": 9.633732,
    "band": "high"
   },
   {
    "host": "ex_ample.com",
-   "score": -3.6609529999999997,
+   "score": -3.638805,
    "band": "low"
   },
   {
    "host": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.net",
-   "score": 1.441984,
+   "score": 1.4535759999999995,
    "band": "elevated"
   }
  ],
@@ -75,103 +75,191 @@
   {
    "text": "Hey, lunch at noon?",
    "model": "message",
-   "score": -6.223619,
+   "score": -2.394433,
    "band": "low"
   },
   {
    "text": "WINNER! You have won a £1000 prize. Call 09061701461 now to claim",
    "model": "message",
-   "score": 11.929404,
+   "score": 8.29567,
    "band": "high"
   },
   {
    "text": "Your account is suspended. Verify your password now",
    "model": "message",
-   "score": -2.71918,
+   "score": -0.050394999999999954,
    "band": "elevated"
   },
   {
    "text": "FREE entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. Text FA to 87121 to receive entry",
    "model": "message",
-   "score": 6.515915,
+   "score": 6.298404,
    "band": "high"
   },
   {
    "text": "Ok lar... Joking wif u oni...",
    "model": "message",
-   "score": -5.694931,
+   "score": -5.324073,
    "band": "low"
   },
   {
    "text": "URGENT! Your mobile No. was awarded $2000 Bonus Caller Prize",
    "model": "message",
-   "score": 2.342641,
+   "score": 4.041831,
    "band": "high"
   },
   {
    "text": "名前 😀 Prize now £50 www.claim.example",
    "model": "message",
-   "score": 1.7810549999999998,
-   "band": "high"
+   "score": 0.887104,
+   "band": "elevated"
   },
   {
    "text": "İstanbul K‌elvin ŉ test 12345 free",
    "model": "message",
-   "score": -0.15231200000000022,
-   "band": "high"
+   "score": -0.615455,
+   "band": "elevated"
   },
   {
    "text": "SHOUTING TEXT IN CAPITALS ONLY",
    "model": "message",
-   "score": -2.7097240000000005,
-   "band": "elevated"
+   "score": -1.1972700000000003,
+   "band": "low"
   },
   {
    "text": "",
    "model": "message",
-   "score": -4.432946,
+   "score": -1.940967,
    "band": "low"
   },
   {
    "text": "   ",
    "model": "message",
-   "score": -4.432946,
+   "score": -1.940967,
    "band": "low"
   },
   {
    "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
    "model": "email",
-   "score": 3.663848,
-   "band": "low"
+   "score": 2.451859,
+   "band": "high"
   },
   {
    "text": "Call now http://x.example/win 50p per min",
    "model": "message",
-   "score": 4.037717000000001,
-   "band": "high"
+   "score": 1.598128,
+   "band": "elevated"
   },
   {
    "text": "Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Click the link to verify your password immediately or your account will be closed.",
    "model": "email",
-   "score": 2.981121,
-   "band": "low"
+   "score": 4.44642,
+   "band": "high"
   },
   {
    "text": "Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. ",
    "model": "email",
-   "score": -0.6667019999999999,
-   "band": "low"
+   "score": 0.4289670000000001,
+   "band": "elevated"
   },
   {
    "text": "名前 😀 Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! ",
    "model": "email",
-   "score": 3.9827320000000004,
-   "band": "low"
+   "score": 4.295116999999999,
+   "band": "high"
   },
   {
    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
    "model": "email",
-   "score": 3.663848,
+   "score": 2.451859,
+   "band": "high"
+  }
+ ],
+ "pdfs": [
+  {
+   "stats": {
+    "pdfsizeKb": 12.0,
+    "pages": 1,
+    "isEncrypted": 0,
+    "obj": 14,
+    "endobj": 14,
+    "stream": 3,
+    "endstream": 3,
+    "xref": 1,
+    "trailer": 1,
+    "startxref": 1,
+    "objstm": 0,
+    "js": 1,
+    "javascript": 1,
+    "aa": 0,
+    "openaction": 1,
+    "acroform": 0,
+    "jbig2": 0,
+    "richmedia": 0,
+    "launch": 0,
+    "embeddedfile": 0,
+    "xfa": 0
+   },
+   "score": 5.322604,
+   "band": "high"
+  },
+  {
+   "stats": {
+    "pdfsizeKb": 120.0,
+    "pages": 5,
+    "isEncrypted": 0,
+    "obj": 45,
+    "endobj": 45,
+    "stream": 12,
+    "endstream": 12,
+    "xref": 1,
+    "trailer": 1,
+    "startxref": 1,
+    "objstm": 0,
+    "js": 0,
+    "javascript": 0,
+    "aa": 0,
+    "openaction": 0,
+    "acroform": 0,
+    "jbig2": 0,
+    "richmedia": 0,
+    "launch": 0,
+    "embeddedfile": 0,
+    "xfa": 0
+   },
+   "score": -4.103478,
+   "band": "low"
+  }
+ ],
+ "images": [
+  {
+   "stats": {
+    "width": 1024,
+    "height": 1024,
+    "elaMean": 2.1,
+    "elaStd": 2.4,
+    "elaHighRatio": 0.01,
+    "lapMean": 10.0,
+    "lapStd": 12.0,
+    "flatRatio": 0.35,
+    "satMean": 0.45
+   },
+   "score": -1.201206,
+   "band": "low"
+  },
+  {
+   "stats": {
+    "width": 1920,
+    "height": 1080,
+    "elaMean": 6.5,
+    "elaStd": 7.0,
+    "elaHighRatio": 0.12,
+    "lapMean": 28.0,
+    "lapStd": 35.0,
+    "flatRatio": 0.12,
+    "satMean": 0.25
+   },
+   "score": -1.702219,
    "band": "low"
   }
  ]

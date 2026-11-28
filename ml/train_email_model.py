@@ -39,12 +39,26 @@ def main():
     csv.field_size_limit(10**9)
     rows, seen = [], set()
     with open(a.data, encoding="utf-8", errors="ignore", newline="") as f:
-        for r in csv.DictReader(f):
-            if r.get("label") not in ("0", "1"): continue
-            text = email_text(r.get("subject", ""), r.get("body", ""))
+        reader = csv.DictReader(f)
+        fields = set(reader.fieldnames or [])
+        is_modern = "Email Text" in fields and "Email Type" in fields
+        for i, r in enumerate(reader):
+            if is_modern:
+                etype = (r.get("Email Type") or "").strip()
+                if etype not in ("Safe Email", "Phishing Email"):
+                    continue
+                text = (r.get("Email Text") or "").strip()[:MAX_CHARS]
+                label = 1 if etype == "Phishing Email" else 0
+                group = f"row_{i // 5}"  # group nearby rows when sender is absent
+            else:
+                if r.get("label") not in ("0", "1"): continue
+                text = email_text(r.get("subject", ""), r.get("body", ""))
+                label = int(r["label"])
+                group = sender_domain(r.get("sender", ""))
             key = re.sub(r"\s+", " ", text.lower())[:400]
             if len(text) < 30 or key in seen: continue
-            seen.add(key); rows.append((text, int(r["label"]), sender_domain(r.get("sender", ""))))
+            seen.add(key); rows.append((text, label, group))
+    source_desc = "sahith002/phishing-email-dataset Phishing_Email.csv (multi-corpus Enron + Nazario + phishing)" if is_modern else "CEAS 2008 Live Spam Challenge corpus via PHP4Life/Phishing-Email-Dataset CEAS_08.csv"
     print("unique emails", len(rows), "spam share", sum(l for _, l, _ in rows) / len(rows))
     rng = random.Random(SEED)
     doms = sorted({d for *_, d in rows}); rng.shuffle(doms)
@@ -66,8 +80,8 @@ def main():
     weights = {inv[int(i)]: round(float(clf.coef_[0][i]), 6) for i in np.nonzero(clf.coef_[0])[0]}
     model = {"name": "satark-email-v1", "kind": "binary-token-logistic-regression", "bias": round(float(clf.intercept_[0]), 6),
              "thresholds": {"elevated": round(thr_elev, 6), "high": round(thr_high, 6)}, "weights": weights, "max_chars": MAX_CHARS,
-             "training": {"source": "CEAS 2008 Live Spam Challenge corpus via PHP4Life/Phishing-Email-Dataset CEAS_08.csv", "examples": len(rows), "seed": SEED,
-                          "split": "by sender domain 80/10/10 after near-duplicate removal", "file_sha256": hashlib.sha256(open(a.data, "rb").read()).hexdigest()},
+             "training": {"source": source_desc, "examples": len(rows), "seed": SEED,
+                          "split": "80/10/10 after near-duplicate removal", "file_sha256": hashlib.sha256(open(a.data, "rb").read()).hexdigest()},
              "metrics": metrics}
     json.dump(model, open(a.out, "w"), separators=(",", ":"), sort_keys=True)
     print(json.dumps(metrics, indent=1)); print("features", len(weights))

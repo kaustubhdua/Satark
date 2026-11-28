@@ -3,6 +3,7 @@
 import SiteHeader from '../site-header';
 import { useMemo, useState } from 'react';
 import { FileSearch, Fingerprint, LockKeyhole, Download, RotateCcw, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
+import { extractPdfStats, scoreMessage, scorePdf } from '../../lib/learned-models.mjs';
 
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
@@ -11,6 +12,7 @@ const MAX_TEXT_CHARS = 300_000;
 const PREVIEW_CHARS = 16_000;
 
 type LocalSignal = { label: string; detail: string };
+type ModelSignal = { model: string; band: string; score: number };
 type Extraction = {
   name: string;
   kind: 'PDF' | 'Text document';
@@ -21,6 +23,9 @@ type Extraction = {
   truncated: boolean;
   text: string;
   extractedAt: string;
+  pdfModel: ModelSignal | null;
+  textModel: ModelSignal | null;
+  structuralFlags: string[];
 };
 
 const indicators: Array<{ label: string; detail: string; pattern: RegExp }> = [
@@ -128,6 +133,9 @@ export default function PdfReviewPage() {
       let truncated = false;
       let kind: Extraction['kind'] = isPdf ? 'PDF' : 'Text document';
 
+      let pdfModel: ModelSignal | null = null;
+      const structuralFlags: string[] = [];
+
       if (isPdf) {
         const bytes = new Uint8Array(buffer);
         const header = new TextDecoder('ascii').decode(bytes.subarray(0, Math.min(bytes.length, 1024)));
@@ -147,6 +155,17 @@ export default function PdfReviewPage() {
         const pdf = await loadingTask.promise;
         pages = pdf.numPages;
         if (pages > MAX_PAGES) throw new Error('This PDF contains more than 50 pages. Split it into smaller files and inspect only the relevant pages.');
+
+        const pdfStats = extractPdfStats(bytes, pages);
+        pdfModel = scorePdf(pdfStats);
+        if (pdfStats.js > 0 || pdfStats.javascript > 0) structuralFlags.push('Embedded JavaScript (/JS)');
+        if (pdfStats.openaction > 0) structuralFlags.push('Automatic OpenAction trigger');
+        if (pdfStats.aa > 0) structuralFlags.push('Additional Actions (/AA)');
+        if (pdfStats.launch > 0) structuralFlags.push('External Launch action');
+        if (pdfStats.embeddedfile > 0) structuralFlags.push('Embedded file attachment');
+        if (pdfStats.acroform > 0) structuralFlags.push('Interactive AcroForm');
+        if (pdfStats.xfa > 0) structuralFlags.push('XFA form payload');
+        if (pdfStats.objstm > 0) structuralFlags.push('Compressed object stream (/ObjStm)');
         const chunks: string[] = [];
         let characterCount = 0;
         for (let pageNumber = 1; pageNumber <= pages; pageNumber++) {
@@ -181,6 +200,7 @@ export default function PdfReviewPage() {
       }
 
       const digest = await sha256(buffer);
+      const textModel = text.trim() ? scoreMessage(text) : null;
       const extracted: Extraction = {
         name: file.name,
         kind,
@@ -191,6 +211,9 @@ export default function PdfReviewPage() {
         truncated,
         text,
         extractedAt: new Date().toISOString(),
+        pdfModel,
+        textModel,
+        structuralFlags,
       };
       setResult(extracted);
       if (!text.trim()) {
@@ -308,6 +331,28 @@ export default function PdfReviewPage() {
                 <span><Fingerprint size={15} /> Original file SHA-256</span>
                 <code>{result.sha256}</code>
               </div>
+              {(result.pdfModel || result.textModel || result.structuralFlags.length > 0) && (
+                <div className="document-signal-list" style={{ marginTop: '14px' }}>
+                  {result.pdfModel && (
+                    <article className="document-signal">
+                      <span className="signal-mark"><AlertTriangle size={15} /></span>
+                      <div>
+                        <strong>Trained PDF structure model (satark-pdf-v1): {result.pdfModel.band.toUpperCase()}</strong>
+                        <p>Advisory score from PDF object/script/action structure trained on CIC-Evasive-PDFMal2022. {result.structuralFlags.length ? 'Observed markers: ' + result.structuralFlags.join(', ') + '.' : 'No high-risk active PDF markers observed.'}</p>
+                      </div>
+                    </article>
+                  )}
+                  {result.textModel && (
+                    <article className="document-signal">
+                      <span className="signal-mark"><AlertTriangle size={15} /></span>
+                      <div>
+                        <strong>Trained wording model ({result.textModel.model === 'email' ? 'satark-email-v1' : 'satark-message-v1'}): {result.textModel.band.toUpperCase()}</strong>
+                        <p>Advisory wording score on extracted document text. Combine with manual verification before trusting links or payment requests.</p>
+                      </div>
+                    </article>
+                  )}
+                </div>
+              )}
               {result.truncated && <p className="notice-panel">The extraction was capped at 300,000 characters to keep processing bounded. Review the source document directly for omitted content.</p>}
               {result.text.trim() && (
                 <>
