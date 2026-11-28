@@ -1,6 +1,6 @@
 # SATARK model cards
 
-SATARK ships two small learned models next to its deterministic rules. Both are **advisory**: they add a labelled
+SATARK ships three small learned models next to its deterministic rules. Both are **advisory**: they add a labelled
 signal to an analysis, they never produce a verdict, and the rules and the analyst's judgment stay authoritative.
 Both run entirely locally (in the web server's analysis route; no third-party API) as plain JSON weight tables.
 
@@ -48,6 +48,24 @@ must match to 1e-9 (CI enforces this).
   impersonation, delivery scams, QR phishing or non-English text, and can miss them (e.g. "Your account is suspended.
   Verify your password now" scores only *elevated*).
 - Random splits can leak near-duplicate campaigns; the real-world result is likely lower.
+
+## satark-email-v1 — email-length wording
+
+| | |
+|---|---|
+| Task | Does the wording of a longer message (300+ characters; subject + body, first 3,000 characters) resemble spam/phishing email? |
+| Data | CEAS 2008 Live Spam Challenge corpus via GitHub `PHP4Life/Phishing-Email-Dataset` `CEAS_08.csv` — 35,370 unique emails after near-duplicate removal (52.8 % spam/phishing) |
+| Features / model | same binary word uni/bi-gram tokens as the SMS model; L2 logistic regression, 8,000 weighted tokens (169 KB), class-balanced |
+| Split | by sender domain, 80/10/10 — a sender never appears on both sides |
+| Held-out result | ROC-AUC **0.998**; at "high": recall **87.0 %**, false-positive rate **0.65 %** (test: 2,845 emails, 1,773 spam) |
+
+**Limits — the score is probably flattering.**
+- One month (August 2008) from one collection: mostly bulk commercial spam (pharmacy, pills, stock pumps), not targeted phishing.
+  Legitimate mail comes from a single research mailbox, so the model may partly learn that mailbox's style. A 0.998 AUC on a
+  within-corpus split does not predict performance on today's mail.
+- Because of this the product never rates this model's output above **low** severity, whatever the band.
+- Redistribution terms of the CSV are not stated; only the derived weight table is shipped, never the emails.
+- Routing: text under 300 characters is scored by the SMS model, longer text by this one.
 
 ## Tasks that have no trained model, and why
 

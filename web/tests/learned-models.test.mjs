@@ -22,6 +22,7 @@ test('JS message scores match the Python reference, including unicode and empty 
     if (!item.text.trim()) { assert.equal(got, null); continue; }
     assert.ok(Math.abs(got.score - item.score) < 1e-9, `${JSON.stringify(item.text.slice(0, 30))}: ${got.score} vs ${item.score}`);
     assert.equal(got.band, item.band);
+    if (item.model) assert.equal(got.model, item.model);
   }
 });
 
@@ -39,5 +40,5 @@ test('analysis adds learned-model signals as advisory evidence and still works f
   assert.ok(bad.limitations.some((l) => /learned models/i.test(l)));
   const good = analyzeLocally('Lunch at noon? Menu is at https://github.com/');
   assert.ok(!good.evidence.some((e) => e.category === 'learned-model'));
-  assert.equal(good.learned_models.length, 2);
+  assert.equal(good.learned_models.length, 3);
 });

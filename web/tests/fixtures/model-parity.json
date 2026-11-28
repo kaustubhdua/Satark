@@ -74,68 +74,105 @@
  "messages": [
   {
    "text": "Hey, lunch at noon?",
+   "model": "message",
    "score": -6.223619,
    "band": "low"
   },
   {
    "text": "WINNER! You have won a £1000 prize. Call 09061701461 now to claim",
+   "model": "message",
    "score": 11.929404,
    "band": "high"
   },
   {
    "text": "Your account is suspended. Verify your password now",
+   "model": "message",
    "score": -2.71918,
    "band": "elevated"
   },
   {
    "text": "FREE entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. Text FA to 87121 to receive entry",
+   "model": "message",
    "score": 6.515915,
    "band": "high"
   },
   {
    "text": "Ok lar... Joking wif u oni...",
+   "model": "message",
    "score": -5.694931,
    "band": "low"
   },
   {
    "text": "URGENT! Your mobile No. was awarded $2000 Bonus Caller Prize",
+   "model": "message",
    "score": 2.342641,
    "band": "high"
   },
   {
    "text": "名前 😀 Prize now £50 www.claim.example",
+   "model": "message",
    "score": 1.7810549999999998,
    "band": "high"
   },
   {
    "text": "İstanbul K‌elvin ŉ test 12345 free",
+   "model": "message",
    "score": -0.15231200000000022,
    "band": "high"
   },
   {
    "text": "SHOUTING TEXT IN CAPITALS ONLY",
+   "model": "message",
    "score": -2.7097240000000005,
    "band": "elevated"
   },
   {
    "text": "",
+   "model": "message",
    "score": -4.432946,
    "band": "low"
   },
   {
    "text": "   ",
+   "model": "message",
    "score": -4.432946,
    "band": "low"
   },
   {
    "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-   "score": -2.469609,
-   "band": "elevated"
+   "model": "email",
+   "score": 3.663848,
+   "band": "low"
   },
   {
    "text": "Call now http://x.example/win 50p per min",
+   "model": "message",
    "score": 4.037717000000001,
    "band": "high"
+  },
+  {
+   "text": "Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Dear customer, your mailbox quota is almost full. Click the link to verify your password immediately or your account will be closed.",
+   "model": "email",
+   "score": 2.981121,
+   "band": "low"
+  },
+  {
+   "text": "Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. Hi team, attaching the minutes from Tuesday's planning meeting. Please review the action items and reply with corrections by Friday. ",
+   "model": "email",
+   "score": -0.6667019999999999,
+   "band": "low"
+  },
+  {
+   "text": "名前 😀 Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! Urgent prize winner claim now! ",
+   "model": "email",
+   "score": 3.9827320000000004,
+   "band": "low"
+  },
+  {
+   "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "model": "email",
+   "score": 3.663848,
+   "band": "low"
   }
  ]
 }
