@@ -2,8 +2,12 @@
 // bit-for-bit compatible with the Python reference (ml/train_*.py); parity is enforced by tests.
 import urlModel from './models/url-host-v1.json' with { type: 'json' };
 import messageModel from './models/message-v1.json' with { type: 'json' };
+import emailModel from './models/email-v1.json' with { type: 'json' };
 
-export const MODELS = { url: urlModel, message: messageModel };
+export const MODELS = { url: urlModel, message: messageModel, email: emailModel };
+
+// Messages shorter than this are scored by the SMS model, longer ones by the email model.
+export const EMAIL_MIN_CHARS = 300;
 
 const bucket = (n, edges) => { for (let i = 0; i < edges.length; i += 1) if (n <= edges[i]) return i; return edges.length; };
 const codePoints = (s) => Array.from(s);
@@ -67,11 +71,16 @@ export function scoreHost(rawHost) {
 export function scoreMessage(text) {
   const input = String(text || '');
   if (!input.trim()) return null;
-  return decide(MODELS.message, messageTokens(input));
+  if (codePoints(input.trim()).length >= EMAIL_MIN_CHARS) {
+    // Same tokenizer as the SMS model; the email model was trained on the first 3,000 characters.
+    const clipped = codePoints(input.trim()).slice(0, MODELS.email.max_chars).join('');
+    return { ...decide(MODELS.email, messageTokens(clipped)), model: 'email' };
+  }
+  return { ...decide(MODELS.message, messageTokens(input)), model: 'message' };
 }
 
 export function modelSummary() {
-  return ['url', 'message'].map((k) => ({
+  return ['url', 'message', 'email'].map((k) => ({
     name: MODELS[k].name, trained_on: MODELS[k].training.phishing_source || MODELS[k].training.source,
     test_roc_auc: Number(MODELS[k].metrics.test_roc_auc.toFixed(3)),
     recall_at_high: Number(MODELS[k].metrics.at_high_threshold.recall.toFixed(3)),
